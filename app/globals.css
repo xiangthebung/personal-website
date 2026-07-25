@@ -128,12 +128,77 @@ a:hover .external-arrow {
 }
 
 .hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
   gap: 9vw;
   align-items: end;
   min-height: 66svh;
   padding: clamp(4rem, 7vw, 7rem) 3vw 3vw;
+  background: linear-gradient(118deg, rgba(240, 239, 233, 0.94), rgba(240, 239, 233, 0.65));
+}
+
+.hero::before {
+  position: absolute;
+  z-index: -2;
+  top: -41%;
+  right: -9%;
+  width: min(67vw, 940px);
+  aspect-ratio: 1;
+  border-radius: 48% 52% 57% 43% / 42% 39% 61% 58%;
+  background: conic-gradient(
+    from 214deg,
+    #ff927a,
+    #f7bd63 22%,
+    #a7d79c 44%,
+    #75c9c2 61%,
+    #8ca9f4 78%,
+    #d0a2df
+  );
+  content: "";
+  filter: saturate(1.08) blur(1px);
+  opacity: 0.78;
+  transform: rotate(-14deg);
+}
+
+.hero::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 10vw,
+      rgba(22, 25, 23, 0.045) 10vw calc(10vw + 1px)
+    ),
+    radial-gradient(circle at 77% 72%, rgba(255, 255, 255, 0.7), transparent 27%);
+  content: "";
+  mask-image: linear-gradient(90deg, black 0 62%, transparent 93%);
+  opacity: 0.7;
+}
+
+.hero-copy,
+.project-index {
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.eyebrow::before {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #ee735d;
+  box-shadow: 0.7rem 0 0 #7ac4bd, 1.4rem 0 0 #7c9ced;
+  content: "";
+  margin-right: 1.4rem;
 }
 
 .hero-copy h1 {
@@ -144,6 +209,25 @@ a:hover .external-arrow {
   font-weight: 400;
   letter-spacing: -0.075em;
   line-height: 0.84;
+}
+
+.hero-title-line {
+  display: block;
+}
+
+.hero-title-accent {
+  font-style: normal;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-title-accent--warm {
+  background-image: linear-gradient(112deg, #e45f50 0%, #e79d39 48%, #53a99d 100%);
+}
+
+.hero-title-accent--cool {
+  background-image: linear-gradient(112deg, #4c9ad9 4%, #6b72d8 52%, #a467bb 100%);
 }
 
 .hero-copy > p:last-child {

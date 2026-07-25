@@ -25,7 +25,7 @@ type Project = {
   steps: ProjectStep[];
 };
 
-const projects: Project[] = [
+const projectData: Project[] = [
   {
     id: "blokamine",
     number: "01",
@@ -284,6 +284,20 @@ const projects: Project[] = [
     ],
   },
 ];
+
+// Keep the monochrome blokamine section between two color-led projects so the
+// change in visual language feels intentional when scrolling through the work.
+const projects: Project[] = [
+  projectData[1],
+  projectData[0],
+  projectData[2],
+  projectData[3],
+  projectData[4],
+  projectData[5],
+].map((project, index) => ({
+  ...project,
+  number: String(index + 1).padStart(2, "0"),
+}));
 
 const entranceStyles = [
   "orbit",
@@ -561,7 +575,14 @@ export default function Home() {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-copy">
             <p className="eyebrow">Six projects</p>
-            <h1 id="hero-title">Some tools I made.</h1>
+            <h1 id="hero-title">
+              <span className="hero-title-line">
+                Some <em className="hero-title-accent hero-title-accent--warm">tools</em>
+              </span>
+              <span className="hero-title-line">
+                I <em className="hero-title-accent hero-title-accent--cool">made.</em>
+              </span>
+            </h1>
             <p>
               Built with AI. Mostly because I wanted them and couldn’t find
               versions I liked.
