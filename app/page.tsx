@@ -294,6 +294,18 @@ const entranceStyles = [
   "flip",
 ] as const;
 
+const projectMotifs: Record<
+  string,
+  { label: string; mark: string }
+> = {
+  blokamine: { label: "less dopamine", mark: "◐" },
+  "grt-next-bus": { label: "next stop", mark: "●—●" },
+  pagepack: { label: "saved offline", mark: "⇩" },
+  "pdf-explainer": { label: "next slide", mark: "▱" },
+  "choir-practice": { label: "follow along", mark: "♪" },
+  "zen-n-back": { label: "next round", mark: "▦" },
+};
+
 function ExternalArrow() {
   return (
     <span aria-hidden="true" className="external-arrow">
@@ -436,8 +448,11 @@ function ProjectSection({ project }: { project: Project }) {
         >
           <div className="project-track">
             <div className="scene-kicker" aria-hidden="true">
-              <span>Scroll inside</span>
-              <strong>→</strong>
+              <span>{projectMotifs[project.id].label}</span>
+              <strong className="scene-kicker-mark">
+                {projectMotifs[project.id].mark}
+              </strong>
+              <small>scroll →</small>
             </div>
 
             {project.steps.map((step, index) => {
