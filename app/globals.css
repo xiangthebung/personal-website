@@ -993,47 +993,37 @@ a:hover .external-arrow {
   transform: translate(0, 0) rotate(0);
 }
 
-.scene-callout::after {
+.scene-pointer {
   position: absolute;
-  width: 70px;
+  z-index: 5;
+  top: var(--pointer-y);
+  left: var(--pointer-x);
+  width: var(--pointer-length);
   height: 1px;
   background: var(--project-ink);
   content: "";
-  opacity: 0.64;
+  opacity: 0;
+  transform: rotate(var(--pointer-angle));
+  transform-origin: left center;
+  transition: opacity 280ms ease 180ms;
+  pointer-events: none;
 }
 
-.scene-callout::before {
+.scene-pointer::before {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  top: 50%;
+  left: 0;
+  width: 7px;
+  height: 7px;
   border: 1px solid var(--project-ink);
   border-radius: 50%;
   background: var(--project-bg);
   content: "";
+  transform: translate(-50%, -50%);
 }
 
-.scene-card--left .scene-callout::after {
-  top: 1.4rem;
-  right: -70px;
-  transform: rotate(-12deg);
-  transform-origin: left;
-}
-
-.scene-card--left .scene-callout::before {
-  top: 0.58rem;
-  right: -74px;
-}
-
-.scene-card--right .scene-callout::after {
-  bottom: 1.4rem;
-  left: -70px;
-  transform: rotate(12deg);
-  transform-origin: right;
-}
-
-.scene-card--right .scene-callout::before {
-  bottom: 0.58rem;
-  left: -74px;
+.scene-card.is-visible .scene-pointer {
+  opacity: 0.72;
 }
 
 .scene-callout > span {

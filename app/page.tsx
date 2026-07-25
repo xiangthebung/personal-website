@@ -10,6 +10,13 @@ type ProjectStep = {
   fit?: "cover" | "contain";
   surface?: "light" | "dark";
   position?: string;
+  pointer?: {
+    x: string;
+    y: string;
+    length: string;
+    angle: string;
+  };
+  calloutSide?: "left" | "right";
 };
 
 type Project = {
@@ -46,6 +53,7 @@ const projectData: Project[] = [
         image: "/projects/blokamine.png",
         alt: "YouTube with desaturated, upside-down media",
         surface: "dark",
+        pointer: { x: "56%", y: "48%", length: "22%", angle: "158deg" },
       },
       {
         title: "Turn down the reward.",
@@ -54,6 +62,7 @@ const projectData: Project[] = [
         alt: "blokamine core experience settings",
         fit: "contain",
         surface: "light",
+        pointer: { x: "88%", y: "22%", length: "26%", angle: "166deg" },
       },
       {
         title: "Pick what disappears.",
@@ -62,6 +71,7 @@ const projectData: Project[] = [
         alt: "blokamine site-specific controls",
         fit: "contain",
         surface: "light",
+        pointer: { x: "58%", y: "58%", length: "24%", angle: "158deg" },
       },
       {
         title: "Still scrolling?",
@@ -69,6 +79,7 @@ const projectData: Project[] = [
         image: "/projects/blokamine-instagram.png",
         alt: "Instagram with media turned upside down and desaturated",
         surface: "dark",
+        pointer: { x: "52%", y: "48%", length: "22%", angle: "-14deg" },
       },
     ],
   },
@@ -89,6 +100,7 @@ const projectData: Project[] = [
         alt: "GRT Next Bus saved stops and departure times",
         fit: "contain",
         surface: "light",
+        pointer: { x: "54%", y: "43%", length: "23%", angle: "158deg" },
       },
       {
         title: "Set up a stop once.",
@@ -97,6 +109,7 @@ const projectData: Project[] = [
         alt: "GRT Next Bus add a stop form",
         fit: "contain",
         surface: "light",
+        pointer: { x: "50%", y: "72%", length: "24%", angle: "-14deg" },
       },
       {
         title: "The basics are free.",
@@ -105,6 +118,7 @@ const projectData: Project[] = [
         alt: "GRT Next Bus Pro countdown and alert controls",
         fit: "contain",
         surface: "light",
+        pointer: { x: "85%", y: "8%", length: "28%", angle: "156deg" },
       },
       {
         title: "Leave when the notification shows up.",
@@ -113,6 +127,7 @@ const projectData: Project[] = [
         alt: "Chrome notification for an arriving GRT bus",
         fit: "contain",
         surface: "dark",
+        pointer: { x: "52%", y: "39%", length: "22%", angle: "-14deg" },
       },
     ],
   },
@@ -133,6 +148,7 @@ const projectData: Project[] = [
         alt: "PagePack save page and browsing journey options",
         fit: "contain",
         surface: "dark",
+        pointer: { x: "54%", y: "43%", length: "23%", angle: "158deg" },
       },
       {
         title: "Choose how much comes with it.",
@@ -141,6 +157,7 @@ const projectData: Project[] = [
         alt: "PagePack link depth and script options",
         fit: "contain",
         surface: "dark",
+        pointer: { x: "61%", y: "58%", length: "23%", angle: "-14deg" },
       },
       {
         title: "Everything goes into a local library.",
@@ -149,6 +166,7 @@ const projectData: Project[] = [
         alt: "PagePack saved pages library",
         fit: "contain",
         surface: "dark",
+        pointer: { x: "53%", y: "52%", length: "22%", angle: "158deg" },
       },
       {
         title: "A pack can be more than one page.",
@@ -157,6 +175,7 @@ const projectData: Project[] = [
         alt: "A PagePack folder containing a 57-page pack",
         fit: "contain",
         surface: "dark",
+        pointer: { x: "52%", y: "46%", length: "21%", angle: "-14deg" },
       },
       {
         title: "The saved site still looks like the site.",
@@ -164,6 +183,7 @@ const projectData: Project[] = [
         image: "/projects/pagepack-reader.png",
         alt: "A full website open inside the PagePack offline reader",
         surface: "light",
+        pointer: { x: "56%", y: "54%", length: "22%", angle: "158deg" },
       },
     ],
   },
@@ -185,6 +205,7 @@ const projectData: Project[] = [
         image: "/projects/pdf-explainer.png",
         alt: "PDF Slide Explainer showing notes beside a lecture slide",
         surface: "dark",
+        pointer: { x: "81%", y: "53%", length: "28%", angle: "150deg" },
       },
       {
         title: "Ask about the exact thing on screen.",
@@ -192,6 +213,7 @@ const projectData: Project[] = [
         image: "/projects/pdf-explainer-feature.png",
         alt: "PDF Slide Explainer explaining feature uncertainty",
         surface: "light",
+        pointer: { x: "82%", y: "52%", length: "22%", angle: "-16deg" },
       },
       {
         title: "Then make sure you actually learned it.",
@@ -200,6 +222,7 @@ const projectData: Project[] = [
         alt: "Matching activity in PDF Slide Explainer",
         fit: "contain",
         surface: "dark",
+        pointer: { x: "53%", y: "57%", length: "22%", angle: "158deg" },
       },
     ],
   },
@@ -220,6 +243,7 @@ const projectData: Project[] = [
         image: "/projects/choir-overview.png",
         alt: "Choir Practice Tool playing a six-part score",
         surface: "dark",
+        pointer: { x: "65%", y: "48%", length: "24%", angle: "158deg" },
       },
       {
         title: "Make your part louder.",
@@ -228,6 +252,8 @@ const projectData: Project[] = [
         alt: "Choir Practice Tool part mixer and volume presets",
         fit: "contain",
         surface: "dark",
+        calloutSide: "right",
+        pointer: { x: "19%", y: "56%", length: "48%", angle: "-10deg" },
       },
       {
         title: "See whether you’re on pitch.",
@@ -235,6 +261,7 @@ const projectData: Project[] = [
         image: "/projects/choir-pitch.png",
         alt: "Choir Practice Tool showing live pitch guidance",
         surface: "dark",
+        pointer: { x: "43%", y: "66%", length: "18%", angle: "168deg" },
       },
       {
         title: "Mute the distraction.",
@@ -242,6 +269,7 @@ const projectData: Project[] = [
         image: "/projects/choir-focus.png",
         alt: "Choir Practice Tool with the tenor section in focus",
         surface: "dark",
+        pointer: { x: "48%", y: "65%", length: "31%", angle: "-12deg" },
       },
       {
         title: "Slow it down. Loop it. Export it.",
@@ -249,6 +277,7 @@ const projectData: Project[] = [
         image: "/projects/choir-practice.png",
         alt: "Choir Practice Tool playing a four-part score",
         surface: "dark",
+        pointer: { x: "50%", y: "92%", length: "23%", angle: "-148deg" },
       },
     ],
   },
@@ -269,6 +298,7 @@ const projectData: Project[] = [
         image: "/projects/zen-n-back.png",
         alt: "Zen N-Back setup screen",
         surface: "dark",
+        pointer: { x: "50%", y: "35%", length: "22%", angle: "158deg" },
       },
       {
         title: "The tutorial shows exactly what counts as a match.",
@@ -277,6 +307,7 @@ const projectData: Project[] = [
         alt: "Zen N-Back tutorial explaining a dual match",
         fit: "contain",
         surface: "dark",
+        pointer: { x: "51%", y: "53%", length: "21%", angle: "-14deg" },
       },
       {
         title: "Then play.",
@@ -285,6 +316,7 @@ const projectData: Project[] = [
         alt: "Zen N-Back game board",
         fit: "contain",
         surface: "dark",
+        pointer: { x: "52%", y: "48%", length: "22%", angle: "158deg" },
       },
     ],
   },
@@ -483,12 +515,21 @@ function ProjectSection({ project }: { project: Project }) {
             </div>
 
             {project.steps.map((step, index) => {
-              const calloutSide = index % 2 === 0 ? "left" : "right";
+              const calloutSide =
+                step.calloutSide ?? (index % 2 === 0 ? "left" : "right");
               const entrance =
                 entranceStyles[
                   (Number(project.number) + index - 1) %
                     entranceStyles.length
                 ];
+              const pointerStyle = step.pointer
+                ? ({
+                    "--pointer-x": step.pointer.x,
+                    "--pointer-y": step.pointer.y,
+                    "--pointer-length": step.pointer.length,
+                    "--pointer-angle": step.pointer.angle,
+                  } as React.CSSProperties)
+                : undefined;
               return (
                 <article
                   className={[
@@ -502,6 +543,7 @@ function ProjectSection({ project }: { project: Project }) {
                   ].join(" ")}
                   data-step={index}
                   key={step.image}
+                  style={pointerStyle}
                 >
                   <figure className="scene-image">
                     <img
@@ -519,6 +561,9 @@ function ProjectSection({ project }: { project: Project }) {
                       }
                     />
                   </figure>
+                  {step.pointer && (
+                    <span className="scene-pointer" aria-hidden="true" />
+                  )}
                   <div className="scene-callout">
                     <span>
                       {String(index + 1).padStart(2, "0")} /{" "}
