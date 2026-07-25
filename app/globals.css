@@ -515,11 +515,37 @@ a:hover .external-arrow {
   line-height: 0.95;
 }
 
-.project-platform {
-  display: block;
+.project-platform-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
   margin-top: 0.3rem;
+}
+
+.project-platform,
+.project-status {
   color: var(--project-muted);
   font-size: 0.56rem;
+}
+
+.project-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--project-accent);
+  font-family: var(--font-geist-mono), monospace;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.project-status::before {
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
 }
 
 .project-summary p {
@@ -1052,15 +1078,15 @@ a:hover .external-arrow {
   height: 70%;
   flex: 0 0 auto;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 1.2rem 0;
   color: var(--project-muted);
   font-size: 0.72rem;
 }
 
-.scene-end > span {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 2rem;
+.scene-end a {
+  color: var(--project-ink);
+  font-weight: 650;
 }
 
 .project-progress {
@@ -1085,17 +1111,9 @@ a:hover .external-arrow {
   display: flex;
   min-height: 52svh;
   align-items: end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 3rem;
   padding: 7vw 3vw 3vw;
-}
-
-.ending > p {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(4rem, 9vw, 9rem);
-  letter-spacing: -0.07em;
-  line-height: 0.84;
 }
 
 .ending div {
@@ -1254,10 +1272,6 @@ a:hover .external-arrow {
     flex-direction: column;
     justify-content: flex-end;
     padding: 5rem 1rem 2rem;
-  }
-
-  .ending > p {
-    font-size: 21vw;
   }
 
   .ending div {

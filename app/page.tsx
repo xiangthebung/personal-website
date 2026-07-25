@@ -17,6 +17,7 @@ type Project = {
   number: string;
   name: string;
   platform: string;
+  status?: string;
   headline: string;
   why: string;
   theme: "paper" | "mint" | "black" | "white" | "navy" | "forest";
@@ -31,6 +32,7 @@ const projectData: Project[] = [
     number: "01",
     name: "blokamine",
     platform: "Chrome extension",
+    status: "Work in progress",
     headline: "Can’t quit social media? Make it less addicting instead.",
     why: "I still wanted the sites. Just not all the little tricks that make me stay.",
     theme: "paper",
@@ -168,6 +170,7 @@ const projectData: Project[] = [
     number: "04",
     name: "PDF Slide Explainer",
     platform: "Web app",
+    status: "Work in progress",
     headline: "Your slides on the left. The explanation on the right.",
     why: "AI explanations were useful. Keeping them in a second tab wasn’t.",
     theme: "white",
@@ -430,7 +433,12 @@ function ProjectSection({ project }: { project: Project }) {
           <span className="project-number">{project.number}</span>
           <div>
             <h2 id={`${project.id}-title`}>{project.name}</h2>
-            <span className="project-platform">{project.platform}</span>
+            <div className="project-platform-row">
+              <span className="project-platform">{project.platform}</span>
+              {project.status && (
+                <span className="project-status">{project.status}</span>
+              )}
+            </div>
           </div>
         </div>
         <div className="project-summary">
@@ -519,7 +527,6 @@ function ProjectSection({ project }: { project: Project }) {
             })}
 
             <div className="scene-end">
-              <span>That’s it.</span>
               <a href={`#${projects[Number(project.number)]?.id ?? "top"}`}>
                 {Number(project.number) < projects.length
                   ? "Next project ↓"
@@ -607,7 +614,6 @@ export default function Home() {
         </div>
 
         <section className="ending">
-          <p>That’s everything.</p>
           <div>
             <span>Made with AI.</span>
             <a
