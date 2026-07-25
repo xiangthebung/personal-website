@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 
 type ProjectStep = {
   title: string;
@@ -295,122 +294,192 @@ function ExternalArrow() {
 }
 
 function ProjectSection({ project }: { project: Project }) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [activeStep, setActiveStep] = useState(0);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = useState(0);
+  const [visibleSteps, setVisibleSteps] = useState<number[]>([0]);
 
   useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
     let frame = 0;
 
     const update = () => {
-      const section = sectionRef.current;
-      if (!section) return;
+      const maxScroll = Math.max(1, scroller.scrollWidth - scroller.clientWidth);
+      setProgress(Math.min(1, Math.max(0, scroller.scrollLeft / maxScroll)));
 
-      const viewportHeight = window.innerHeight;
-      const rect = section.getBoundingClientRect();
-      const scrollDistance = Math.max(1, section.offsetHeight - viewportHeight);
-      const travelled = Math.min(
-        Math.max(70 - rect.top, 0),
-        scrollDistance,
-      );
-      const nextStep = Math.min(
-        project.steps.length - 1,
-        Math.floor((travelled / scrollDistance) * project.steps.length),
-      );
+      const scrollerRect = scroller.getBoundingClientRect();
+      const nextVisible = Array.from(
+        scroller.querySelectorAll<HTMLElement>("[data-step]"),
+      )
+        .filter((card) => {
+          const cardRect = card.getBoundingClientRect();
+          const visibleWidth =
+            Math.min(cardRect.right, scrollerRect.right) -
+            Math.max(cardRect.left, scrollerRect.left);
+          return visibleWidth > Math.min(cardRect.width * 0.22, 140);
+        })
+        .map((card) => Number(card.dataset.step));
 
-      setActiveStep((current) => (current === nextStep ? current : nextStep));
+      setVisibleSteps((current) =>
+        current.length === nextVisible.length &&
+        current.every((value, index) => value === nextVisible[index])
+          ? current
+          : nextVisible,
+      );
       frame = 0;
     };
 
-    const onScroll = () => {
+    const requestUpdate = () => {
       if (frame) return;
       frame = window.requestAnimationFrame(update);
     };
 
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+
+      const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+      const movingForward = event.deltaY > 0;
+      const canMoveForward = scroller.scrollLeft < maxScroll - 2;
+      const canMoveBack = scroller.scrollLeft > 2;
+
+      if (
+        (movingForward && canMoveForward) ||
+        (!movingForward && canMoveBack)
+      ) {
+        event.preventDefault();
+        scroller.scrollLeft += event.deltaY;
+        requestUpdate();
+      }
+    };
+
     update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    scroller.addEventListener("scroll", requestUpdate, { passive: true });
+    scroller.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("resize", requestUpdate);
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      scroller.removeEventListener("scroll", requestUpdate);
+      scroller.removeEventListener("wheel", onWheel);
+      window.removeEventListener("resize", requestUpdate);
       if (frame) window.cancelAnimationFrame(frame);
     };
   }, [project.steps.length]);
 
-  const active = project.steps[activeStep];
-  const sectionStyle = {
-    "--step-count": project.steps.length,
-  } as CSSProperties;
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      scroller.scrollBy({ left: scroller.clientWidth * 0.72, behavior: "smooth" });
+    }
+
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      scroller.scrollBy({
+        left: scroller.clientWidth * -0.72,
+        behavior: "smooth",
+      });
+    }
+  };
 
   return (
     <section
       className={`project project--${project.theme}`}
       id={project.id}
-      ref={sectionRef}
-      style={sectionStyle}
       aria-labelledby={`${project.id}-title`}
     >
-      <div className="project-stage">
-        <div className="project-topline">
-          <span>{project.number} / 06</span>
-          <span>{project.platform}</span>
-        </div>
-
-        <div className="project-layout">
-          <div className="project-visual">
-            {project.steps.map((step, index) => (
-              <figure
-                className={[
-                  "project-shot",
-                  index === activeStep ? "is-active" : "",
-                  `project-shot--${step.fit ?? "cover"}`,
-                  `project-shot--${step.surface ?? "light"}`,
-                ].join(" ")}
-                key={step.image}
-                aria-hidden={index !== activeStep}
-              >
-                <img
-                  src={step.image}
-                  alt={index === activeStep ? step.alt : ""}
-                  loading={
-                    project.number === "01" && index === 0 ? "eager" : "lazy"
-                  }
-                  style={
-                    step.position
-                      ? ({ objectPosition: step.position } as CSSProperties)
-                      : undefined
-                  }
-                />
-              </figure>
-            ))}
+      <div className="project-heading">
+        <div className="project-identity">
+          <span className="project-number">{project.number}</span>
+          <div>
+            <h2 id={`${project.id}-title`}>{project.name}</h2>
+            <span className="project-platform">{project.platform}</span>
           </div>
+        </div>
+        <div className="project-summary">
+          <p>{project.headline}</p>
+          <small>
+            <strong>Why?</strong> {project.why}
+          </small>
+        </div>
+        <div className="project-links">
+          {project.live && (
+            <a href={project.live} target="_blank" rel="noreferrer">
+              Open app <ExternalArrow />
+            </a>
+          )}
+          <a href={project.source} target="_blank" rel="noreferrer">
+            Source <ExternalArrow />
+          </a>
+        </div>
+      </div>
 
-          <div className="project-copy">
-            <div>
-              <h2 id={`${project.id}-title`}>{project.name}</h2>
-              <p className="project-headline">{project.headline}</p>
-              <p className="project-why">
-                <span>Why?</span> {project.why}
-              </p>
+      <div className="project-window">
+        <div
+          className="project-scroller"
+          ref={scrollerRef}
+          tabIndex={0}
+          role="region"
+          aria-label={`${project.name} screenshots. Scroll sideways or use the left and right arrow keys.`}
+          onKeyDown={handleKeyDown}
+        >
+          <div className="project-track">
+            <div className="scene-intro">
+              <span>{project.number} / 06</span>
+              <p>{project.headline}</p>
+              <small>Scroll here →</small>
             </div>
 
-            <div className="step-copy" key={`${project.id}-${activeStep}`}>
-              <span className="step-count">
-                {String(activeStep + 1).padStart(2, "0")} /{" "}
-                {String(project.steps.length).padStart(2, "0")}
-              </span>
-              <h3>{active.title}</h3>
-              <p>{active.text}</p>
-            </div>
+            {project.steps.map((step, index) => {
+              const calloutSide = index % 2 === 0 ? "left" : "right";
+              return (
+                <article
+                  className={[
+                    "scene-card",
+                    visibleSteps.includes(index) ? "is-visible" : "",
+                    `scene-card--${step.fit ?? "cover"}`,
+                    `scene-card--${step.surface ?? "light"}`,
+                    `scene-card--${calloutSide}`,
+                  ].join(" ")}
+                  data-step={index}
+                  key={step.image}
+                >
+                  <figure className="scene-image">
+                    <img
+                      src={step.image}
+                      alt={step.alt}
+                      loading={
+                        project.number === "01" && index === 0
+                          ? "eager"
+                          : "lazy"
+                      }
+                      style={
+                        step.position
+                          ? { objectPosition: step.position }
+                          : undefined
+                      }
+                    />
+                  </figure>
+                  <div className="scene-callout">
+                    <span>
+                      {String(index + 1).padStart(2, "0")} /{" "}
+                      {String(project.steps.length).padStart(2, "0")}
+                    </span>
+                    <h3>{step.title}</h3>
+                    <p>{step.text}</p>
+                  </div>
+                </article>
+              );
+            })}
 
-            <div className="project-links">
-              {project.live && (
-                <a href={project.live} target="_blank" rel="noreferrer">
-                  Open app <ExternalArrow />
-                </a>
-              )}
-              <a href={project.source} target="_blank" rel="noreferrer">
-                Source <ExternalArrow />
+            <div className="scene-end">
+              <span>That’s it.</span>
+              <a href={`#${projects[Number(project.number)]?.id ?? "top"}`}>
+                {Number(project.number) < projects.length
+                  ? "Next project ↓"
+                  : "Back to top ↑"}
               </a>
             </div>
           </div>
@@ -419,19 +488,22 @@ function ProjectSection({ project }: { project: Project }) {
         <div className="project-progress" aria-hidden="true">
           <span
             style={{
-              width: `${((activeStep + 1) / project.steps.length) * 100}%`,
+              width: `${Math.max(
+                7,
+                progress * 93 + 7,
+              )}%`,
             }}
           />
         </div>
-
-        <ol className="sr-only">
-          {project.steps.map((step) => (
-            <li key={step.title}>
-              {step.title} {step.text}
-            </li>
-          ))}
-        </ol>
       </div>
+
+      <ol className="sr-only">
+        {project.steps.map((step) => (
+          <li key={step.title}>
+            {step.title} {step.text}
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
