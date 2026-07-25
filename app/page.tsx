@@ -285,6 +285,15 @@ const projects: Project[] = [
   },
 ];
 
+const entranceStyles = [
+  "orbit",
+  "drop",
+  "pop",
+  "whip",
+  "rise",
+  "flip",
+] as const;
+
 function ExternalArrow() {
   return (
     <span aria-hidden="true" className="external-arrow">
@@ -426,14 +435,18 @@ function ProjectSection({ project }: { project: Project }) {
           onKeyDown={handleKeyDown}
         >
           <div className="project-track">
-            <div className="scene-intro">
-              <span>{project.number} / 06</span>
-              <p>{project.headline}</p>
-              <small>Scroll here →</small>
+            <div className="scene-kicker" aria-hidden="true">
+              <span>Scroll inside</span>
+              <strong>→</strong>
             </div>
 
             {project.steps.map((step, index) => {
               const calloutSide = index % 2 === 0 ? "left" : "right";
+              const entrance =
+                entranceStyles[
+                  (Number(project.number) + index - 1) %
+                    entranceStyles.length
+                ];
               return (
                 <article
                   className={[
@@ -442,6 +455,8 @@ function ProjectSection({ project }: { project: Project }) {
                     `scene-card--${step.fit ?? "cover"}`,
                     `scene-card--${step.surface ?? "light"}`,
                     `scene-card--${calloutSide}`,
+                    `scene-card--${entrance}`,
+                    `scene-card--layout-${(index % 4) + 1}`,
                   ].join(" ")}
                   data-step={index}
                   key={step.image}

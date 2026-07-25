@@ -70,7 +70,7 @@ a {
 .eyebrow,
 .project-number,
 .project-platform,
-.scene-intro > span,
+.scene-kicker > span,
 .scene-callout > span {
   font-family: var(--font-geist-mono), monospace;
   font-size: 0.67rem;
@@ -189,6 +189,7 @@ a:hover .external-arrow {
   --project-ink: #151815;
   --project-muted: #646b66;
   --project-line: rgba(21, 24, 21, 0.16);
+  --project-gutter: clamp(24px, 4.5vw, 84px);
   position: relative;
   height: clamp(420px, 52svh, 570px);
   overflow: hidden;
@@ -234,11 +235,12 @@ a:hover .external-arrow {
 
 .project-heading {
   display: grid;
-  min-height: 105px;
+  min-height: 92px;
   grid-template-columns: minmax(240px, 0.75fr) minmax(320px, 1.25fr) auto;
   gap: 3vw;
   align-items: center;
-  padding: 0.85rem 3vw;
+  margin: 0 var(--project-gutter);
+  padding: 0.7rem 0;
   border-bottom: 1px solid var(--project-line);
 }
 
@@ -262,7 +264,7 @@ a:hover .external-arrow {
 .project-identity h2 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.7rem, 3vw, 3rem);
+  font-size: clamp(1.55rem, 2.45vw, 2.55rem);
   font-weight: 400;
   letter-spacing: -0.045em;
   line-height: 0.95;
@@ -307,12 +309,13 @@ a:hover .external-arrow {
 
 .project-window {
   position: relative;
-  height: calc(100% - 105px);
+  height: calc(100% - 92px);
+  padding: 0.65rem var(--project-gutter) 0.85rem;
 }
 
 .project-scroller {
   width: 100%;
-  height: calc(100% - 4px);
+  height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-inline: contain;
@@ -334,66 +337,138 @@ a:hover .external-arrow {
   width: max-content;
   height: 100%;
   align-items: center;
-  gap: clamp(3.5rem, 7vw, 8rem);
-  padding: 0.7rem 8vw 1rem 3vw;
+  gap: clamp(4.5rem, 8vw, 9rem);
+  padding: 0.7rem 11vw 1rem clamp(1.2rem, 2.5vw, 3rem);
 }
 
-.scene-intro {
+.scene-kicker {
   display: flex;
-  width: clamp(250px, 24vw, 360px);
-  height: 80%;
+  width: clamp(86px, 8vw, 120px);
+  height: 72%;
   flex: 0 0 auto;
   flex-direction: column;
   justify-content: space-between;
-  padding: 1.25rem 0;
-}
-
-.scene-intro > span,
-.scene-intro small {
+  padding: 1.1rem 0;
   color: var(--project-muted);
 }
 
-.scene-intro p {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.8rem, 3.4vw, 3.7rem);
-  letter-spacing: -0.05em;
-  line-height: 0.96;
+.scene-kicker span {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
 }
 
-.scene-intro small {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.62rem;
-  text-transform: uppercase;
+.scene-kicker strong {
+  color: var(--project-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.5rem;
+  font-weight: 400;
 }
 
 .scene-card {
-  --turn: -1.25deg;
+  --settle-turn: -1.25deg;
+  --enter-x: 150px;
+  --enter-y: 0px;
+  --enter-turn: 20deg;
+  --enter-scale: 0.68;
   position: relative;
   width: clamp(470px, 57vw, 780px);
   height: 88%;
   flex: 0 0 auto;
-  opacity: 0.12;
-  transform: translateX(150px) rotate(var(--turn)) scale(0.93);
+  z-index: 1;
+  opacity: 0.08;
+  filter: blur(2px);
+  transform: translate3d(var(--enter-x), var(--enter-y), 0)
+    rotate(var(--enter-turn)) scale(var(--enter-scale));
   transform-origin: center;
   transition:
-    opacity 420ms ease,
-    transform 650ms cubic-bezier(0.16, 0.8, 0.2, 1);
+    opacity 360ms ease,
+    filter 500ms ease,
+    transform 760ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
 }
 
 .scene-card:nth-of-type(3n) {
-  --turn: 1.1deg;
+  --settle-turn: 1.1deg;
   margin-top: -10px;
 }
 
 .scene-card:nth-of-type(3n + 1) {
-  --turn: -0.6deg;
+  --settle-turn: -0.6deg;
   margin-top: 14px;
 }
 
 .scene-card.is-visible {
   opacity: 1;
-  transform: translateX(0) rotate(var(--turn)) scale(1);
+  filter: blur(0);
+  transform: translate3d(0, 0, 0) rotate(var(--settle-turn)) scale(1);
+}
+
+.scene-card--orbit {
+  --enter-x: 170px;
+  --enter-y: -90px;
+  --enter-turn: 38deg;
+  --enter-scale: 0.62;
+  transform-origin: 85% 110%;
+}
+
+.scene-card--drop {
+  --enter-x: 18px;
+  --enter-y: -190px;
+  --enter-turn: -18deg;
+  --enter-scale: 0.78;
+  transform-origin: center top;
+}
+
+.scene-card--pop {
+  --enter-x: 0px;
+  --enter-y: 20px;
+  --enter-turn: -42deg;
+  --enter-scale: 0.2;
+}
+
+.scene-card--whip {
+  --enter-x: -190px;
+  --enter-y: 28px;
+  --enter-turn: -26deg;
+  --enter-scale: 0.84;
+  transform-origin: left center;
+}
+
+.scene-card--rise {
+  --enter-x: 70px;
+  --enter-y: 180px;
+  --enter-turn: 15deg;
+  --enter-scale: 0.72;
+  transform-origin: center bottom;
+}
+
+.scene-card--flip {
+  --enter-x: 130px;
+  --enter-y: -12px;
+  --enter-turn: 190deg;
+  --enter-scale: 0.42;
+}
+
+.scene-card--layout-2 {
+  height: 77%;
+  margin-top: -1.4rem;
+}
+
+.scene-card--layout-3 {
+  height: 82%;
+  margin-top: 1.8rem;
+}
+
+.scene-card--layout-4 {
+  width: clamp(430px, 51vw, 710px);
+  height: 91%;
+}
+
+.scene-card:hover {
+  z-index: 7;
+  transform: translate3d(0, -4px, 0) rotate(0deg) scale(1.015);
 }
 
 .scene-card--contain {
@@ -422,6 +497,12 @@ a:hover .external-arrow {
   display: block;
   width: 100%;
   height: 100%;
+  transform: scale(1.06) rotate(0.35deg);
+  transition: transform 900ms cubic-bezier(0.16, 0.8, 0.2, 1);
+}
+
+.scene-card.is-visible .scene-image img {
+  transform: scale(1) rotate(0);
 }
 
 .scene-card--cover .scene-image img {
@@ -444,16 +525,27 @@ a:hover .external-arrow {
   background: color-mix(in srgb, var(--project-bg) 88%, transparent);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.13);
   backdrop-filter: blur(12px);
+  opacity: 0;
+  transition:
+    opacity 280ms ease 180ms,
+    transform 560ms cubic-bezier(0.16, 0.8, 0.2, 1) 150ms;
 }
 
 .scene-card--left .scene-callout {
   bottom: -0.2rem;
   left: -1.5rem;
+  transform: translate(-55px, 42px) rotate(-5deg);
 }
 
 .scene-card--right .scene-callout {
   top: -0.1rem;
   right: -1.5rem;
+  transform: translate(55px, -42px) rotate(5deg);
+}
+
+.scene-card.is-visible .scene-callout {
+  opacity: 1;
+  transform: translate(0, 0) rotate(0);
 }
 
 .scene-callout::after {
@@ -539,9 +631,9 @@ a:hover .external-arrow {
 
 .project-progress {
   position: absolute;
-  right: 3vw;
-  bottom: 5px;
-  left: 3vw;
+  right: var(--project-gutter);
+  bottom: 4px;
+  left: var(--project-gutter);
   height: 2px;
   overflow: hidden;
   background: var(--project-line);
@@ -591,7 +683,7 @@ a:hover .external-arrow {
   }
 
   .project-heading {
-    min-height: 115px;
+    min-height: 104px;
     grid-template-columns: minmax(210px, 0.8fr) minmax(280px, 1.2fr);
   }
 
@@ -602,7 +694,7 @@ a:hover .external-arrow {
   }
 
   .project-window {
-    height: calc(100% - 115px);
+    height: calc(100% - 104px);
   }
 
   .project-identity h2 {
@@ -633,12 +725,13 @@ a:hover .external-arrow {
   }
 
   .project {
+    --project-gutter: 14px;
     height: min(560px, 70svh);
     min-height: 470px;
   }
 
   .project-heading {
-    min-height: 145px;
+    min-height: 130px;
     grid-template-columns: 1fr;
     gap: 0.65rem;
     align-content: center;
@@ -670,21 +763,23 @@ a:hover .external-arrow {
   }
 
   .project-window {
-    height: calc(100% - 145px);
+    height: calc(100% - 130px);
+    padding-top: 0.55rem;
+    padding-bottom: 0.75rem;
   }
 
   .project-track {
     gap: 3.5rem;
     padding-right: 18vw;
-    padding-left: 1rem;
+    padding-left: 0.8rem;
   }
 
-  .scene-intro {
-    width: 68vw;
+  .scene-kicker {
+    width: 54px;
   }
 
-  .scene-intro p {
-    font-size: 2.2rem;
+  .scene-kicker strong {
+    font-size: 2rem;
   }
 
   .scene-card,
@@ -715,8 +810,8 @@ a:hover .external-arrow {
   }
 
   .project-progress {
-    right: 1rem;
-    left: 1rem;
+    right: var(--project-gutter);
+    left: var(--project-gutter);
   }
 
   .ending {
