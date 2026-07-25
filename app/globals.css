@@ -139,9 +139,9 @@ a:hover .external-arrow {
   padding: clamp(4rem, 7vw, 7rem) 3vw 3vw;
   background-color: var(--paper);
   background-image: url("/hero-face.png");
-  background-position: center bottom;
+  background-position: center;
   background-repeat: no-repeat;
-  background-size: 100% auto;
+  background-size: 100% 100%;
 }
 
 .hero::before {
