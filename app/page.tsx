@@ -581,19 +581,8 @@ export default function Home() {
       <main id="top">
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-copy">
-            <p className="eyebrow">Six projects</p>
-            <h1 id="hero-title">
-              <span className="hero-title-line">
-                Some <em className="hero-title-accent hero-title-accent--warm">tools</em>
-              </span>
-              <span className="hero-title-line">
-                I <em className="hero-title-accent hero-title-accent--cool">made.</em>
-              </span>
-            </h1>
-            <p>
-              Built with AI. Mostly because I wanted them and couldn’t find
-              versions I liked.
-            </p>
+            <h1 id="hero-title">Xiang Li</h1>
+            <p>Projects below are built with AI.</p>
           </div>
 
           <nav className="project-index" aria-label="Project index">
