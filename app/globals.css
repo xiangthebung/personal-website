@@ -233,11 +233,11 @@ a:hover .external-arrow {
 }
 
 .project {
-  --project-bg: #efeee9;
-  --project-ink: #151815;
-  --project-muted: #646b66;
-  --project-line: rgba(21, 24, 21, 0.16);
-  --project-accent: #161917;
+  --project-bg: #ecebe6;
+  --project-ink: #292c29;
+  --project-muted: #70766f;
+  --project-line: rgba(41, 44, 41, 0.14);
+  --project-accent: #5d7169;
   --project-gutter: clamp(24px, 4.5vw, 84px);
   position: relative;
   height: clamp(420px, 52svh, 570px);
@@ -248,72 +248,75 @@ a:hover .external-arrow {
 }
 
 .project--mint {
-  --project-bg: #e7f0ee;
-  --project-ink: #143133;
-  --project-muted: #587173;
-  --project-line: rgba(20, 49, 51, 0.16);
-  --project-accent: #0d8d80;
+  --project-bg: #e7ece9;
+  --project-ink: #2c3d3a;
+  --project-muted: #6c7c78;
+  --project-line: rgba(44, 61, 58, 0.14);
+  --project-accent: #5f958d;
   background:
-    radial-gradient(circle at 82% 24%, rgba(255, 176, 77, 0.26), transparent 28%),
-    radial-gradient(circle at 18% 92%, rgba(27, 178, 158, 0.21), transparent 31%),
+    radial-gradient(circle at 82% 24%, rgba(177, 149, 108, 0.12), transparent 28%),
+    radial-gradient(circle at 18% 92%, rgba(95, 149, 141, 0.12), transparent 31%),
     var(--project-bg);
 }
 
 .project--paper {
-  --project-bg: #101211;
-  --project-ink: #f0f1eb;
-  --project-muted: #a8ada7;
-  --project-line: rgba(240, 241, 235, 0.2);
-  --project-accent: #f0f1eb;
-  background: var(--project-bg);
+  --project-bg: #dedfdb;
+  --project-ink: #292c29;
+  --project-muted: #697069;
+  --project-line: rgba(41, 44, 41, 0.17);
+  --project-accent: #4f5a53;
+  background:
+    radial-gradient(circle at 76% 56%, rgba(255, 255, 255, 0.22), transparent 31%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 65%),
+    var(--project-bg);
 }
 
 .project--black {
-  --project-bg: #111315;
-  --project-ink: #f4f4ef;
-  --project-muted: #a4a5a1;
-  --project-line: rgba(255, 255, 255, 0.16);
-  --project-accent: #1688ff;
+  --project-bg: #e4e6e8;
+  --project-ink: #27313a;
+  --project-muted: #68747e;
+  --project-line: rgba(39, 49, 58, 0.14);
+  --project-accent: #678ba5;
   background:
-    radial-gradient(circle at 74% 38%, rgba(18, 126, 255, 0.3), transparent 30%),
-    radial-gradient(circle at 18% 86%, rgba(85, 51, 255, 0.19), transparent 34%),
+    radial-gradient(circle at 74% 38%, rgba(103, 139, 165, 0.14), transparent 30%),
+    radial-gradient(circle at 18% 86%, rgba(128, 116, 145, 0.1), transparent 34%),
     var(--project-bg);
 }
 
 .project--white {
-  --project-bg: #f7f4ff;
-  --project-ink: #22194b;
-  --project-muted: #716b8b;
-  --project-line: rgba(23, 25, 26, 0.14);
-  --project-accent: #6552ff;
+  --project-bg: #e9e7ec;
+  --project-ink: #3b3449;
+  --project-muted: #777083;
+  --project-line: rgba(59, 52, 73, 0.14);
+  --project-accent: #81789d;
   background:
-    radial-gradient(circle at 20% 34%, rgba(82, 210, 255, 0.25), transparent 29%),
-    radial-gradient(circle at 84% 84%, rgba(118, 81, 255, 0.24), transparent 34%),
+    radial-gradient(circle at 20% 34%, rgba(112, 161, 173, 0.1), transparent 29%),
+    radial-gradient(circle at 84% 84%, rgba(129, 120, 157, 0.12), transparent 34%),
     var(--project-bg);
 }
 
 .project--navy {
-  --project-bg: #0f1938;
-  --project-ink: #f0f4ff;
-  --project-muted: #99a7c2;
-  --project-line: rgba(240, 244, 255, 0.16);
-  --project-accent: #4da1ff;
+  --project-bg: #e5e8ed;
+  --project-ink: #303b4b;
+  --project-muted: #717c8d;
+  --project-line: rgba(48, 59, 75, 0.14);
+  --project-accent: #69819e;
   background:
-    radial-gradient(circle at 16% 30%, rgba(77, 161, 255, 0.26), transparent 27%),
-    radial-gradient(circle at 72% 22%, rgba(255, 155, 38, 0.18), transparent 24%),
-    radial-gradient(circle at 86% 92%, rgba(88, 214, 121, 0.17), transparent 26%),
+    radial-gradient(circle at 16% 30%, rgba(105, 129, 158, 0.12), transparent 27%),
+    radial-gradient(circle at 72% 22%, rgba(178, 143, 100, 0.1), transparent 24%),
+    radial-gradient(circle at 86% 92%, rgba(111, 151, 121, 0.1), transparent 26%),
     var(--project-bg);
 }
 
 .project--forest {
-  --project-bg: #07110e;
-  --project-ink: #edf2ef;
-  --project-muted: #93a299;
-  --project-line: rgba(237, 242, 239, 0.15);
-  --project-accent: #9dbea9;
+  --project-bg: #e5eae5;
+  --project-ink: #324239;
+  --project-muted: #6f7d72;
+  --project-line: rgba(50, 66, 57, 0.14);
+  --project-accent: #719178;
   background:
-    radial-gradient(circle at 23% 74%, rgba(105, 181, 137, 0.23), transparent 31%),
-    radial-gradient(circle at 84% 18%, rgba(226, 171, 85, 0.18), transparent 25%),
+    radial-gradient(circle at 23% 74%, rgba(113, 145, 120, 0.12), transparent 31%),
+    radial-gradient(circle at 84% 18%, rgba(177, 143, 100, 0.1), transparent 25%),
     var(--project-bg);
 }
 
@@ -336,27 +339,27 @@ a:hover .external-arrow {
     repeating-linear-gradient(
       90deg,
       transparent 0 11vw,
-      rgba(240, 241, 235, 0.06) 11vw calc(11vw + 1px)
+      rgba(41, 44, 41, 0.045) 11vw calc(11vw + 1px)
     ),
-    radial-gradient(circle at 76% 56%, rgba(255, 255, 255, 0.08), transparent 31%);
+    radial-gradient(circle at 76% 56%, rgba(41, 44, 41, 0.08), transparent 31%);
   opacity: 0.9;
 }
 
 .project--mint::before {
   background:
     radial-gradient(circle at 16% 64%, var(--project-accent) 0 5px, transparent 6px),
-    radial-gradient(circle at 48% 18%, #f29b38 0 5px, transparent 6px),
-    radial-gradient(circle at 84% 72%, #1ba995 0 5px, transparent 6px),
+    radial-gradient(circle at 48% 18%, #b29570 0 5px, transparent 6px),
+    radial-gradient(circle at 84% 72%, #6eaaa1 0 5px, transparent 6px),
     linear-gradient(
       14deg,
       transparent 0 37%,
-      rgba(13, 141, 128, 0.2) 37.1% 37.35%,
+      rgba(95, 149, 141, 0.12) 37.1% 37.35%,
       transparent 37.45% 100%
     ),
     linear-gradient(
       -11deg,
       transparent 0 58%,
-      rgba(242, 155, 56, 0.18) 58.1% 58.35%,
+      rgba(177, 149, 108, 0.12) 58.1% 58.35%,
       transparent 58.45% 100%
     );
 }
@@ -364,14 +367,14 @@ a:hover .external-arrow {
 .project--black::before {
   content: "⇩        ▯        ⇩        ▯        ⇩";
   padding-top: 17vh;
-  color: rgba(22, 136, 255, 0.09);
+  color: rgba(65, 92, 111, 0.08);
   font-family: var(--font-geist-mono), monospace;
   font-size: clamp(5rem, 10vw, 10rem);
   letter-spacing: 0.08em;
   white-space: nowrap;
   background:
-    linear-gradient(rgba(22, 136, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(22, 136, 255, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(65, 92, 111, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(65, 92, 111, 0.06) 1px, transparent 1px);
   background-size: 72px 72px;
 }
 
@@ -395,22 +398,22 @@ a:hover .external-arrow {
 .project--navy::before {
   content: "♪             ♩             ♫             ♪";
   padding-top: 11vh;
-  color: rgba(255, 255, 255, 0.09);
+  color: rgba(69, 91, 122, 0.11);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(4rem, 9vw, 9rem);
   letter-spacing: 0.08em;
   white-space: nowrap;
   background-image: repeating-linear-gradient(
     to bottom,
-    rgba(111, 171, 255, 0.15) 0 1px,
+    rgba(69, 91, 122, 0.11) 0 1px,
     transparent 1px 14px,
-    rgba(111, 171, 255, 0.15) 14px 15px,
+    rgba(69, 91, 122, 0.11) 14px 15px,
     transparent 15px 28px,
-    rgba(111, 171, 255, 0.15) 28px 29px,
+    rgba(69, 91, 122, 0.11) 28px 29px,
     transparent 29px 42px,
-    rgba(111, 171, 255, 0.15) 42px 43px,
+    rgba(69, 91, 122, 0.11) 42px 43px,
     transparent 43px 56px,
-    rgba(111, 171, 255, 0.15) 56px 57px,
+    rgba(69, 91, 122, 0.11) 56px 57px,
     transparent 57px 112px
   );
 }
@@ -422,16 +425,16 @@ a:hover .external-arrow {
     linear-gradient(
       90deg,
       transparent 32.9%,
-      rgba(157, 190, 169, 0.11) 33% 33.3%,
+      rgba(77, 108, 83, 0.1) 33% 33.3%,
       transparent 33.4% 66.2%,
-      rgba(157, 190, 169, 0.11) 66.3% 66.6%,
+      rgba(77, 108, 83, 0.1) 66.3% 66.6%,
       transparent 66.7%
     ),
     linear-gradient(
       transparent 32.9%,
-      rgba(157, 190, 169, 0.11) 33% 33.3%,
+      rgba(77, 108, 83, 0.1) 33% 33.3%,
       transparent 33.4% 66.2%,
-      rgba(157, 190, 169, 0.11) 66.3% 66.6%,
+      rgba(77, 108, 83, 0.1) 66.3% 66.6%,
       transparent 66.7%
     );
   background-size: 270px 270px;
