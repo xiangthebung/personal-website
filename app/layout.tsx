@@ -22,31 +22,31 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol =
     incomingHeaders.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
-  const socialImage = `${protocol}://${host}/og.png`;
+  const socialImage = `${protocol}://${host}/og-v2.png`;
 
   return {
-    title: "Xiang Li — A Small Software Workshop",
+    title: "Xiang Li — Projects",
     description:
-      "Practical software projects by Xiang Li, built for problems that kept bothering them.",
+      "Six tools Xiang Li made with AI because the versions they found were annoying.",
     openGraph: {
-      title: "Xiang Li — A Small Software Workshop",
+      title: "Xiang Li — Projects",
       description:
-        "Six practical experiments in attention, transit, learning, music, memory, and the offline web.",
+        "Six tools I made. Mostly because I wanted them and couldn’t find versions I liked.",
       type: "website",
       images: [
         {
           url: socialImage,
-          width: 1731,
-          height: 909,
-          alt: "Xiang Li — A Small Software Workshop",
+          width: 1536,
+          height: 1024,
+          alt: "Xiang Li — Some tools I made",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Xiang Li — A Small Software Workshop",
+      title: "Xiang Li — Projects",
       description:
-        "Six practical experiments in attention, transit, learning, music, memory, and the offline web.",
+        "Six tools I made. Mostly because I wanted them and couldn’t find versions I liked.",
       images: [socialImage],
     },
   };
