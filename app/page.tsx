@@ -18,6 +18,7 @@ type Project = {
   name: string;
   platform: string;
   status?: string;
+  mode?: string;
   headline: string;
   why: string;
   theme: "paper" | "mint" | "black" | "white" | "navy" | "forest";
@@ -33,6 +34,7 @@ const projectData: Project[] = [
     name: "blokamine",
     platform: "Chrome extension",
     status: "Work in progress",
+    mode: "Monochrome mode",
     headline: "Can’t quit social media? Make it less addicting instead.",
     why: "I still wanted the sites. Just not all the little tricks that make me stay.",
     theme: "paper",
@@ -315,7 +317,7 @@ const projectMotifs: Record<
   string,
   { label: string; mark: string }
 > = {
-  blokamine: { label: "less dopamine", mark: "◐" },
+  blokamine: { label: "colour off", mark: "B/W" },
   "grt-next-bus": { label: "next stop", mark: "●—●" },
   pagepack: { label: "saved offline", mark: "⇩" },
   "pdf-explainer": { label: "next slide", mark: "▱" },
@@ -437,6 +439,9 @@ function ProjectSection({ project }: { project: Project }) {
               <span className="project-platform">{project.platform}</span>
               {project.status && (
                 <span className="project-status">{project.status}</span>
+              )}
+              {project.mode && (
+                <span className="project-mode">{project.mode}</span>
               )}
             </div>
           </div>

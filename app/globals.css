@@ -259,6 +259,15 @@ a:hover .external-arrow {
     var(--project-bg);
 }
 
+.project--paper {
+  --project-bg: #101211;
+  --project-ink: #f0f1eb;
+  --project-muted: #a8ada7;
+  --project-line: rgba(240, 241, 235, 0.2);
+  --project-accent: #f0f1eb;
+  background: var(--project-bg);
+}
+
 .project--black {
   --project-bg: #111315;
   --project-ink: #f4f4ef;
@@ -327,10 +336,10 @@ a:hover .external-arrow {
     repeating-linear-gradient(
       90deg,
       transparent 0 11vw,
-      rgba(22, 25, 23, 0.035) 11vw calc(11vw + 1px)
+      rgba(240, 241, 235, 0.06) 11vw calc(11vw + 1px)
     ),
-    radial-gradient(circle at 76% 56%, rgba(0, 0, 0, 0.1), transparent 31%);
-  opacity: 0.7;
+    radial-gradient(circle at 76% 56%, rgba(255, 255, 255, 0.08), transparent 31%);
+  opacity: 0.9;
 }
 
 .project--mint::before {
@@ -497,6 +506,20 @@ a:hover .external-arrow {
   border-radius: 50%;
   background: currentColor;
   content: "";
+}
+
+.project-mode {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.38rem;
+  border: 1px solid var(--project-line);
+  border-radius: 999px;
+  color: var(--project-ink);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.54rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .project-summary p {
@@ -717,18 +740,18 @@ a:hover .external-arrow {
 }
 
 .project--paper .scene-image img {
-  filter: grayscale(0) saturate(1.25);
+  filter: grayscale(1) saturate(0) contrast(1.08);
   transition:
     filter 850ms ease,
     transform 900ms cubic-bezier(0.16, 0.8, 0.2, 1);
 }
 
 .project--paper .scene-card.is-visible .scene-image img {
-  filter: grayscale(1) saturate(0.15) contrast(1.03);
+  filter: grayscale(1) saturate(0) contrast(1.18);
 }
 
 .project--paper .scene-card:hover .scene-image img {
-  filter: grayscale(0.55) saturate(0.72);
+  filter: grayscale(1) saturate(0) contrast(1.24);
 }
 
 .project:not(.project--paper) .scene-image img {
