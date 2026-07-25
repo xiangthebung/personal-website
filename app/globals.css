@@ -1086,11 +1086,11 @@ a:hover .external-arrow {
 
 .ending {
   display: flex;
-  min-height: 52svh;
+  min-height: 0;
   align-items: end;
   justify-content: flex-end;
   gap: 3rem;
-  padding: 7vw 3vw 3vw;
+  padding: clamp(3rem, 5vw, 5rem) 3vw 2.5rem;
 }
 
 .ending div {
@@ -1244,11 +1244,11 @@ a:hover .external-arrow {
   }
 
   .ending {
-    min-height: 55svh;
+    min-height: 0;
     align-items: flex-start;
     flex-direction: column;
     justify-content: flex-end;
-    padding: 5rem 1rem 2rem;
+    padding: 4rem 1rem 2rem;
   }
 
   .ending div {
