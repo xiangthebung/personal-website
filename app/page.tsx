@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- Local static assets are served directly by the Cloudflare/vinext build. */
 import type { CSSProperties } from "react";
+import { HydrationSafeVideo } from "./hydration-safe-video";
 import { MediaRail, ProjectFocusManager, ProjectRail } from "./project-rail";
 import {
   entranceStyles,
@@ -60,18 +61,11 @@ function SceneContent({
     <div className="scene-card-motion">
       <figure className={portrait ? "portrait-popout-image scene-image" : "scene-image"}>
         {step.video ? (
-          <video
-            controls
-            loop
-            muted
-            playsInline
-            preload="metadata"
+          <HydrationSafeVideo
+            src={step.video}
             poster={step.poster ?? step.image}
-            aria-label={step.alt}
-          >
-            <source src={step.video} type="video/mp4" />
-            Your browser does not support embedded video.
-          </video>
+            ariaLabel={step.alt}
+          />
         ) : (
           <OptimizedImage
             src={step.image}
