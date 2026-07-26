@@ -1436,6 +1436,120 @@ a:hover .external-arrow {
   transition: width 180ms linear;
 }
 
+.fun-section {
+  --fun-ink: #f0efe9;
+  --fun-muted: #a8ada7;
+  --fun-line: rgba(240, 239, 233, 0.18);
+  padding: clamp(4.5rem, 9vw, 9rem) 3vw clamp(4rem, 7vw, 7rem);
+  border-top: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 87% 18%, rgba(132, 158, 143, 0.18), transparent 24%),
+    radial-gradient(circle at 9% 92%, rgba(170, 128, 91, 0.16), transparent 22%),
+    #161917;
+  color: var(--fun-ink);
+}
+
+.fun-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  max-width: 1120px;
+  margin: 0 auto clamp(2rem, 4vw, 3.5rem);
+}
+
+.fun-heading .eyebrow {
+  color: #bdc8bf;
+}
+
+.fun-heading h2 {
+  margin: 0.8rem 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(3.5rem, 8vw, 8rem);
+  font-weight: 400;
+  letter-spacing: -0.08em;
+  line-height: 0.82;
+}
+
+.fun-heading p {
+  max-width: 210px;
+  margin: 0 0 0.15rem;
+  color: var(--fun-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.fun-grid {
+  display: grid;
+  max-width: 1120px;
+  margin: 0 auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.8rem, 1.6vw, 1.4rem);
+}
+
+.fun-card {
+  min-width: 0;
+  margin: 0;
+}
+
+.fun-card--feature {
+  grid-row: span 2;
+}
+
+.fun-media {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1.3;
+  border: 1px solid var(--fun-line);
+  background: #252a26;
+}
+
+.fun-card--feature .fun-media {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.fun-media img,
+.fun-media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fun-card--feature .fun-media img {
+  object-position: center;
+}
+
+.fun-media video {
+  background: #252a26;
+}
+
+.fun-card figcaption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.65rem;
+  color: var(--fun-muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.59rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fun-card figcaption strong {
+  overflow: hidden;
+  color: var(--fun-ink);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 550;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
 .ending {
   display: flex;
   min-height: 0;
@@ -1637,6 +1751,34 @@ a:hover .external-arrow {
   .project-progress {
     right: var(--project-gutter);
     left: var(--project-gutter);
+  }
+
+  .fun-section {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .fun-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .fun-heading p {
+    max-width: 250px;
+  }
+
+  .fun-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fun-card--feature {
+    grid-row: span 1;
+    grid-column: span 2;
+  }
+
+  .fun-card--feature .fun-media {
+    aspect-ratio: 1.2;
   }
 
   .ending {

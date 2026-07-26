@@ -409,6 +409,51 @@ const projectMotifs: Record<
   "zen-n-back": { label: "next round", mark: "▦" },
 };
 
+const funMedia = [
+  {
+    kind: "image",
+    src: "/fun/pan-fried-fish.jpg",
+    label: "Photo / 01",
+    title: "Dinner, mid-process",
+    alt: "Two pieces of fish cooking in a cast-iron skillet",
+  },
+  {
+    kind: "video",
+    src: "/fun/clip-01.mp4",
+    label: "Video / 02",
+    title: "Clip 01",
+    alt: "User-provided video clip 01",
+  },
+  {
+    kind: "video",
+    src: "/fun/clip-02.mp4",
+    label: "Video / 03",
+    title: "Clip 02",
+    alt: "User-provided video clip 02",
+  },
+  {
+    kind: "video",
+    src: "/fun/clip-03.mp4",
+    label: "Video / 04",
+    title: "Clip 03",
+    alt: "User-provided video clip 03",
+  },
+  {
+    kind: "video",
+    src: "/fun/human-flag-right-side.mp4",
+    label: "Video / 05",
+    title: "Human flag / right side",
+    alt: "User-provided human flag video from the right side",
+  },
+  {
+    kind: "video",
+    src: "/fun/clip-04.mp4",
+    label: "Video / 06",
+    title: "Clip 04",
+    alt: "User-provided video clip 04",
+  },
+] as const;
+
 function ExternalArrow() {
   return (
     <span aria-hidden="true" className="external-arrow">
@@ -961,6 +1006,47 @@ export default function Home() {
             <ProjectSection project={project} key={project.id} />
           ))}
         </div>
+
+        <section className="fun-section" aria-labelledby="fun-title">
+          <div className="fun-heading">
+            <div>
+              <span className="eyebrow">Side quests</span>
+              <h2 id="fun-title">Just for fun.</h2>
+            </div>
+            <p>A few things that didn’t need a product page.</p>
+          </div>
+
+          <div className="fun-grid">
+            {funMedia.map((media, index) => (
+              <figure
+                className={`fun-card fun-card--${media.kind}${index === 0 ? " fun-card--feature" : ""}`}
+                key={media.src}
+              >
+                <div className="fun-media">
+                  {media.kind === "image" ? (
+                    <img src={media.src} alt={media.alt} loading="lazy" />
+                  ) : (
+                    <video
+                      controls
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      aria-label={media.alt}
+                    >
+                      <source src={media.src} type="video/mp4" />
+                      Your browser does not support embedded video.
+                    </video>
+                  )}
+                </div>
+                <figcaption>
+                  <span>{media.label}</span>
+                  <strong>{media.title}</strong>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
 
         <section className="ending">
           <div>
