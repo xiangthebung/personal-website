@@ -35,7 +35,7 @@ test("server-renders the portfolio and project scroll guidance", async () => {
   assert.match(html, /Shift \+ scroll/);
   assert.match(html, /project-nav-button/);
   assert.match(html, /left and right arrow keys/);
-  assert.match(html, /hero-face-768\.avif/);
+  assert.match(html, /hero-face-1600\.jpg/);
   assert.match(html, /preload="none"/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|Building your site/i);
 });

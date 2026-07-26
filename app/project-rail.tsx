@@ -237,6 +237,17 @@ export function ProjectRail({
       if (initialized) return;
       initialized = true;
 
+      // Native lazy loading can be overly conservative inside a transformed,
+      // horizontally scrolling rail. Once the project approaches the viewport,
+      // start decoding its original PNG/JPEG screenshots before they are revealed.
+      project
+        .querySelectorAll<HTMLImageElement>("img[data-project-image]")
+        .forEach((image) => {
+          image.loading = "eager";
+          image.fetchPriority = "auto";
+          if (!image.complete) void image.decode().catch(() => {});
+        });
+
       visibilityObserver = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {

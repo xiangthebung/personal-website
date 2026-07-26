@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- Local static assets are served directly by the Cloudflare/vinext build. */
 import type { CSSProperties } from "react";
 import { MediaRail, ProjectFocusManager, ProjectRail } from "./project-rail";
 import {
@@ -17,10 +18,6 @@ function ExternalArrow() {
   );
 }
 
-function avifSource(src: string) {
-  return src.replace(/\.(?:png|jpe?g)$/i, ".avif");
-}
-
 function OptimizedImage({
   src,
   alt,
@@ -35,17 +32,16 @@ function OptimizedImage({
   fetchPriority?: "high" | "low" | "auto";
 }) {
   return (
-    <picture className={className}>
-      <source srcSet={avifSource(src)} type="image/avif" />
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        decoding="async"
-        fetchPriority={fetchPriority}
-        style={style}
-      />
-    </picture>
+    <img
+      className={className}
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      fetchPriority={fetchPriority}
+      data-project-image
+      style={style}
+    />
   );
 }
 
@@ -287,16 +283,12 @@ export default function Home() {
     <main id="top">
       <section className="hero" aria-labelledby="hero-title">
         <picture className="hero-art">
-          <source
-            type="image/avif"
-            srcSet="/hero-face-768.avif 768w, /hero-face-1440.avif 1440w, /hero-face-2200.avif 2200w"
-            sizes="100vw"
-          />
           <img
             src="/hero-face-1600.jpg"
             alt=""
             width="1600"
             height="2133"
+            decoding="async"
             fetchPriority="high"
           />
         </picture>
