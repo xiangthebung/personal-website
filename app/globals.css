@@ -324,19 +324,77 @@ a:hover .external-arrow {
     var(--project-bg);
 }
 
-/* Keep each project on the same neutral canvas so the screenshots do the visual work. */
-.project,
-.project.project--mint,
-.project.project--paper,
-.project.project--black,
-.project.project--white,
-.project.project--navy,
-.project.project--forest {
-  --project-bg: #e7e9e7;
+/* Give each project its own color atmosphere while keeping text contrast high. */
+.project.project--mint {
+  --project-bg: #d8f2e7;
+  --project-ink: #173f36;
+  --project-muted: #4f7168;
+  --project-line: rgba(23, 63, 54, 0.16);
+  --project-accent: #0b8d73;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 62%),
-    radial-gradient(circle at 78% 52%, rgba(255, 255, 255, 0.24), transparent 30%),
-    var(--project-bg);
+    radial-gradient(circle at 84% 18%, rgba(255, 207, 102, 0.38), transparent 28%),
+    radial-gradient(circle at 10% 88%, rgba(55, 174, 151, 0.26), transparent 34%),
+    linear-gradient(135deg, #e8faef 0%, var(--project-bg) 58%, #cbe9e5 100%);
+}
+
+.project.project--paper {
+  --project-bg: #f5e6c8;
+  --project-ink: #523921;
+  --project-muted: #80664d;
+  --project-line: rgba(82, 57, 33, 0.17);
+  --project-accent: #c85f3f;
+  background:
+    radial-gradient(circle at 78% 24%, rgba(237, 116, 84, 0.3), transparent 31%),
+    radial-gradient(circle at 15% 82%, rgba(245, 190, 72, 0.28), transparent 34%),
+    linear-gradient(140deg, #fff3d9 0%, var(--project-bg) 58%, #f1cfb6 100%);
+}
+
+.project.project--black {
+  --project-bg: #dce6f8;
+  --project-ink: #26375b;
+  --project-muted: #5e6e91;
+  --project-line: rgba(38, 55, 91, 0.16);
+  --project-accent: #5d56c7;
+  background:
+    radial-gradient(circle at 83% 20%, rgba(133, 104, 224, 0.3), transparent 30%),
+    radial-gradient(circle at 12% 86%, rgba(79, 151, 223, 0.3), transparent 34%),
+    linear-gradient(135deg, #edf3ff 0%, var(--project-bg) 57%, #d8d4f2 100%);
+}
+
+.project.project--white {
+  --project-bg: #eee0fa;
+  --project-ink: #49345f;
+  --project-muted: #766187;
+  --project-line: rgba(73, 52, 95, 0.16);
+  --project-accent: #7b4fc8;
+  background:
+    radial-gradient(circle at 18% 24%, rgba(79, 185, 206, 0.25), transparent 30%),
+    radial-gradient(circle at 84% 82%, rgba(211, 105, 173, 0.27), transparent 35%),
+    linear-gradient(138deg, #f5edff 0%, var(--project-bg) 56%, #e7d7f4 100%);
+}
+
+.project.project--navy {
+  --project-bg: #d9eaf7;
+  --project-ink: #243e60;
+  --project-muted: #58718e;
+  --project-line: rgba(36, 62, 96, 0.16);
+  --project-accent: #3378aa;
+  background:
+    radial-gradient(circle at 16% 22%, rgba(74, 166, 205, 0.28), transparent 30%),
+    radial-gradient(circle at 82% 78%, rgba(227, 130, 160, 0.25), transparent 34%),
+    linear-gradient(135deg, #e8f6ff 0%, var(--project-bg) 56%, #d8deef 100%);
+}
+
+.project.project--forest {
+  --project-bg: #dcebd4;
+  --project-ink: #294733;
+  --project-muted: #5d765f;
+  --project-line: rgba(41, 71, 51, 0.16);
+  --project-accent: #4f8b5d;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(235, 186, 77, 0.3), transparent 29%),
+    radial-gradient(circle at 14% 84%, rgba(77, 151, 100, 0.26), transparent 34%),
+    linear-gradient(140deg, #edf7df 0%, var(--project-bg) 58%, #cfe0c6 100%);
 }
 
 .project::before {
@@ -2135,7 +2193,7 @@ html:not(.has-project-focus) .scene-card-motion {
   }
 }
 
-/* Reliable media layering and directional project focus. */
+/* Reliable media layering and calm project focus. */
 .hero-art {
   z-index: 0;
 }
@@ -2160,84 +2218,138 @@ html:not(.has-project-focus) .scene-card-motion {
   }
 }
 
+/* Keep every section at a fixed visual anchor. Focus changes affect opacity
+   and the media layers only, never the complete heading or project window. */
 html.has-project-focus .project {
   overflow: clip;
 }
 
-html.has-project-focus .project.is-active {
-  overflow: visible;
+html.has-project-focus .project .project-heading,
+html.has-project-focus .project .project-window {
+  transform: none;
+  transform-origin: center;
+  transition: opacity 260ms ease;
 }
 
 html.has-project-focus .project .project-heading,
-html.has-project-focus .project .project-window {
+html.has-project-focus .project .project-window,
+html.has-project-focus .project.is-before-active .project-heading,
+html.has-project-focus .project.is-before-active .project-window,
+html.has-project-focus .project.is-after-active .project-heading,
+html.has-project-focus .project.is-after-active .project-window {
+  transform: none;
+}
+
+html.has-project-focus .project.is-active .project-heading,
+html.has-project-focus .project.is-active .project-window {
+  opacity: 1;
+}
+
+html.has-project-focus .project:not(.is-active) .project-heading {
+  opacity: 0.32;
+}
+
+html.has-project-focus .project:not(.is-active) .project-window {
+  opacity: 1;
+}
+
+/* Cards leave from the bottom and fan toward alternating sides. The rail itself
+   stays still, so scrolling between projects does not move the whole viewport. */
+html.has-project-focus
+  .project-track
+  > .scene-card:nth-of-type(odd) {
+  --focus-exit-x: clamp(-140px, -9vw, -56px);
+  --focus-exit-turn: -4deg;
+}
+
+html.has-project-focus
+  .project-track
+  > .scene-card:nth-of-type(even) {
+  --focus-exit-x: clamp(56px, 9vw, 140px);
+  --focus-exit-turn: 4deg;
+}
+
+html.has-project-focus
+  .project
+  .project-track
+  > .scene-card
+  > .scene-card-motion {
+  transition:
+    opacity 280ms ease,
+    transform 540ms cubic-bezier(0.22, 0.7, 0.24, 1);
+}
+
+html.has-project-focus
+  .project:not(.is-active)
+  .project-track
+  > .scene-card
+  > .scene-card-motion {
+  opacity: 0;
+  transform: translate3d(
+      var(--focus-exit-x, 0),
+      clamp(64px, 9vh, 104px),
+      0
+    )
+    rotate(var(--focus-exit-turn, 0deg)) scale(0.96);
+}
+
+html.has-project-focus
+  .project.is-active
+  .project-track
+  > .scene-card.is-visible
+  > .scene-card-motion {
   opacity: 1;
   transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  transform-origin: center;
-  transition:
-    opacity 360ms ease,
-    transform 720ms cubic-bezier(0.2, 0.76, 0.2, 1);
-  will-change: transform, opacity;
 }
 
-html.has-project-focus .project.is-before-active .project-heading {
-  opacity: 0.12;
-  transform: translate3d(-12vw, -22px, 0) rotate(-0.65deg) scale(0.97);
+/* Portrait screenshots use the same alternating fan without moving the
+   JS-positioned card shell. Delayed visibility prevents adjacent overlap. */
+html.has-project-focus .portrait-popout--step-0,
+html.has-project-focus .portrait-popout--step-2,
+html.has-project-focus .portrait-popout--step-4 {
+  --focus-exit-x: clamp(-140px, -9vw, -56px);
+  --focus-exit-turn: -4deg;
 }
 
-html.has-project-focus .project.is-before-active .project-window {
-  opacity: 0.08;
-  transform: translate3d(-17vw, -30px, 0) rotate(-1deg) scale(0.94);
+html.has-project-focus .portrait-popout--step-1,
+html.has-project-focus .portrait-popout--step-3,
+html.has-project-focus .portrait-popout--step-5 {
+  --focus-exit-x: clamp(56px, 9vw, 140px);
+  --focus-exit-turn: 4deg;
 }
 
-html.has-project-focus .project.is-after-active .project-heading {
-  opacity: 0.12;
-  transform: translate3d(12vw, 22px, 0) rotate(0.65deg) scale(0.97);
-}
-
-html.has-project-focus .project.is-after-active .project-window {
-  opacity: 0.08;
-  transform: translate3d(17vw, 30px, 0) rotate(1deg) scale(0.94);
-}
-
-/* Portrait cards animate through their inner layer so their continuously
-   updated rail transform stays transition-free. Visibility changes only after
-   the directional exit has completed. */
 html.has-project-focus .project > .portrait-popout {
   visibility: visible;
   opacity: 1;
-  transition:
-    opacity 420ms ease,
-    visibility 0s linear;
+  transition: visibility 0s linear;
 }
 
 html.has-project-focus .project:not(.is-active) > .portrait-popout {
   visibility: hidden;
-  opacity: 0;
-  transition:
-    opacity 500ms ease,
-    visibility 0s linear 700ms;
+  opacity: 1;
+  transition: visibility 0s linear 540ms;
 }
 
 html.has-project-focus
-  .project.is-before-active
+  .project
   > .portrait-popout
   > .scene-card-motion {
-  opacity: 0;
-  transform: translate3d(-18vw, -38px, 0) rotate(-9deg) scale(0.82);
   transition:
-    opacity 420ms ease,
-    transform 680ms cubic-bezier(0.2, 0.76, 0.2, 1);
+    opacity 280ms ease,
+    transform 540ms cubic-bezier(0.22, 0.7, 0.24, 1);
 }
 
 html.has-project-focus
-  .project.is-after-active
+  .project:not(.is-active)
   > .portrait-popout
   > .scene-card-motion {
   opacity: 0;
-  transform: translate3d(18vw, 38px, 0) rotate(9deg) scale(0.82);
-  transition:
-    opacity 420ms ease,
-    transform 680ms cubic-bezier(0.2, 0.76, 0.2, 1);
+  transform: translate3d(
+      var(--focus-exit-x, 0),
+      clamp(64px, 9vh, 104px),
+      0
+    )
+    rotate(var(--focus-exit-turn, 0deg)) scale(0.96);
 }
 
 html.has-project-focus
@@ -2249,18 +2361,20 @@ html.has-project-focus
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.has-project-focus .project.is-before-active .project-heading,
-  html.has-project-focus .project.is-before-active .project-window,
-  html.has-project-focus .project.is-after-active .project-heading,
-  html.has-project-focus .project.is-after-active .project-window {
+  html.has-project-focus .project:not(.is-active) .project-heading {
     opacity: 0.38;
-    transform: none;
   }
 
   html.has-project-focus
     .project:not(.is-active)
+    .project-track
+    > .scene-card
+    > .scene-card-motion,
+  html.has-project-focus
+    .project:not(.is-active)
     > .portrait-popout
     > .scene-card-motion {
+    opacity: 0;
     transform: none;
   }
 }
