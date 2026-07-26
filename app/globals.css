@@ -917,80 +917,6 @@ a:hover .external-arrow {
   transform: none;
 }
 
-@keyframes portrait-pop-in {
-  0% {
-    opacity: 0;
-    filter: blur(14px);
-    transform: translate3d(
-        calc(var(--portrait-enter-x) + var(--portrait-rail-x)),
-        calc(var(--portrait-enter-y) + var(--portrait-rail-y)),
-        0
-      )
-      rotate(calc(var(--portrait-enter-rotate) + var(--portrait-rail-rotate)))
-      scale(var(--portrait-enter-scale)) scale(var(--portrait-rail-scale));
-  }
-
-  52% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translate3d(
-        calc(var(--portrait-overshoot-x) + var(--portrait-rail-x)),
-        calc(var(--portrait-overshoot-y) + var(--portrait-rail-y)),
-        0
-      )
-      rotate(calc(var(--portrait-overshoot-rotate) + var(--portrait-rail-rotate)))
-      scale(var(--portrait-overshoot-scale)) scale(var(--portrait-rail-scale));
-  }
-
-  76% {
-    transform: translate3d(var(--portrait-rail-x), var(--portrait-rail-y), 0)
-      rotate(calc(var(--portrait-settle-rotate) + var(--portrait-rail-rotate)))
-      scale(0.97) scale(var(--portrait-rail-scale));
-  }
-
-  100% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translate3d(var(--portrait-rail-x), var(--portrait-rail-y), 0)
-      rotate(calc(var(--portrait-settle-rotate) + var(--portrait-rail-rotate)))
-      scale(var(--portrait-rail-scale));
-  }
-}
-
-@keyframes portrait-pop-out {
-  0% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translate3d(var(--portrait-rail-x), var(--portrait-rail-y), 0)
-      rotate(calc(var(--portrait-settle-rotate) + var(--portrait-rail-rotate)))
-      scale(var(--portrait-rail-scale));
-  }
-
-  24% {
-    opacity: 1;
-    filter: blur(0);
-    transform: translate3d(
-        calc(var(--portrait-overshoot-x) * -0.7 + var(--portrait-rail-x)),
-        calc(var(--portrait-overshoot-y) * -0.7 + var(--portrait-rail-y)),
-        0
-      )
-      rotate(calc(var(--portrait-overshoot-rotate) * -0.75 + var(--portrait-rail-rotate)))
-      scale(1.04) scale(var(--portrait-rail-scale));
-  }
-
-  100% {
-    opacity: 0;
-    filter: blur(14px);
-    transform: translate3d(
-        calc(var(--portrait-enter-x) + var(--portrait-rail-x)),
-        calc(var(--portrait-enter-y) + var(--portrait-rail-y)),
-        0
-      )
-      rotate(calc(var(--portrait-enter-rotate) + var(--portrait-rail-rotate)))
-      scale(var(--portrait-enter-scale)) scale(var(--portrait-rail-scale));
-  }
-}
-
 @keyframes portrait-float {
   0%,
   100% {
@@ -1010,48 +936,12 @@ a:hover .external-arrow {
   width: clamp(230px, 22vw, 340px);
   height: auto;
   aspect-ratio: var(--portrait-ratio, 1 / 3.55);
-  --portrait-enter-x: 0px;
-  --portrait-enter-y: 50px;
-  --portrait-enter-rotate: 6deg;
-  --portrait-enter-scale: 0.94;
-  --portrait-overshoot-x: 0px;
-  --portrait-overshoot-y: -13px;
-  --portrait-overshoot-rotate: -4deg;
-  --portrait-overshoot-scale: 1.03;
-  --portrait-settle-rotate: -1.2deg;
-  --portrait-rail-y: 0px;
-  --portrait-rail-rotate: 0deg;
-  --portrait-rail-scale: 1;
-  --portrait-delay: 0ms;
-  --portrait-duration: 900ms;
-  --portrait-exit-duration: 760ms;
-  opacity: 0;
-  filter: blur(8px);
-  transform: translate3d(
-      var(--portrait-enter-x),
-      var(--portrait-enter-y),
-      0
-    )
-    rotate(var(--portrait-enter-rotate))
-    scale(var(--portrait-enter-scale));
-  transition:
-    opacity 220ms ease,
-    filter 260ms ease;
+  --enter-x: 0px;
+  --enter-y: 50px;
+  --enter-turn: 6deg;
+  --enter-scale: 0.94;
+  --settle-turn: -1.2deg;
   pointer-events: none;
-}
-
-.project > .portrait-popout.is-visible {
-  opacity: 1;
-  filter: blur(0);
-  animation: portrait-pop-in var(--portrait-duration)
-    cubic-bezier(0.16, 0.8, 0.2, 1.08) var(--portrait-delay) both;
-}
-
-.project > .portrait-popout.has-been-visible:not(.is-visible) {
-  opacity: 0;
-  filter: blur(14px);
-  animation: portrait-pop-out var(--portrait-exit-duration)
-    cubic-bezier(0.7, 0.05, 0.84, 0.18) both;
 }
 
 .portrait-popout-image {
@@ -1063,15 +953,10 @@ a:hover .external-arrow {
 .portrait-popout-image img {
   padding: 0.35rem;
   object-fit: contain;
-  transform: none;
 }
 
 .portrait-popout.is-visible .portrait-popout-image {
   animation: portrait-float 7s ease-in-out 1.1s infinite;
-}
-
-.portrait-popout.is-visible .scene-pointer {
-  opacity: 0.72;
 }
 
 .project--navy > .portrait-popout {
@@ -1085,11 +970,6 @@ a:hover .external-arrow {
   right: -clamp(220px, 22vw, 360px);
   width: min(320px, 44vw);
   transform: translate(40px, -24px) rotate(5deg);
-}
-
-.portrait-popout.is-visible .scene-callout {
-  opacity: 1;
-  transform: translate(0, 0) rotate(0);
 }
 
 .project--black > .portrait-popout {
@@ -1120,54 +1000,35 @@ a:hover .external-arrow {
 }
 
 .project--black > .portrait-popout--step-0 {
-  --portrait-enter-x: -180px;
-  --portrait-enter-y: 90px;
-  --portrait-enter-rotate: -18deg;
-  --portrait-enter-scale: 0.68;
-  --portrait-overshoot-x: 24px;
-  --portrait-overshoot-y: -20px;
-  --portrait-overshoot-rotate: 4deg;
-  --portrait-overshoot-scale: 1.05;
-  --portrait-settle-rotate: -3deg;
+  --enter-x: -180px;
+  --enter-y: 90px;
+  --enter-turn: -18deg;
+  --enter-scale: 0.68;
+  --settle-turn: -3deg;
 }
 
 .project--black > .portrait-popout--step-1 {
-  --portrait-enter-x: 86px;
-  --portrait-enter-y: -170px;
-  --portrait-enter-rotate: 14deg;
-  --portrait-enter-scale: 0.7;
-  --portrait-overshoot-x: -18px;
-  --portrait-overshoot-y: 22px;
-  --portrait-overshoot-rotate: -5deg;
-  --portrait-overshoot-scale: 1.04;
-  --portrait-settle-rotate: 4deg;
-  --portrait-delay: 60ms;
+  --enter-x: 86px;
+  --enter-y: -170px;
+  --enter-turn: 14deg;
+  --enter-scale: 0.7;
+  --settle-turn: 4deg;
 }
 
 .project--black > .portrait-popout--step-2 {
-  --portrait-enter-x: -70px;
-  --portrait-enter-y: 180px;
-  --portrait-enter-rotate: -10deg;
-  --portrait-enter-scale: 0.74;
-  --portrait-overshoot-x: 25px;
-  --portrait-overshoot-y: -18px;
-  --portrait-overshoot-rotate: 5deg;
-  --portrait-overshoot-scale: 1.03;
-  --portrait-settle-rotate: -2.5deg;
-  --portrait-delay: 90ms;
+  --enter-x: -70px;
+  --enter-y: 180px;
+  --enter-turn: -10deg;
+  --enter-scale: 0.74;
+  --settle-turn: -2.5deg;
 }
 
 .project--black > .portrait-popout--step-3 {
-  --portrait-enter-x: 185px;
-  --portrait-enter-y: -74px;
-  --portrait-enter-rotate: 18deg;
-  --portrait-enter-scale: 0.68;
-  --portrait-overshoot-x: -24px;
-  --portrait-overshoot-y: 18px;
-  --portrait-overshoot-rotate: -4deg;
-  --portrait-overshoot-scale: 1.05;
-  --portrait-settle-rotate: 3deg;
-  --portrait-delay: 130ms;
+  --enter-x: 185px;
+  --enter-y: -74px;
+  --enter-turn: 18deg;
+  --enter-scale: 0.68;
+  --settle-turn: 3deg;
 }
 
 .project--black > .portrait-popout--step-1:not(.is-visible) .scene-callout {
@@ -1210,41 +1071,27 @@ a:hover .external-arrow {
 }
 
 .project--mint > .portrait-popout--step-0 {
-  --portrait-enter-x: -170px;
-  --portrait-enter-y: -44px;
-  --portrait-enter-rotate: -16deg;
-  --portrait-enter-scale: 0.72;
-  --portrait-overshoot-x: 22px;
-  --portrait-overshoot-y: 16px;
-  --portrait-overshoot-rotate: 5deg;
-  --portrait-overshoot-scale: 1.04;
-  --portrait-settle-rotate: -3deg;
+  --enter-x: -170px;
+  --enter-y: -44px;
+  --enter-turn: -16deg;
+  --enter-scale: 0.72;
+  --settle-turn: -3deg;
 }
 
 .project--mint > .portrait-popout--step-1 {
-  --portrait-enter-x: 112px;
-  --portrait-enter-y: 154px;
-  --portrait-enter-rotate: 20deg;
-  --portrait-enter-scale: 0.7;
-  --portrait-overshoot-x: -24px;
-  --portrait-overshoot-y: -20px;
-  --portrait-overshoot-rotate: -6deg;
-  --portrait-overshoot-scale: 1.05;
-  --portrait-settle-rotate: 4deg;
-  --portrait-delay: 70ms;
+  --enter-x: 112px;
+  --enter-y: 154px;
+  --enter-turn: 20deg;
+  --enter-scale: 0.7;
+  --settle-turn: 4deg;
 }
 
 .project--mint > .portrait-popout--step-2 {
-  --portrait-enter-x: -126px;
-  --portrait-enter-y: -130px;
-  --portrait-enter-rotate: -22deg;
-  --portrait-enter-scale: 0.66;
-  --portrait-overshoot-x: 26px;
-  --portrait-overshoot-y: 22px;
-  --portrait-overshoot-rotate: 6deg;
-  --portrait-overshoot-scale: 1.04;
-  --portrait-settle-rotate: -5deg;
-  --portrait-delay: 120ms;
+  --enter-x: -126px;
+  --enter-y: -130px;
+  --enter-turn: -22deg;
+  --enter-scale: 0.66;
+  --settle-turn: -5deg;
 }
 
 .project--mint > .portrait-popout--step-1:not(.is-visible) .scene-callout {
@@ -1260,15 +1107,11 @@ a:hover .external-arrow {
 }
 
 .project--navy > .portrait-popout--step-1 {
-  --portrait-enter-x: 170px;
-  --portrait-enter-y: 120px;
-  --portrait-enter-rotate: 26deg;
-  --portrait-enter-scale: 0.58;
-  --portrait-overshoot-x: -28px;
-  --portrait-overshoot-y: -16px;
-  --portrait-overshoot-rotate: -7deg;
-  --portrait-overshoot-scale: 1.06;
-  --portrait-settle-rotate: 2deg;
+  --enter-x: 170px;
+  --enter-y: 120px;
+  --enter-turn: 26deg;
+  --enter-scale: 0.58;
+  --settle-turn: 2deg;
 }
 
 .project--navy .scene-card--layout-2 {

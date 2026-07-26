@@ -397,7 +397,6 @@ function ProjectSection({ project }: { project: Project }) {
   const wheelFrameRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [visibleSteps, setVisibleSteps] = useState<number[]>([0]);
-  const [seenPortraitSteps, setSeenPortraitSteps] = useState<number[]>([]);
   const [portraitMotion, setPortraitMotion] = useState<
     Record<number, PortraitMotion>
   >({});
@@ -523,19 +522,6 @@ function ProjectSection({ project }: { project: Project }) {
           ? current
           : nextVisible,
       );
-      setSeenPortraitSteps((current) => {
-        const next = Array.from(
-          new Set([
-            ...current,
-            ...nextVisible.filter(
-              (stepIndex) => project.steps[stepIndex]?.display === "portrait-popout",
-            ),
-          ]),
-        ).sort((a, b) => a - b);
-        return next.length === current.length && next.every((value, index) => value === current[index])
-          ? current
-          : next;
-      });
       frame = 0;
     };
 
@@ -768,10 +754,18 @@ function ProjectSection({ project }: { project: Project }) {
         const calloutSide = step.calloutSide ?? (index % 2 === 0 ? "left" : "right");
         const motion = portraitMotion[index];
         const isVisible = visibleSteps.includes(index);
-        const hasBeenVisible = seenPortraitSteps.includes(index);
         return (
           <article
-            className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} scene-card--${step.surface ?? "light"} ${isVisible ? "is-visible" : ""} ${hasBeenVisible ? "has-been-visible" : ""}`}
+            className={[
+              "scene-card",
+              "portrait-popout",
+              `portrait-popout--step-${index}`,
+              isVisible ? "is-visible" : "",
+              `scene-card--${step.fit ?? "cover"}`,
+              `scene-card--${step.surface ?? "light"}`,
+              `scene-card--${calloutSide}`,
+              `scene-card--layout-${(index % 4) + 1}`,
+            ].join(" ")}
             key={step.image}
             style={
               {
@@ -785,9 +779,9 @@ function ProjectSection({ project }: { project: Project }) {
                   : {}),
                 "--portrait-ratio": step.portraitRatio ?? "1 / 3.55",
                 left: motion === undefined ? undefined : `${motion.left}px`,
-                "--portrait-rail-y": motion ? `${motion.y}px` : "0px",
-                "--portrait-rail-rotate": motion ? `${motion.rotate}deg` : "0deg",
-                "--portrait-rail-scale": motion ? motion.scale : 1,
+                "--rail-y": motion ? `${motion.y}px` : "0px",
+                "--rail-turn": motion ? `${motion.rotate}deg` : "0deg",
+                "--rail-scale": motion ? motion.scale : 1,
               } as React.CSSProperties
             }
           >
