@@ -26,12 +26,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: "Xiang Li — Projects",
-    description:
-      "Six tools Xiang Li made with AI because the versions they found were annoying.",
+    description: "Six practical tools built with AI.",
     openGraph: {
       title: "Xiang Li — Projects",
-      description:
-        "Six tools I made. Mostly because I wanted them and couldn’t find versions I liked.",
+      description: "Six practical tools built with AI.",
       type: "website",
       images: [
         {
@@ -45,8 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: "summary_large_image",
       title: "Xiang Li — Projects",
-      description:
-        "Six tools I made. Mostly because I wanted them and couldn’t find versions I liked.",
+      description: "Six practical tools built with AI.",
       images: [socialImage],
     },
   };

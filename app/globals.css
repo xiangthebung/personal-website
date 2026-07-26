@@ -260,7 +260,7 @@ a:hover .external-arrow {
 }
 
 .project + .project {
-  margin-top: clamp(2rem, 4vw, 4rem);
+  margin-top: clamp(3rem, 6vw, 6rem);
 }
 
 .project--mint {
@@ -342,6 +342,21 @@ a:hover .external-arrow {
     var(--project-bg);
 }
 
+/* Keep each project on the same neutral canvas so the screenshots do the visual work. */
+.project,
+.project.project--mint,
+.project.project--paper,
+.project.project--black,
+.project.project--white,
+.project.project--navy,
+.project.project--forest {
+  --project-bg: #e7e9e7;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 62%),
+    radial-gradient(circle at 78% 52%, rgba(255, 255, 255, 0.24), transparent 30%),
+    var(--project-bg);
+}
+
 .project::before {
   position: absolute;
   z-index: 0;
@@ -349,6 +364,31 @@ a:hover .external-arrow {
   overflow: hidden;
   content: "";
   pointer-events: none;
+}
+
+.project::before,
+.project.project--mint::before,
+.project.project--paper::before,
+.project.project--black::before,
+.project.project--white::before,
+.project.project--navy::before,
+.project.project--forest::before {
+  width: auto;
+  height: auto;
+  padding: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 11vw,
+      rgba(41, 44, 41, 0.045) 11vw calc(11vw + 1px)
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 11vw,
+      rgba(41, 44, 41, 0.035) 11vw calc(11vw + 1px)
+    );
+  opacity: 0.82;
+  transform: translateX(var(--project-scroll-shift));
 }
 
 .project > :not(.sr-only) {
@@ -472,6 +512,33 @@ a:hover .external-arrow {
   background-size: 270px 270px;
   transform: translateX(var(--project-scroll-shift)) rotate(-8deg) scale(1.2);
   transition: transform 80ms linear;
+}
+
+/* Use the same grid treatment after the project-specific motif rules. */
+.project::before,
+.project.project--mint::before,
+.project.project--paper::before,
+.project.project--black::before,
+.project.project--white::before,
+.project.project--navy::before,
+.project.project--forest::before {
+  content: "";
+  width: auto;
+  height: auto;
+  padding: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 11vw,
+      rgba(41, 44, 41, 0.045) 11vw calc(11vw + 1px)
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 11vw,
+      rgba(41, 44, 41, 0.035) 11vw calc(11vw + 1px)
+    );
+  opacity: 0.82;
+  transform: translateX(var(--project-scroll-shift));
 }
 
 .project-heading {
@@ -625,7 +692,7 @@ a:hover .external-arrow {
   width: max-content;
   height: 100%;
   align-items: center;
-  gap: clamp(4.5rem, 8vw, 9rem);
+  gap: clamp(6rem, 10vw, 12rem);
   padding: 0.7rem 11vw 1rem clamp(1.2rem, 2.5vw, 3rem);
 }
 
@@ -682,7 +749,7 @@ a:hover .external-arrow {
   --image-shift-y: 0px;
   --image-tilt: 0deg;
   position: relative;
-  width: clamp(470px, 57vw, 780px);
+  width: clamp(450px, 54vw, 740px);
   height: 88%;
   flex: 0 0 auto;
   z-index: 1;
@@ -791,7 +858,7 @@ a:hover .external-arrow {
 }
 
 .scene-card--contain {
-  width: clamp(390px, 46vw, 630px);
+  width: clamp(380px, 44vw, 600px);
 }
 
 .scene-card--contained {
@@ -1550,7 +1617,7 @@ a:hover .external-arrow {
   }
 
   .project-track {
-    gap: 3.5rem;
+    gap: clamp(4.5rem, 12vw, 7rem);
     padding-right: 18vw;
     padding-left: 0.8rem;
   }
