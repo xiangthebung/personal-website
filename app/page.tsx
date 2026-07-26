@@ -102,7 +102,9 @@ const projectData: Project[] = [
         alt: "GRT Next Bus saved stops and departure times",
         fit: "contain",
         surface: "light",
-        pointer: { x: "54%", y: "43%", length: "23%", angle: "158deg" },
+        display: "portrait-popout",
+        portraitRatio: "842 / 1200",
+        pointer: { x: "54%", y: "43%", length: "52%", angle: "158deg" },
       },
       {
         title: "Set up a stop once.",
@@ -111,7 +113,9 @@ const projectData: Project[] = [
         alt: "GRT Next Bus add a stop form",
         fit: "contain",
         surface: "light",
-        pointer: { x: "50%", y: "72%", length: "24%", angle: "-14deg" },
+        display: "portrait-popout",
+        portraitRatio: "830 / 720",
+        pointer: { x: "50%", y: "72%", length: "48%", angle: "-14deg" },
       },
       {
         title: "The basics are free.",
@@ -120,7 +124,9 @@ const projectData: Project[] = [
         alt: "GRT Next Bus Pro countdown and alert controls",
         fit: "contain",
         surface: "light",
-        pointer: { x: "85%", y: "8%", length: "28%", angle: "156deg" },
+        display: "portrait-popout",
+        portraitRatio: "842 / 1196",
+        pointer: { x: "85%", y: "8%", length: "52%", angle: "156deg" },
       },
       {
         title: "Leave when the notification shows up.",
@@ -631,7 +637,7 @@ function ProjectSection({ project }: { project: Project }) {
         const calloutSide = step.calloutSide ?? (index % 2 === 0 ? "left" : "right");
         return (
           <article
-            className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} is-visible`}
+            className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} scene-card--${step.surface ?? "light"} is-visible`}
             key={step.image}
             style={
               step.pointer

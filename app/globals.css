@@ -964,6 +964,27 @@ a:hover .external-arrow {
   right: -1.5rem;
 }
 
+.project--mint .scene-card--portrait-proxy {
+  width: clamp(250px, 25vw, 380px);
+  flex-basis: clamp(250px, 25vw, 380px);
+}
+
+.project--mint > .portrait-popout {
+  width: clamp(250px, 25vw, 380px);
+}
+
+.project--mint > .portrait-popout--step-0 {
+  left: clamp(8%, 11vw, 16%);
+}
+
+.project--mint > .portrait-popout--step-1 {
+  left: clamp(48%, 53vw, 61%);
+}
+
+.project--mint > .portrait-popout--step-2 {
+  left: clamp(14%, 19vw, 26%);
+}
+
 .project--navy .scene-card--layout-2 {
   --enter-y: 145px;
   --enter-turn: -12deg;
