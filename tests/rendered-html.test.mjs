@@ -56,6 +56,8 @@ test("keeps project scrolling accessible without hijacking vertical page scroll"
   assert.doesNotMatch(page, /addEventListener\("wheel"/);
   assert.match(css, /overscroll-behavior-x:\s*contain/);
   assert.match(css, /overscroll-behavior-y:\s*auto/);
+  assert.match(css, /html\s*\{[\s\S]*overflow-x:\s*hidden/);
+  assert.match(css, /body\s*\{[\s\S]*overflow-x:\s*hidden/);
   assert.match(css, /cursor:\s*grab/);
   assert.match(css, /touch-action:\s*pan-y/);
   assert.match(css, /\.project-nav-button:disabled/);

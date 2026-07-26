@@ -15,6 +15,8 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: var(--header-height);
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -23,6 +25,7 @@ body {
   color: var(--ink);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 a {
