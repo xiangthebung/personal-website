@@ -393,9 +393,14 @@ function ExternalArrow() {
 function ProjectSection({ project }: { project: Project }) {
   const projectRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const wheelTargetRef = useRef<number | null>(null);
-  const wheelFrameRef = useRef<number | null>(null);
+  const pointerStartRef = useRef<{ x: number; scrollLeft: number } | null>(
+    null,
+  );
+  const draggedRef = useRef(false);
   const [progress, setProgress] = useState(0);
+  const [canScrollBack, setCanScrollBack] = useState(false);
+  const [canScrollForward, setCanScrollForward] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [visibleSteps, setVisibleSteps] = useState<number[]>([0]);
   const [portraitMotion, setPortraitMotion] = useState<
     Record<number, PortraitMotion>
@@ -410,30 +415,13 @@ function ProjectSection({ project }: { project: Project }) {
 
     let frame = 0;
 
-    const animateWheel = () => {
-      const target = wheelTargetRef.current;
-      if (target === null) {
-        wheelFrameRef.current = null;
-        return;
-      }
-
-      const distance = target - scroller.scrollLeft;
-      if (Math.abs(distance) < 0.6) {
-        scroller.scrollLeft = target;
-        wheelTargetRef.current = null;
-        wheelFrameRef.current = null;
-        requestUpdate();
-        return;
-      }
-
-      scroller.scrollLeft += distance * 0.16;
-      requestUpdate();
-      wheelFrameRef.current = window.requestAnimationFrame(animateWheel);
-    };
-
     const update = () => {
       const maxScroll = Math.max(1, scroller.scrollWidth - scroller.clientWidth);
       setProgress(Math.min(1, Math.max(0, scroller.scrollLeft / maxScroll)));
+      setCanScrollBack(scroller.scrollLeft > 2);
+      setCanScrollForward(
+        scroller.scrollLeft < scroller.scrollWidth - scroller.clientWidth - 2,
+      );
 
       const scrollerRect = scroller.getBoundingClientRect();
       const projectRect = projectRef.current?.getBoundingClientRect();
@@ -530,63 +518,102 @@ function ProjectSection({ project }: { project: Project }) {
       frame = window.requestAnimationFrame(update);
     };
 
-    const onWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-
-      const maxScroll = scroller.scrollWidth - scroller.clientWidth;
-      const movingForward = event.deltaY > 0;
-      const canMoveForward = scroller.scrollLeft < maxScroll - 2;
-      const canMoveBack = scroller.scrollLeft > 2;
-
-      if (
-        (movingForward && canMoveForward) ||
-        (!movingForward && canMoveBack)
-      ) {
-        event.preventDefault();
-        const currentTarget = wheelTargetRef.current ?? scroller.scrollLeft;
-        wheelTargetRef.current = Math.max(
-          0,
-          Math.min(maxScroll, currentTarget + event.deltaY * 1.12),
-        );
-        if (wheelFrameRef.current === null) {
-          wheelFrameRef.current = window.requestAnimationFrame(animateWheel);
-        }
-      }
-    };
-
     update();
     scroller.addEventListener("scroll", requestUpdate, { passive: true });
-    scroller.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("resize", requestUpdate);
 
     return () => {
       scroller.removeEventListener("scroll", requestUpdate);
-      scroller.removeEventListener("wheel", onWheel);
       window.removeEventListener("resize", requestUpdate);
       if (frame) window.cancelAnimationFrame(frame);
-      if (wheelFrameRef.current !== null) {
-        window.cancelAnimationFrame(wheelFrameRef.current);
-      }
     };
   }, [project.steps]);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const scrollProject = (direction: number) => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
 
+    scroller.scrollBy({
+      left: direction * scroller.clientWidth * 0.72,
+      behavior: "smooth",
+    });
+  };
+
+  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!event.shiftKey) return;
+
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const delta =
+      Math.abs(event.deltaX) > Math.abs(event.deltaY)
+        ? event.deltaX
+        : event.deltaY;
+    if (!delta) return;
+
+    event.preventDefault();
+    const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+    scroller.scrollLeft = Math.max(
+      0,
+      Math.min(maxScroll, scroller.scrollLeft + delta),
+    );
+  };
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (event.target instanceof Element && event.target.closest("a, button")) {
+      return;
+    }
+
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    pointerStartRef.current = {
+      x: event.clientX,
+      scrollLeft: scroller.scrollLeft,
+    };
+    draggedRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = pointerStartRef.current;
+    const scroller = scrollerRef.current;
+    if (!start || !scroller) return;
+
+    const distance = event.clientX - start.x;
+    if (!draggedRef.current && Math.abs(distance) < 6) return;
+
+    draggedRef.current = true;
+    event.preventDefault();
+    scroller.scrollLeft = start.scrollLeft - distance;
+  };
+
+  const finishPointerDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    pointerStartRef.current = null;
+    setIsDragging(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handleClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!draggedRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    draggedRef.current = false;
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      wheelTargetRef.current = null;
-      scroller.scrollBy({ left: scroller.clientWidth * 0.72, behavior: "smooth" });
+      scrollProject(1);
     }
 
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      wheelTargetRef.current = null;
-      scroller.scrollBy({
-        left: scroller.clientWidth * -0.72,
-        behavior: "smooth",
-      });
+      scrollProject(-1);
     }
   };
 
@@ -638,12 +665,19 @@ function ProjectSection({ project }: { project: Project }) {
 
       <div className="project-window">
         <div
-          className="project-scroller"
           ref={scrollerRef}
           tabIndex={0}
           role="region"
-          aria-label={`${project.name} screenshots. Scroll sideways or use the left and right arrow keys.`}
+          aria-label={`${project.name} screenshots. Drag sideways, hold Shift while scrolling, or use the left and right arrow keys.`}
+          aria-describedby={`${project.id}-scroll-help`}
+          onWheel={handleWheel}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={finishPointerDrag}
+          onPointerCancel={finishPointerDrag}
+          onClickCapture={handleClickCapture}
           onKeyDown={handleKeyDown}
+          className={`project-scroller${isDragging ? " is-dragging" : ""}`}
         >
           <div className="project-track">
             <div className="scene-kicker" aria-hidden="true">
@@ -651,7 +685,7 @@ function ProjectSection({ project }: { project: Project }) {
               <strong className="scene-kicker-mark">
                 {projectMotifs[project.id].mark}
               </strong>
-              <small>scroll →</small>
+              <small>drag →</small>
             </div>
 
             {project.steps.map((step, index) => {
@@ -736,6 +770,35 @@ function ProjectSection({ project }: { project: Project }) {
               </a>
             </div>
           </div>
+        </div>
+
+        <p className="project-scroll-help" id={`${project.id}-scroll-help`}>
+          <span>Drag sideways</span>
+          <span aria-hidden="true">·</span>
+          <span>Shift + scroll</span>
+          <span aria-hidden="true">·</span>
+          <kbd>← →</kbd>
+        </p>
+
+        <div className="project-nav" aria-label={`${project.name} screenshot navigation`}>
+          <button
+            type="button"
+            className="project-nav-button"
+            aria-label={`Show earlier ${project.name} screenshots`}
+            disabled={!canScrollBack}
+            onClick={() => scrollProject(-1)}
+          >
+            <span aria-hidden="true">←</span>
+          </button>
+          <button
+            type="button"
+            className="project-nav-button"
+            aria-label={`Show later ${project.name} screenshots`}
+            disabled={!canScrollForward}
+            onClick={() => scrollProject(1)}
+          >
+            <span aria-hidden="true">→</span>
+          </button>
         </div>
 
         <div className="project-progress" aria-hidden="true">

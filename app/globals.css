@@ -592,13 +592,20 @@ a:hover .external-arrow {
   height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  overscroll-behavior-inline: contain;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
   scrollbar-width: none;
-  cursor: ew-resize;
+  cursor: grab;
+  touch-action: pan-y;
 }
 
 .project-scroller::-webkit-scrollbar {
   display: none;
+}
+
+.project-scroller.is-dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .project-scroller:focus-visible {
@@ -1320,6 +1327,82 @@ a:hover .external-arrow {
 .scene-end a {
   color: var(--project-ink);
   font-weight: 650;
+}
+
+.project-scroll-help {
+  position: absolute;
+  z-index: 7;
+  top: 0.18rem;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  margin: 0;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid var(--project-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--project-bg) 88%, transparent);
+  color: var(--project-muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+}
+
+.project-scroll-help kbd {
+  color: var(--project-ink);
+  font: inherit;
+  letter-spacing: 0.08em;
+}
+
+.project-nav {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  right: calc(var(--project-gutter) + 0.3rem);
+  left: calc(var(--project-gutter) + 0.3rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.project-nav-button {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--project-line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--project-bg) 90%, white 10%);
+  color: var(--project-ink);
+  font-size: 1.15rem;
+  line-height: 1;
+  place-items: center;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    background 180ms ease;
+  backdrop-filter: blur(10px);
+}
+
+.project-nav-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--project-bg) 76%, white 24%);
+  transform: scale(1.06);
+}
+
+.project-nav-button:disabled {
+  opacity: 0.22;
+  cursor: default;
 }
 
 .project-progress {
