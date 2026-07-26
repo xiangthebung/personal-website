@@ -659,6 +659,14 @@ a:hover .external-arrow {
   --enter-y: 0px;
   --enter-turn: 20deg;
   --enter-scale: 0.68;
+  --rail-x: 0px;
+  --rail-y: 0px;
+  --rail-turn: 0deg;
+  --rail-scale: 1;
+  --rail-skew: 0deg;
+  --image-shift-x: 0px;
+  --image-shift-y: 0px;
+  --image-tilt: 0deg;
   position: relative;
   width: clamp(470px, 57vw, 780px);
   height: 88%;
@@ -666,8 +674,14 @@ a:hover .external-arrow {
   z-index: 1;
   opacity: 0.08;
   filter: blur(2px);
-  transform: translate3d(var(--enter-x), var(--enter-y), 0)
-    rotate(var(--enter-turn)) scale(var(--enter-scale));
+  transform: translate3d(
+      calc(var(--enter-x) + var(--rail-x)),
+      calc(var(--enter-y) + var(--rail-y)),
+      0
+    )
+    rotate(calc(var(--enter-turn) + var(--rail-turn)))
+    skewX(var(--rail-skew))
+    scale(var(--enter-scale)) scale(var(--rail-scale));
   transform-origin: center;
   transition:
     opacity 360ms ease,
@@ -688,7 +702,10 @@ a:hover .external-arrow {
 .scene-card.is-visible {
   opacity: 1;
   filter: blur(0);
-  transform: translate3d(0, 0, 0) rotate(var(--settle-turn)) scale(1);
+  transform: translate3d(var(--rail-x), var(--rail-y), 0)
+    rotate(calc(var(--settle-turn) + var(--rail-turn)))
+    skewX(var(--rail-skew))
+    scale(var(--rail-scale));
 }
 
 .scene-card--orbit {
@@ -754,7 +771,9 @@ a:hover .external-arrow {
 
 .scene-card:hover {
   z-index: 7;
-  transform: translate3d(0, -4px, 0) rotate(0deg) scale(1.015);
+  transform: translate3d(var(--rail-x), calc(var(--rail-y) - 4px), 0)
+    rotate(var(--rail-turn)) skewX(var(--rail-skew))
+    scale(var(--rail-scale)) scale(1.015);
 }
 
 .scene-card--contain {
@@ -903,38 +922,72 @@ a:hover .external-arrow {
     opacity: 0;
     filter: blur(14px);
     transform: translate3d(
-        var(--portrait-enter-x),
-        var(--portrait-enter-y),
+        calc(var(--portrait-enter-x) + var(--portrait-rail-x)),
+        calc(var(--portrait-enter-y) + var(--portrait-rail-y)),
         0
       )
-      rotate(var(--portrait-enter-rotate))
-      scale(var(--portrait-enter-scale));
+      rotate(calc(var(--portrait-enter-rotate) + var(--portrait-rail-rotate)))
+      scale(var(--portrait-enter-scale)) scale(var(--portrait-rail-scale));
   }
 
   52% {
     opacity: 1;
     filter: blur(0);
     transform: translate3d(
-        var(--portrait-overshoot-x),
-        var(--portrait-overshoot-y),
+        calc(var(--portrait-overshoot-x) + var(--portrait-rail-x)),
+        calc(var(--portrait-overshoot-y) + var(--portrait-rail-y)),
         0
       )
-      rotate(var(--portrait-overshoot-rotate))
-      scale(var(--portrait-overshoot-scale));
+      rotate(calc(var(--portrait-overshoot-rotate) + var(--portrait-rail-rotate)))
+      scale(var(--portrait-overshoot-scale)) scale(var(--portrait-rail-scale));
   }
 
   76% {
-    transform: translate3d(0, 0, 0)
-      rotate(var(--portrait-settle-rotate))
-      scale(0.97);
+    transform: translate3d(var(--portrait-rail-x), var(--portrait-rail-y), 0)
+      rotate(calc(var(--portrait-settle-rotate) + var(--portrait-rail-rotate)))
+      scale(0.97) scale(var(--portrait-rail-scale));
   }
 
   100% {
     opacity: 1;
     filter: blur(0);
-    transform: translate3d(0, 0, 0)
-      rotate(var(--portrait-settle-rotate))
-      scale(1);
+    transform: translate3d(var(--portrait-rail-x), var(--portrait-rail-y), 0)
+      rotate(calc(var(--portrait-settle-rotate) + var(--portrait-rail-rotate)))
+      scale(var(--portrait-rail-scale));
+  }
+}
+
+@keyframes portrait-pop-out {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(var(--portrait-rail-x), var(--portrait-rail-y), 0)
+      rotate(calc(var(--portrait-settle-rotate) + var(--portrait-rail-rotate)))
+      scale(var(--portrait-rail-scale));
+  }
+
+  24% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(
+        calc(var(--portrait-overshoot-x) * -0.7 + var(--portrait-rail-x)),
+        calc(var(--portrait-overshoot-y) * -0.7 + var(--portrait-rail-y)),
+        0
+      )
+      rotate(calc(var(--portrait-overshoot-rotate) * -0.75 + var(--portrait-rail-rotate)))
+      scale(1.04) scale(var(--portrait-rail-scale));
+  }
+
+  100% {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translate3d(
+        calc(var(--portrait-enter-x) + var(--portrait-rail-x)),
+        calc(var(--portrait-enter-y) + var(--portrait-rail-y)),
+        0
+      )
+      rotate(calc(var(--portrait-enter-rotate) + var(--portrait-rail-rotate)))
+      scale(var(--portrait-enter-scale)) scale(var(--portrait-rail-scale));
   }
 }
 
@@ -966,8 +1019,12 @@ a:hover .external-arrow {
   --portrait-overshoot-rotate: -4deg;
   --portrait-overshoot-scale: 1.03;
   --portrait-settle-rotate: -1.2deg;
+  --portrait-rail-y: 0px;
+  --portrait-rail-rotate: 0deg;
+  --portrait-rail-scale: 1;
   --portrait-delay: 0ms;
   --portrait-duration: 900ms;
+  --portrait-exit-duration: 760ms;
   opacity: 0;
   filter: blur(8px);
   transform: translate3d(
@@ -988,6 +1045,13 @@ a:hover .external-arrow {
   filter: blur(0);
   animation: portrait-pop-in var(--portrait-duration)
     cubic-bezier(0.16, 0.8, 0.2, 1.08) var(--portrait-delay) both;
+}
+
+.project > .portrait-popout.has-been-visible:not(.is-visible) {
+  opacity: 0;
+  filter: blur(14px);
+  animation: portrait-pop-out var(--portrait-exit-duration)
+    cubic-bezier(0.7, 0.05, 0.84, 0.18) both;
 }
 
 .portrait-popout-image {
@@ -1291,12 +1355,14 @@ a:hover .external-arrow {
   display: block;
   width: 100%;
   height: 100%;
-  transform: scale(1.06) rotate(0.35deg);
-  transition: transform 900ms cubic-bezier(0.16, 0.8, 0.2, 1);
+  transform: translate3d(var(--image-shift-x), var(--image-shift-y), 0)
+    scale(1.06) rotate(calc(0.35deg + var(--image-tilt)));
+  transition: transform 500ms cubic-bezier(0.16, 0.8, 0.2, 1);
 }
 
 .scene-card.is-visible .scene-image img {
-  transform: scale(1) rotate(0);
+  transform: translate3d(var(--image-shift-x), var(--image-shift-y), 0)
+    scale(1) rotate(var(--image-tilt));
 }
 
 .scene-card--cover .scene-image img {

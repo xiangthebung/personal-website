@@ -36,6 +36,13 @@ type Project = {
   steps: ProjectStep[];
 };
 
+type PortraitMotion = {
+  left: number;
+  y: number;
+  rotate: number;
+  scale: number;
+};
+
 const projectData: Project[] = [
   {
     id: "blokamine",
@@ -386,9 +393,14 @@ function ExternalArrow() {
 function ProjectSection({ project }: { project: Project }) {
   const projectRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const wheelTargetRef = useRef<number | null>(null);
+  const wheelFrameRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [visibleSteps, setVisibleSteps] = useState<number[]>([0]);
-  const [portraitOffsets, setPortraitOffsets] = useState<Record<number, number>>({});
+  const [seenPortraitSteps, setSeenPortraitSteps] = useState<number[]>([]);
+  const [portraitMotion, setPortraitMotion] = useState<
+    Record<number, PortraitMotion>
+  >({});
   const portraitSteps = project.steps
     .map((step, index) => ({ step, index }))
     .filter(({ step }) => step.display === "portrait-popout");
@@ -399,15 +411,37 @@ function ProjectSection({ project }: { project: Project }) {
 
     let frame = 0;
 
+    const animateWheel = () => {
+      const target = wheelTargetRef.current;
+      if (target === null) {
+        wheelFrameRef.current = null;
+        return;
+      }
+
+      const distance = target - scroller.scrollLeft;
+      if (Math.abs(distance) < 0.6) {
+        scroller.scrollLeft = target;
+        wheelTargetRef.current = null;
+        wheelFrameRef.current = null;
+        requestUpdate();
+        return;
+      }
+
+      scroller.scrollLeft += distance * 0.16;
+      requestUpdate();
+      wheelFrameRef.current = window.requestAnimationFrame(animateWheel);
+    };
+
     const update = () => {
       const maxScroll = Math.max(1, scroller.scrollWidth - scroller.clientWidth);
       setProgress(Math.min(1, Math.max(0, scroller.scrollLeft / maxScroll)));
 
       const scrollerRect = scroller.getBoundingClientRect();
       const projectRect = projectRef.current?.getBoundingClientRect();
-      const nextVisible = Array.from(
+      const cards = Array.from(
         scroller.querySelectorAll<HTMLElement>("[data-step]"),
-      )
+      );
+      const nextVisible = cards
         .filter((card) => {
           const cardRect = card.getBoundingClientRect();
           const visibleWidth =
@@ -417,32 +451,69 @@ function ProjectSection({ project }: { project: Project }) {
         })
         .map((card) => Number(card.dataset.step));
 
-      if (projectRect) {
-        const nextPortraitOffsets = Object.fromEntries(
-          Array.from(scroller.querySelectorAll<HTMLElement>("[data-step]"))
-            .filter((card) => {
-              const stepIndex = Number(card.dataset.step);
-              return project.steps[stepIndex]?.display === "portrait-popout";
-            })
-            .map((card) => [
-              Number(card.dataset.step),
-              card.getBoundingClientRect().left - projectRect.left,
-            ]),
-        ) as Record<number, number>;
+      const viewportCenter = scroller.clientWidth / 2;
+      const viewportWidth = Math.max(scroller.clientWidth, 1);
+      const nextPortraitMotion: Record<number, PortraitMotion> = {};
 
-        setPortraitOffsets((current) => {
+      cards.forEach((card, cardIndex) => {
+        const stepIndex = Number(card.dataset.step);
+        const layoutCenter =
+          card.offsetLeft + card.offsetWidth / 2 - scroller.scrollLeft;
+        const normalized = Math.max(
+          -1.35,
+          Math.min(1.35, (layoutCenter - viewportCenter) / (viewportWidth * 0.72)),
+        );
+        const arc = Math.sin(normalized * 1.55) * -22;
+        const wobble = Math.sin(normalized * 2.8 + cardIndex * 0.7) * 6;
+        const lean = normalized * -5.5 + wobble * 0.22;
+        const scale = 1 - Math.min(0.075, Math.abs(normalized) * 0.045);
+
+        card.style.setProperty(
+          "--rail-x",
+          `${Math.sin(normalized * 2.2 + cardIndex) * 11}px`,
+        );
+        card.style.setProperty("--rail-y", `${arc + wobble}px`);
+        card.style.setProperty("--rail-turn", `${lean}deg`);
+        card.style.setProperty("--rail-scale", String(scale));
+        card.style.setProperty("--rail-skew", `${normalized * -2.4}deg`);
+        card.style.setProperty(
+          "--image-shift-x",
+          `${normalized * -26}px`,
+        );
+        card.style.setProperty(
+          "--image-shift-y",
+          `${Math.cos(normalized * 2.4 + cardIndex) * 8}px`,
+        );
+        card.style.setProperty("--image-tilt", `${normalized * -1.4}deg`);
+
+        if (project.steps[stepIndex]?.display === "portrait-popout") {
+          nextPortraitMotion[stepIndex] = {
+            left: card.getBoundingClientRect().left - (projectRect?.left ?? 0),
+            y: arc * 0.52 + wobble,
+            rotate: lean * 0.72,
+            scale: 1 - Math.min(0.045, Math.abs(normalized) * 0.028),
+          };
+        }
+      });
+
+      if (projectRect) {
+        setPortraitMotion((current) => {
           const currentKeys = Object.keys(current);
-          const nextKeys = Object.keys(nextPortraitOffsets);
+          const nextKeys = Object.keys(nextPortraitMotion);
           const unchanged =
             currentKeys.length === nextKeys.length &&
-            nextKeys.every(
-              (key) =>
-                Math.abs(
-                  (current[Number(key)] ?? 0) -
-                    (nextPortraitOffsets[Number(key)] ?? 0),
-                ) < 0.5,
-            );
-          return unchanged ? current : nextPortraitOffsets;
+            nextKeys.every((key) => {
+              const previous = current[Number(key)];
+              const next = nextPortraitMotion[Number(key)];
+              return (
+                previous &&
+                Math.abs(previous.left - next.left) < 0.5 &&
+                Math.abs(previous.y - next.y) < 0.5 &&
+                Math.abs(previous.rotate - next.rotate) < 0.1 &&
+                Math.abs(previous.scale - next.scale) < 0.002
+              );
+            });
+          return unchanged ? current : nextPortraitMotion;
         });
       }
 
@@ -452,6 +523,19 @@ function ProjectSection({ project }: { project: Project }) {
           ? current
           : nextVisible,
       );
+      setSeenPortraitSteps((current) => {
+        const next = Array.from(
+          new Set([
+            ...current,
+            ...nextVisible.filter(
+              (stepIndex) => project.steps[stepIndex]?.display === "portrait-popout",
+            ),
+          ]),
+        ).sort((a, b) => a - b);
+        return next.length === current.length && next.every((value, index) => value === current[index])
+          ? current
+          : next;
+      });
       frame = 0;
     };
 
@@ -473,8 +557,14 @@ function ProjectSection({ project }: { project: Project }) {
         (!movingForward && canMoveBack)
       ) {
         event.preventDefault();
-        scroller.scrollLeft += event.deltaY;
-        requestUpdate();
+        const currentTarget = wheelTargetRef.current ?? scroller.scrollLeft;
+        wheelTargetRef.current = Math.max(
+          0,
+          Math.min(maxScroll, currentTarget + event.deltaY * 1.12),
+        );
+        if (wheelFrameRef.current === null) {
+          wheelFrameRef.current = window.requestAnimationFrame(animateWheel);
+        }
       }
     };
 
@@ -488,6 +578,9 @@ function ProjectSection({ project }: { project: Project }) {
       scroller.removeEventListener("wheel", onWheel);
       window.removeEventListener("resize", requestUpdate);
       if (frame) window.cancelAnimationFrame(frame);
+      if (wheelFrameRef.current !== null) {
+        window.cancelAnimationFrame(wheelFrameRef.current);
+      }
     };
   }, [project.steps]);
 
@@ -497,11 +590,13 @@ function ProjectSection({ project }: { project: Project }) {
 
     if (event.key === "ArrowRight") {
       event.preventDefault();
+      wheelTargetRef.current = null;
       scroller.scrollBy({ left: scroller.clientWidth * 0.72, behavior: "smooth" });
     }
 
     if (event.key === "ArrowLeft") {
       event.preventDefault();
+      wheelTargetRef.current = null;
       scroller.scrollBy({
         left: scroller.clientWidth * -0.72,
         behavior: "smooth",
@@ -671,9 +766,12 @@ function ProjectSection({ project }: { project: Project }) {
 
       {portraitSteps.map(({ step, index }) => {
         const calloutSide = step.calloutSide ?? (index % 2 === 0 ? "left" : "right");
+        const motion = portraitMotion[index];
+        const isVisible = visibleSteps.includes(index);
+        const hasBeenVisible = seenPortraitSteps.includes(index);
         return (
           <article
-            className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} scene-card--${step.surface ?? "light"} ${visibleSteps.includes(index) ? "is-visible" : ""}`}
+            className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} scene-card--${step.surface ?? "light"} ${isVisible ? "is-visible" : ""} ${hasBeenVisible ? "has-been-visible" : ""}`}
             key={step.image}
             style={
               {
@@ -686,10 +784,10 @@ function ProjectSection({ project }: { project: Project }) {
                     }
                   : {}),
                 "--portrait-ratio": step.portraitRatio ?? "1 / 3.55",
-                left:
-                  portraitOffsets[index] === undefined
-                    ? undefined
-                    : `${portraitOffsets[index]}px`,
+                left: motion === undefined ? undefined : `${motion.left}px`,
+                "--portrait-rail-y": motion ? `${motion.y}px` : "0px",
+                "--portrait-rail-rotate": motion ? `${motion.rotate}deg` : "0deg",
+                "--portrait-rail-scale": motion ? motion.scale : 1,
               } as React.CSSProperties
             }
           >
