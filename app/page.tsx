@@ -10,6 +10,8 @@ type ProjectStep = {
   fit?: "cover" | "contain";
   surface?: "light" | "dark";
   position?: string;
+  display?: "portrait-popout";
+  portraitRatio?: string;
   pointer?: {
     x: string;
     y: string;
@@ -148,7 +150,9 @@ const projectData: Project[] = [
         alt: "PagePack save page and browsing journey options",
         fit: "contain",
         surface: "dark",
-        pointer: { x: "54%", y: "43%", length: "23%", angle: "158deg" },
+        display: "portrait-popout",
+        portraitRatio: "826 / 1304",
+        pointer: { x: "54%", y: "43%", length: "52%", angle: "158deg" },
       },
       {
         title: "Choose how much comes with it.",
@@ -157,7 +161,9 @@ const projectData: Project[] = [
         alt: "PagePack link depth and script options",
         fit: "contain",
         surface: "dark",
-        pointer: { x: "61%", y: "58%", length: "23%", angle: "-14deg" },
+        display: "portrait-popout",
+        portraitRatio: "758 / 904",
+        pointer: { x: "61%", y: "58%", length: "48%", angle: "-14deg" },
       },
       {
         title: "Everything goes into a local library.",
@@ -166,7 +172,9 @@ const projectData: Project[] = [
         alt: "PagePack saved pages library",
         fit: "contain",
         surface: "dark",
-        pointer: { x: "53%", y: "52%", length: "22%", angle: "158deg" },
+        display: "portrait-popout",
+        portraitRatio: "760 / 1194",
+        pointer: { x: "53%", y: "52%", length: "52%", angle: "158deg" },
       },
       {
         title: "A pack can be more than one page.",
@@ -175,7 +183,9 @@ const projectData: Project[] = [
         alt: "A PagePack folder containing a 57-page pack",
         fit: "contain",
         surface: "dark",
-        pointer: { x: "52%", y: "46%", length: "21%", angle: "-14deg" },
+        display: "portrait-popout",
+        portraitRatio: "752 / 1186",
+        pointer: { x: "52%", y: "46%", length: "50%", angle: "-14deg" },
       },
       {
         title: "The saved site still looks like the site.",
@@ -252,8 +262,10 @@ const projectData: Project[] = [
         alt: "Choir Practice Tool part mixer and volume presets",
         fit: "contain",
         surface: "dark",
+        display: "portrait-popout",
+        portraitRatio: "562 / 1994",
         calloutSide: "right",
-        pointer: { x: "19%", y: "56%", length: "48%", angle: "-10deg" },
+        pointer: { x: "19%", y: "56%", length: "78%", angle: "-10deg" },
       },
       {
         title: "See whether you’re on pitch.",
@@ -369,6 +381,9 @@ function ProjectSection({ project }: { project: Project }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
   const [visibleSteps, setVisibleSteps] = useState<number[]>([0]);
+  const portraitSteps = project.steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ step }) => step.display === "portrait-popout");
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -530,6 +545,18 @@ function ProjectSection({ project }: { project: Project }) {
                     "--pointer-angle": step.pointer.angle,
                   } as React.CSSProperties)
                 : undefined;
+
+              if (step.display === "portrait-popout") {
+                return (
+                  <article
+                    aria-hidden="true"
+                    className="scene-card scene-card--portrait-proxy"
+                    data-step={index}
+                    key={step.image}
+                  />
+                );
+              }
+
               return (
                 <article
                   className={[
@@ -597,6 +624,45 @@ function ProjectSection({ project }: { project: Project }) {
           />
         </div>
       </div>
+
+      {portraitSteps.map(({ step, index }) => {
+        if (!visibleSteps.includes(index)) return null;
+
+        const calloutSide = step.calloutSide ?? (index % 2 === 0 ? "left" : "right");
+        return (
+          <article
+            className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} is-visible`}
+            key={step.image}
+            style={
+              step.pointer
+                ? ({
+                    "--pointer-x": step.pointer.x,
+                    "--pointer-y": step.pointer.y,
+                    "--pointer-length": step.pointer.length,
+                    "--pointer-angle": step.pointer.angle,
+                    "--portrait-ratio": step.portraitRatio ?? "1 / 3.55",
+                  } as React.CSSProperties)
+                : ({
+                    "--portrait-ratio": step.portraitRatio ?? "1 / 3.55",
+                  } as React.CSSProperties)
+            }
+          >
+            <figure className="portrait-popout-image scene-image">
+              <img src={step.image} alt={step.alt} />
+            </figure>
+            {step.pointer && (
+              <span className="scene-pointer" aria-hidden="true" />
+            )}
+            <div className="scene-callout">
+              <span>
+                {String(index + 1).padStart(2, "0")} / {String(project.steps.length).padStart(2, "0")}
+              </span>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </div>
+          </article>
+        );
+      })}
 
       <ol className="sr-only">
         {project.steps.map((step) => (
