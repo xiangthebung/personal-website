@@ -5,7 +5,7 @@
   --ink: #161917;
   --muted: #686e6a;
   --line: rgba(22, 25, 23, 0.16);
-  --header-height: 66px;
+  --header-height: 0px;
 }
 
 * {
@@ -55,21 +55,6 @@ a {
   white-space: nowrap;
 }
 
-.site-header {
-  position: sticky;
-  z-index: 100;
-  top: 0;
-  display: flex;
-  height: var(--header-height);
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 3vw;
-  border-bottom: 1px solid var(--line);
-  background: rgba(240, 239, 233, 0.9);
-  backdrop-filter: blur(14px);
-}
-
-.wordmark,
 .eyebrow,
 .project-number,
 .project-platform,
@@ -82,24 +67,13 @@ a {
   text-transform: uppercase;
 }
 
-.wordmark {
-  font-size: 0.78rem;
-  letter-spacing: 0.16em;
-}
-
-.site-nav {
-  display: flex;
-  gap: 1.8rem;
-  font-size: 0.8rem;
-}
-
-.site-nav a,
+.hero-github,
 .project-links a,
 .ending a {
   position: relative;
 }
 
-.site-nav a::after,
+.hero-github::after,
 .project-links a::after,
 .ending a::after {
   position: absolute;
@@ -114,7 +88,7 @@ a {
   transition: transform 180ms ease;
 }
 
-.site-nav a:hover::after,
+.hero-github:hover::after,
 .project-links a:hover::after,
 .ending a:hover::after {
   transform: scaleX(1);
@@ -145,6 +119,14 @@ a:hover .external-arrow {
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
+}
+
+.hero-github {
+  position: absolute;
+  z-index: 2;
+  top: 1.8rem;
+  right: 3vw;
+  font-size: 0.8rem;
 }
 
 .hero::before {
@@ -1636,20 +1618,17 @@ a:hover .external-arrow {
 
 @media (max-width: 660px) {
   :root {
-    --header-height: 60px;
-  }
-
-  .site-header {
-    padding: 0 1rem;
-  }
-
-  .site-nav {
-    gap: 1rem;
+    --header-height: 0px;
   }
 
   .hero {
     min-height: 78svh;
     padding: 4.5rem 1rem 2.5rem;
+  }
+
+  .hero-github {
+    top: 1.25rem;
+    right: 1rem;
   }
 
   .hero-copy h1 {

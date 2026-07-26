@@ -972,24 +972,17 @@ function ProjectSection({ project }: { project: Project }) {
 export default function Home() {
   return (
     <>
-      <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="Xiang Li, back to top">
-          XIANG LI
-        </a>
-        <nav className="site-nav" aria-label="Main navigation">
-          <a href="#blokamine">Projects</a>
+      <main id="top">
+        <section className="hero" aria-labelledby="hero-title">
           <a
+            className="hero-github"
             href="https://github.com/xiangthebung"
             target="_blank"
             rel="noreferrer"
           >
             GitHub <ExternalArrow />
           </a>
-        </nav>
-      </header>
 
-      <main id="top">
-        <section className="hero" aria-labelledby="hero-title">
           <div className="hero-copy">
             <h1 id="hero-title">Xiang Li</h1>
             <p>AI-built tools for everyday problems.</p>
@@ -1048,13 +1041,6 @@ export default function Home() {
         <section className="ending">
           <div>
             <span>Built with AI.</span>
-            <a
-              href="https://github.com/xiangthebung"
-              target="_blank"
-              rel="noreferrer"
-            >
-              GitHub <ExternalArrow />
-            </a>
           </div>
         </section>
       </main>
