@@ -9,6 +9,16 @@ export function ProjectSwirlArrow() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const section = canvas.closest<HTMLElement>("[data-project-section]");
+    const target = section?.querySelector<HTMLElement>(
+      "[data-project-live-link]",
+    );
+    const endPanel = section?.querySelector<HTMLElement>("[data-project-end]");
+    const scroller = section?.querySelector<HTMLElement>(".project-scroller");
+    if (!section || !target || !endPanel || !scroller) return;
+
+    let frame = 0;
+
     const draw = () => {
       const bounds = canvas.getBoundingClientRect();
       if (bounds.width <= 0 || bounds.height <= 0) return;
@@ -25,8 +35,24 @@ export function ProjectSwirlArrow() {
 
       const width = bounds.width;
       const height = bounds.height;
+      const sectionBounds = section.getBoundingClientRect();
+      const targetBounds = target.getBoundingClientRect();
+      const endBounds = endPanel.getBoundingClientRect();
       const color = getComputedStyle(canvas).color;
-      const lineWidth = Math.max(5, Math.min(9, width * 0.016));
+      const lineWidth = Math.max(5, Math.min(10, width * 0.005));
+      const targetX =
+        targetBounds.left -
+        sectionBounds.left +
+        Math.min(targetBounds.width * 0.3, 44);
+      const targetY =
+        targetBounds.bottom - sectionBounds.top + lineWidth * 1.25;
+      const endPanelX = endBounds.left - sectionBounds.left;
+      const startX = Math.max(
+        width * 0.12,
+        Math.min(width * 0.43, endPanelX + endBounds.width * 0.05),
+      );
+      const startY = height * 0.56;
+      const horizontalSpan = Math.max(width * 0.32, targetX - startX);
 
       context.strokeStyle = color;
       context.fillStyle = color;
@@ -35,88 +61,108 @@ export function ProjectSwirlArrow() {
       context.lineJoin = "round";
 
       context.beginPath();
-      context.moveTo(width * 0.04, height * 0.55);
+      context.moveTo(startX, startY);
       context.bezierCurveTo(
-        width * 0.14,
-        height * 0.54,
-        width * 0.22,
-        height * 0.62,
-        width * 0.34,
-        height * 0.57,
+        startX + horizontalSpan * 0.08,
+        startY - height * 0.01,
+        startX + horizontalSpan * 0.14,
+        startY + height * 0.07,
+        startX + horizontalSpan * 0.23,
+        startY + height * 0.01,
       );
       context.bezierCurveTo(
-        width * 0.45,
-        height * 0.52,
-        width * 0.48,
-        height * 0.31,
-        width * 0.38,
-        height * 0.27,
+        startX + horizontalSpan * 0.32,
+        startY - height * 0.05,
+        startX + horizontalSpan * 0.32,
+        startY - height * 0.24,
+        startX + horizontalSpan * 0.23,
+        startY - height * 0.28,
       );
       context.bezierCurveTo(
-        width * 0.29,
-        height * 0.23,
-        width * 0.25,
-        height * 0.39,
-        width * 0.29,
-        height * 0.57,
+        startX + horizontalSpan * 0.15,
+        startY - height * 0.32,
+        startX + horizontalSpan * 0.12,
+        startY - height * 0.15,
+        startX + horizontalSpan * 0.18,
+        startY + height * 0.02,
       );
       context.bezierCurveTo(
-        width * 0.33,
-        height * 0.77,
-        width * 0.48,
-        height * 0.84,
-        width * 0.62,
-        height * 0.73,
+        startX + horizontalSpan * 0.23,
+        startY + height * 0.2,
+        startX + horizontalSpan * 0.43,
+        startY + height * 0.24,
+        startX + horizontalSpan * 0.57,
+        startY + height * 0.13,
       );
       context.bezierCurveTo(
-        width * 0.78,
-        height * 0.61,
-        width * 0.82,
-        height * 0.36,
-        width * 0.86,
-        height * 0.19,
+        startX + horizontalSpan * 0.76,
+        startY - height * 0.01,
+        targetX - horizontalSpan * 0.1,
+        targetY + height * 0.22,
+        targetX - horizontalSpan * 0.045,
+        targetY + height * 0.1,
       );
       context.bezierCurveTo(
-        width * 0.88,
-        height * 0.11,
-        width * 0.88,
-        height * 0.08,
-        width * 0.93,
-        height * 0.06,
+        targetX - horizontalSpan * 0.025,
+        targetY + height * 0.055,
+        targetX - horizontalSpan * 0.012,
+        targetY + height * 0.018,
+        targetX,
+        targetY,
       );
       context.stroke();
 
-      const tipX = width * 0.93;
-      const tipY = height * 0.06;
-      const previousX = width * 0.88;
-      const previousY = height * 0.14;
-      const angle = Math.atan2(tipY - previousY, tipX - previousX);
-      const headLength = Math.max(22, Math.min(36, width * 0.07));
+      const previousX = targetX - horizontalSpan * 0.025;
+      const previousY = targetY + height * 0.055;
+      const angle = Math.atan2(targetY - previousY, targetX - previousX);
+      const headLength = Math.max(22, Math.min(38, width * 0.022));
       const headWidth = headLength * 0.88;
-      const baseX = tipX - Math.cos(angle) * headLength;
-      const baseY = tipY - Math.sin(angle) * headLength;
+      const baseX = targetX - Math.cos(angle) * headLength;
+      const baseY = targetY - Math.sin(angle) * headLength;
       const perpendicularX = -Math.sin(angle) * (headWidth / 2);
       const perpendicularY = Math.cos(angle) * (headWidth / 2);
 
       context.beginPath();
-      context.moveTo(tipX, tipY);
+      context.moveTo(targetX, targetY);
       context.lineTo(baseX + perpendicularX, baseY + perpendicularY);
       context.lineTo(baseX - perpendicularX, baseY - perpendicularY);
       context.closePath();
       context.fill();
     };
 
-    const resizeObserver = new ResizeObserver(draw);
-    resizeObserver.observe(canvas);
-    draw();
+    const scheduleDraw = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(draw);
+    };
 
-    return () => resizeObserver.disconnect();
+    const intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        canvas.classList.toggle("is-visible", entry.isIntersecting);
+        scheduleDraw();
+      },
+      { root: scroller, threshold: 0.22 },
+    );
+
+    const resizeObserver = new ResizeObserver(draw);
+    intersectionObserver.observe(endPanel);
+    resizeObserver.observe(section);
+    resizeObserver.observe(target);
+    resizeObserver.observe(endPanel);
+    scroller.addEventListener("scroll", scheduleDraw, { passive: true });
+    scheduleDraw();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      intersectionObserver.disconnect();
+      resizeObserver.disconnect();
+      scroller.removeEventListener("scroll", scheduleDraw);
+    };
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      className="scene-end-project-arrow"
+      className="project-swirl-overlay"
       aria-hidden="true"
     />
   );
