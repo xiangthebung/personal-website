@@ -260,7 +260,7 @@ a:hover .external-arrow {
 }
 
 .project + .project {
-  margin-top: clamp(1rem, 2vw, 2rem);
+  margin-top: clamp(2rem, 4vw, 4rem);
 }
 
 .project--mint {
