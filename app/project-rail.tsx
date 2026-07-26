@@ -38,6 +38,85 @@ type CardMotion = CardGeometry & {
 
 const visibilityThresholds = [0, 0.15, 0.22, 0.5, 0.85, 1];
 
+type Glide = {
+  /** Begin a drag; discards any glide still running. */
+  start: (x: number, time: number) => void;
+  /** Feed a pointer sample so the release knows how hard the flick was. */
+  track: (x: number, time: number) => void;
+  /** Let go and coast. */
+  release: () => void;
+  stop: () => void;
+};
+
+/**
+ * Flick physics for the drag rails. Releasing a drag hands the rail its last
+ * pointer velocity, which then decays exponentially, so exploring sideways feels
+ * like shoving something with weight rather than a scrollbar snapping to a halt.
+ */
+function createGlide(
+  getScroller: () => HTMLDivElement | null,
+  prefersReducedMotion: () => boolean,
+): Glide {
+  let frame = 0;
+  let lastX = 0;
+  let lastTime = 0;
+  let velocity = 0;
+
+  const stop = () => {
+    if (frame) window.cancelAnimationFrame(frame);
+    frame = 0;
+  };
+
+  return {
+    stop,
+    start(x, time) {
+      stop();
+      lastX = x;
+      lastTime = time;
+      velocity = 0;
+    },
+    track(x, time) {
+      const elapsed = time - lastTime;
+      if (elapsed <= 0) return;
+
+      // Blended with the running value so one jittery sample cannot define the
+      // whole throw.
+      const sample = (x - lastX) / elapsed;
+      velocity = velocity * 0.7 + sample * 0.3;
+      lastX = x;
+      lastTime = time;
+    },
+    release() {
+      const scroller = getScroller();
+      if (!scroller || prefersReducedMotion()) return;
+      // Below this the pointer was effectively parked; coasting would feel like drift.
+      if (Math.abs(velocity) < 0.06) return;
+
+      let speed = -velocity;
+      let previous = performance.now();
+
+      const step = (now: number) => {
+        // Clamped so a background tab returning to life cannot jump the rail.
+        const elapsed = Math.min(now - previous, 32);
+        previous = now;
+
+        const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+        const next = scroller.scrollLeft + speed * elapsed;
+        scroller.scrollLeft = Math.max(0, Math.min(maxScroll, next));
+        speed *= Math.exp(-elapsed / 260);
+
+        const stalled = Math.abs(speed) < 0.015;
+        const atEdge =
+          scroller.scrollLeft <= 0 || scroller.scrollLeft >= maxScroll - 0.5;
+        frame = stalled || atEdge ? 0 : window.requestAnimationFrame(step);
+      };
+
+      stop();
+      frame = window.requestAnimationFrame(step);
+    },
+  };
+}
+
 export function ProjectRail({
   children,
   portraitLayers,
@@ -51,6 +130,13 @@ export function ProjectRail({
   const pointerStartRef = useRef<{ x: number; scrollLeft: number } | null>(null);
   const draggedRef = useRef(false);
   const reduceMotionRef = useRef(false);
+  const glideRef = useRef<Glide | null>(null);
+
+  const glide = () =>
+    (glideRef.current ??= createGlide(
+      () => scrollerRef.current,
+      () => reduceMotionRef.current,
+    ));
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -320,6 +406,7 @@ export function ProjectRail({
       scroller.removeEventListener("scroll", requestUpdate);
       motionQuery.removeEventListener("change", handleMotionPreference);
       if (frame) window.cancelAnimationFrame(frame);
+      glideRef.current?.stop();
     };
   }, []);
 
@@ -327,6 +414,7 @@ export function ProjectRail({
     const scroller = scrollerRef.current;
     if (!scroller) return;
 
+    glide().stop();
     scroller.scrollBy({
       left: direction * scroller.clientWidth * 0.72,
       behavior: reduceMotionRef.current ? "auto" : "smooth",
@@ -338,6 +426,8 @@ export function ProjectRail({
 
     const scroller = scrollerRef.current;
     if (!scroller) return;
+
+    glide().stop();
 
     const delta =
       Math.abs(event.deltaX) > Math.abs(event.deltaY)
@@ -370,6 +460,7 @@ export function ProjectRail({
       scrollLeft: scroller.scrollLeft,
     };
     draggedRef.current = false;
+    glide().start(event.clientX, event.timeStamp);
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.classList.add("is-dragging");
   };
@@ -385,21 +476,17 @@ export function ProjectRail({
     draggedRef.current = true;
     event.preventDefault();
     scroller.scrollLeft = start.scrollLeft - distance;
+    glide().track(event.clientX, event.timeStamp);
   };
 
   const finishPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
+    const wasDragging = pointerStartRef.current !== null;
     pointerStartRef.current = null;
     event.currentTarget.classList.remove("is-dragging");
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-  };
-
-  const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
-    if (!draggedRef.current) return;
-    event.preventDefault();
-    event.stopPropagation();
-    draggedRef.current = false;
+    if (wasDragging && draggedRef.current) glide().release();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -411,6 +498,13 @@ export function ProjectRail({
       event.preventDefault();
       scrollProject(-1);
     }
+  };
+
+  const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (!draggedRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    draggedRef.current = false;
   };
 
   return (
@@ -488,6 +582,13 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
   const pointerStartRef = useRef<{ x: number; scrollLeft: number } | null>(null);
   const draggedRef = useRef(false);
+  const glideRef = useRef<Glide | null>(null);
+
+  const glide = () =>
+    (glideRef.current ??= createGlide(
+      () => scrollerRef.current,
+      () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    ));
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -522,8 +623,53 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     return () => {
       scroller.removeEventListener("scroll", syncControls);
       window.removeEventListener("resize", syncControls);
+      glideRef.current?.stop();
     };
   }, [itemCount]);
+
+  // A light that follows the pointer across the dark gallery. Written as two
+  // custom properties on the section and read by a single gradient, so moving the
+  // mouse costs one style recalculation per frame and no layout.
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    const section = scroller?.closest<HTMLElement>(".fun-section");
+    if (!section) return;
+    if (window.matchMedia("(pointer: coarse)").matches) return;
+
+    let frame = 0;
+    let x = 0;
+    let y = 0;
+
+    const write = () => {
+      frame = 0;
+      section.style.setProperty("--pointer-x", `${x}%`);
+      section.style.setProperty("--pointer-y", `${y}%`);
+    };
+
+    // `globalThis.` because React's synthetic event types are imported above and
+    // shadow the DOM ones.
+    const handleMove = (event: globalThis.PointerEvent) => {
+      const box = section.getBoundingClientRect();
+      x = ((event.clientX - box.left) / box.width) * 100;
+      y = ((event.clientY - box.top) / box.height) * 100;
+      if (!frame) frame = window.requestAnimationFrame(write);
+    };
+
+    const handleEnter = () => section.classList.add("is-lit");
+    const handleLeave = () => section.classList.remove("is-lit");
+
+    section.addEventListener("pointermove", handleMove);
+    section.addEventListener("pointerenter", handleEnter);
+    section.addEventListener("pointerleave", handleLeave);
+
+    return () => {
+      section.removeEventListener("pointermove", handleMove);
+      section.removeEventListener("pointerenter", handleEnter);
+      section.removeEventListener("pointerleave", handleLeave);
+      if (frame) window.cancelAnimationFrame(frame);
+      section.classList.remove("is-lit");
+    };
+  }, []);
 
   // Gallery clips play on their own while they are on screen and stop as soon as
   // they leave, so nothing decodes video off screen. Bytes are only fetched once
@@ -647,6 +793,7 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     const scroller = scrollerRef.current;
     if (!scroller) return;
 
+    glide().stop();
     scroller.scrollBy({
       left: direction * scroller.clientWidth * 0.78,
       behavior: "smooth",
@@ -666,6 +813,7 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     if (!delta) return;
 
     event.preventDefault();
+    glide().stop();
     scroller.scrollLeft += delta;
   };
 
@@ -685,6 +833,7 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
       scrollLeft: scroller.scrollLeft,
     };
     draggedRef.current = false;
+    glide().start(event.clientX, event.timeStamp);
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.classList.add("is-dragging");
   };
@@ -700,14 +849,17 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     draggedRef.current = true;
     event.preventDefault();
     scroller.scrollLeft = start.scrollLeft - distance;
+    glide().track(event.clientX, event.timeStamp);
   };
 
   const finishPointerDrag = (event: PointerEvent<HTMLDivElement>) => {
+    const wasDragging = pointerStartRef.current !== null;
     pointerStartRef.current = null;
     event.currentTarget.classList.remove("is-dragging");
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+    if (wasDragging && draggedRef.current) glide().release();
   };
 
   const handleClickCapture = (event: MouseEvent<HTMLDivElement>) => {
@@ -784,6 +936,24 @@ export function ProjectFocusManager() {
     projects.forEach((project) => ratios.set(project, 0));
     root.classList.add("has-project-focus");
 
+    // Progress trail across the top of the page. Written as a custom property so
+    // the paint is a single compositor-friendly scaleX.
+    let progressFrame = 0;
+    const writeProgress = () => {
+      progressFrame = 0;
+      const scrollable =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
+      root.style.setProperty(
+        "--page-progress",
+        String(Math.max(0, Math.min(1, progress))),
+      );
+    };
+    const requestProgress = () => {
+      if (progressFrame) return;
+      progressFrame = window.requestAnimationFrame(writeProgress);
+    };
+
     const updateFocus = () => {
       const visible = projects.filter((project) => (ratios.get(project) ?? 0) > 0);
       if (!visible.length) return;
@@ -809,7 +979,15 @@ export function ProjectFocusManager() {
         project.classList.toggle("is-before-active", index < activeIndex);
         project.classList.toggle("is-after-active", index > activeIndex);
       });
+
+      // The trail borrows the colour of whichever project you are standing in.
+      const accent = getComputedStyle(active)
+        .getPropertyValue("--project-accent")
+        .trim();
+      if (accent) root.style.setProperty("--trail-accent", accent);
     };
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -825,9 +1003,110 @@ export function ProjectFocusManager() {
     );
 
     projects.forEach((project) => observer.observe(project));
+
+    writeProgress();
+    window.addEventListener("scroll", requestProgress, { passive: true });
+    window.addEventListener("resize", requestProgress);
+
+    // --- Keyboard navigation -------------------------------------------------
+    const jumpTo = (element: Element | null | undefined) => {
+      if (!element) return;
+      element.scrollIntoView({
+        block: "start",
+        behavior: reducedMotion.matches ? "auto" : "smooth",
+      });
+    };
+
+    const handleShortcut = (event: globalThis.KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      // Never steal a key from a field, or from the rails' own arrow handling.
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.isContentEditable ||
+        (target && /^(input|textarea|select)$/i.test(target.tagName))
+      ) {
+        return;
+      }
+
+      const current = projects.findIndex((project) =>
+        project.classList.contains("is-active"),
+      );
+
+      switch (event.key) {
+        case "j":
+        case "J":
+          event.preventDefault();
+          jumpTo(projects[Math.min(projects.length - 1, current + 1)]);
+          break;
+        case "k":
+        case "K":
+          event.preventDefault();
+          jumpTo(projects[Math.max(0, current - 1)]);
+          break;
+        case "g":
+        case "G":
+          event.preventDefault();
+          jumpTo(document.querySelector(".fun-section"));
+          break;
+        case "t":
+        case "T":
+          event.preventDefault();
+          window.scrollTo({
+            top: 0,
+            behavior: reducedMotion.matches ? "auto" : "smooth",
+          });
+          break;
+        case "?":
+          event.preventDefault();
+          root.classList.toggle("shows-shortcuts");
+          break;
+        case "Escape":
+          root.classList.remove("shows-shortcuts");
+          break;
+        default:
+          break;
+      }
+    };
+
+    // --- Closing line --------------------------------------------------------
+    const endingButton = document.querySelector<HTMLElement>("[data-ending-line]");
+    const endingText = endingButton?.querySelector<HTMLElement>("[data-ending-text]");
+    let endingIndex = 0;
+
+    const cycleEnding = () => {
+      if (!endingButton || !endingText) return;
+
+      let lines: string[] = [];
+      try {
+        lines = JSON.parse(endingButton.dataset.lines ?? "[]");
+      } catch {
+        return;
+      }
+      if (lines.length < 2) return;
+
+      endingIndex = (endingIndex + 1) % lines.length;
+      endingText.textContent = lines[endingIndex];
+      endingButton.classList.remove("is-swapping");
+      // Reflow so the animation restarts on every click.
+      void endingButton.offsetWidth;
+      endingButton.classList.add("is-swapping");
+    };
+
+    document.addEventListener("keydown", handleShortcut);
+    endingButton?.addEventListener("click", cycleEnding);
+
     return () => {
       observer.disconnect();
       root.classList.remove("has-project-focus");
+      root.classList.remove("shows-shortcuts");
+      window.removeEventListener("scroll", requestProgress);
+      window.removeEventListener("resize", requestProgress);
+      document.removeEventListener("keydown", handleShortcut);
+      endingButton?.removeEventListener("click", cycleEnding);
+      if (progressFrame) window.cancelAnimationFrame(progressFrame);
+      root.style.removeProperty("--page-progress");
+      root.style.removeProperty("--trail-accent");
     };
   }, []);
 

@@ -13,6 +13,27 @@ import {
   type ProjectStep,
 } from "./projects";
 
+/**
+ * Letters land one after another. The readable title is kept in a parallel
+ * sr-only node so assistive tech never sees it spelled out character by
+ * character.
+ */
+function HeroLetters({ text }: { text: string }) {
+  return (
+    <span className="hero-letters" aria-hidden="true">
+      {Array.from(text).map((character, index) => (
+        <span
+          className="hero-letter"
+          key={`${character}-${index}`}
+          style={{ "--letter-index": index } as CSSProperties}
+        >
+          {character === " " ? "\u00A0" : character}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function ExternalArrow() {
   return (
     <span aria-hidden="true" className="external-arrow">
@@ -306,6 +327,10 @@ function ProjectSection({ project, index }: { project: Project; index: number })
         </div>
       </div>
 
+      {/* One element, three paintable layers (itself plus two pseudo-elements),
+          used for each theme's ambient motion. Purely decorative. */}
+      <div className="project-ambience" aria-hidden="true" />
+
       <ProjectRail
         projectId={project.id}
         projectName={project.name}
@@ -395,11 +420,34 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 
 const HERO_SOURCE = "/hero-face-1600.jpg";
 
+/** Cycled by clicking the closing line. The first is the server-rendered one. */
+const endingLines = [
+  "Built with AI.",
+  "Built with AI, and a lot of retries.",
+  "Built by describing it until it existed.",
+  "Every one of these started as an annoyance.",
+  "Still building. Come back later.",
+];
+
+const shortcutHints: [string, string][] = [
+  ["J", "Next project"],
+  ["K", "Previous project"],
+  ["← →", "Move through a project's screenshots"],
+  ["G", "Jump to the gallery"],
+  ["T", "Back to the top"],
+  ["?", "This list"],
+];
+
 export default function Home() {
   const heroAvif = mediaAsset(HERO_SOURCE)?.avif;
 
   return (
     <main id="top">
+      {/* Fills as the page is descended; coloured by the project you are in. */}
+      <div className="page-trail" aria-hidden="true">
+        <span />
+      </div>
+
       <section className="hero" aria-labelledby="hero-title">
         <picture className="hero-art">
           {heroAvif && (
@@ -425,8 +473,15 @@ export default function Home() {
         </a>
 
         <div className="hero-copy">
-          <h1 id="hero-title">Xiang Li</h1>
-          <p>AI-built tools for everyday problems.</p>
+          <h1 id="hero-title">
+            <span className="sr-only">Xiang Li</span>
+            <HeroLetters text="Xiang Li" />
+          </h1>
+          <p>Projects (including this website) are built with AI</p>
+          <a className="hero-cue" href={`#${projects[0].id}`}>
+            <span className="hero-cue-line" aria-hidden="true" />
+            Start exploring
+          </a>
         </div>
 
         <nav className="project-index" aria-label="Project index">
@@ -434,6 +489,14 @@ export default function Home() {
             <a href={`#${project.id}`} key={project.id}>
               <span>{project.number}</span>
               <strong>{project.name}</strong>
+              {/* Peek at where the link goes before committing to the jump. */}
+              <span className="project-index-peek" aria-hidden="true">
+                <OptimizedImage
+                  src={project.steps[0].poster ?? project.steps[0].image}
+                  alt=""
+                  sizes="200px"
+                />
+              </span>
               <span aria-hidden="true">↓</span>
             </a>
           ))}
@@ -464,9 +527,34 @@ export default function Home() {
 
       <section className="ending">
         <div>
-          <span>Built with AI.</span>
+          {/* Click to hear it put another way. */}
+          <button
+            className="ending-line"
+            type="button"
+            data-ending-line
+            data-lines={JSON.stringify(endingLines)}
+            aria-label="Change the closing line"
+          >
+            <span data-ending-text>{endingLines[0]}</span>
+          </button>
         </div>
       </section>
+
+      {/* Revealed by "?" -- see the shortcut handler in ProjectFocusManager. */}
+      <aside className="shortcut-sheet" aria-label="Keyboard shortcuts">
+        <h2>Shortcuts</h2>
+        <dl>
+          {shortcutHints.map(([keys, description]) => (
+            <div key={keys}>
+              <dt>
+                <kbd>{keys}</kbd>
+              </dt>
+              <dd>{description}</dd>
+            </div>
+          ))}
+        </dl>
+        <small>Press ? or Esc to close</small>
+      </aside>
 
       <ProjectFocusManager />
     </main>

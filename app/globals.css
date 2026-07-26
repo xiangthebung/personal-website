@@ -10,6 +10,9 @@
      are allowed to overhang into exactly this much room, so the gap and the
      pop-out budget can never drift apart. */
   --section-gap: clamp(5rem, 7.5vw, 8rem);
+  /* Shared easings. `soft` decelerates, `back` overshoots slightly and settles. */
+  --ease-out-soft: cubic-bezier(0.16, 0.8, 0.2, 1);
+  --ease-out-back: cubic-bezier(0.16, 0.86, 0.18, 1.12);
 }
 
 * {
@@ -246,6 +249,9 @@ a:hover .external-arrow {
      the distance from that baseline to the section's edge (the track's and
      window's bottom padding), so the second term is the visible overhang. */
   --rail-drop: calc(1.85rem + clamp(8px, 1.6vh, 22px));
+  /* Breathing room left between the heading rule and the tallest card. Small on
+     purpose: the card's own 0.6rem image inset already reads as a frame. */
+  --rail-headroom: clamp(6px, 1.2vh, 16px);
   position: relative;
   height: var(--project-height);
   /* clip-path rather than `overflow: hidden`: the sides must still clip (the
@@ -786,7 +792,7 @@ a:hover .external-arrow {
   height: 100%;
   align-items: flex-end;
   gap: clamp(6rem, 10vw, 12rem);
-  padding: calc(0.7rem + var(--rail-bleed-top)) 11vw
+  padding: calc(0.35rem + var(--rail-bleed-top)) 11vw
     calc(1rem + var(--rail-bleed-bottom)) clamp(1.2rem, 2.5vw, 3rem);
 }
 
@@ -840,6 +846,7 @@ a:hover .external-arrow {
 }
 
 .scene-card {
+  --card-trim: 0px;
   --settle-turn: -1.25deg;
   --enter-x: 150px;
   --enter-y: 0px;
@@ -855,7 +862,13 @@ a:hover .external-arrow {
   --image-tilt: 0deg;
   position: relative;
   width: clamp(450px, 54vw, 740px);
-  height: 88%;
+  /* Cards hang from the baseline, so any height they do not use becomes empty
+     space under the heading. They therefore fill the band and reach past it by
+     --rail-drop; `--card-trim` is how each variant keeps a ragged top edge
+     without leaving a hole. */
+  height: calc(
+    100% + var(--rail-drop) - var(--rail-headroom) - var(--card-trim)
+  );
   flex: 0 0 auto;
   z-index: 1;
   opacity: 0.08;
@@ -872,7 +885,7 @@ a:hover .external-arrow {
   transition:
     opacity 360ms ease,
     filter 500ms ease,
-    transform 760ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+    transform 760ms var(--ease-out-back);
 }
 
 /* Pulls every card below the baseline and out of the section. `--rail-scatter`
@@ -952,19 +965,19 @@ a:hover .external-arrow {
   --enter-scale: 0.42;
 }
 
+/* Ragged tops, shared baseline. Trims are lengths rather than percentages so the
+   top edge stays put as the band changes height. */
 .scene-card--layout-2 {
-  height: 77%;
-  margin-top: -1.4rem;
+  --card-trim: clamp(12px, 2.6vh, 30px);
 }
 
 .scene-card--layout-3 {
-  height: 82%;
-  margin-top: 1.8rem;
+  --card-trim: clamp(6px, 1.4vh, 16px);
 }
 
 .scene-card--layout-4 {
   width: clamp(430px, 51vw, 710px);
-  height: 91%;
+  --card-trim: 0px;
 }
 
 .scene-card:hover {
@@ -980,7 +993,9 @@ a:hover .external-arrow {
 
 .scene-card--contained {
   width: auto;
-  height: 88%;
+  height: calc(
+    100% + var(--rail-drop) - var(--rail-headroom) - var(--card-trim)
+  );
   aspect-ratio: var(--scene-ratio);
 }
 
@@ -1006,7 +1021,7 @@ a:hover .external-arrow {
   filter: grayscale(1) saturate(0) contrast(1.08);
   transition:
     filter 850ms ease,
-    transform 900ms cubic-bezier(0.16, 0.8, 0.2, 1);
+    transform 900ms var(--ease-out-soft);
 }
 
 .project--paper .scene-card.is-visible .scene-image img {
@@ -1069,7 +1084,7 @@ a:hover .external-arrow {
   transform: scale(1) rotate(0);
   transition:
     opacity 300ms ease,
-    transform 700ms cubic-bezier(0.16, 0.8, 0.2, 1);
+    transform 700ms var(--ease-out-soft);
 }
 
 .project--black .scene-card.is-visible::after {
@@ -1364,7 +1379,7 @@ a:hover .external-arrow {
   transform: translate(130px, -90px) rotate(28deg);
   transition:
     opacity 500ms ease 120ms,
-    transform 820ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+    transform 820ms var(--ease-out-back);
 }
 
 .project--navy .scene-card.is-visible::after {
@@ -1422,7 +1437,7 @@ a:hover .external-arrow {
   height: 100%;
   transform: translate3d(var(--image-shift-x), var(--image-shift-y), 0)
     scale(1.06) rotate(calc(0.35deg + var(--image-tilt)));
-  transition: transform 500ms cubic-bezier(0.16, 0.8, 0.2, 1);
+  transition: transform 500ms var(--ease-out-soft);
 }
 
 .scene-card.is-visible .scene-image img,
@@ -1460,7 +1475,7 @@ a:hover .external-arrow {
   opacity: 0;
   transition:
     opacity 280ms ease 180ms,
-    transform 560ms cubic-bezier(0.16, 0.8, 0.2, 1) 150ms;
+    transform 560ms var(--ease-out-soft) 150ms;
 }
 
 .scene-card--left .scene-callout {
@@ -1926,6 +1941,7 @@ a:hover .external-arrow {
     /* Tighter vertical rhythm here, so a smaller overhang. The first term is
        this breakpoint's own baseline-to-edge distance (0.75rem + 1rem). */
     --rail-drop: calc(1.75rem + clamp(6px, 1.2vh, 14px));
+    --rail-headroom: clamp(8px, 1.6vh, 18px);
     --project-height: max(470px, min(560px, 70svh));
     height: var(--project-height);
     min-height: 470px;
@@ -1989,13 +2005,14 @@ a:hover .external-arrow {
   .scene-card,
   .scene-card--contain {
     width: 82vw;
-    height: 82%;
   }
 
-  .scene-card--contained {
-    width: auto;
-    height: 82%;
-    aspect-ratio: var(--scene-ratio);
+  .scene-card--layout-2 {
+    --card-trim: clamp(12px, 2.6vh, 28px);
+  }
+
+  .scene-card--layout-3 {
+    --card-trim: clamp(6px, 1.4vh, 15px);
   }
 
   .scene-card--portrait-proxy {
@@ -2152,7 +2169,7 @@ a:hover .external-arrow {
   transform: translate3d(0, 0, 0);
   transition:
     opacity 420ms ease,
-    transform 620ms cubic-bezier(0.16, 0.8, 0.2, 1);
+    transform 620ms var(--ease-out-soft);
 }
 
 .project:not(.is-active) .project-heading,
@@ -2540,4 +2557,575 @@ html.has-project-focus
     opacity: 0;
     transform: none;
   }
+}
+
+/* ===========================================================================
+   Character layer: motion that exists to make the page feel like somewhere you
+   explore rather than a document you scroll. Everything here animates transform
+   or opacity only, and the global reduced-motion block above neutralises all of
+   it. Purely decorative -- nothing below carries meaning.
+   =========================================================================== */
+
+/* --- Progress trail -------------------------------------------------------
+   A hairline across the top that fills as you descend and takes on the colour of
+   whichever project you are currently standing in. */
+.page-trail {
+  position: fixed;
+  z-index: 60;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  pointer-events: none;
+}
+
+.page-trail span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--trail-accent, var(--ink)) 38%,
+    var(--trail-accent, var(--ink))
+  );
+  transform: scaleX(var(--page-progress, 0));
+  transform-origin: left center;
+  /* The scale is written every frame from JS, so only the colour transitions. */
+  transition: background 700ms ease;
+}
+
+/* --- Hero title -----------------------------------------------------------
+   Letters drop in one after another, then stay pokeable on hover. Fill mode is
+   `backwards` on purpose: `both` would pin the final transform and defeat the
+   hover nudge. */
+.hero-letters {
+  display: inline-flex;
+  flex-wrap: wrap;
+}
+
+.hero-letter {
+  display: inline-block;
+  animation: hero-letter-land 820ms var(--ease-out-back) backwards;
+  animation-delay: calc(var(--letter-index) * 62ms + 160ms);
+  transition: transform 420ms var(--ease-out-back);
+}
+
+.hero-letter:hover {
+  transform: translateY(-0.09em) rotate(-4deg);
+}
+
+@keyframes hero-letter-land {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.55em, 0) rotate(-10deg) scale(0.88);
+  }
+
+  55% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0) scale(1);
+  }
+}
+
+/* --- Descend cue ---------------------------------------------------------- */
+.hero-cue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 1.6rem;
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.6rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color 220ms ease;
+}
+
+.hero-cue:hover {
+  color: var(--ink);
+}
+
+.hero-cue-line {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 2.1rem;
+  overflow: hidden;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+/* A drop running down the line, repeating. */
+.hero-cue-line::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 0.75rem;
+  background: var(--ink);
+  content: "";
+  animation: cue-fall 2.6s ease-in-out infinite;
+}
+
+@keyframes cue-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-0.9rem);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(2.1rem);
+  }
+}
+
+/* --- Project index previews ----------------------------------------------
+   Hovering an index row peeks at where it leads. */
+.project-index a {
+  position: relative;
+}
+
+.project-index-peek {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: calc(100% + 1rem);
+  width: clamp(120px, 13vw, 190px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 0 20px 44px rgba(22, 25, 23, 0.24);
+  opacity: 0;
+  transform: translateY(-50%) translateX(14px) rotate(4deg) scale(0.9);
+  transition:
+    opacity 200ms ease,
+    transform 420ms var(--ease-out-back);
+  pointer-events: none;
+}
+
+.project-index a:hover .project-index-peek,
+.project-index a:focus-visible .project-index-peek {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0) rotate(-2deg) scale(1);
+}
+
+.project-index-peek picture,
+.project-index-peek img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* --- Per-theme ambience ---------------------------------------------------
+   Each project gets background motion drawn from what the project itself is
+   about. The child selector outranks `.project > :not(.sr-only)`, which would
+   otherwise force these onto the content layer. */
+.project > .project-ambience {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.project > .project-ambience::before,
+.project > .project-ambience::after {
+  position: absolute;
+  content: "";
+}
+
+/* Only the project you are looking at animates. */
+.project:not(.is-active) > .project-ambience::before,
+.project:not(.is-active) > .project-ambience::after {
+  animation-play-state: paused;
+}
+
+/* GRT Next Bus: a vehicle running a dashed route across the section. */
+.project--mint > .project-ambience::before {
+  top: 47%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--project-accent) 0 13px,
+    transparent 13px 25px
+  );
+  opacity: 0.26;
+}
+
+.project--mint > .project-ambience::after {
+  top: calc(47% - 4px);
+  left: -4%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--project-accent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--project-accent) 18%, transparent);
+  animation: transit-run 15s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes transit-run {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+
+  7%,
+  88% {
+    opacity: 0.85;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(114vw);
+  }
+}
+
+/* blokamine: colour being drained, as a slow sweep across the section. */
+.project--paper > .project-ambience::before {
+  top: 0;
+  bottom: 0;
+  left: -32%;
+  width: 24%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: monochrome-sweep 13s ease-in-out infinite;
+}
+
+@keyframes monochrome-sweep {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(560%);
+  }
+}
+
+/* PagePack: page edges drifting past, offset so they never travel together. */
+.project--black > .project-ambience::before,
+.project--black > .project-ambience::after {
+  top: -12%;
+  bottom: -12%;
+  width: 38%;
+  border-left: 1px solid
+    color-mix(in srgb, var(--project-accent) 38%, transparent);
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--project-accent) 9%, transparent),
+    transparent 62%
+  );
+  animation: page-drift 19s ease-in-out infinite;
+}
+
+.project--black > .project-ambience::after {
+  opacity: 0.6;
+  animation-delay: -9.5s;
+}
+
+@keyframes page-drift {
+  0%,
+  100% {
+    transform: translateX(-34%) rotate(4deg);
+  }
+
+  50% {
+    transform: translateX(150%) rotate(-3deg);
+  }
+}
+
+/* PDF Slide Explainer: a projector beam turning slowly overhead. */
+.project--white > .project-ambience::before {
+  top: -70%;
+  left: 50%;
+  width: 130%;
+  height: 240%;
+  background: conic-gradient(
+    from 200deg at 50% 50%,
+    transparent 0 9%,
+    color-mix(in srgb, var(--project-accent) 13%, transparent) 13%,
+    transparent 21% 100%
+  );
+  transform: translateX(-50%) rotate(0deg);
+  animation: projector-sweep 28s linear infinite;
+}
+
+@keyframes projector-sweep {
+  to {
+    transform: translateX(-50%) rotate(360deg);
+  }
+}
+
+/* Choir Practice Tool: a staff drifting, with a note rising off it. */
+.project--navy > .project-ambience::before {
+  top: 16%;
+  right: 0;
+  left: 0;
+  height: 5.5rem;
+  background: repeating-linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--project-accent) 32%, transparent) 0 1px,
+    transparent 1px 1.35rem
+  );
+  opacity: 0.45;
+  animation: staff-drift 20s ease-in-out infinite;
+}
+
+.project--navy > .project-ambience::after {
+  bottom: 12%;
+  left: 12%;
+  color: var(--project-accent);
+  content: "♪";
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.4rem;
+  opacity: 0;
+  animation: note-rise 11s ease-in-out infinite;
+}
+
+@keyframes staff-drift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(0.9rem);
+  }
+}
+
+@keyframes note-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(-6deg);
+  }
+
+  18% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-9rem) rotate(12deg);
+  }
+}
+
+/* Zen N-Back: a slow breath. */
+.project--forest > .project-ambience::before {
+  inset: -22%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    color-mix(in srgb, var(--project-accent) 15%, transparent),
+    transparent 62%
+  );
+  animation: forest-breathe 10s ease-in-out infinite;
+}
+
+@keyframes forest-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@media (max-width: 900px) {
+  /* No room beside the index card for a preview at this width. */
+  .project-index-peek {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The global block above zeroes durations; delays have to go too, or a
+     staggered entrance still trickles in over half a second. */
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .hero-cue-line::after,
+  .project > .project-ambience::before,
+  .project > .project-ambience::after {
+    display: none;
+  }
+}
+
+/* --- Gallery light --------------------------------------------------------
+   A soft light that tracks the pointer across the dark section. The gradient
+   position comes from custom properties written in rAF, so nothing lays out. */
+.fun-section {
+  position: relative;
+  isolation: isolate;
+}
+
+.fun-section::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: radial-gradient(
+    36rem 36rem at var(--pointer-x, 50%) var(--pointer-y, 40%),
+    rgba(232, 240, 235, 0.09),
+    transparent 62%
+  );
+  content: "";
+  opacity: 0;
+  transition: opacity 520ms ease;
+  pointer-events: none;
+}
+
+.fun-section.is-lit::after {
+  opacity: 1;
+}
+
+.media-rail-window {
+  z-index: 1;
+}
+
+/* --- Closing line --------------------------------------------------------- */
+.ending-line {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ending-line::after {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  content: "";
+  opacity: 0.25;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 260ms var(--ease-out-soft);
+}
+
+.ending-line:hover::after,
+.ending-line:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.ending-line.is-swapping span {
+  animation: line-swap 460ms var(--ease-out-back);
+}
+
+@keyframes line-swap {
+  from {
+    opacity: 0;
+    transform: translateY(0.4em) skewX(-6deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) skewX(0);
+  }
+}
+
+/* --- Shortcut sheet -------------------------------------------------------
+   Hidden with `visibility` so it stays out of the tab order until summoned. */
+.shortcut-sheet {
+  position: fixed;
+  z-index: 70;
+  bottom: clamp(1rem, 3vw, 2.5rem);
+  left: clamp(1rem, 3vw, 2.5rem);
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 1.1rem 1.25rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  box-shadow: 0 26px 60px rgba(22, 25, 23, 0.26);
+  opacity: 0;
+  transform: translateY(14px) scale(0.97);
+  visibility: hidden;
+  transition:
+    opacity 220ms ease,
+    transform 380ms var(--ease-out-back),
+    visibility 0s linear 220ms;
+  backdrop-filter: blur(14px);
+}
+
+html.shows-shortcuts .shortcut-sheet {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  visibility: visible;
+  transition:
+    opacity 220ms ease,
+    transform 380ms var(--ease-out-back),
+    visibility 0s linear;
+}
+
+.shortcut-sheet h2 {
+  margin: 0 0 0.7rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.shortcut-sheet dl {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.shortcut-sheet dl > div {
+  display: grid;
+  grid-template-columns: 4.4rem 1fr;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+
+.shortcut-sheet dt,
+.shortcut-sheet dd {
+  margin: 0;
+}
+
+.shortcut-sheet kbd {
+  display: inline-block;
+  padding: 0.16rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.6rem;
+}
+
+.shortcut-sheet dd {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.shortcut-sheet small {
+  display: block;
+  margin-top: 0.8rem;
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }

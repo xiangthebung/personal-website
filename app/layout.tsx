@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
@@ -12,6 +12,16 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Matches the paper background so the browser chrome blends into the page.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f0efe9" },
+    { media: "(prefers-color-scheme: dark)", color: "#161917" },
+  ],
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const incomingHeaders = await headers();
