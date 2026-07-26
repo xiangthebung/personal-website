@@ -230,7 +230,7 @@ const projectData: Project[] = [
     why: "Keep notes, chat, and practice beside the deck.",
     theme: "white",
     source: "https://github.com/xiangthebung/pdf-explainer",
-    live: "https://pdf-explainer.ai.studio/",
+    live: "https://pdf-explainer-833706869963.us-east1.run.app/",
     steps: [
       {
         title: "Read notes beside each slide.",
