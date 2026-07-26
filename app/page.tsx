@@ -670,12 +670,10 @@ function ProjectSection({ project }: { project: Project }) {
       </div>
 
       {portraitSteps.map(({ step, index }) => {
-        if (!visibleSteps.includes(index)) return null;
-
         const calloutSide = step.calloutSide ?? (index % 2 === 0 ? "left" : "right");
         return (
           <article
-            className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} scene-card--${step.surface ?? "light"} is-visible`}
+            className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} scene-card--${step.surface ?? "light"} ${visibleSteps.includes(index) ? "is-visible" : ""}`}
             key={step.image}
             style={
               {
