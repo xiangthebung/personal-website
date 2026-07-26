@@ -482,6 +482,11 @@ function ProjectSection({ project }: { project: Project }) {
       className={`project project--${project.theme}`}
       id={project.id}
       aria-labelledby={`${project.id}-title`}
+      style={
+        {
+          "--project-scroll-shift": `${progress * -180}px`,
+        } as React.CSSProperties
+      }
     >
       <div className="project-heading">
         <div className="project-identity">

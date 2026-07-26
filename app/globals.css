@@ -241,6 +241,7 @@ a:hover .external-arrow {
 }
 
 .project {
+  --project-scroll-shift: 0px;
   --project-bg: #ecebe6;
   --project-ink: #292c29;
   --project-muted: #70766f;
@@ -353,6 +354,8 @@ a:hover .external-arrow {
     ),
     radial-gradient(circle at 76% 56%, rgba(41, 44, 41, 0.08), transparent 31%);
   opacity: 0.9;
+  transform: translateX(var(--project-scroll-shift));
+  transition: transform 80ms linear;
 }
 
 .project--mint::before {
@@ -372,6 +375,8 @@ a:hover .external-arrow {
       rgba(177, 149, 108, 0.12) 58.1% 58.35%,
       transparent 58.45% 100%
     );
+  transform: translateX(var(--project-scroll-shift));
+  transition: transform 80ms linear;
 }
 
 .project--black::before {
@@ -386,6 +391,8 @@ a:hover .external-arrow {
     linear-gradient(rgba(65, 92, 111, 0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(65, 92, 111, 0.06) 1px, transparent 1px);
   background-size: 72px 72px;
+  transform: translateX(var(--project-scroll-shift));
+  transition: transform 80ms linear;
 }
 
 .project--white::before {
@@ -403,6 +410,8 @@ a:hover .external-arrow {
       transparent 0 24vw,
       rgba(101, 82, 255, 0.07) 24vw calc(24vw + 1px)
     );
+  transform: translateX(var(--project-scroll-shift));
+  transition: transform 80ms linear;
 }
 
 .project--navy::before {
@@ -426,6 +435,8 @@ a:hover .external-arrow {
     rgba(69, 91, 122, 0.11) 56px 57px,
     transparent 57px 112px
   );
+  transform: translateX(var(--project-scroll-shift));
+  transition: transform 80ms linear;
 }
 
 .project--forest::before {
@@ -448,7 +459,8 @@ a:hover .external-arrow {
       transparent 66.7%
     );
   background-size: 270px 270px;
-  transform: rotate(-8deg) scale(1.2);
+  transform: translateX(var(--project-scroll-shift)) rotate(-8deg) scale(1.2);
+  transition: transform 80ms linear;
 }
 
 .project-heading {
