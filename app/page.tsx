@@ -52,14 +52,14 @@ const projectData: Project[] = [
     platform: "Chrome extension",
     status: "Work in progress",
     mode: "Monochrome mode",
-    headline: "Can’t quit social media? Make it less addicting instead.",
-    why: "I still wanted the sites. Just not all the little tricks that make me stay.",
+    headline: "Make social media less rewarding.",
+    why: "Remove the parts that keep you scrolling.",
     theme: "paper",
     source: "https://github.com/xiangthebung/blokamine",
     steps: [
       {
-        title: "You’ll get bored and leave on your own.",
-        text: "The sites still work. The pictures are just grey, the numbers are gone, and the feed is a lot less exciting.",
+        title: "Make the feed less interesting.",
+        text: "Keep the sites. Remove colour, numbers, and other attention triggers.",
         image: "/projects/blokamine.png",
         alt: "YouTube with desaturated, upside-down media",
         fit: "contain",
@@ -68,8 +68,8 @@ const projectData: Project[] = [
         pointer: { x: "56%", y: "48%", length: "22%", angle: "158deg" },
       },
       {
-        title: "Turn down the reward.",
-        text: "Desaturate images and video. Hide likes, views, follower counts, and notification badges.",
+        title: "Hide the reward signals.",
+        text: "Remove likes, views, follower counts, and notification badges.",
         image: "/projects/blokamine-settings.png",
         alt: "blokamine core experience settings",
         fit: "contain",
@@ -78,8 +78,8 @@ const projectData: Project[] = [
         pointer: { x: "88%", y: "22%", length: "26%", angle: "166deg" },
       },
       {
-        title: "Pick what disappears.",
-        text: "Reels, comments, Explore, suggested posts, Shorts—each site gets its own controls.",
+        title: "Choose what to remove.",
+        text: "Hide Reels, comments, Explore, suggested posts, and Shorts per site.",
         image: "/projects/blokamine-sites.png",
         alt: "blokamine site-specific controls",
         fit: "contain",
@@ -88,8 +88,8 @@ const projectData: Project[] = [
         pointer: { x: "58%", y: "58%", length: "24%", angle: "158deg" },
       },
       {
-        title: "Still scrolling?",
-        text: "Blur the thumbnails. Remove the media. Turn it upside down. Whatever works. The settings stay in Chrome and I don’t collect browsing activity.",
+        title: "Turn down the rest.",
+        text: "Blur or remove media, or flip the page upside down.",
         image: "/projects/blokamine-instagram.png",
         alt: "Instagram with media turned upside down and desaturated",
         fit: "contain",
@@ -104,14 +104,14 @@ const projectData: Project[] = [
     number: "02",
     name: "GRT Next Bus",
     platform: "Chrome extension",
-    headline: "See your frequent bus times at a quick glance.",
-    why: "To save 15 seconds going to Google Maps and typing the same starting point and destination.",
+    headline: "See the next bus without opening Google Maps.",
+    why: "Faster than searching Google Maps for the same stop.",
     theme: "mint",
     source: "https://github.com/xiangthebung/grt-bus-time",
     steps: [
       {
-        title: "Open it. See the next departures.",
-        text: "Your saved stops stay on the front page. Live times when they’re available, scheduled times when they aren’t.",
+        title: "See the next departures.",
+        text: "Saved stops show live or scheduled times on the front page.",
         image: "/projects/grt-next-bus.png",
         alt: "GRT Next Bus saved stops and departure times",
         fit: "contain",
@@ -121,8 +121,8 @@ const projectData: Project[] = [
         pointer: { x: "54%", y: "43%", length: "52%", angle: "158deg" },
       },
       {
-        title: "Set up a stop once.",
-        text: "Choose the route, direction, and stop. It stays there for next time.",
+        title: "Save a stop once.",
+        text: "Choose a route, direction, and stop.",
         image: "/projects/grt-add-stop.png",
         alt: "GRT Next Bus add a stop form",
         fit: "contain",
@@ -132,8 +132,8 @@ const projectData: Project[] = [
         pointer: { x: "50%", y: "72%", length: "48%", angle: "-14deg" },
       },
       {
-        title: "The basics are free.",
-        text: "Pro adds closest-stop sorting, countdowns, and alerts. Useful if you care. Easy to ignore if you don’t.",
+        title: "Use Pro for alerts.",
+        text: "Add closest-stop sorting, countdowns, and alerts.",
         image: "/projects/grt-pro.png",
         alt: "GRT Next Bus Pro countdown and alert controls",
         fit: "contain",
@@ -143,8 +143,8 @@ const projectData: Project[] = [
         pointer: { x: "85%", y: "8%", length: "52%", angle: "156deg" },
       },
       {
-        title: "Leave when the notification shows up.",
-        text: "Set an alert for a saved stop and Chrome tells you when the bus is getting close.",
+        title: "Leave when the alert arrives.",
+        text: "Get a Chrome notification when the bus is close.",
         image: "/projects/grt-alert.png",
         alt: "Chrome notification for an arriving GRT bus",
         fit: "contain",
@@ -159,14 +159,14 @@ const projectData: Project[] = [
     number: "03",
     name: "PagePack",
     platform: "Chrome extension",
-    headline: "Save websites now. Read them on the bus later.",
-    why: "I don’t have mobile data and I’m not getting it just to read articles.",
+    headline: "Save websites. Read them offline.",
+    why: "Useful when you have no mobile data.",
     theme: "black",
     source: "https://github.com/xiangthebung/pagepack-extension",
     steps: [
       {
-        title: "Save one page or keep saving as you browse.",
-        text: "A page becomes an offline copy. A browsing journey keeps collecting the pages you visit.",
+        title: "Save one page or a whole browse.",
+        text: "Keep one page or collect pages as you browse.",
         image: "/projects/pagepack.png",
         alt: "PagePack save page and browsing journey options",
         fit: "contain",
@@ -176,8 +176,8 @@ const projectData: Project[] = [
         pointer: { x: "54%", y: "43%", length: "52%", angle: "158deg" },
       },
       {
-        title: "Choose how much comes with it.",
-        text: "Follow same-site links, keep supported scripts, and save the result into a folder.",
+        title: "Choose what to save.",
+        text: "Follow same-site links, keep supported scripts, and save to a folder.",
         image: "/projects/pagepack-options.png",
         alt: "PagePack link depth and script options",
         fit: "contain",
@@ -187,8 +187,8 @@ const projectData: Project[] = [
         pointer: { x: "61%", y: "58%", length: "48%", angle: "-14deg" },
       },
       {
-        title: "Everything goes into a local library.",
-        text: "Search it, sort it into folders, and keep the whole thing on your device.",
+        title: "Keep a local library.",
+        text: "Search saved pages and sort them into folders.",
         image: "/projects/pagepack-library.png",
         alt: "PagePack saved pages library",
         fit: "contain",
@@ -198,8 +198,8 @@ const projectData: Project[] = [
         pointer: { x: "53%", y: "52%", length: "52%", angle: "158deg" },
       },
       {
-        title: "A pack can be more than one page.",
-        text: "This one has 57. Open any saved link and move through the pack without a connection.",
+        title: "Save packs, not just pages.",
+        text: "Open any saved link and read the pack without a connection.",
         image: "/projects/pagepack-folder.png",
         alt: "A PagePack folder containing a 57-page pack",
         fit: "contain",
@@ -209,8 +209,8 @@ const projectData: Project[] = [
         pointer: { x: "52%", y: "46%", length: "50%", angle: "-14deg" },
       },
       {
-        title: "The saved site still looks like the site.",
-        text: "Styles, images, fonts, and supported media come along. DRM video, live streams, and some heavily scripted pages don’t.",
+        title: "Keep the original look.",
+        text: "Styles, images, fonts, and supported media come along. DRM video, live streams, and heavily scripted pages may not.",
         image: "/projects/pagepack-reader.png",
         alt: "A full website open inside the PagePack offline reader",
         fit: "contain",
@@ -226,15 +226,15 @@ const projectData: Project[] = [
     name: "PDF Slide Explainer",
     platform: "Web app",
     status: "Work in progress",
-    headline: "Your slides on the left. The explanation on the right.",
-    why: "AI explanations were useful. Keeping them in a second tab wasn’t.",
+    headline: "Explain slides in the same window.",
+    why: "Keep notes, chat, and practice beside the deck.",
     theme: "white",
     source: "https://github.com/xiangthebung/pdf-explainer",
     live: "https://pdf-explainer.ai.studio/",
     steps: [
       {
-        title: "The notes stay on the slide you’re looking at.",
-        text: "Upload a lecture PDF and get an explanation for each slide without shrinking the deck into a corner.",
+        title: "Read notes beside each slide.",
+        text: "Upload a lecture PDF and get an explanation without shrinking the deck.",
         image: "/projects/pdf-explainer.png",
         alt: "PDF Slide Explainer showing notes beside a lecture slide",
         fit: "contain",
@@ -243,8 +243,8 @@ const projectData: Project[] = [
         pointer: { x: "81%", y: "53%", length: "28%", angle: "150deg" },
       },
       {
-        title: "Ask about the exact thing on screen.",
-        text: "The side panel handles notes, slide-specific chat, intuition, analogies, and examples.",
+        title: "Ask about what’s on screen.",
+        text: "Use slide-specific chat, notes, analogies, and examples.",
         image: "/projects/pdf-explainer-feature.png",
         alt: "PDF Slide Explainer explaining feature uncertainty",
         fit: "contain",
@@ -253,8 +253,8 @@ const projectData: Project[] = [
         pointer: { x: "82%", y: "52%", length: "22%", angle: "-16deg" },
       },
       {
-        title: "Then make sure you actually learned it.",
-        text: "Matching, fill-in-the-blank, practice problems, and quizzes are generated from the deck. It runs on Gemini and needs an API key.",
+        title: "Practice from the deck.",
+        text: "Generate matching, fill-in-the-blank, practice problems, and quizzes. Requires a Gemini API key.",
         image: "/projects/pdf-explainer-match.png",
         alt: "Matching activity in PDF Slide Explainer",
         fit: "contain",
@@ -269,15 +269,15 @@ const projectData: Project[] = [
     number: "05",
     name: "Choir Practice Tool",
     platform: "Web app",
-    headline: "Turn a MusicXML file into choir practice.",
-    why: "I can copy a part. Sight-reading it while five other parts are going off is harder.",
+    headline: "Practice one choir part in the browser.",
+    why: "Play the full score, isolate your part, and check pitch.",
     theme: "navy",
     source: "https://github.com/xiangthebung/satb-practice",
     live: "https://satb-practice.xiangli3625.workers.dev/",
     steps: [
       {
-        title: "Hear the whole score.",
-        text: "Open an uncompressed MusicXML file and play every part in the browser.",
+        title: "Play the full score.",
+        text: "Open an uncompressed MusicXML file and hear every part.",
         image: "/projects/choir-overview.png",
         alt: "Choir Practice Tool playing a six-part score",
         fit: "contain",
@@ -286,8 +286,8 @@ const projectData: Project[] = [
         pointer: { x: "65%", y: "48%", length: "24%", angle: "158deg" },
       },
       {
-        title: "Make your part louder.",
-        text: "Pick your section, lower everyone else, or use a preset like “Mostly Yours.”",
+        title: "Bring out your part.",
+        text: "Choose a section and lower the others.",
         image: "/projects/choir-mix.png",
         alt: "Choir Practice Tool part mixer and volume presets",
         fit: "contain",
@@ -298,8 +298,8 @@ const projectData: Project[] = [
         pointer: { x: "19%", y: "56%", length: "78%", angle: "-10deg" },
       },
       {
-        title: "See whether you’re on pitch.",
-        text: "Turn on the microphone and your pitch appears over the score. The analysis stays in the browser; nothing is recorded or uploaded.",
+        title: "Check your pitch.",
+        text: "Use the microphone to see pitch over the score.",
         image: "/projects/choir-pitch.png",
         alt: "Choir Practice Tool showing live pitch guidance",
         fit: "contain",
@@ -308,8 +308,8 @@ const projectData: Project[] = [
         pointer: { x: "43%", y: "66%", length: "18%", angle: "168deg" },
       },
       {
-        title: "Mute the distraction.",
-        text: "Focus mode dims the other sections so you can follow the one line you’re trying to learn.",
+        title: "Focus on one line.",
+        text: "Dim the other sections while you practice.",
         image: "/projects/choir-focus.png",
         alt: "Choir Practice Tool with the tenor section in focus",
         fit: "contain",
@@ -318,8 +318,8 @@ const projectData: Project[] = [
         pointer: { x: "48%", y: "65%", length: "31%", angle: "-12deg" },
       },
       {
-        title: "Slow it down. Loop it. Export it.",
-        text: "There’s tempo control, a metronome, repeat, passage practice, and WAV export. Compressed .mxl files aren’t supported yet.",
+        title: "Slow down and loop passages.",
+        text: "Use tempo control, metronome, repeat, passage practice, and WAV export. Compressed .mxl files are not supported.",
         image: "/projects/choir-practice.png",
         alt: "Choir Practice Tool playing a four-part score",
         fit: "contain",
@@ -334,15 +334,15 @@ const projectData: Project[] = [
     number: "06",
     name: "Zen N-Back",
     platform: "Web game",
-    headline: "An N-back game without the stuff I found annoying.",
-    why: "Every version online had one thing I didn’t like, so I made mine.",
+    headline: "Play dual or triple N-back.",
+    why: "Set the difficulty, learn the rules, and play a short session.",
     theme: "forest",
     source: "https://github.com/xiangthebung/n-back",
     live: "https://n-back.ai.studio/",
     steps: [
       {
-        title: "Pick dual or triple N-back.",
-        text: "Set the memory depth from 1 to 8, change the speed, and turn visual or audio help on if you want it.",
+        title: "Set the difficulty.",
+        text: "Choose dual or triple N-back, memory depth, speed, and optional help.",
         image: "/projects/zen-n-back.png",
         alt: "Zen N-Back setup screen",
         fit: "contain",
@@ -351,8 +351,8 @@ const projectData: Project[] = [
         pointer: { x: "50%", y: "35%", length: "22%", angle: "158deg" },
       },
       {
-        title: "The tutorial shows exactly what counts as a match.",
-        text: "Position and spoken letters in dual mode. Add colour in triple mode.",
+        title: "Learn what counts.",
+        text: "See how position, letters, and colour count as matches.",
         image: "/projects/nback-tutorial.png",
         alt: "Zen N-Back tutorial explaining a dual match",
         fit: "contain",
@@ -361,8 +361,8 @@ const projectData: Project[] = [
         pointer: { x: "51%", y: "53%", length: "21%", angle: "-14deg" },
       },
       {
-        title: "Then play.",
-        text: "Use the buttons or keyboard, finish a short session, and check the stats. It’s a game, not a clinical promise.",
+        title: "Play a short session.",
+        text: "Use the buttons or keyboard, then check your stats. It’s a game, not a clinical test.",
         image: "/projects/nback-game.png",
         alt: "Zen N-Back game board",
         fit: "contain",
@@ -726,9 +726,7 @@ function ProjectSection({ project }: { project: Project }) {
         </div>
         <div className="project-summary">
           <p>{project.headline}</p>
-          <small>
-            <strong>Why?</strong> {project.why}
-          </small>
+          <small>{project.why}</small>
         </div>
         <div className="project-links">
           {project.live && (
@@ -987,7 +985,7 @@ export default function Home() {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-copy">
             <h1 id="hero-title">Xiang Li</h1>
-            <p>Projects below are built with AI.</p>
+            <p>AI-built tools for everyday problems.</p>
           </div>
 
           <nav className="project-index" aria-label="Project index">
@@ -1050,7 +1048,7 @@ export default function Home() {
 
         <section className="ending">
           <div>
-            <span>Made with AI.</span>
+            <span>Built with AI.</span>
             <a
               href="https://github.com/xiangthebung"
               target="_blank"
