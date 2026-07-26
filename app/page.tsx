@@ -416,11 +416,12 @@ function ProjectSection({ project }: { project: Project }) {
     let frame = 0;
 
     const update = () => {
-      const maxScroll = Math.max(1, scroller.scrollWidth - scroller.clientWidth);
-      setProgress(Math.min(1, Math.max(0, scroller.scrollLeft / maxScroll)));
-      setCanScrollBack(scroller.scrollLeft > 2);
+      const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+      const scrollLeft = Math.max(0, Math.min(maxScroll, scroller.scrollLeft));
+      setProgress(maxScroll === 0 ? 0 : scrollLeft / maxScroll);
+      setCanScrollBack(scrollLeft > 2);
       setCanScrollForward(
-        scroller.scrollLeft < scroller.scrollWidth - scroller.clientWidth - 2,
+        scrollLeft < maxScroll - 2,
       );
 
       const scrollerRect = scroller.getBoundingClientRect();
@@ -430,11 +431,13 @@ function ProjectSection({ project }: { project: Project }) {
       );
       const nextVisible = cards
         .filter((card) => {
-          const cardRect = card.getBoundingClientRect();
-          const visibleWidth =
-            Math.min(cardRect.right, scrollerRect.right) -
-            Math.max(cardRect.left, scrollerRect.left);
-          return visibleWidth > Math.min(cardRect.width * 0.22, 140);
+          const cardLeft = card.offsetLeft - scrollLeft;
+          const visibleWidth = Math.max(
+            0,
+            Math.min(cardLeft + card.offsetWidth, scroller.clientWidth) -
+              Math.max(cardLeft, 0),
+          );
+          return visibleWidth > Math.min(card.offsetWidth * 0.22, 140);
         })
         .map((card) => Number(card.dataset.step));
 
@@ -445,7 +448,7 @@ function ProjectSection({ project }: { project: Project }) {
       cards.forEach((card, cardIndex) => {
         const stepIndex = Number(card.dataset.step);
         const layoutCenter =
-          card.offsetLeft + card.offsetWidth / 2 - scroller.scrollLeft;
+          card.offsetLeft + card.offsetWidth / 2 - scrollLeft;
         const normalized = Math.max(
           -1.35,
           Math.min(1.35, (layoutCenter - viewportCenter) / (viewportWidth * 0.72)),
@@ -475,7 +478,11 @@ function ProjectSection({ project }: { project: Project }) {
 
         if (project.steps[stepIndex]?.display === "portrait-popout") {
           nextPortraitMotion[stepIndex] = {
-            left: card.getBoundingClientRect().left - (projectRect?.left ?? 0),
+            left:
+              scrollerRect.left -
+              (projectRect?.left ?? 0) +
+              card.offsetLeft -
+              scrollLeft,
             y: arc * 0.52 + wobble,
             rotate: lean * 0.72,
             scale: 1 - Math.min(0.045, Math.abs(normalized) * 0.028),

@@ -46,6 +46,8 @@ test("keeps project scrolling accessible without hijacking vertical page scroll"
   ]);
 
   assert.match(page, /event\.shiftKey/);
+  assert.match(page, /Math\.min\(maxScroll, scroller\.scrollLeft\)/);
+  assert.match(page, /card\.offsetLeft - scrollLeft/);
   assert.match(page, /onPointerDown=\{handlePointerDown\}/);
   assert.match(page, /onPointerMove=\{handlePointerMove\}/);
   assert.match(page, /event\.key === "ArrowRight"/);
