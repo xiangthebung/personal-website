@@ -10,6 +10,7 @@ type ProjectStep = {
   fit?: "cover" | "contain";
   surface?: "light" | "dark";
   position?: string;
+  cardRatio?: string;
   display?: "portrait-popout";
   portraitRatio?: string;
   pointer?: {
@@ -69,6 +70,8 @@ const projectData: Project[] = [
         text: "Desaturate images and video. Hide likes, views, follower counts, and notification badges.",
         image: "/projects/blokamine-settings.png",
         alt: "blokamine core experience settings",
+        fit: "contain",
+        cardRatio: "1462 / 1212",
         surface: "light",
         pointer: { x: "88%", y: "22%", length: "26%", angle: "166deg" },
       },
@@ -77,6 +80,8 @@ const projectData: Project[] = [
         text: "Reels, comments, Explore, suggested posts, Shorts—each site gets its own controls.",
         image: "/projects/blokamine-sites.png",
         alt: "blokamine site-specific controls",
+        fit: "contain",
+        cardRatio: "1350 / 1296",
         surface: "light",
         pointer: { x: "58%", y: "58%", length: "24%", angle: "158deg" },
       },
@@ -241,6 +246,8 @@ const projectData: Project[] = [
         text: "Matching, fill-in-the-blank, practice problems, and quizzes are generated from the deck. It runs on Gemini and needs an API key.",
         image: "/projects/pdf-explainer-match.png",
         alt: "Matching activity in PDF Slide Explainer",
+        fit: "contain",
+        cardRatio: "942 / 808",
         surface: "dark",
         pointer: { x: "53%", y: "57%", length: "22%", angle: "158deg" },
       },
@@ -327,6 +334,8 @@ const projectData: Project[] = [
         text: "Position and spoken letters in dual mode. Add colour in triple mode.",
         image: "/projects/nback-tutorial.png",
         alt: "Zen N-Back tutorial explaining a dual match",
+        fit: "contain",
+        cardRatio: "1600 / 1527",
         surface: "dark",
         pointer: { x: "51%", y: "53%", length: "21%", angle: "-14deg" },
       },
@@ -335,6 +344,8 @@ const projectData: Project[] = [
         text: "Use the buttons or keyboard, finish a short session, and check the stats. It’s a game, not a clinical promise.",
         image: "/projects/nback-game.png",
         alt: "Zen N-Back game board",
+        fit: "contain",
+        cardRatio: "1600 / 1459",
         surface: "dark",
         pointer: { x: "52%", y: "48%", length: "22%", angle: "158deg" },
       },
@@ -698,14 +709,22 @@ function ProjectSection({ project }: { project: Project }) {
                   (Number(project.number) + index - 1) %
                     entranceStyles.length
                 ];
-              const pointerStyle = step.pointer
-                ? ({
-                    "--pointer-x": step.pointer.x,
-                    "--pointer-y": step.pointer.y,
-                    "--pointer-length": step.pointer.length,
-                    "--pointer-angle": step.pointer.angle,
-                  } as React.CSSProperties)
-                : undefined;
+              const pointerStyle =
+                step.pointer || step.cardRatio
+                  ? ({
+                      ...(step.pointer
+                        ? {
+                            "--pointer-x": step.pointer.x,
+                            "--pointer-y": step.pointer.y,
+                            "--pointer-length": step.pointer.length,
+                            "--pointer-angle": step.pointer.angle,
+                          }
+                        : {}),
+                      ...(step.cardRatio
+                        ? { "--scene-ratio": step.cardRatio }
+                        : {}),
+                    } as React.CSSProperties)
+                  : undefined;
 
               if (step.display === "portrait-popout") {
                 return (
@@ -724,6 +743,7 @@ function ProjectSection({ project }: { project: Project }) {
                     "scene-card",
                     visibleSteps.includes(index) ? "is-visible" : "",
                     `scene-card--${step.fit ?? "cover"}`,
+                    step.cardRatio ? "scene-card--contained" : "",
                     `scene-card--${step.surface ?? "light"}`,
                     `scene-card--${calloutSide}`,
                     `scene-card--${entrance}`,

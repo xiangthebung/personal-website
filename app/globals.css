@@ -794,6 +794,12 @@ a:hover .external-arrow {
   width: clamp(390px, 46vw, 630px);
 }
 
+.scene-card--contained {
+  width: auto;
+  height: 88%;
+  aspect-ratio: var(--scene-ratio);
+}
+
 .scene-card--portrait-proxy {
   width: clamp(230px, 22vw, 340px);
   height: 84% !important;
@@ -1561,6 +1567,12 @@ a:hover .external-arrow {
   .scene-card--contain {
     width: 82vw;
     height: 82%;
+  }
+
+  .scene-card--contained {
+    width: auto;
+    height: 82%;
+    aspect-ratio: var(--scene-ratio);
   }
 
   .scene-card--portrait-proxy {
