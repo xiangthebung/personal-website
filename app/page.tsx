@@ -2,6 +2,7 @@
 import type { CSSProperties } from "react";
 import { HydrationSafeVideo } from "./hydration-safe-video";
 import { MediaRail, ProjectFocusManager, ProjectRail } from "./project-rail";
+import { ProjectSwirlArrow } from "./project-swirl-arrow";
 import {
   entranceStyles,
   funMedia,
@@ -259,11 +260,7 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           <div
             className={`scene-end${project.live ? " scene-end--with-live" : ""}`}
           >
-            {project.live && (
-              <span className="scene-end-project-arrow" aria-hidden="true">
-                ↝
-              </span>
-            )}
+            {project.live && <ProjectSwirlArrow />}
             <a href={`#${projects[Number(project.number)]?.id ?? "top"}`}>
               {Number(project.number) < projects.length
                 ? "Next project ↓"
