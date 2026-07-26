@@ -35,25 +35,34 @@ test("server-renders the portfolio and project scroll guidance", async () => {
   assert.match(html, /Shift \+ scroll/);
   assert.match(html, /project-nav-button/);
   assert.match(html, /left and right arrow keys/);
+  assert.match(html, /hero-face-768\.avif/);
+  assert.match(html, /preload="none"/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|Building your site/i);
 });
 
-test("keeps project scrolling accessible without hijacking vertical page scroll", async () => {
-  const [page, css, layout] = await Promise.all([
+test("keeps project motion accessible and outside React render state", async () => {
+  const [page, rail, css, layout] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/project-rail.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /event\.shiftKey/);
-  assert.match(page, /Math\.min\(maxScroll, scroller\.scrollLeft\)/);
-  assert.match(page, /card\.offsetLeft - scrollLeft/);
-  assert.match(page, /onPointerDown=\{handlePointerDown\}/);
-  assert.match(page, /onPointerMove=\{handlePointerMove\}/);
-  assert.match(page, /event\.key === "ArrowRight"/);
-  assert.match(page, /disabled=\{!canScrollBack\}/);
-  assert.match(page, /disabled=\{!canScrollForward\}/);
-  assert.doesNotMatch(page, /addEventListener\("wheel"/);
+  assert.doesNotMatch(page, /^"use client"/);
+  assert.match(rail, /^"use client"/);
+  assert.match(rail, /event\.shiftKey/);
+  assert.match(rail, /Math\.min\(maxScroll, scroller\.scrollLeft/);
+  assert.match(rail, /onPointerDown=\{handlePointerDown\}/);
+  assert.match(rail, /onPointerMove=\{handlePointerMove\}/);
+  assert.match(rail, /event\.key === "ArrowRight"/);
+  assert.match(rail, /requestAnimationFrame/);
+  assert.match(rail, /ResizeObserver/);
+  assert.match(rail, /IntersectionObserver/);
+  assert.match(rail, /prefers-reduced-motion/);
+  assert.match(rail, /style\.setProperty\("--rail-x"/);
+  assert.doesNotMatch(rail, /useState/);
+  assert.doesNotMatch(rail, /addEventListener\("wheel"/);
+
   assert.match(css, /overscroll-behavior-x:\s*contain/);
   assert.match(css, /overscroll-behavior-y:\s*auto/);
   assert.match(css, /html\s*\{[\s\S]*overflow-x:\s*hidden/);
@@ -62,6 +71,9 @@ test("keeps project scrolling accessible without hijacking vertical page scroll"
   assert.match(css, /touch-action:\s*pan-y/);
   assert.match(css, /\.project-nav-button:disabled/);
   assert.match(css, /\.project \+ \.project\s*\{[\s\S]*margin-top/);
+  assert.match(css, /scaleX\(var\(--project-progress\)\)/);
+  assert.match(css, /\.project:not\(\.is-active\) > \.portrait-popout/);
+  assert.match(css, /content-visibility:\s*auto/);
   assert.match(layout, /title: "Xiang Li — Projects"/);
   assert.doesNotMatch(layout, /codex-preview|_sites-preview/);
 });
