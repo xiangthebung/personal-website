@@ -476,6 +476,18 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     const scroller = scrollerRef.current;
     if (!scroller) return;
 
+    const rail = scroller.querySelector<HTMLElement>(".fun-rail");
+    if (rail) {
+      const items = Array.from(rail.children);
+      for (let index = items.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        const item = items[index];
+        items[index] = items[swapIndex];
+        items[swapIndex] = item;
+      }
+      items.forEach((item) => rail.appendChild(item));
+    }
+
     const syncControls = () => {
       const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
       if (backButtonRef.current) {
