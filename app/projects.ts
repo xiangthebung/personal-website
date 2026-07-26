@@ -219,7 +219,7 @@ const projectData: Project[] = [
     why: "Hover for help, move away to read, then quiz or ask the current slide.",
     theme: "white",
     source: "https://github.com/xiangthebung/pdf-explainer",
-    live: "https://pdf-explainer.ai.studio/",
+    live: "https://pdf-explainer-833706869963.us-east1.run.app/",
     steps: [
       {
         title: "Study without leaving the deck.",
