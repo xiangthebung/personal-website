@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { HydrationSafeVideo } from "./hydration-safe-video";
 import { MediaRail, ProjectFocusManager, ProjectRail } from "./project-rail";
 import { ProjectSwirlArrow } from "./project-swirl-arrow";
+import { mediaAsset } from "./media-manifest";
 import {
   entranceStyles,
   funMedia,
@@ -20,30 +21,64 @@ function ExternalArrow() {
   );
 }
 
+/**
+ * `<video poster>` takes a single URL with no srcset, so point it straight at the
+ * AVIF sibling when the manifest has one.
+ */
+function preferAvif(src: string): string {
+  const candidate = src.replace(/\.(png|jpe?g)$/i, ".avif");
+  return candidate !== src && mediaAsset(candidate) ? candidate : src;
+}
+
+/** Widths the project rail and the gallery actually paint media at. */
+const PROJECT_SIZES = "(max-width: 660px) 82vw, min(54vw, 740px)";
+const GALLERY_SIZES = "(max-width: 660px) 78vw, min(30vw, 520px)";
+
+/**
+ * Serves AVIF (5-20x smaller than the source PNG/JPEG) with the original as the
+ * fallback, and carries the intrinsic size so nothing reflows while media
+ * decodes. Both come from the generated manifest; see scripts/build-media.mjs.
+ */
 function OptimizedImage({
   src,
   alt,
   className,
   style,
   fetchPriority,
+  sizes = PROJECT_SIZES,
+  eager = false,
 }: {
   src: string;
   alt: string;
   className?: string;
   style?: CSSProperties;
   fetchPriority?: "high" | "low" | "auto";
+  sizes?: string;
+  eager?: boolean;
 }) {
-  return (
+  const asset = mediaAsset(src);
+  const image = (
     <img
       className={className}
       src={src}
       alt={alt}
-      loading="lazy"
+      width={asset?.width}
+      height={asset?.height}
+      loading={eager ? undefined : "lazy"}
       decoding="async"
       fetchPriority={fetchPriority}
       data-project-image
       style={style}
     />
+  );
+
+  if (!asset?.avif) return image;
+
+  return (
+    <picture>
+      <source type="image/avif" srcSet={asset.avif} sizes={sizes} />
+      {image}
+    </picture>
   );
 }
 
@@ -64,7 +99,7 @@ function SceneContent({
         {step.video ? (
           <HydrationSafeVideo
             src={step.video}
-            poster={step.poster ?? step.image}
+            poster={preferAvif(step.poster ?? step.image)}
             ariaLabel={step.alt}
           />
         ) : (
@@ -90,6 +125,64 @@ function SceneContent({
   );
 }
 
+/**
+ * The average colour of each photo backs its own card, so letterbox bars belong
+ * to the image instead of being one flat grey.
+ */
+function tintStyle(src: string): CSSProperties | undefined {
+  const tint = mediaAsset(src)?.tint;
+  return tint ? ({ "--media-tint": tint } as CSSProperties) : undefined;
+}
+
+function GalleryImage({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="fun-media" style={tintStyle(src)}>
+      <OptimizedImage src={src} alt={alt} sizes={GALLERY_SIZES} />
+    </div>
+  );
+}
+
+/**
+ * Clips play by themselves once scrolled into view (see MediaRail). `preload` is
+ * left at "none" so nothing downloads until the gallery is approached; the rail
+ * escalates it. The poster supplies the intrinsic size, which a video element
+ * with preload="none" cannot, so the card never reflows once metadata lands.
+ */
+function GalleryClip({ src, alt }: { src: string; alt: string }) {
+  const poster = src.replace(/\.mp4$/, "-poster.avif");
+  const asset = mediaAsset(poster);
+
+  return (
+    <div className="fun-media fun-media--clip" style={tintStyle(poster)}>
+      <video
+        data-fun-clip
+        muted
+        loop
+        playsInline
+        preload="none"
+        poster={poster}
+        width={asset?.width}
+        height={asset?.height}
+        aria-label={alt}
+      >
+        <source src={src} type="video/mp4" />
+        Your browser does not support embedded video.
+      </video>
+      {/* A real control rather than native chrome: autoplaying motion needs a
+          keyboard-reachable way to stop it. */}
+      <button
+        className="fun-clip-toggle"
+        type="button"
+        data-fun-toggle
+        data-state="paused"
+        aria-label={`Play clip: ${alt}`}
+      >
+        <span aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
 function stepStyle(step: ProjectStep): CSSProperties | undefined {
   if (!step.pointer && !step.cardRatio) return undefined;
 
@@ -106,7 +199,20 @@ function stepStyle(step: ProjectStep): CSSProperties | undefined {
   } as CSSProperties;
 }
 
+/**
+ * Pop-out screenshots are sized from the height they are allowed to occupy, so
+ * the stylesheet needs the ratio as a plain number it can multiply as well as
+ * the `aspect-ratio` fallback.
+ */
+function portraitAspect(ratio: string): number {
+  const [width, height] = ratio.split("/").map((part) => Number(part.trim()));
+  if (!width || !height) return 0.7;
+  return Number((width / height).toFixed(4));
+}
+
 function portraitStyle(step: ProjectStep): CSSProperties {
+  const ratio = step.portraitRatio ?? "1 / 3.55";
+
   return {
     ...(step.pointer
       ? {
@@ -116,7 +222,8 @@ function portraitStyle(step: ProjectStep): CSSProperties {
           "--pointer-angle": step.pointer.angle,
         }
       : {}),
-    "--portrait-ratio": step.portraitRatio ?? "1 / 3.55",
+    "--portrait-ratio": ratio,
+    "--portrait-aspect": portraitAspect(ratio),
   } as CSSProperties;
 }
 
@@ -286,13 +393,20 @@ function ProjectSection({ project, index }: { project: Project; index: number })
   );
 }
 
+const HERO_SOURCE = "/hero-face-1600.jpg";
+
 export default function Home() {
+  const heroAvif = mediaAsset(HERO_SOURCE)?.avif;
+
   return (
     <main id="top">
       <section className="hero" aria-labelledby="hero-title">
         <picture className="hero-art">
+          {heroAvif && (
+            <source type="image/avif" srcSet={heroAvif} sizes="100vw" />
+          )}
           <img
-            src="/hero-face-1600.jpg"
+            src={HERO_SOURCE}
             alt=""
             width="1600"
             height="2133"
@@ -337,29 +451,11 @@ export default function Home() {
           <div className="fun-rail">
             {funMedia.map((media) => (
               <figure className="fun-card" key={media.src}>
-                <div className="fun-media">
-                  {media.kind === "image" ? (
-                    <img
-                      src={media.src}
-                      alt={media.alt}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <video
-                      controls
-                      muted
-                      loop
-                      playsInline
-                      preload="none"
-                      poster={media.src.replace(/\.mp4$/, "-poster.avif")}
-                      aria-label={media.alt}
-                    >
-                      <source src={media.src} type="video/mp4" />
-                      Your browser does not support embedded video.
-                    </video>
-                  )}
-                </div>
+                {media.kind === "image" ? (
+                  <GalleryImage src={media.src} alt={media.alt} />
+                ) : (
+                  <GalleryClip src={media.src} alt={media.alt} />
+                )}
               </figure>
             ))}
           </div>

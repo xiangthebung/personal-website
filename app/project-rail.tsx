@@ -525,6 +525,124 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     };
   }, [itemCount]);
 
+  // Gallery clips play on their own while they are on screen and stop as soon as
+  // they leave, so nothing decodes video off screen. Bytes are only fetched once
+  // a clip is close: the markup ships preload="none".
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const clips = Array.from(
+      scroller.querySelectorAll<HTMLVideoElement>("video[data-fun-clip]"),
+    );
+    if (!clips.length) return;
+
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onScreen = new Set<HTMLVideoElement>();
+    const heldByViewer = new Set<HTMLVideoElement>();
+
+    const toggleFor = (clip: HTMLVideoElement) =>
+      clip.parentElement?.querySelector<HTMLButtonElement>("[data-fun-toggle]");
+
+    const syncToggle = (clip: HTMLVideoElement) => {
+      const toggle = toggleFor(clip);
+      if (!toggle) return;
+
+      const playing = !clip.paused && !clip.ended;
+      const label = clip.getAttribute("aria-label") ?? "clip";
+      toggle.dataset.state = playing ? "playing" : "paused";
+      toggle.setAttribute(
+        "aria-label",
+        `${playing ? "Pause" : "Play"} clip: ${label}`,
+      );
+    };
+
+    const warm = (clip: HTMLVideoElement) => {
+      if (clip.preload === "auto") return;
+      clip.preload = "auto";
+      if (clip.readyState === 0) clip.load();
+    };
+
+    const settle = (clip: HTMLVideoElement) => {
+      const shouldPlay =
+        onScreen.has(clip) && !heldByViewer.has(clip) && !motionQuery.matches;
+
+      if (shouldPlay) void clip.play().catch(() => {});
+      else clip.pause();
+    };
+
+    // Warms slightly before a clip is reachable so playback starts without a stall.
+    const approachObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) warm(entry.target as HTMLVideoElement);
+        });
+      },
+      { rootMargin: "320px" },
+    );
+
+    const playObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const clip = entry.target as HTMLVideoElement;
+          if (entry.isIntersecting) {
+            onScreen.add(clip);
+          } else {
+            onScreen.delete(clip);
+            // Leaving the screen clears a manual pause, so returning to a clip
+            // starts it again rather than staying frozen for the session.
+            heldByViewer.delete(clip);
+          }
+          settle(clip);
+        });
+      },
+      { threshold: 0.4 },
+    );
+
+    const handleToggle = (event: Event) => {
+      const toggle = (event.target as Element).closest<HTMLButtonElement>(
+        "[data-fun-toggle]",
+      );
+      if (!toggle) return;
+
+      const clip = toggle.parentElement?.querySelector<HTMLVideoElement>(
+        "video[data-fun-clip]",
+      );
+      if (!clip) return;
+
+      event.preventDefault();
+      if (clip.paused) {
+        heldByViewer.delete(clip);
+        warm(clip);
+        void clip.play().catch(() => {});
+      } else {
+        heldByViewer.add(clip);
+        clip.pause();
+      }
+    };
+
+    const handleMotionPreference = () => clips.forEach(settle);
+
+    clips.forEach((clip) => {
+      approachObserver.observe(clip);
+      playObserver.observe(clip);
+      clip.addEventListener("play", () => syncToggle(clip));
+      clip.addEventListener("pause", () => syncToggle(clip));
+      syncToggle(clip);
+    });
+
+    scroller.addEventListener("click", handleToggle);
+    motionQuery.addEventListener("change", handleMotionPreference);
+
+    return () => {
+      approachObserver.disconnect();
+      playObserver.disconnect();
+      scroller.removeEventListener("click", handleToggle);
+      motionQuery.removeEventListener("change", handleMotionPreference);
+      clips.forEach((clip) => clip.pause());
+    };
+  }, [itemCount]);
+
   const scrollMedia = (direction: number) => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -553,10 +671,9 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    if (
-      (event.target instanceof Element && event.target.closest("a, button")) ||
-      event.target instanceof HTMLVideoElement
-    ) {
+    // Clips no longer carry native controls, so they drag like any other card.
+    // Only the play/pause button needs to keep its own pointer behaviour.
+    if (event.target instanceof Element && event.target.closest("a, button")) {
       return;
     }
 

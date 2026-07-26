@@ -6,6 +6,10 @@
   --muted: #686e6a;
   --line: rgba(22, 25, 23, 0.16);
   --header-height: 0px;
+  /* Single source of truth for the space between project sections. Screenshots
+     are allowed to overhang into exactly this much room, so the gap and the
+     pop-out budget can never drift apart. */
+  --section-gap: clamp(5rem, 7.5vw, 8rem);
 }
 
 * {
@@ -233,16 +237,42 @@ a:hover .external-arrow {
   --project-line: rgba(41, 44, 41, 0.14);
   --project-accent: #5d7169;
   --project-gutter: clamp(24px, 4.5vw, 84px);
+  /* Screenshots break out of the section downward for depth. The budget is the
+     gap between sections, so an overhang always lands on the page background and
+     never reaches the next section's heading. */
+  --section-bleed: var(--section-gap);
+  --project-height: clamp(420px, 52svh, 570px);
+  /* How far below the rail's baseline every card is pulled. The first term is
+     the distance from that baseline to the section's edge (the track's and
+     window's bottom padding), so the second term is the visible overhang. */
+  --rail-drop: calc(1.85rem + clamp(8px, 1.6vh, 22px));
   position: relative;
-  height: clamp(420px, 52svh, 570px);
-  overflow: hidden;
+  height: var(--project-height);
+  /* clip-path rather than `overflow: hidden`: the sides must still clip (the
+     grid motif translates sideways by up to 180px as the rail scrolls) while the
+     bottom stays open for exactly one bleed. It also clips hit-testing, so the
+     rail's drag surface can never extend over the next section. */
+  overflow: visible;
+  clip-path: inset(0 0 calc(var(--section-bleed) * -1) 0);
+  /* Column flex so the rail claims whatever height the heading leaves. This
+     replaces `height: calc(100% - <heading height>)`, which guessed the heading
+     at a fixed px value per breakpoint and overflowed the section whenever the
+     heading wrapped taller than the guess. */
+  display: flex;
+  flex-direction: column;
   border-top: 1px solid var(--project-line);
   background: var(--project-bg);
   color: var(--project-ink);
 }
 
 .project + .project {
-  margin-top: clamp(3rem, 6vw, 6rem);
+  margin-top: var(--section-gap);
+}
+
+/* The final project has no sibling below it, so it needs the same room its
+   overhang would otherwise take from the dark gallery section. */
+#projects {
+  margin-bottom: var(--section-gap);
 }
 
 .project--mint {
@@ -256,7 +286,6 @@ a:hover .external-arrow {
     radial-gradient(circle at 18% 92%, rgba(95, 149, 141, 0.12), transparent 31%),
     var(--project-bg);
   z-index: 2;
-  overflow: visible;
 }
 
 .project--paper {
@@ -282,7 +311,6 @@ a:hover .external-arrow {
     radial-gradient(circle at 18% 86%, rgba(128, 116, 145, 0.1), transparent 34%),
     var(--project-bg);
   z-index: 2;
-  overflow: visible;
 }
 
 .project--white {
@@ -309,7 +337,6 @@ a:hover .external-arrow {
     radial-gradient(circle at 86% 92%, rgba(111, 151, 121, 0.1), transparent 26%),
     var(--project-bg);
   z-index: 2;
-  overflow: visible;
 }
 
 .project--forest {
@@ -704,14 +731,27 @@ a:hover .external-arrow {
 }
 
 .project-window {
+  /* A horizontally scrolling box cannot leave its vertical axis visible, so the
+     scroller's clip box is pushed past the section band instead. Cards then
+     overhang the section edge while the band itself still governs their size. */
+  --rail-bleed-top: clamp(14px, 3vh, 34px);
+  /* Matched to the section's bleed on purpose. The scroller is a drag surface,
+     so letting its box reach past the bleed would capture pointer events over
+     the next section's links. Both clips therefore end at the same line. */
+  --rail-bleed-bottom: var(--section-bleed);
   position: relative;
-  height: calc(100% - 92px);
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 0.65rem var(--project-gutter) 0.85rem;
 }
 
 .project-scroller {
   width: 100%;
-  height: 100%;
+  height: calc(
+    100% + var(--rail-bleed-top) + var(--rail-bleed-bottom)
+  );
+  margin-top: calc(var(--rail-bleed-top) * -1);
+  margin-bottom: calc(var(--rail-bleed-bottom) * -1);
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
@@ -735,17 +775,30 @@ a:hover .external-arrow {
   outline-offset: -5px;
 }
 
+/* The bleed is absorbed as padding, so the track's content box stays equal to
+   the visible band and every percentage card height keeps its original size.
+   Cards hang from a shared baseline rather than being centred: centring made
+   each height variant sit a different distance from the section edge, so some
+   overhung while others landed exactly flush with it and looked cut. */
 .project-track {
   display: flex;
   width: max-content;
   height: 100%;
-  align-items: center;
+  align-items: flex-end;
   gap: clamp(6rem, 10vw, 12rem);
-  padding: 0.7rem 11vw 1rem clamp(1.2rem, 2.5vw, 3rem);
+  padding: calc(0.7rem + var(--rail-bleed-top)) 11vw
+    calc(1rem + var(--rail-bleed-bottom)) clamp(1.2rem, 2.5vw, 3rem);
 }
 
 .project-track--has-live {
   padding-right: 0;
+}
+
+/* Only the screenshots hang from the rail's baseline; the label column and the
+   end-of-rail column stay centred in the band. */
+.scene-kicker,
+.scene-end {
+  align-self: center;
 }
 
 .scene-kicker {
@@ -822,13 +875,25 @@ a:hover .external-arrow {
     transform 760ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
 }
 
+/* Pulls every card below the baseline and out of the section. `--rail-scatter`
+   keeps the overhang from reading as a perfectly ruled line.
+   Note: `margin-top` no longer moves these cards, since a bottom-aligned flex
+   item with a definite height is positioned from its bottom edge. It still
+   applies to the absolutely positioned pop-out layers below. */
+.project-track > .scene-card {
+  --rail-scatter: 0px;
+  margin-bottom: calc((var(--rail-drop) + var(--rail-scatter)) * -1);
+}
+
 .scene-card:nth-of-type(3n) {
   --settle-turn: 1.1deg;
+  --rail-scatter: 7px;
   margin-top: -10px;
 }
 
 .scene-card:nth-of-type(3n + 1) {
   --settle-turn: -0.6deg;
+  --rail-scatter: -8px;
   margin-top: 14px;
 }
 
@@ -1068,12 +1133,27 @@ a:hover .external-arrow {
 }
 
 .project > .portrait-popout {
+  --popout-top: clamp(5.5rem, 8vw, 7.5rem);
+  --popout-overhang: clamp(14px, 3.2vh, 44px);
+  --popout-w: clamp(230px, 22vw, 340px);
+  /* Sized from the height it is allowed to occupy -- the space below its top
+     offset plus one overhang -- but never wider than intended. Width-driven
+     sizing let tall screenshots overshoot the section by 150px+ and cover the
+     next heading; this keeps every overhang inside the bleed budget.
+     `aspect-ratio` remains as the fallback if --portrait-aspect is absent. */
+  --popout-fit: calc(
+    var(--project-height) - var(--popout-top) + var(--popout-overhang)
+  );
+  --popout-h: min(
+    var(--popout-fit),
+    calc(var(--popout-w) / var(--portrait-aspect, 0.7))
+  );
   position: absolute;
   z-index: 12;
-  top: clamp(5.5rem, 8vw, 7.5rem);
+  top: var(--popout-top);
   left: clamp(12%, 24vw, 30%);
-  width: clamp(230px, 22vw, 340px);
-  height: auto;
+  width: calc(var(--popout-h) * var(--portrait-aspect, 0.7));
+  height: var(--popout-h);
   aspect-ratio: var(--portrait-ratio, 1 / 3.55);
   --enter-x: 0px;
   --enter-y: 50px;
@@ -1099,9 +1179,10 @@ a:hover .external-arrow {
 }
 
 .project--navy > .portrait-popout {
-  top: clamp(6rem, 9vw, 8rem);
+  --popout-top: clamp(6rem, 9vw, 8rem);
+  --popout-w: clamp(210px, 18vw, 300px);
+  top: var(--popout-top);
   left: clamp(23%, 31vw, 39%);
-  width: clamp(210px, 18vw, 300px);
 }
 
 .project--navy > .portrait-popout .scene-callout {
@@ -1112,8 +1193,9 @@ a:hover .external-arrow {
 }
 
 .project--black > .portrait-popout {
-  top: clamp(5.5rem, 8vw, 7.5rem);
-  width: clamp(230px, 22vw, 340px);
+  --popout-top: clamp(5.5rem, 8vw, 7.5rem);
+  --popout-w: clamp(230px, 22vw, 340px);
+  top: var(--popout-top);
 }
 
 .project--black > .portrait-popout--step-0,
@@ -1194,7 +1276,7 @@ a:hover .external-arrow {
 }
 
 .project--mint > .portrait-popout {
-  width: clamp(250px, 25vw, 380px);
+  --popout-w: clamp(250px, 25vw, 380px);
 }
 
 .project--mint > .portrait-popout--step-0 {
@@ -1659,13 +1741,16 @@ a:hover .external-arrow {
 }
 
 .fun-media {
+  position: relative;
   display: flex;
   width: 100%;
   height: auto;
   overflow: hidden;
   align-items: stretch;
   border: 1px solid var(--fun-line);
-  background: #252a26;
+  /* Each card sits on its own photo's average colour, so letterboxing reads as
+     part of the image rather than one flat grey. */
+  background: var(--media-tint, #252a26);
   box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
 }
 
@@ -1678,8 +1763,66 @@ a:hover .external-arrow {
   object-fit: contain;
 }
 
+.fun-media picture {
+  display: block;
+  width: 100%;
+}
+
 .fun-media video {
-  background: #252a26;
+  background: var(--media-tint, #252a26);
+}
+
+/* Play/pause for the self-starting clips. Always legible while paused, and it
+   surfaces on hover or keyboard focus while playing. */
+.fun-clip-toggle {
+  position: absolute;
+  z-index: 2;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid rgba(240, 239, 233, 0.35);
+  border-radius: 50%;
+  background: rgba(12, 14, 12, 0.6);
+  color: var(--fun-ink);
+  cursor: pointer;
+  opacity: 0;
+  place-items: center;
+  transition:
+    opacity 200ms ease,
+    background 200ms ease,
+    transform 200ms ease;
+  backdrop-filter: blur(6px);
+}
+
+.fun-clip-toggle[data-state="paused"],
+.fun-media:hover .fun-clip-toggle,
+.fun-clip-toggle:focus-visible {
+  opacity: 1;
+}
+
+.fun-clip-toggle:hover {
+  background: rgba(32, 38, 34, 0.82);
+  transform: scale(1.06);
+}
+
+/* Two bars for pause, a triangle for play, drawn from the same element. */
+.fun-clip-toggle span {
+  display: block;
+  width: 0.55rem;
+  height: 0.72rem;
+  border-right: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+}
+
+.fun-clip-toggle[data-state="paused"] span {
+  width: 0;
+  height: 0;
+  border: 0.34rem solid transparent;
+  border-left: 0.52rem solid currentColor;
+  transform: translateX(0.13rem);
 }
 
 .fun-nav {
@@ -1754,10 +1897,6 @@ a:hover .external-arrow {
     right: 3vw;
   }
 
-  .project-window {
-    height: calc(100% - 104px);
-  }
-
   .project-identity h2 {
     font-size: 2rem;
   }
@@ -1784,7 +1923,11 @@ a:hover .external-arrow {
 
   .project {
     --project-gutter: 14px;
-    height: min(560px, 70svh);
+    /* Tighter vertical rhythm here, so a smaller overhang. The first term is
+       this breakpoint's own baseline-to-edge distance (0.75rem + 1rem). */
+    --rail-drop: calc(1.75rem + clamp(6px, 1.2vh, 14px));
+    --project-height: max(470px, min(560px, 70svh));
+    height: var(--project-height);
     min-height: 470px;
   }
 
@@ -1825,7 +1968,6 @@ a:hover .external-arrow {
   }
 
   .project-window {
-    height: calc(100% - 130px);
     padding-top: 0.55rem;
     padding-bottom: 0.75rem;
   }
@@ -1862,13 +2004,14 @@ a:hover .external-arrow {
   }
 
   .project > .portrait-popout {
-    top: 5.25rem;
-    width: 180px;
+    --popout-top: 5.25rem;
+    --popout-w: 180px;
+    top: var(--popout-top);
   }
 
   .project--navy > .portrait-popout {
+    --popout-w: 180px;
     left: 20%;
-    width: 180px;
   }
 
   .project--navy > .portrait-popout .scene-callout {
@@ -1877,7 +2020,7 @@ a:hover .external-arrow {
   }
 
   .project--black > .portrait-popout {
-    width: 220px;
+    --popout-w: 220px;
   }
 
   .project--black > .portrait-popout--step-0,
@@ -2239,7 +2382,9 @@ html:not(.has-project-focus) .scene-card-motion {
 /* Keep every section at a fixed visual anchor. Focus changes affect opacity
    and the media layers only, never the complete heading or project window. */
 html.has-project-focus .project {
-  overflow: clip;
+  /* Clipping is handled by the section's clip-path, which leaves the bottom
+     bleed open. Re-clipping to the border box here would cut the pop-outs. */
+  overflow: visible;
 }
 
 html.has-project-focus .project .project-heading,
