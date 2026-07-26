@@ -742,6 +742,10 @@ a:hover .external-arrow {
   padding: 0.7rem 11vw 1rem clamp(1.2rem, 2.5vw, 3rem);
 }
 
+.project-track--has-live {
+  padding-right: 0;
+}
+
 .scene-kicker {
   display: flex;
   width: clamp(86px, 8vw, 120px);

@@ -204,7 +204,9 @@ function ProjectSection({ project, index }: { project: Project; index: number })
         projectName={project.name}
         portraitLayers={portraitLayers}
       >
-        <div className="project-track">
+        <div
+          className={`project-track${project.live ? " project-track--has-live" : ""}`}
+        >
           <div className="scene-kicker" aria-hidden="true">
             <span>{projectMotifs[project.id].label}</span>
             <strong className="scene-kicker-mark">
