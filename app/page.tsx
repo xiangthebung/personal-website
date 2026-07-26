@@ -186,19 +186,14 @@ function ProjectSection({ project, index }: { project: Project; index: number })
             Source <ExternalArrow />
           </a>
           {project.live && (
-            <span className="project-live-callout">
-              <span className="project-live-swirl" aria-hidden="true">
-                ↝
-              </span>
-              <a
-                className="project-live-link"
-                href={project.live}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open project <ExternalArrow />
-              </a>
-            </span>
+            <a
+              className="project-live-link"
+              href={project.live}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open project <ExternalArrow />
+            </a>
           )}
         </div>
       </div>
@@ -261,7 +256,14 @@ function ProjectSection({ project, index }: { project: Project; index: number })
             );
           })}
 
-          <div className="scene-end">
+          <div
+            className={`scene-end${project.live ? " scene-end--with-live" : ""}`}
+          >
+            {project.live && (
+              <span className="scene-end-project-arrow" aria-hidden="true">
+                ↝
+              </span>
+            )}
             <a href={`#${projects[Number(project.number)]?.id ?? "top"}`}>
               {Number(project.number) < projects.length
                 ? "Next project ↓"

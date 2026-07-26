@@ -696,28 +696,6 @@ a:hover .external-arrow {
   white-space: nowrap;
 }
 
-.project-live-callout {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-}
-
-.project-live-swirl {
-  display: inline-block;
-  color: var(--project-accent);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 2rem;
-  font-weight: 400;
-  line-height: 0.55;
-  transform: rotate(-10deg);
-  transform-origin: right center;
-  transition: transform 180ms ease;
-}
-
-.project-live-callout:hover .project-live-swirl {
-  transform: translateX(3px) rotate(-4deg);
-}
-
 .project-live-link {
   color: var(--project-ink);
   font-weight: 750;
@@ -1469,6 +1447,7 @@ a:hover .external-arrow {
 }
 
 .scene-end {
+  position: relative;
   display: flex;
   width: 120px;
   height: 70%;
@@ -1478,6 +1457,24 @@ a:hover .external-arrow {
   padding: 1.2rem 0;
   color: var(--project-muted);
   font-size: 0.72rem;
+}
+
+.scene-end--with-live {
+  width: clamp(210px, 18vw, 300px);
+}
+
+.scene-end-project-arrow {
+  position: absolute;
+  top: 8%;
+  right: 4%;
+  color: var(--project-accent);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(5.5rem, 8vw, 8rem);
+  font-weight: 400;
+  line-height: 0.7;
+  transform: rotate(-52deg);
+  transform-origin: center;
+  pointer-events: none;
 }
 
 .scene-end a {
@@ -1803,12 +1800,14 @@ a:hover .external-arrow {
     font-size: 0.66rem;
   }
 
-  .project-live-callout {
-    gap: 0.18rem;
+  .scene-end--with-live {
+    width: min(62vw, 250px);
   }
 
-  .project-live-swirl {
-    font-size: 1.55rem;
+  .scene-end-project-arrow {
+    top: 12%;
+    right: 7%;
+    font-size: clamp(4.6rem, 18vw, 6.5rem);
   }
 
   .project-window {
