@@ -249,6 +249,15 @@ export function ProjectRail({
 
             card.classList.toggle("is-visible", visible);
             portraitByStep.get(index)?.classList.toggle("is-visible", visible);
+
+            const video = card.querySelector<HTMLVideoElement>("video");
+            if (video) {
+              if (visible && !reduceMotionRef.current) {
+                void video.play().catch(() => {});
+              } else {
+                video.pause();
+              }
+            }
           });
         },
         {
@@ -329,7 +338,10 @@ export function ProjectRail({
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    if (event.target instanceof Element && event.target.closest("a, button")) {
+    if (
+      event.target instanceof Element &&
+      event.target.closest("a, button, video")
+    ) {
       return;
     }
 

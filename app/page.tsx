@@ -63,14 +63,29 @@ function SceneContent({
   return (
     <div className="scene-card-motion">
       <figure className={portrait ? "portrait-popout-image scene-image" : "scene-image"}>
-        <OptimizedImage
-          src={step.image}
-          alt={step.alt}
-          fetchPriority="low"
-          style={
-            step.position ? { objectPosition: step.position } : undefined
-          }
-        />
+        {step.video ? (
+          <video
+            controls
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            poster={step.poster ?? step.image}
+            aria-label={step.alt}
+          >
+            <source src={step.video} type="video/mp4" />
+            Your browser does not support embedded video.
+          </video>
+        ) : (
+          <OptimizedImage
+            src={step.image}
+            alt={step.alt}
+            fetchPriority="low"
+            style={
+              step.position ? { objectPosition: step.position } : undefined
+            }
+          />
+        )}
       </figure>
       {step.pointer && <span className="scene-pointer" aria-hidden="true" />}
       <div className="scene-callout">

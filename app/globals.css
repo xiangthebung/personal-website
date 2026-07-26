@@ -1263,7 +1263,8 @@ a:hover .external-arrow {
   background: #0b0d0c;
 }
 
-.scene-image img {
+.scene-image img,
+.scene-image video {
   display: block;
   width: 100%;
   height: 100%;
@@ -1272,19 +1273,26 @@ a:hover .external-arrow {
   transition: transform 500ms cubic-bezier(0.16, 0.8, 0.2, 1);
 }
 
-.scene-card.is-visible .scene-image img {
+.scene-card.is-visible .scene-image img,
+.scene-card.is-visible .scene-image video {
   transform: translate3d(var(--image-shift-x), var(--image-shift-y), 0)
     scale(1) rotate(var(--image-tilt));
 }
 
-.scene-card--cover .scene-image img {
+.scene-card--cover .scene-image img,
+.scene-card--cover .scene-image video {
   object-fit: cover;
   object-position: center;
 }
 
-.scene-card--contain .scene-image img {
+.scene-card--contain .scene-image img,
+.scene-card--contain .scene-image video {
   padding: 0.35rem;
   object-fit: contain;
+}
+
+.scene-image video {
+  background: #090f1c;
 }
 
 .scene-callout {
