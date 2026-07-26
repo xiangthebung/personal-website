@@ -189,7 +189,6 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           {project.live && (
             <a
               className="project-live-link"
-              data-project-live-link
               href={project.live}
               target="_blank"
               rel="noreferrer"
@@ -199,8 +198,6 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           )}
         </div>
       </div>
-
-      {project.live && <ProjectSwirlArrow />}
 
       <ProjectRail
         projectId={project.id}
@@ -262,8 +259,8 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 
           <div
             className={`scene-end${project.live ? " scene-end--with-live" : ""}`}
-            data-project-end
           >
+            {project.live && <ProjectSwirlArrow />}
             <a href={`#${projects[Number(project.number)]?.id ?? "top"}`}>
               {Number(project.number) < projects.length
                 ? "Next project ↓"
