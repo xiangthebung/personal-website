@@ -1489,7 +1489,7 @@ a:hover .external-arrow {
   --fun-ink: #f0efe9;
   --fun-muted: #a8ada7;
   --fun-line: rgba(240, 239, 233, 0.18);
-  padding: clamp(4.5rem, 9vw, 9rem) 3vw clamp(4rem, 7vw, 7rem);
+  padding: clamp(4rem, 8vw, 8rem) 3vw clamp(3.5rem, 6vw, 6rem);
   border-top: 1px solid var(--line);
   background:
     radial-gradient(circle at 87% 18%, rgba(132, 158, 143, 0.18), transparent 24%),
@@ -1498,75 +1498,109 @@ a:hover .external-arrow {
   color: var(--fun-ink);
 }
 
-.fun-grid {
-  display: grid;
-  max-width: 1120px;
+.media-rail-window {
+  position: relative;
+  max-width: 1440px;
   margin: 0 auto;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fun-scroller {
+  width: 100%;
+  height: clamp(280px, 58svh, 620px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.fun-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.fun-scroller.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.fun-scroller:focus-visible {
+  outline: 2px solid var(--fun-ink);
+  outline-offset: -5px;
+}
+
+.fun-rail {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  align-items: stretch;
   gap: clamp(0.8rem, 1.6vw, 1.4rem);
+  padding: 0.4rem max(0.5rem, 3vw) 1.1rem 0.5rem;
 }
 
 .fun-card {
-  min-width: 0;
+  height: 100%;
+  flex: 0 0 auto;
   margin: 0;
-}
-
-.fun-card--feature {
-  grid-row: span 2;
+  scroll-snap-align: center;
 }
 
 .fun-media {
-  position: relative;
+  display: flex;
+  width: max-content;
+  height: 100%;
   overflow: hidden;
-  aspect-ratio: 1.3;
+  align-items: stretch;
   border: 1px solid var(--fun-line);
   background: #252a26;
-}
-
-.fun-card--feature .fun-media {
-  height: 100%;
-  aspect-ratio: auto;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
 }
 
 .fun-media img,
 .fun-media video {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: none;
   height: 100%;
-  object-fit: cover;
-}
-
-.fun-card--feature .fun-media img {
-  object-position: center;
+  object-fit: contain;
 }
 
 .fun-media video {
   background: #252a26;
 }
 
-.fun-card figcaption {
+.fun-nav {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.25rem;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding-top: 0.65rem;
-  color: var(--fun-muted);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.59rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  gap: 0.45rem;
 }
 
-.fun-card figcaption strong {
-  overflow: hidden;
+.fun-nav-button {
+  display: grid;
+  width: 2.3rem;
+  height: 2.3rem;
+  place-items: center;
+  border: 1px solid var(--fun-line);
+  border-radius: 50%;
+  background: rgba(22, 25, 23, 0.72);
   color: var(--fun-ink);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  font-size: 0.72rem;
-  font-weight: 550;
-  letter-spacing: 0;
-  text-overflow: ellipsis;
-  text-transform: none;
-  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.fun-nav-button:hover:not(:disabled) {
+  background: rgba(60, 70, 63, 0.84);
+  transform: scale(1.06);
+}
+
+.fun-nav-button:disabled {
+  opacity: 0.22;
+  cursor: default;
 }
 
 .ending {
@@ -1774,17 +1808,12 @@ a:hover .external-arrow {
     padding-left: 1rem;
   }
 
-  .fun-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .fun-scroller {
+    height: min(560px, 64svh);
   }
 
-  .fun-card--feature {
-    grid-row: span 1;
-    grid-column: span 2;
-  }
-
-  .fun-card--feature .fun-media {
-    aspect-ratio: 1.2;
+  .fun-rail {
+    padding-right: 4rem;
   }
 
   .ending {
@@ -1813,5 +1842,249 @@ a:hover .external-arrow {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* Rendering and motion performance pass. */
+.hero {
+  background-image: none;
+}
+
+.hero-art {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+.hero-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.project-index {
+  background: rgba(240, 239, 233, 0.88);
+  backdrop-filter: none;
+}
+
+/* The active project owns the foreground. Inactive projects keep their
+   backgrounds, but their content recedes and portrait layers cannot overlap. */
+.project {
+  z-index: 1;
+  isolation: isolate;
+}
+
+.project.is-active {
+  z-index: 20;
+}
+
+.project-heading,
+.project-window {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 420ms ease,
+    transform 620ms cubic-bezier(0.16, 0.8, 0.2, 1);
+}
+
+.project:not(.is-active) .project-heading,
+.project:not(.is-active) .project-window {
+  opacity: 0.38;
+}
+
+.project.is-before-active .project-heading,
+.project.is-before-active .project-window {
+  transform: translate3d(0, -14px, 0) scale(0.992);
+}
+
+.project.is-after-active .project-heading,
+.project.is-after-active .project-window {
+  transform: translate3d(0, 14px, 0) scale(0.992);
+}
+
+.project:not(.is-active) > .portrait-popout {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.project.is-active > .portrait-popout {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Scroll position is already frame-coalesced in JavaScript. Retargeting a CSS
+   transition on each frame adds lag and keeps compositor work alive. */
+.project::before,
+.project.project--mint::before,
+.project.project--paper::before,
+.project.project--black::before,
+.project.project--white::before,
+.project.project--navy::before,
+.project.project--forest::before {
+  transition: none;
+}
+
+/* The card itself follows the rail immediately. Its inner layer owns the
+   discrete entrance animation, so scroll motion never retargets that easing. */
+.scene-card {
+  opacity: 1;
+  filter: none;
+  transform: translate3d(var(--rail-x), var(--rail-y), 0)
+    rotate(calc(var(--settle-turn) + var(--rail-turn)))
+    skewX(var(--rail-skew)) scale(var(--rail-scale));
+  transition: none;
+}
+
+.scene-card.is-visible {
+  opacity: 1;
+  filter: none;
+  transform: translate3d(var(--rail-x), var(--rail-y), 0)
+    rotate(calc(var(--settle-turn) + var(--rail-turn)))
+    skewX(var(--rail-skew)) scale(var(--rail-scale));
+}
+
+.scene-card:hover {
+  transform: translate3d(var(--rail-x), calc(var(--rail-y) - 4px), 0)
+    rotate(calc(var(--settle-turn) + var(--rail-turn)))
+    skewX(var(--rail-skew)) scale(var(--rail-scale)) scale(1.015);
+}
+
+.scene-card-motion {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  transform: translate3d(var(--enter-x), var(--enter-y), 0)
+    rotate(var(--enter-turn)) scale(var(--enter-scale));
+  transform-origin: inherit;
+  transition:
+    opacity 320ms ease,
+    transform 680ms cubic-bezier(0.16, 0.86, 0.18, 1.08);
+}
+
+.scene-card.is-visible > .scene-card-motion {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+}
+
+.scene-card--portrait-proxy,
+.scene-card--portrait-proxy.is-visible,
+.scene-card--portrait-proxy:hover {
+  opacity: 0;
+  transform: none;
+}
+
+.project > .portrait-popout {
+  transition:
+    opacity 320ms ease,
+    visibility 0s linear 320ms;
+}
+
+.project.is-active > .portrait-popout {
+  transition:
+    opacity 360ms ease 80ms,
+    visibility 0s linear;
+}
+
+.project > .portrait-popout.is-positioned {
+  left: 0 !important;
+}
+
+.scene-image picture,
+.fun-media picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.scene-image img {
+  transition: none;
+}
+
+.project--paper .scene-image img {
+  transition: none;
+}
+
+.project:not(.project--paper) .scene-image img {
+  filter: none;
+}
+
+.scene-callout {
+  background: color-mix(in srgb, var(--project-bg) 96%, transparent);
+  backdrop-filter: none;
+}
+
+.project-scroll-help,
+.project-nav-button {
+  backdrop-filter: none;
+}
+
+.project-progress span {
+  --project-progress: 0.07;
+  width: 100%;
+  transform: scaleX(var(--project-progress));
+  transform-origin: left center;
+  transition: none;
+}
+
+@supports (content-visibility: auto) {
+  .project:not(.is-active) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 520px;
+  }
+
+  .fun-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 900px;
+  }
+
+  .ending {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 160px;
+  }
+}
+
+/* Keep the non-JavaScript/server-rendered baseline fully visible. Focus and
+   entrance states are progressive enhancements enabled after observers mount. */
+html:not(.has-project-focus) .project-heading,
+html:not(.has-project-focus) .project-window {
+  opacity: 1;
+  transform: none;
+}
+
+html:not(.has-project-focus) .project > .portrait-popout {
+  visibility: visible;
+  opacity: 1;
+}
+
+html:not(.has-project-focus) .scene-card-motion {
+  opacity: 1;
+  transform: none;
+}
+
+/* Vertical focus movement does not invalidate the rail's cached horizontal
+   measurements, unlike scaling the complete project window. */
+.project.is-before-active .project-heading,
+.project.is-before-active .project-window {
+  transform: translate3d(0, -14px, 0);
+}
+
+.project.is-after-active .project-heading,
+.project.is-after-active .project-window {
+  transform: translate3d(0, 14px, 0);
+}
+
+/* Image parallax follows the rail immediately; the wrapper handles entrance. */
+.scene-image img,
+.scene-card.is-visible .scene-image img {
+  transform: translate3d(var(--image-shift-x), var(--image-shift-y), 0)
+    scale(1) rotate(var(--image-tilt));
+}
+
+@supports (content-visibility: auto) {
+  html:not(.has-project-focus) .project:not(.is-active) {
+    content-visibility: visible;
   }
 }
