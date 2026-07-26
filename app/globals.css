@@ -259,6 +259,10 @@ a:hover .external-arrow {
   color: var(--project-ink);
 }
 
+.project + .project {
+  margin-top: clamp(1rem, 2vw, 2rem);
+}
+
 .project--mint {
   --project-bg: #e7ece9;
   --project-ink: #2c3d3a;

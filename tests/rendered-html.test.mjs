@@ -61,6 +61,7 @@ test("keeps project scrolling accessible without hijacking vertical page scroll"
   assert.match(css, /cursor:\s*grab/);
   assert.match(css, /touch-action:\s*pan-y/);
   assert.match(css, /\.project-nav-button:disabled/);
+  assert.match(css, /\.project \+ \.project\s*\{[\s\S]*margin-top/);
   assert.match(layout, /title: "Xiang Li — Projects"/);
   assert.doesNotMatch(layout, /codex-preview|_sites-preview/);
 });
