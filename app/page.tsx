@@ -252,6 +252,21 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           })}
 
           <div className="scene-end">
+            {project.live && (
+              <div className="scene-end-cta">
+                <span className="scene-end-swirl" aria-hidden="true">
+                  ↝
+                </span>
+                <a
+                  className="scene-end-live"
+                  href={project.live}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open app <ExternalArrow />
+                </a>
+              </div>
+            )}
             <a href={`#${projects[Number(project.number)]?.id ?? "top"}`}>
               {Number(project.number) < projects.length
                 ? "Next project ↓"
