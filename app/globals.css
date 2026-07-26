@@ -1516,36 +1516,6 @@ a:hover .external-arrow {
   color: var(--fun-ink);
 }
 
-.fun-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 2rem;
-  max-width: 1120px;
-  margin: 0 auto clamp(2rem, 4vw, 3.5rem);
-}
-
-.fun-heading .eyebrow {
-  color: #bdc8bf;
-}
-
-.fun-heading h2 {
-  margin: 0.8rem 0 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(3.5rem, 8vw, 8rem);
-  font-weight: 400;
-  letter-spacing: -0.08em;
-  line-height: 0.82;
-}
-
-.fun-heading p {
-  max-width: 210px;
-  margin: 0 0 0.15rem;
-  color: var(--fun-muted);
-  font-size: 0.85rem;
-  line-height: 1.45;
-}
-
 .fun-grid {
   display: grid;
   max-width: 1120px;
@@ -1823,16 +1793,6 @@ a:hover .external-arrow {
   .fun-section {
     padding-right: 1rem;
     padding-left: 1rem;
-  }
-
-  .fun-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .fun-heading p {
-    max-width: 250px;
   }
 
   .fun-grid {

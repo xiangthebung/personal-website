@@ -452,6 +452,13 @@ const funMedia = [
     title: "Clip 04",
     alt: "User-provided video clip 04",
   },
+  {
+    kind: "image",
+    src: "/fun/gym-map.png",
+    label: "Photo / 07",
+    title: "A route through the gym",
+    alt: "Annotated gym floor plan with colored waypoints and a route from a you-are-here marker",
+  },
 ] as const;
 
 function ExternalArrow() {
@@ -1005,15 +1012,7 @@ export default function Home() {
           ))}
         </div>
 
-        <section className="fun-section" aria-labelledby="fun-title">
-          <div className="fun-heading">
-            <div>
-              <span className="eyebrow">Side quests</span>
-              <h2 id="fun-title">Just for fun.</h2>
-            </div>
-            <p>A few things that didn’t need a product page.</p>
-          </div>
-
+        <section className="fun-section" aria-label="Additional media">
           <div className="fun-grid">
             {funMedia.map((media, index) => (
               <figure
