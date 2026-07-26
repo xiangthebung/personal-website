@@ -384,9 +384,11 @@ function ExternalArrow() {
 }
 
 function ProjectSection({ project }: { project: Project }) {
+  const projectRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
   const [visibleSteps, setVisibleSteps] = useState<number[]>([0]);
+  const [portraitOffsets, setPortraitOffsets] = useState<Record<number, number>>({});
   const portraitSteps = project.steps
     .map((step, index) => ({ step, index }))
     .filter(({ step }) => step.display === "portrait-popout");
@@ -402,6 +404,7 @@ function ProjectSection({ project }: { project: Project }) {
       setProgress(Math.min(1, Math.max(0, scroller.scrollLeft / maxScroll)));
 
       const scrollerRect = scroller.getBoundingClientRect();
+      const projectRect = projectRef.current?.getBoundingClientRect();
       const nextVisible = Array.from(
         scroller.querySelectorAll<HTMLElement>("[data-step]"),
       )
@@ -413,6 +416,35 @@ function ProjectSection({ project }: { project: Project }) {
           return visibleWidth > Math.min(cardRect.width * 0.22, 140);
         })
         .map((card) => Number(card.dataset.step));
+
+      if (projectRect) {
+        const nextPortraitOffsets = Object.fromEntries(
+          Array.from(scroller.querySelectorAll<HTMLElement>("[data-step]"))
+            .filter((card) => {
+              const stepIndex = Number(card.dataset.step);
+              return project.steps[stepIndex]?.display === "portrait-popout";
+            })
+            .map((card) => [
+              Number(card.dataset.step),
+              card.getBoundingClientRect().left - projectRect.left,
+            ]),
+        ) as Record<number, number>;
+
+        setPortraitOffsets((current) => {
+          const currentKeys = Object.keys(current);
+          const nextKeys = Object.keys(nextPortraitOffsets);
+          const unchanged =
+            currentKeys.length === nextKeys.length &&
+            nextKeys.every(
+              (key) =>
+                Math.abs(
+                  (current[Number(key)] ?? 0) -
+                    (nextPortraitOffsets[Number(key)] ?? 0),
+                ) < 0.5,
+            );
+          return unchanged ? current : nextPortraitOffsets;
+        });
+      }
 
       setVisibleSteps((current) =>
         current.length === nextVisible.length &&
@@ -457,7 +489,7 @@ function ProjectSection({ project }: { project: Project }) {
       window.removeEventListener("resize", requestUpdate);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [project.steps.length]);
+  }, [project.steps]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const scroller = scrollerRef.current;
@@ -479,6 +511,7 @@ function ProjectSection({ project }: { project: Project }) {
 
   return (
     <section
+      ref={projectRef}
       className={`project project--${project.theme}`}
       id={project.id}
       aria-labelledby={`${project.id}-title`}
@@ -645,17 +678,21 @@ function ProjectSection({ project }: { project: Project }) {
             className={`portrait-popout portrait-popout--step-${index} scene-card--${calloutSide} scene-card--${step.surface ?? "light"} is-visible`}
             key={step.image}
             style={
-              step.pointer
-                ? ({
-                    "--pointer-x": step.pointer.x,
-                    "--pointer-y": step.pointer.y,
-                    "--pointer-length": step.pointer.length,
-                    "--pointer-angle": step.pointer.angle,
-                    "--portrait-ratio": step.portraitRatio ?? "1 / 3.55",
-                  } as React.CSSProperties)
-                : ({
-                    "--portrait-ratio": step.portraitRatio ?? "1 / 3.55",
-                  } as React.CSSProperties)
+              {
+                ...(step.pointer
+                  ? {
+                      "--pointer-x": step.pointer.x,
+                      "--pointer-y": step.pointer.y,
+                      "--pointer-length": step.pointer.length,
+                      "--pointer-angle": step.pointer.angle,
+                    }
+                  : {}),
+                "--portrait-ratio": step.portraitRatio ?? "1 / 3.55",
+                left:
+                  portraitOffsets[index] === undefined
+                    ? undefined
+                    : `${portraitOffsets[index]}px`,
+              } as React.CSSProperties
             }
           >
             <figure className="portrait-popout-image scene-image">
