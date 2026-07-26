@@ -30,6 +30,7 @@ export function HydrationSafeVideo({
         loading="lazy"
         decoding="async"
         fetchPriority="low"
+        draggable={false}
         data-project-image
       />
     );

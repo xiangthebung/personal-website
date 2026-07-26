@@ -88,6 +88,7 @@ function OptimizedImage({
       loading={eager ? undefined : "lazy"}
       decoding="async"
       fetchPriority={fetchPriority}
+      draggable={false}
       data-project-image
       style={style}
     />
@@ -460,6 +461,7 @@ export default function Home() {
             height="2133"
             decoding="async"
             fetchPriority="high"
+            draggable={false}
           />
         </picture>
 

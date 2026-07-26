@@ -3,12 +3,22 @@
 import {
   useEffect,
   useRef,
+  type DragEvent,
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
   type WheelEvent,
 } from "react";
+
+/**
+ * Panning a rail must not start a native image drag. Images carry
+ * `draggable={false}` too, but this covers every child in one place -- including
+ * media that browsers make draggable by default.
+ */
+function preventNativeDrag(event: DragEvent<HTMLDivElement>) {
+  event.preventDefault();
+}
 
 type ProjectRailProps = {
   children: ReactNode;
@@ -137,6 +147,13 @@ export function ProjectRail({
       () => scrollerRef.current,
       () => reduceMotionRef.current,
     ));
+
+  /** Retires the "drag sideways" prompt once this rail has been used. */
+  const markExplored = () => {
+    scrollerRef.current
+      ?.closest("[data-project-section]")
+      ?.classList.add("is-rail-explored");
+  };
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -421,26 +438,19 @@ export function ProjectRail({
     });
   };
 
+  /**
+   * The browser already scrolls a horizontally scrollable box on shift + wheel,
+   * and React attaches `wheel` as a passive listener, so `preventDefault()` here
+   * cannot suppress it. Moving `scrollLeft` as well therefore advanced the rail
+   * twice per notch, which is what made wheel scrolling stutter. Native handling
+   * is smoother than anything done by hand, so this only bows out of the way.
+   */
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (!event.shiftKey) return;
-
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
+    const sideways = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    if (!sideways) return;
 
     glide().stop();
-
-    const delta =
-      Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        ? event.deltaX
-        : event.deltaY;
-    if (!delta) return;
-
-    event.preventDefault();
-    const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-    scroller.scrollLeft = Math.max(
-      0,
-      Math.min(maxScroll, scroller.scrollLeft + delta),
-    );
+    markExplored();
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -451,6 +461,7 @@ export function ProjectRail({
     ) {
       return;
     }
+    markExplored();
 
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -492,10 +503,12 @@ export function ProjectRail({
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowRight") {
       event.preventDefault();
+      markExplored();
       scrollProject(1);
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
+      markExplored();
       scrollProject(-1);
     }
   };
@@ -523,17 +536,19 @@ export function ProjectRail({
           onPointerCancel={finishPointerDrag}
           onClickCapture={handleClickCapture}
           onKeyDown={handleKeyDown}
+          onDragStart={preventNativeDrag}
           className="project-scroller"
         >
           {children}
         </div>
 
         <p className="project-scroll-help" id={`${projectId}-scroll-help`}>
-          <span>Drag sideways</span>
-          <span aria-hidden="true">·</span>
-          <span>Shift + scroll</span>
-          <span aria-hidden="true">·</span>
-          <kbd>← →</kbd>
+          <span className="project-scroll-help-grip" aria-hidden="true" />
+          <strong>Drag sideways</strong>
+          <span className="project-scroll-help-alt">
+            <span>Shift + scroll</span>
+            <kbd aria-hidden="true">← →</kbd>
+          </span>
         </p>
 
         <div
@@ -555,7 +570,10 @@ export function ProjectRail({
             type="button"
             className="project-nav-button"
             aria-label={`Show later ${projectName} screenshots`}
-            onClick={() => scrollProject(1)}
+            onClick={() => {
+              markExplored();
+              scrollProject(1);
+            }}
           >
             <span aria-hidden="true">→</span>
           </button>
@@ -589,6 +607,12 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
       () => scrollerRef.current,
       () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     ));
+
+  const markExplored = () => {
+    scrollerRef.current
+      ?.closest(".fun-section")
+      ?.classList.add("is-rail-explored");
+  };
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -800,21 +824,13 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     });
   };
 
+  /** See the note on ProjectRail's wheel handler: native sideways scrolling only. */
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (!event.shiftKey) return;
+    const sideways = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    if (!sideways) return;
 
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-
-    const delta =
-      Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        ? event.deltaX
-        : event.deltaY;
-    if (!delta) return;
-
-    event.preventDefault();
     glide().stop();
-    scroller.scrollLeft += delta;
+    markExplored();
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -834,6 +850,7 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     };
     draggedRef.current = false;
     glide().start(event.clientX, event.timeStamp);
+    markExplored();
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.classList.add("is-dragging");
   };
@@ -872,10 +889,12 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "ArrowRight") {
       event.preventDefault();
+      markExplored();
       scrollMedia(1);
     }
     if (event.key === "ArrowLeft") {
       event.preventDefault();
+      markExplored();
       scrollMedia(-1);
     }
   };
@@ -894,6 +913,7 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
         onPointerCancel={finishPointerDrag}
         onClickCapture={handleClickCapture}
         onKeyDown={handleKeyDown}
+        onDragStart={preventNativeDrag}
         className="fun-scroller"
       >
         {children}
@@ -936,42 +956,63 @@ export function ProjectFocusManager() {
     projects.forEach((project) => ratios.set(project, 0));
     root.classList.add("has-project-focus");
 
-    // Progress trail across the top of the page. Written as a custom property so
-    // the paint is a single compositor-friendly scaleX.
+    // Progress trail across the top of the page. The transform is written straight
+    // onto the trail element: setting a custom property on :root instead
+    // invalidates the computed style of every node in the document, and doing that
+    // on each scroll frame made wheel scrolling stutter.
+    const trail = document.querySelector<HTMLElement>(".page-trail span");
     let progressFrame = 0;
     const writeProgress = () => {
       progressFrame = 0;
+      if (!trail) return;
+
       const scrollable =
         document.documentElement.scrollHeight - window.innerHeight;
       const progress = scrollable > 0 ? window.scrollY / scrollable : 0;
-      root.style.setProperty(
-        "--page-progress",
-        String(Math.max(0, Math.min(1, progress))),
-      );
+      trail.style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`;
     };
     const requestProgress = () => {
       if (progressFrame) return;
       progressFrame = window.requestAnimationFrame(writeProgress);
     };
 
-    const updateFocus = () => {
-      const visible = projects.filter((project) => (ratios.get(project) ?? 0) > 0);
-      if (!visible.length) return;
+    // Accents are fixed per theme, so they are read once instead of on every
+    // focus change. Each read forces a style recalculation.
+    const accents = new Map<HTMLElement, string>();
+    projects.forEach((project) => {
+      const accent = getComputedStyle(project)
+        .getPropertyValue("--project-accent")
+        .trim();
+      if (accent) accents.set(project, accent);
+    });
 
+    /**
+     * Picks the project the viewer is standing in: mostly-visible and closest to
+     * the middle of the screen. One pass with one box measurement per project --
+     * the previous reduce measured the running best again on every comparison,
+     * forcing a layout per step.
+     */
+    const updateFocus = () => {
       const viewportCenter = window.innerHeight * 0.48;
-      const active = visible.reduce((best, project) => {
+      let active: HTMLElement | null = null;
+      let bestScore = -Infinity;
+
+      projects.forEach((project) => {
+        const ratio = ratios.get(project) ?? 0;
+        if (ratio <= 0) return;
+
         const rect = project.getBoundingClientRect();
-        const bestRect = best.getBoundingClientRect();
         const score =
-          (ratios.get(project) ?? 0) * 2 -
+          ratio * 2 -
           Math.abs(rect.top + rect.height / 2 - viewportCenter) /
             window.innerHeight;
-        const bestScore =
-          (ratios.get(best) ?? 0) * 2 -
-          Math.abs(bestRect.top + bestRect.height / 2 - viewportCenter) /
-            window.innerHeight;
-        return score > bestScore ? project : best;
+        if (score > bestScore) {
+          bestScore = score;
+          active = project;
+        }
       });
+
+      if (!active) return;
       const activeIndex = projects.indexOf(active);
 
       projects.forEach((project, index) => {
@@ -981,10 +1022,8 @@ export function ProjectFocusManager() {
       });
 
       // The trail borrows the colour of whichever project you are standing in.
-      const accent = getComputedStyle(active)
-        .getPropertyValue("--project-accent")
-        .trim();
-      if (accent) root.style.setProperty("--trail-accent", accent);
+      const accent = accents.get(active);
+      if (accent && trail) trail.style.setProperty("--trail-accent", accent);
     };
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1105,8 +1144,8 @@ export function ProjectFocusManager() {
       document.removeEventListener("keydown", handleShortcut);
       endingButton?.removeEventListener("click", cycleEnding);
       if (progressFrame) window.cancelAnimationFrame(progressFrame);
-      root.style.removeProperty("--page-progress");
-      root.style.removeProperty("--trail-accent");
+      trail?.style.removeProperty("transform");
+      trail?.style.removeProperty("--trail-accent");
     };
   }, []);
 

@@ -3129,3 +3129,136 @@ html.shows-shortcuts .shortcut-sheet {
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+
+/* --- Sideways prompt ------------------------------------------------------
+   The rails are the whole point of a project section, so the invitation to move
+   them has to be impossible to miss on arrival. It is bold and in the project's
+   own accent, drifts to draw the eye, and retires for good the moment that rail
+   has been moved by any means. */
+.project-scroll-help {
+  top: 0.5rem;
+  gap: 0.7rem;
+  padding: 0.5rem 1rem 0.5rem 0.75rem;
+  border: 0;
+  background: var(--project-accent);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--project-accent) 42%, transparent);
+  color: #fff;
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  opacity: 1;
+  transition:
+    opacity 420ms ease,
+    transform 520ms var(--ease-out-soft);
+  animation: prompt-drift 3.4s ease-in-out infinite;
+}
+
+.project-scroll-help strong {
+  font-weight: 700;
+}
+
+/* A hand shoving the rail: two stacked bars that slide right, over and over. */
+.project-scroll-help-grip {
+  position: relative;
+  display: block;
+  width: 1.4rem;
+  height: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.project-scroll-help-grip::before,
+.project-scroll-help-grip::after {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  content: "";
+  opacity: 0.9;
+  animation: grip-nudge 1.9s ease-in-out infinite;
+}
+
+.project-scroll-help-grip::before {
+  top: 0.1rem;
+}
+
+.project-scroll-help-grip::after {
+  bottom: 0.1rem;
+  animation-delay: 120ms;
+}
+
+.project-scroll-help-alt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.7rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  opacity: 0.8;
+  font-size: 0.62rem;
+  font-weight: 500;
+}
+
+.project-scroll-help kbd {
+  color: #fff;
+  opacity: 0.9;
+}
+
+/* Used once, never shown again. */
+.project.is-rail-explored .project-scroll-help {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-0.5rem);
+  animation: none;
+}
+
+@keyframes prompt-drift {
+  0%,
+  100% {
+    transform: translateX(-50%);
+  }
+
+  50% {
+    transform: translateX(calc(-50% + 5px));
+  }
+}
+
+@keyframes grip-nudge {
+  0%,
+  100% {
+    transform: translateX(-2px);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: translateX(3px);
+    opacity: 1;
+  }
+}
+
+/* --- Media is not draggable ------------------------------------------------
+   Panning a rail used to tear the screenshot out of the page as a native image
+   drag. `draggable={false}` in the markup handles Firefox; these cover the
+   WebKit/Blink drag affordance and stop text selection mid-pan. */
+.scene-image img,
+.scene-image video,
+.scene-image picture,
+.fun-media img,
+.fun-media video,
+.fun-media picture,
+.hero-art img,
+.project-index-peek img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.project-scroller,
+.fun-scroller {
+  -webkit-user-drag: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-scroll-help,
+  .project-scroll-help-grip::before,
+  .project-scroll-help-grip::after {
+    animation: none;
+  }
+}
