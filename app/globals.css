@@ -582,6 +582,8 @@ a:hover .external-arrow {
 }
 
 .project-heading {
+  position: relative;
+  z-index: 2;
   display: grid;
   min-height: 92px;
   grid-template-columns: minmax(240px, 0.75fr) minmax(320px, 1.25fr) auto;
@@ -1467,15 +1469,30 @@ a:hover .external-arrow {
   width: clamp(360px, 38vw, 600px);
 }
 
-.scene-end-project-arrow {
+/* Spans the whole project so the stroke can start inside the rail and finish at
+   the "Open project" link in the heading. Sits under the heading text. The child
+   selector is needed to outrank `.project > :not(.sr-only)`. */
+.project > .scene-end-project-arrow {
   position: absolute;
-  z-index: 0;
-  inset: -8% 0 12%;
+  z-index: 1;
+  inset: 0;
   display: block;
   width: 100%;
-  height: 96%;
+  height: 100%;
   color: var(--project-accent);
+  opacity: 0;
+  transition: opacity 380ms ease;
   pointer-events: none;
+}
+
+.project.is-active.is-rail-end > .scene-end-project-arrow {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project > .scene-end-project-arrow {
+    transition: none;
+  }
 }
 
 .scene-end a {
@@ -1805,11 +1822,6 @@ a:hover .external-arrow {
 
   .scene-end--with-live {
     width: min(86vw, 430px);
-  }
-
-  .scene-end-project-arrow {
-    inset: -4% 0 14%;
-    height: 90%;
   }
 
   .project-window {

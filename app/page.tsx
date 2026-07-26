@@ -262,7 +262,6 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           <div
             className={`scene-end${project.live ? " scene-end--with-live" : ""}`}
           >
-            {project.live && <ProjectSwirlArrow />}
             <a href={`#${projects[Number(project.number)]?.id ?? "top"}`}>
               {Number(project.number) < projects.length
                 ? "Next project ↓"
@@ -271,6 +270,10 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           </div>
         </div>
       </ProjectRail>
+
+      {/* Sits outside the rail so it can reach across the heading rule to the
+          "Open project" link. Revealed once the rail is scrolled to its end. */}
+      {project.live && <ProjectSwirlArrow />}
 
       <ol className="sr-only">
         {project.steps.map((step) => (

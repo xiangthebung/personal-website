@@ -153,6 +153,12 @@ export function ProjectRail({
         String(progress * 0.93 + 0.07),
       );
 
+      // Drives the reveal of the arrow that points at the "Open project" link.
+      project.classList.toggle(
+        "is-rail-end",
+        maxScroll <= 2 || scrollLeft >= maxScroll - 4,
+      );
+
       if (backButtonRef.current) {
         backButtonRef.current.disabled = scrollLeft <= 2;
       }
