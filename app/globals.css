@@ -1673,6 +1673,11 @@ a:hover .external-arrow {
   cursor: default;
 }
 
+.project-nav-button[data-disabled="true"] {
+  opacity: 0.22;
+  cursor: default;
+}
+
 .project-progress {
   position: absolute;
   right: var(--project-gutter);
@@ -1840,10 +1845,12 @@ a:hover .external-arrow {
 
 .fun-nav {
   position: absolute;
+  z-index: 2;
   right: 0.5rem;
   bottom: 0.25rem;
   display: flex;
   gap: 0.45rem;
+  pointer-events: auto;
 }
 
 .fun-nav-button {
@@ -1868,6 +1875,11 @@ a:hover .external-arrow {
 }
 
 .fun-nav-button:disabled {
+  opacity: 0.22;
+  cursor: default;
+}
+
+.fun-nav-button[data-disabled="true"] {
   opacity: 0.22;
   cursor: default;
 }

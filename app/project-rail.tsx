@@ -264,11 +264,15 @@ export function ProjectRail({
         maxScroll <= 2 || scrollLeft >= maxScroll - 4,
       );
 
+      const atStart = scrollLeft <= 2;
+      const atEnd = scrollLeft >= maxScroll - 2;
       if (backButtonRef.current) {
-        backButtonRef.current.disabled = scrollLeft <= 2;
+        backButtonRef.current.dataset.disabled = String(atStart);
+        backButtonRef.current.setAttribute("aria-disabled", String(atStart));
       }
       if (forwardButtonRef.current) {
-        forwardButtonRef.current.disabled = scrollLeft >= maxScroll - 2;
+        forwardButtonRef.current.dataset.disabled = String(atEnd);
+        forwardButtonRef.current.setAttribute("aria-disabled", String(atEnd));
       }
 
       motion.forEach((card) => {
@@ -548,7 +552,8 @@ export function ProjectRail({
             type="button"
             className="project-nav-button"
             aria-label={`Show earlier ${projectName} screenshots`}
-            disabled
+            aria-disabled="true"
+            data-disabled="true"
             onClick={() => scrollProject(-1)}
           >
             <span aria-hidden="true">←</span>
@@ -558,6 +563,7 @@ export function ProjectRail({
             type="button"
             className="project-nav-button"
             aria-label={`Show later ${projectName} screenshots`}
+            aria-disabled="false"
             onClick={() => {
               markExplored();
               scrollProject(1);
@@ -616,11 +622,15 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
 
     const syncControls = () => {
       const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+      const atStart = scroller.scrollLeft <= 2;
+      const atEnd = scroller.scrollLeft >= maxScroll - 2;
       if (backButtonRef.current) {
-        backButtonRef.current.disabled = scroller.scrollLeft <= 2;
+        backButtonRef.current.dataset.disabled = String(atStart);
+        backButtonRef.current.setAttribute("aria-disabled", String(atStart));
       }
       if (forwardButtonRef.current) {
-        forwardButtonRef.current.disabled = scroller.scrollLeft >= maxScroll - 2;
+        forwardButtonRef.current.dataset.disabled = String(atEnd);
+        forwardButtonRef.current.setAttribute("aria-disabled", String(atEnd));
       }
     };
 
@@ -907,7 +917,8 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
           type="button"
           className="fun-nav-button"
           aria-label="Show earlier photos and videos"
-          disabled
+          aria-disabled="true"
+          data-disabled="true"
           onClick={() => scrollMedia(-1)}
         >
           <span aria-hidden="true">←</span>
@@ -917,6 +928,7 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
           type="button"
           className="fun-nav-button"
           aria-label="Show later photos and videos"
+          aria-disabled="false"
           onClick={() => scrollMedia(1)}
         >
           <span aria-hidden="true">→</span>
