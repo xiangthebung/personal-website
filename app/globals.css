@@ -1593,12 +1593,6 @@ a:hover .external-arrow {
   opacity: 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .project > .scene-end-project-arrow {
-    transition: none;
-  }
-}
-
 .scene-end a {
   position: relative;
   z-index: 1;
@@ -2119,21 +2113,6 @@ a:hover .external-arrow {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
-}
-
 /* Rendering and motion performance pass. */
 .hero {
   background-image: none;
@@ -2547,25 +2526,6 @@ html.has-project-focus
   transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html.has-project-focus .project:not(.is-active) .project-heading {
-    opacity: 0.38;
-  }
-
-  html.has-project-focus
-    .project:not(.is-active)
-    .project-track
-    > .scene-card
-    > .scene-card-motion,
-  html.has-project-focus
-    .project:not(.is-active)
-    > .portrait-popout
-    > .scene-card-motion {
-    opacity: 0;
-    transform: none;
-  }
-}
-
 /* ===========================================================================
    Character layer: motion that exists to make the page feel like somewhere you
    explore rather than a document you scroll. Everything here animates transform
@@ -2960,22 +2920,7 @@ html.has-project-focus
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  /* The global block above zeroes durations; delays have to go too, or a
-     staggered entrance still trickles in over half a second. */
-  *,
-  *::before,
-  *::after {
-    animation-delay: 0ms !important;
-    transition-delay: 0ms !important;
-  }
 
-  .hero-cue-line::after,
-  .project > .project-ambience::before,
-  .project > .project-ambience::after {
-    display: none;
-  }
-}
 
 /* --- Gallery light --------------------------------------------------------
    A soft light that tracks the pointer across the dark section. The gradient
@@ -3260,12 +3205,4 @@ html.shows-shortcuts .shortcut-sheet {
 .project-scroller,
 .fun-scroller {
   -webkit-user-drag: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .project-scroll-help,
-  .project-scroll-help-grip::before,
-  .project-scroll-help-grip::after {
-    animation: none;
-  }
 }

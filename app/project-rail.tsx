@@ -63,10 +63,7 @@ type Glide = {
  * pointer velocity, which then decays exponentially, so exploring sideways feels
  * like shoving something with weight rather than a scrollbar snapping to a halt.
  */
-function createGlide(
-  getScroller: () => HTMLDivElement | null,
-  prefersReducedMotion: () => boolean,
-): Glide {
+function createGlide(getScroller: () => HTMLDivElement | null): Glide {
   let frame = 0;
   let lastX = 0;
   let lastTime = 0;
@@ -98,7 +95,7 @@ function createGlide(
     },
     release() {
       const scroller = getScroller();
-      if (!scroller || prefersReducedMotion()) return;
+      if (!scroller) return;
       // Below this the pointer was effectively parked; coasting would feel like drift.
       if (Math.abs(velocity) < 0.06) return;
 
@@ -139,14 +136,9 @@ export function ProjectRail({
   const progressRef = useRef<HTMLSpanElement>(null);
   const pointerStartRef = useRef<{ x: number; scrollLeft: number } | null>(null);
   const draggedRef = useRef(false);
-  const reduceMotionRef = useRef(false);
   const glideRef = useRef<Glide | null>(null);
 
-  const glide = () =>
-    (glideRef.current ??= createGlide(
-      () => scrollerRef.current,
-      () => reduceMotionRef.current,
-    ));
+  const glide = () => (glideRef.current ??= createGlide(() => scrollerRef.current));
 
   /** Retires the "drag sideways" prompt once this rail has been used. */
   const markExplored = () => {
@@ -211,7 +203,6 @@ export function ProjectRail({
       );
       const progress = maxScroll === 0 ? 0 : scrollLeft / maxScroll;
       const viewportCenter = viewportWidth / 2;
-      const reduceMotion = reduceMotionRef.current;
 
       // Calculate every card from cached layout data before writing any styles.
       const motion: CardMotion[] = cards.map((card, cardIndex) => {
@@ -223,33 +214,25 @@ export function ProjectRail({
             (layoutCenter - viewportCenter) / (viewportWidth * 0.72),
           ),
         );
-        const arc = reduceMotion ? 0 : Math.sin(normalized * 1.55) * -22;
-        const wobble = reduceMotion
-          ? 0
-          : Math.sin(normalized * 2.8 + cardIndex * 0.7) * 6;
+        const arc = Math.sin(normalized * 1.55) * -22;
+        const wobble = Math.sin(normalized * 2.8 + cardIndex * 0.7) * 6;
 
         return {
           ...card,
-          imageTilt: reduceMotion ? 0 : normalized * -1.4,
-          imageX: reduceMotion ? 0 : normalized * -26,
-          imageY: reduceMotion
-            ? 0
-            : Math.cos(normalized * 2.4 + cardIndex) * 8,
-          railScale: reduceMotion
-            ? 1
-            : 1 - Math.min(0.075, Math.abs(normalized) * 0.045),
-          railSkew: reduceMotion ? 0 : normalized * -2.4,
-          railTurn: reduceMotion ? 0 : normalized * -5.5 + wobble * 0.22,
-          railX: reduceMotion
-            ? 0
-            : Math.sin(normalized * 2.2 + cardIndex) * 11,
+          imageTilt: normalized * -1.4,
+          imageX: normalized * -26,
+          imageY: Math.cos(normalized * 2.4 + cardIndex) * 8,
+          railScale: 1 - Math.min(0.075, Math.abs(normalized) * 0.045),
+          railSkew: normalized * -2.4,
+          railTurn: normalized * -5.5 + wobble * 0.22,
+          railX: Math.sin(normalized * 2.2 + cardIndex) * 11,
           railY: arc + wobble,
         };
       });
 
       project.style.setProperty(
         "--project-scroll-shift",
-        `${reduceMotion ? 0 : progress * -180}px`,
+        `${progress * -180}px`,
       );
       progressRef.current?.style.setProperty(
         "--project-progress",
@@ -286,17 +269,14 @@ export function ProjectRail({
           portrait.style.setProperty(
             "--rail-scale",
             String(
-              reduceMotion
-                ? 1
-                : 1 -
-                    Math.min(
-                      0.045,
-                      Math.abs(
-                        (card.left + card.width / 2 - scrollLeft -
-                          viewportCenter) /
-                          (viewportWidth * 0.72),
-                      ) * 0.028,
-                    ),
+              1 -
+                Math.min(
+                  0.045,
+                  Math.abs(
+                    (card.left + card.width / 2 - scrollLeft - viewportCenter) /
+                      (viewportWidth * 0.72),
+                  ) * 0.028,
+                ),
             ),
           );
           portrait.classList.add("is-positioned");
@@ -372,7 +352,7 @@ export function ProjectRail({
 
             const video = card.querySelector<HTMLVideoElement>("video");
             if (video) {
-              if (visible && !reduceMotionRef.current) {
+              if (visible) {
                 void video.play().catch(() => {});
               } else {
                 video.pause();
@@ -408,20 +388,11 @@ export function ProjectRail({
     );
     proximityObserver.observe(project);
 
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const handleMotionPreference = () => {
-      reduceMotionRef.current = motionQuery.matches;
-      requestUpdate();
-    };
-    handleMotionPreference();
-    motionQuery.addEventListener("change", handleMotionPreference);
-
     return () => {
       proximityObserver.disconnect();
       visibilityObserver?.disconnect();
       resizeObserver?.disconnect();
       scroller.removeEventListener("scroll", requestUpdate);
-      motionQuery.removeEventListener("change", handleMotionPreference);
       if (frame) window.cancelAnimationFrame(frame);
       glideRef.current?.stop();
     };
@@ -434,7 +405,7 @@ export function ProjectRail({
     glide().stop();
     scroller.scrollBy({
       left: direction * scroller.clientWidth * 0.72,
-      behavior: reduceMotionRef.current ? "auto" : "smooth",
+      behavior: "smooth",
     });
   };
 
@@ -602,11 +573,7 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
   const draggedRef = useRef(false);
   const glideRef = useRef<Glide | null>(null);
 
-  const glide = () =>
-    (glideRef.current ??= createGlide(
-      () => scrollerRef.current,
-      () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    ));
+  const glide = () => (glideRef.current ??= createGlide(() => scrollerRef.current));
 
   const markExplored = () => {
     scrollerRef.current
@@ -707,7 +674,6 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     );
     if (!clips.length) return;
 
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const onScreen = new Set<HTMLVideoElement>();
     const heldByViewer = new Set<HTMLVideoElement>();
 
@@ -734,11 +700,11 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     };
 
     const settle = (clip: HTMLVideoElement) => {
-      const shouldPlay =
-        onScreen.has(clip) && !heldByViewer.has(clip) && !motionQuery.matches;
-
-      if (shouldPlay) void clip.play().catch(() => {});
-      else clip.pause();
+      if (onScreen.has(clip) && !heldByViewer.has(clip)) {
+        void clip.play().catch(() => {});
+      } else {
+        clip.pause();
+      }
     };
 
     // Warms slightly before a clip is reachable so playback starts without a stall.
@@ -791,8 +757,6 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
       }
     };
 
-    const handleMotionPreference = () => clips.forEach(settle);
-
     clips.forEach((clip) => {
       approachObserver.observe(clip);
       playObserver.observe(clip);
@@ -802,13 +766,11 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     });
 
     scroller.addEventListener("click", handleToggle);
-    motionQuery.addEventListener("change", handleMotionPreference);
 
     return () => {
       approachObserver.disconnect();
       playObserver.disconnect();
       scroller.removeEventListener("click", handleToggle);
-      motionQuery.removeEventListener("change", handleMotionPreference);
       clips.forEach((clip) => clip.pause());
     };
   }, [itemCount]);
@@ -1026,8 +988,6 @@ export function ProjectFocusManager() {
       if (accent && trail) trail.style.setProperty("--trail-accent", accent);
     };
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -1050,10 +1010,7 @@ export function ProjectFocusManager() {
     // --- Keyboard navigation -------------------------------------------------
     const jumpTo = (element: Element | null | undefined) => {
       if (!element) return;
-      element.scrollIntoView({
-        block: "start",
-        behavior: reducedMotion.matches ? "auto" : "smooth",
-      });
+      element.scrollIntoView({ block: "start", behavior: "smooth" });
     };
 
     const handleShortcut = (event: globalThis.KeyboardEvent) => {
@@ -1091,10 +1048,7 @@ export function ProjectFocusManager() {
         case "t":
         case "T":
           event.preventDefault();
-          window.scrollTo({
-            top: 0,
-            behavior: reducedMotion.matches ? "auto" : "smooth",
-          });
+          window.scrollTo({ top: 0, behavior: "smooth" });
           break;
         case "?":
           event.preventDefault();

@@ -29,7 +29,7 @@ test("server-renders the portfolio and project scroll guidance", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Xiang Li — Projects<\/title>/i);
+  assert.match(html, /<title>Xiang Li<\/title>/i);
   assert.match(html, /GRT Next Bus/);
   assert.match(html, /Drag sideways/);
   assert.match(html, /Shift \+ scroll/);
@@ -58,7 +58,9 @@ test("keeps project motion accessible and outside React render state", async () 
   assert.match(rail, /requestAnimationFrame/);
   assert.match(rail, /ResizeObserver/);
   assert.match(rail, /IntersectionObserver/);
-  assert.match(rail, /prefers-reduced-motion/);
+  // Motion is unconditional by design: every visitor gets the full animation set,
+  // so the rail must not gate any of it behind a motion preference.
+  assert.doesNotMatch(rail, /prefers-reduced-motion/);
   assert.match(rail, /style\.setProperty\("--rail-x"/);
   assert.doesNotMatch(rail, /useState/);
   assert.doesNotMatch(rail, /addEventListener\("wheel"/);
@@ -74,6 +76,7 @@ test("keeps project motion accessible and outside React render state", async () 
   assert.match(css, /scaleX\(var\(--project-progress\)\)/);
   assert.match(css, /\.project:not\(\.is-active\) > \.portrait-popout/);
   assert.match(css, /content-visibility:\s*auto/);
-  assert.match(layout, /title: "Xiang Li — Projects"/);
+  assert.match(layout, /title: "Xiang Li"/);
+  assert.doesNotMatch(layout, /Six practical tools built with AI|Some tools I made/);
   assert.doesNotMatch(layout, /codex-preview|_sites-preview/);
 });

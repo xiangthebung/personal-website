@@ -35,7 +35,7 @@ const WIDTH_PLAN = [
 ];
 
 // Social preview images are never rendered in the page.
-const SKIP = new Set(["og.png", "og-v2.png", "hero-face.png"]);
+const SKIP = new Set(["og.png", "og-v2.png", "og-xiang-li.png", "hero-face.png"]);
 
 async function collect(dir, base = "") {
   const entries = await readdir(dir, { withFileTypes: true });

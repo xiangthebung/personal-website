@@ -32,28 +32,25 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol =
     incomingHeaders.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
-  const socialImage = `${protocol}://${host}/og-v2.png`;
+  const socialImage = `${protocol}://${host}/og-xiang-li.png`;
 
   return {
-    title: "Xiang Li — Projects",
-    description: "Six practical tools built with AI.",
+    title: "Xiang Li",
     openGraph: {
-      title: "Xiang Li — Projects",
-      description: "Six practical tools built with AI.",
+      title: "Xiang Li",
       type: "website",
       images: [
         {
           url: socialImage,
           width: 1536,
           height: 1024,
-          alt: "Xiang Li — Some tools I made",
+          alt: "Xiang Li",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Xiang Li — Projects",
-      description: "Six practical tools built with AI.",
+      title: "Xiang Li",
       images: [socialImage],
     },
   };
