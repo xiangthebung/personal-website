@@ -209,7 +209,7 @@ function GalleryClip({ src, alt }: { src: string; alt: string }) {
 }
 
 function stepStyle(step: ProjectStep): CSSProperties | undefined {
-  if (!step.pointer && !step.cardRatio) return undefined;
+  if (!step.pointer && !step.cardRatio && !step.cardWidth) return undefined;
 
   return {
     ...(step.pointer
@@ -221,6 +221,7 @@ function stepStyle(step: ProjectStep): CSSProperties | undefined {
         }
       : {}),
     ...(step.cardRatio ? { "--scene-ratio": step.cardRatio } : {}),
+    ...(step.cardWidth ? { "--scene-width": step.cardWidth } : {}),
   } as CSSProperties;
 }
 
@@ -377,6 +378,7 @@ function ProjectSection({ project, index }: { project: Project; index: number })
                   stepIndex === 0 ? "is-visible" : "",
                   `scene-card--${step.fit ?? "cover"}`,
                   step.cardRatio ? "scene-card--contained" : "",
+                  step.cardWidth ? "scene-card--sized" : "",
                   `scene-card--${step.surface ?? "light"}`,
                   `scene-card--${calloutSide}`,
                   `scene-card--${entrance}`,

@@ -999,6 +999,13 @@ a:hover .external-arrow {
   aspect-ratio: var(--scene-ratio);
 }
 
+.scene-card--contained.scene-card--sized {
+  width: var(--scene-width);
+  height: auto;
+  align-self: center;
+  margin: 0 !important;
+}
+
 .scene-card--portrait-proxy {
   width: clamp(230px, 22vw, 340px);
   height: 84% !important;

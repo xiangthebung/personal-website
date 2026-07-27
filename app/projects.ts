@@ -9,6 +9,7 @@ export type ProjectStep = {
   surface?: "light" | "dark";
   position?: string;
   cardRatio?: string;
+  cardWidth?: string;
   display?: "portrait-popout";
   portraitRatio?: string;
   pointer?: {
@@ -139,6 +140,7 @@ const projectData: Project[] = [
         alt: "Chrome notification for an arriving GRT bus",
         fit: "cover",
         cardRatio: "688 / 147",
+        cardWidth: "clamp(300px, 72vw, 720px)",
         surface: "dark",
         pointer: { x: "52%", y: "39%", length: "22%", angle: "-14deg" },
       },

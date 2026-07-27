@@ -304,11 +304,13 @@ export function ProjectSwirlArrow() {
       frame = requestAnimationFrame(draw);
     };
 
-    // The link is observed as well: a font swap changes its width without
-    // resizing the section, and the tip is aimed at its centre.
+    // Observe the layout around the canvas rather than the canvas itself. The
+    // draw pass updates the canvas's backing-store dimensions; observing that
+    // same element can create a ResizeObserver feedback loop in dev overlays.
     const resizeObserver = new ResizeObserver(schedule);
-    resizeObserver.observe(canvas);
+    resizeObserver.observe(section);
     resizeObserver.observe(link);
+    resizeObserver.observe(scroller);
     schedule();
 
     return () => {
