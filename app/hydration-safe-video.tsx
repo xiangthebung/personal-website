@@ -1,6 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- This local poster is the hydration-safe fallback for an embedded video. */
+import type { CSSProperties } from "react";
 import { useSyncExternalStore } from "react";
 
 const subscribe = () => () => {};
@@ -11,10 +12,12 @@ export function HydrationSafeVideo({
   src,
   poster,
   ariaLabel,
+  style,
 }: {
   src: string;
   poster: string;
   ariaLabel: string;
+  style?: CSSProperties;
 }) {
   const isHydrated = useSyncExternalStore(
     subscribe,
@@ -32,6 +35,7 @@ export function HydrationSafeVideo({
         fetchPriority="low"
         draggable={false}
         data-project-image
+        style={style}
       />
     );
   }
@@ -45,6 +49,7 @@ export function HydrationSafeVideo({
       preload="metadata"
       poster={poster}
       aria-label={ariaLabel}
+      style={style}
     >
       <source src={src} type="video/mp4" />
       Your browser does not support embedded video.

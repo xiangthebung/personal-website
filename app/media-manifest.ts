@@ -351,6 +351,12 @@ export const mediaManifest: Record<string, MediaAsset> = {
     tint: "#dde9e8",
     avif: "/derived/projects/grt-add-stop-640.avif 640w, /derived/projects/grt-add-stop-830.avif 830w",
   },
+  "/projects/grt-alert-popup.png": {
+    width: 688,
+    height: 147,
+    tint: "#343637",
+    avif: "/derived/projects/grt-alert-popup-640.avif 640w, /derived/projects/grt-alert-popup-688.avif 688w",
+  },
   "/projects/grt-alert.avif": {
     width: 760,
     height: 188,

@@ -123,6 +123,9 @@ function SceneContent({
             src={step.video}
             poster={preferAvif(step.poster ?? step.image)}
             ariaLabel={step.alt}
+            style={
+              step.position ? { objectPosition: step.position } : undefined
+            }
           />
         ) : (
           <OptimizedImage
