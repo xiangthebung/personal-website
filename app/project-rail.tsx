@@ -124,6 +124,25 @@ function createGlide(getScroller: () => HTMLDivElement | null): Glide {
   };
 }
 
+/**
+ * Scroll to an explicit, clamped position so a new arrow click can interrupt
+ * and reverse an in-flight smooth scroll instead of stacking another delta.
+ */
+function scrollRailByPage(
+  scroller: HTMLDivElement,
+  direction: number,
+  pageFraction: number,
+) {
+  const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+  const current = Math.max(0, Math.min(maxScroll, scroller.scrollLeft));
+  const target = Math.max(
+    0,
+    Math.min(maxScroll, current + direction * scroller.clientWidth * pageFraction),
+  );
+
+  scroller.scrollTo({ left: target, behavior: "smooth" });
+}
+
 export function ProjectRail({
   children,
   portraitLayers,
@@ -403,10 +422,8 @@ export function ProjectRail({
     if (!scroller) return;
 
     glide().stop();
-    scroller.scrollBy({
-      left: direction * scroller.clientWidth * 0.72,
-      behavior: "smooth",
-    });
+    markExplored();
+    scrollRailByPage(scroller, direction, 0.72);
   };
 
   /**
@@ -607,6 +624,10 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
       }
     };
 
+    const resizeObserver = new ResizeObserver(syncControls);
+    resizeObserver.observe(scroller);
+    if (rail) resizeObserver.observe(rail);
+
     syncControls();
     scroller.addEventListener("scroll", syncControls, { passive: true });
     window.addEventListener("resize", syncControls);
@@ -614,6 +635,7 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     return () => {
       scroller.removeEventListener("scroll", syncControls);
       window.removeEventListener("resize", syncControls);
+      resizeObserver?.disconnect();
       glideRef.current?.stop();
     };
   }, [itemCount]);
@@ -780,10 +802,8 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     if (!scroller) return;
 
     glide().stop();
-    scroller.scrollBy({
-      left: direction * scroller.clientWidth * 0.78,
-      behavior: "smooth",
-    });
+    markExplored();
+    scrollRailByPage(scroller, direction, 0.78);
   };
 
   /** See the note on ProjectRail's wheel handler: native sideways scrolling only. */
@@ -1062,32 +1082,7 @@ export function ProjectFocusManager() {
       }
     };
 
-    // --- Closing line --------------------------------------------------------
-    const endingButton = document.querySelector<HTMLElement>("[data-ending-line]");
-    const endingText = endingButton?.querySelector<HTMLElement>("[data-ending-text]");
-    let endingIndex = 0;
-
-    const cycleEnding = () => {
-      if (!endingButton || !endingText) return;
-
-      let lines: string[] = [];
-      try {
-        lines = JSON.parse(endingButton.dataset.lines ?? "[]");
-      } catch {
-        return;
-      }
-      if (lines.length < 2) return;
-
-      endingIndex = (endingIndex + 1) % lines.length;
-      endingText.textContent = lines[endingIndex];
-      endingButton.classList.remove("is-swapping");
-      // Reflow so the animation restarts on every click.
-      void endingButton.offsetWidth;
-      endingButton.classList.add("is-swapping");
-    };
-
     document.addEventListener("keydown", handleShortcut);
-    endingButton?.addEventListener("click", cycleEnding);
 
     return () => {
       observer.disconnect();
@@ -1096,7 +1091,6 @@ export function ProjectFocusManager() {
       window.removeEventListener("scroll", requestProgress);
       window.removeEventListener("resize", requestProgress);
       document.removeEventListener("keydown", handleShortcut);
-      endingButton?.removeEventListener("click", cycleEnding);
       if (progressFrame) window.cancelAnimationFrame(progressFrame);
       trail?.style.removeProperty("transform");
       trail?.style.removeProperty("--trail-accent");

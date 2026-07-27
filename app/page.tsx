@@ -426,15 +426,6 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 
 const HERO_SOURCE = "/hero-face-1600.jpg";
 
-/** Cycled by clicking the closing line. The first is the server-rendered one. */
-const endingLines = [
-  "Built with AI.",
-  "Built with AI, and a lot of retries.",
-  "Built by describing it until it existed.",
-  "Every one of these started as an annoyance.",
-  "Still building. Come back later.",
-];
-
 const shortcutHints: [string, string][] = [
   ["J", "Next project"],
   ["K", "Previous project"],
@@ -530,21 +521,6 @@ export default function Home() {
             ))}
           </div>
         </MediaRail>
-      </section>
-
-      <section className="ending">
-        <div>
-          {/* Click to hear it put another way. */}
-          <button
-            className="ending-line"
-            type="button"
-            data-ending-line
-            data-lines={JSON.stringify(endingLines)}
-            aria-label="Change the closing line"
-          >
-            <span data-ending-text>{endingLines[0]}</span>
-          </button>
-        </div>
       </section>
 
       {/* Revealed by "?" -- see the shortcut handler in ProjectFocusManager. */}
