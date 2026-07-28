@@ -143,32 +143,54 @@ function SceneContent({
       {step.pointer && !feature && (
         <span className="scene-pointer" aria-hidden="true" />
       )}
-      {feature === "tempo-controls" ? (
-        <aside className="scene-feature scene-feature--tempo" aria-hidden="true">
+      {feature ? (
+        <aside
+          className={`scene-feature scene-feature--${feature}`}
+          aria-hidden="true"
+        >
           <div className="scene-feature-heading">
             <span>
               {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
             </span>
-            <h3>Tempo controls</h3>
+            <h3>
+              {feature === "tempo-controls" ? "Tempo controls" : "Export the mix"}
+            </h3>
           </div>
-          <p>Slow down difficult passages or add a steady pulse.</p>
+          <p>
+            {feature === "tempo-controls"
+              ? "Slow down difficult passages or add a steady pulse."
+              : "Render the current balance to WAV for practice away from the browser."}
+          </p>
           <div className="scene-feature-zooms">
-            <div className="scene-feature-zoom scene-feature-zoom--bpm">
-              <OptimizedImage
-                src={step.image}
-                alt=""
-                sizes="(max-width: 660px) 34vw, 180px"
-              />
-              <span>BPM</span>
-            </div>
-            <div className="scene-feature-zoom scene-feature-zoom--metronome">
-              <OptimizedImage
-                src={step.image}
-                alt=""
-                sizes="(max-width: 660px) 34vw, 180px"
-              />
-              <span>Metronome</span>
-            </div>
+            {feature === "tempo-controls" ? (
+              <>
+                <div className="scene-feature-zoom scene-feature-zoom--bpm">
+                  <OptimizedImage
+                    src={step.image}
+                    alt=""
+                    sizes="(max-width: 660px) 34vw, 180px"
+                  />
+                  <span>BPM</span>
+                </div>
+                <div className="scene-feature-zoom scene-feature-zoom--metronome">
+                  <OptimizedImage
+                    src={step.image}
+                    alt=""
+                    sizes="(max-width: 660px) 34vw, 180px"
+                  />
+                  <span>Metronome</span>
+                </div>
+              </>
+            ) : (
+              <div className="scene-feature-zoom scene-feature-zoom--export">
+                <OptimizedImage
+                  src={step.image}
+                  alt=""
+                  sizes="(max-width: 660px) 72vw, 320px"
+                />
+                <span>Export menu</span>
+              </div>
+            )}
           </div>
         </aside>
       ) : (

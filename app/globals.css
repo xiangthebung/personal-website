@@ -1238,6 +1238,17 @@ a:hover .external-arrow {
   transform: translate(0, 0) rotate(0);
 }
 
+.project--navy .scene-card--step-6 .scene-feature {
+  top: 8.5rem;
+  right: 1.5rem;
+  width: min(340px, 48%);
+  transform: translate(55px, -42px) rotate(5deg);
+}
+
+.project--navy .scene-card--step-6.is-visible .scene-feature {
+  transform: translate(0, 0) rotate(0);
+}
+
 .project--black > .portrait-popout {
   --popout-top: clamp(5.5rem, 8vw, 7.5rem);
   --popout-w: clamp(230px, 22vw, 340px);
@@ -1598,6 +1609,18 @@ a:hover .external-arrow {
 .scene-feature-zoom--metronome > img {
   right: 0;
   bottom: 0;
+}
+
+.scene-feature-zoom--export {
+  aspect-ratio: 2.8 / 1;
+}
+
+.scene-feature-zoom--export picture,
+.scene-feature-zoom--export > img {
+  top: 0;
+  right: 0;
+  width: 500%;
+  height: 500%;
 }
 
 .scene-feature-zoom img {
@@ -2170,6 +2193,13 @@ a:hover .external-arrow {
   .project--navy .scene-card--step-5 .scene-feature {
     right: 0.7rem;
     bottom: 0.75rem;
+    width: calc(100% - 1.4rem);
+    padding: 0.65rem;
+  }
+
+  .project--navy .scene-card--step-6 .scene-feature {
+    top: 7.5rem;
+    right: 0.7rem;
     width: calc(100% - 1.4rem);
     padding: 0.65rem;
   }
