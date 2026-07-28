@@ -347,7 +347,8 @@ const projectData: Project[] = [
         cardRatio: "1600 / 922",
         surface: "dark",
         position: "center bottom",
-        pointer: { x: "14%", y: "84%", length: "28%", angle: "158deg" },
+        calloutSide: "right",
+        pointer: { x: "14%", y: "84%", length: "42%", angle: "-4deg" },
       },
       {
         title: "Slow it down. Add a pulse.",

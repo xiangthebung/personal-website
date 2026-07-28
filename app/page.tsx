@@ -268,6 +268,7 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           "scene-card",
           "portrait-popout",
           `portrait-popout--step-${stepIndex}`,
+          `scene-card--step-${stepIndex}`,
           stepIndex === 0 ? "is-visible" : "",
           `scene-card--${step.fit ?? "cover"}`,
           `scene-card--${step.surface ?? "light"}`,
@@ -375,6 +376,7 @@ function ProjectSection({ project, index }: { project: Project; index: number })
               <article
                 className={[
                   "scene-card",
+                  `scene-card--step-${stepIndex}`,
                   stepIndex === 0 ? "is-visible" : "",
                   `scene-card--${step.fit ?? "cover"}`,
                   step.cardRatio ? "scene-card--contained" : "",

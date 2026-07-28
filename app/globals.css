@@ -1211,6 +1211,22 @@ a:hover .external-arrow {
   transform: translate(40px, -24px) rotate(5deg);
 }
 
+/* The mix preset lives in the lower-left sidebar of this screenshot. Keep its
+   label in the empty lower-right area so the pointer can land on the preset
+   without hiding it. */
+.project--navy .scene-card--step-4 .scene-callout {
+  top: auto;
+  right: 1.5rem;
+  bottom: 1rem;
+  left: auto;
+  width: min(320px, 44%);
+  transform: translate(55px, 42px) rotate(5deg);
+}
+
+.project--navy .scene-card--step-4.is-visible .scene-callout {
+  transform: translate(0, 0) rotate(0);
+}
+
 .project--black > .portrait-popout {
   --popout-top: clamp(5.5rem, 8vw, 7.5rem);
   --popout-w: clamp(230px, 22vw, 340px);
