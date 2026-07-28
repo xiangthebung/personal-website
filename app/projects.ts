@@ -8,11 +8,14 @@ export type ProjectStep = {
   fit?: "cover" | "contain";
   surface?: "light" | "dark";
   position?: string;
+  zoom?: {
+    scale: number;
+    origin: string;
+  };
   cardRatio?: string;
   cardWidth?: string;
   display?: "portrait-popout";
   portraitRatio?: string;
-  feature?: "tempo-controls" | "export-controls";
   pointer?: {
     x: string;
     y: string;
@@ -347,9 +350,10 @@ const projectData: Project[] = [
         fit: "cover",
         cardRatio: "1600 / 922",
         surface: "dark",
-        position: "center bottom",
-        calloutSide: "right",
-        pointer: { x: "14%", y: "84%", length: "42%", angle: "-4deg" },
+        position: "left bottom",
+        zoom: { scale: 1.32, origin: "left bottom" },
+        calloutSide: "left",
+        pointer: { x: "16%", y: "82%", length: "11%", angle: "-18deg" },
       },
       {
         title: "Slow it down. Add a pulse.",
@@ -359,8 +363,10 @@ const projectData: Project[] = [
         fit: "cover",
         cardRatio: "1600 / 922",
         surface: "dark",
-        position: "center bottom",
-        feature: "tempo-controls",
+        position: "right bottom",
+        zoom: { scale: 2, origin: "right bottom" },
+        calloutSide: "right",
+        pointer: { x: "91%", y: "91%", length: "10%", angle: "-90deg" },
       },
       {
         title: "Export the rehearsal mix.",
@@ -370,8 +376,10 @@ const projectData: Project[] = [
         fit: "cover",
         cardRatio: "1600 / 922",
         surface: "dark",
-        position: "center bottom",
-        feature: "export-controls",
+        position: "right top",
+        zoom: { scale: 2.4, origin: "right top" },
+        calloutSide: "right",
+        pointer: { x: "94%", y: "18%", length: "14%", angle: "90deg" },
       },
     ],
   },

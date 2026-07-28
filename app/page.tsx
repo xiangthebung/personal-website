@@ -115,11 +115,19 @@ function SceneContent({
   total: number;
   portrait?: boolean;
 }) {
-  const feature = step.feature;
-
   return (
     <div className="scene-card-motion">
-      <figure className={portrait ? "portrait-popout-image scene-image" : "scene-image"}>
+      <figure
+        className={portrait ? "portrait-popout-image scene-image" : "scene-image"}
+        style={
+          step.zoom
+            ? ({
+                "--scene-zoom": step.zoom.scale,
+                "--scene-zoom-origin": step.zoom.origin,
+              } as CSSProperties)
+            : undefined
+        }
+      >
         {step.video ? (
           <HydrationSafeVideo
             src={step.video}
@@ -140,68 +148,14 @@ function SceneContent({
           />
         )}
       </figure>
-      {step.pointer && !feature && (
-        <span className="scene-pointer" aria-hidden="true" />
-      )}
-      {feature ? (
-        <aside
-          className={`scene-feature scene-feature--${feature}`}
-          aria-hidden="true"
-        >
-          <div className="scene-feature-heading">
-            <span>
-              {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-            </span>
-            <h3>
-              {feature === "tempo-controls" ? "Tempo controls" : "Export the mix"}
-            </h3>
-          </div>
-          <p>
-            {feature === "tempo-controls"
-              ? "Slow down difficult passages or add a steady pulse."
-              : "Render the current balance to WAV for practice away from the browser."}
-          </p>
-          <div className="scene-feature-zooms">
-            {feature === "tempo-controls" ? (
-              <>
-                <div className="scene-feature-zoom scene-feature-zoom--bpm">
-                  <OptimizedImage
-                    src={step.image}
-                    alt=""
-                    sizes="(max-width: 660px) 34vw, 180px"
-                  />
-                  <span>BPM</span>
-                </div>
-                <div className="scene-feature-zoom scene-feature-zoom--metronome">
-                  <OptimizedImage
-                    src={step.image}
-                    alt=""
-                    sizes="(max-width: 660px) 34vw, 180px"
-                  />
-                  <span>Metronome</span>
-                </div>
-              </>
-            ) : (
-              <div className="scene-feature-zoom scene-feature-zoom--export">
-                <OptimizedImage
-                  src={step.image}
-                  alt=""
-                  sizes="(max-width: 660px) 72vw, 320px"
-                />
-                <span>Export menu</span>
-              </div>
-            )}
-          </div>
-        </aside>
-      ) : (
-        <div className="scene-callout">
-          <span>
-            {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-          </span>
-          <h3>{step.title}</h3>
-          <p>{step.text}</p>
-        </div>
-      )}
+      {step.pointer && <span className="scene-pointer" aria-hidden="true" />}
+      <div className="scene-callout">
+        <span>
+          {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+        </span>
+        <h3>{step.title}</h3>
+        <p>{step.text}</p>
+      </div>
     </div>
   );
 }
