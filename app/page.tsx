@@ -115,6 +115,8 @@ function SceneContent({
   total: number;
   portrait?: boolean;
 }) {
+  const feature = step.feature;
+
   return (
     <div className="scene-card-motion">
       <figure className={portrait ? "portrait-popout-image scene-image" : "scene-image"}>
@@ -138,14 +140,46 @@ function SceneContent({
           />
         )}
       </figure>
-      {step.pointer && <span className="scene-pointer" aria-hidden="true" />}
-      <div className="scene-callout">
-        <span>
-          {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-        </span>
-        <h3>{step.title}</h3>
-        <p>{step.text}</p>
-      </div>
+      {step.pointer && !feature && (
+        <span className="scene-pointer" aria-hidden="true" />
+      )}
+      {feature === "tempo-controls" ? (
+        <aside className="scene-feature scene-feature--tempo" aria-hidden="true">
+          <div className="scene-feature-heading">
+            <span>
+              {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+            </span>
+            <h3>Tempo controls</h3>
+          </div>
+          <p>Slow down difficult passages or add a steady pulse.</p>
+          <div className="scene-feature-zooms">
+            <div className="scene-feature-zoom scene-feature-zoom--bpm">
+              <OptimizedImage
+                src={step.image}
+                alt=""
+                sizes="(max-width: 660px) 34vw, 180px"
+              />
+              <span>BPM</span>
+            </div>
+            <div className="scene-feature-zoom scene-feature-zoom--metronome">
+              <OptimizedImage
+                src={step.image}
+                alt=""
+                sizes="(max-width: 660px) 34vw, 180px"
+              />
+              <span>Metronome</span>
+            </div>
+          </div>
+        </aside>
+      ) : (
+        <div className="scene-callout">
+          <span>
+            {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+          </span>
+          <h3>{step.title}</h3>
+          <p>{step.text}</p>
+        </div>
+      )}
     </div>
   );
 }

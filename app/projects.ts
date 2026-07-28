@@ -12,6 +12,7 @@ export type ProjectStep = {
   cardWidth?: string;
   display?: "portrait-popout";
   portraitRatio?: string;
+  feature?: "tempo-controls";
   pointer?: {
     x: string;
     y: string;
@@ -359,7 +360,7 @@ const projectData: Project[] = [
         cardRatio: "1600 / 922",
         surface: "dark",
         position: "center bottom",
-        pointer: { x: "89%", y: "95%", length: "23%", angle: "-148deg" },
+        feature: "tempo-controls",
       },
       {
         title: "Export the rehearsal mix.",

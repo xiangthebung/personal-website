@@ -1227,6 +1227,17 @@ a:hover .external-arrow {
   transform: translate(0, 0) rotate(0);
 }
 
+.project--navy .scene-card--step-5 .scene-feature {
+  right: 1.5rem;
+  bottom: 1rem;
+  width: min(380px, 54%);
+  transform: translate(55px, 42px) rotate(5deg);
+}
+
+.project--navy .scene-card--step-5.is-visible .scene-feature {
+  transform: translate(0, 0) rotate(0);
+}
+
 .project--black > .portrait-popout {
   --popout-top: clamp(5.5rem, 8vw, 7.5rem);
   --popout-w: clamp(230px, 22vw, 340px);
@@ -1496,6 +1507,116 @@ a:hover .external-arrow {
   transition:
     opacity 280ms ease 180ms,
     transform 560ms var(--ease-out-soft) 150ms;
+}
+
+.scene-feature {
+  position: absolute;
+  z-index: 6;
+  padding: 0.8rem;
+  border: 1px solid var(--project-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--project-bg) 96%, transparent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+  opacity: 0;
+  transition:
+    opacity 280ms ease 180ms,
+    transform 560ms var(--ease-out-soft) 150ms;
+  pointer-events: none;
+}
+
+.scene-card.is-visible .scene-feature {
+  opacity: 1;
+  transform: translate(0, 0) rotate(0);
+}
+
+.scene-feature-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.scene-feature-heading > span,
+.scene-feature-zoom > span {
+  color: var(--project-muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.56rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scene-feature-heading h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.15rem, 1.8vw, 1.55rem);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.scene-feature > p {
+  margin: 0.35rem 0 0.65rem;
+  color: var(--project-muted);
+  font-size: 0.67rem;
+  line-height: 1.35;
+}
+
+.scene-feature-zooms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.scene-feature-zoom {
+  position: relative;
+  aspect-ratio: 2.35 / 1;
+  overflow: hidden;
+  border: 1px solid var(--project-line);
+  border-radius: 7px;
+  background: #090f1c;
+}
+
+.scene-feature-zoom picture,
+.scene-feature-zoom > img {
+  position: absolute;
+  width: 400%;
+  height: 400%;
+  max-width: none;
+}
+
+.scene-feature-zoom picture {
+  display: block;
+}
+
+.scene-feature-zoom--bpm picture,
+.scene-feature-zoom--bpm > img {
+  bottom: 0;
+  left: 0;
+}
+
+.scene-feature-zoom--metronome picture,
+.scene-feature-zoom--metronome > img {
+  right: 0;
+  bottom: 0;
+}
+
+.scene-feature-zoom img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scene-feature-zoom > span {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.3rem;
+  z-index: 1;
+  padding: 0.18rem 0.3rem;
+  border-radius: 4px;
+  background: rgba(9, 15, 28, 0.82);
+  color: #f0efe9;
+  font-size: 0.5rem;
 }
 
 .scene-card--left .scene-callout {
@@ -2044,6 +2165,13 @@ a:hover .external-arrow {
   .project--navy > .portrait-popout .scene-callout {
     right: -12rem;
     width: 220px;
+  }
+
+  .project--navy .scene-card--step-5 .scene-feature {
+    right: 0.7rem;
+    bottom: 0.75rem;
+    width: calc(100% - 1.4rem);
+    padding: 0.65rem;
   }
 
   .project--black > .portrait-popout {
