@@ -16,9 +16,9 @@ export const ledger = {
   "totals": {
     "projects": 7,
     "tests": 960,
-    "lines": 102211,
-    "files": 359,
-    "commits": 150,
+    "lines": 104401,
+    "files": 364,
+    "commits": 167,
     "extensions": 4,
     "zeroDependencyProjects": 4
   },
@@ -64,8 +64,8 @@ export const ledger = {
       "lines": 9763,
       "runtimeDependencies": 0,
       "devDependencies": 1,
-      "commits": 8,
-      "head": "101c5bf"
+      "commits": 10,
+      "head": "cbfe0ef"
     },
     {
       "slug": "pdf-explainer",
@@ -78,12 +78,12 @@ export const ledger = {
           "passed": 153
         }
       ],
-      "files": 83,
-      "lines": 15310,
+      "files": 84,
+      "lines": 15434,
       "runtimeDependencies": 13,
       "devDependencies": 16,
-      "commits": 9,
-      "head": "75fa81d"
+      "commits": 12,
+      "head": "6d13cd8"
     },
     {
       "slug": "pagepack-extension",
@@ -97,11 +97,11 @@ export const ledger = {
         }
       ],
       "files": 30,
-      "lines": 10749,
+      "lines": 10831,
       "runtimeDependencies": 0,
       "devDependencies": 1,
-      "commits": 5,
-      "head": "bf8e96a"
+      "commits": 8,
+      "head": "280c28d"
     },
     {
       "slug": "grt-bus-time",
@@ -118,8 +118,8 @@ export const ledger = {
       "lines": 9895,
       "runtimeDependencies": 4,
       "devDependencies": 3,
-      "commits": 7,
-      "head": "707533d"
+      "commits": 9,
+      "head": "e4ce1af"
     },
     {
       "slug": "n-back",
@@ -136,8 +136,8 @@ export const ledger = {
       "lines": 3215,
       "runtimeDependencies": 6,
       "devDependencies": 7,
-      "commits": 13,
-      "head": "3854d90"
+      "commits": 15,
+      "head": "714e7e4"
     },
     {
       "slug": "night-neutralizer",
@@ -154,16 +154,16 @@ export const ledger = {
       "lines": 13498,
       "runtimeDependencies": 0,
       "devDependencies": 6,
-      "commits": 4,
-      "head": "45793cf"
+      "commits": 6,
+      "head": "e17c426"
     }
   ],
   "site": {
     "slug": "personal-website",
-    "files": 66,
-    "lines": 17004,
+    "files": 70,
+    "lines": 18988,
     "runtimeDependencies": 4,
-    "commits": 71,
-    "head": "a4ed8d9"
+    "commits": 74,
+    "head": "f289073"
   }
 } as const;

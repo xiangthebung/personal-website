@@ -158,11 +158,23 @@ async function git(slug, args) {
  */
 async function runScript(slug, command) {
   try {
+    /* NODE_ENV is deleted rather than passed through.
+     *
+     * Vite decides whether to externalise node builtins partly from it, so a shell
+     * that happens to have NODE_ENV=production exported -- which is what starting
+     * one of these projects' own servers leaves behind -- makes `node:path` resolve
+     * to a browser stub inside the test run. A suite that reads fixtures off disk
+     * then dies on `join is not a function` at import time. The suites are
+     * measured in the environment they are written for, not in whatever the parent
+     * shell was last doing. */
+    const environment = { ...process.env, CI: "1", FORCE_COLOR: "0" };
+    delete environment.NODE_ENV;
+
     const { stdout, stderr } = await run(command, {
       cwd: repoPath(slug),
       shell: true,
       maxBuffer: 64 * 1024 * 1024,
-      env: { ...process.env, CI: "1", FORCE_COLOR: "0" },
+      env: environment,
     });
     return { ok: true, output: `${stdout}\n${stderr}` };
   } catch (error) {
@@ -188,7 +200,32 @@ function countAssertions(kind, output) {
     // "      Tests  298 passed (298)"
     const match = plain.match(/^\s*Tests\s+(?:(\d+)\s+failed\s*\|\s*)?(\d+)\s+passed/m);
     if (!match) return null;
-    const failed = Number(match[1] ?? 0);
+    let failed = Number(match[1] ?? 0);
+
+    /* The `Tests` line is not enough on its own.
+     *
+     * A file that fails to *load* -- a bad import, a stubbed builtin, a worker
+     * that will not start -- contributes no test cases at all, so vitest reports
+     * the failure on the `Test Files` line and the `Tests` line reads
+     * "140 passed" with nothing wrong on it. Reading only the second line, this
+     * script once recorded a drop of thirteen tests as a healthy 140, which is the
+     * same shape as the failure that had already hidden two whole files in another
+     * repository for weeks.
+     */
+    const files = plain.match(
+      /^\s*Test Files\s+(?:(\d+)\s+failed\s*(?:\|\s*)?)?(?:(\d+)\s+passed\s*)?\((\d+)\)/m,
+    );
+    if (files) {
+      const filesFailed = Number(files[1] ?? 0);
+      const filesPassed = Number(files[2] ?? 0);
+      const filesTotal = Number(files[3]);
+      if (filesFailed > 0) failed += filesFailed;
+      // A file that neither passed nor failed did not run.
+      if (filesPassed + filesFailed < filesTotal) {
+        failed += filesTotal - filesPassed - filesFailed;
+      }
+    }
+
     return { passed: Number(match[2]), failed };
   }
 
