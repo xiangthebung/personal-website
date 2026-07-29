@@ -66,13 +66,6 @@ a {
 .project-number,
 .project-platform,
 .scene-kicker > span,
-.scene-callout > span {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.67rem;
-  font-weight: 650;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
 
 .hero-github,
 .project-links a {
@@ -237,32 +230,28 @@ a:hover .external-arrow {
   --project-line: rgba(41, 44, 41, 0.14);
   --project-accent: #5d7169;
   --project-gutter: clamp(24px, 4.5vw, 84px);
-  /* Screenshots break out of the section downward for depth. The budget is the
-     gap between sections, so an overhang always lands on the page background and
-     never reaches the next section's heading. */
-  --section-bleed: var(--section-gap);
+  /* A floor, not a fixed height. The sections used to be exactly this tall
+     because they held a horizontally scrolling rail of screenshots, which is a
+     fixed-size thing. They now hold a running demo whose height depends on what
+     it is — a 400x600 extension popup and a 3x3 game board do not agree — so the
+     section is sized by its content and this only stops a short one from looking
+     cramped. */
   --project-height: clamp(420px, 52svh, 570px);
-  /* How far below the rail's baseline every card is pulled. The first term is
-     the distance from that baseline to the section's edge (the track's and
-     window's bottom padding), so the second term is the visible overhang. */
-  --rail-drop: calc(1.85rem + clamp(8px, 1.6vh, 22px));
-  /* Breathing room left between the heading rule and the tallest card. Small on
-     purpose: the card's own 0.6rem image inset already reads as a frame. */
-  --rail-headroom: clamp(6px, 1.2vh, 16px);
   position: relative;
-  height: var(--project-height);
-  /* clip-path rather than `overflow: hidden`: the sides must still clip (the
-     grid motif translates sideways by up to 180px as the rail scrolls) while the
-     bottom stays open for exactly one bleed. It also clips hit-testing, so the
-     rail's drag surface can never extend over the next section. */
+  min-height: var(--project-height);
+  /* Deliberately not clipped.
+     It used to be `overflow: hidden`, to contain the ambience layer that
+     translates sideways by up to 180px. That layer clips itself, so the clip here
+     was doing nothing for it — and it was doing something unwanted to the demos:
+     a vignette whose whole idea is that saved pages burst out of the browser
+     window and land across the page cannot have the page cut them off at the
+     section edge. Horizontal overflow is still contained, one level up, by
+     `overflow-x: hidden` on `html` and `body`, so nothing here can produce a
+     sideways scrollbar. */
   overflow: visible;
-  clip-path: inset(0 0 calc(var(--section-bleed) * -1) 0);
-  /* Column flex so the rail claims whatever height the heading leaves. This
-     replaces `height: calc(100% - <heading height>)`, which guessed the heading
-     at a fixed px value per breakpoint and overflowed the section whenever the
-     heading wrapped taller than the guess. */
   display: flex;
   flex-direction: column;
+  padding-bottom: clamp(2.5rem, 5vw, 4.5rem);
   border-top: 1px solid var(--project-line);
   background: var(--project-bg);
   color: var(--project-ink);
@@ -619,7 +608,8 @@ a:hover .external-arrow {
   grid-template-columns: minmax(240px, 0.75fr) minmax(320px, 1.25fr) auto;
   gap: 3vw;
   align-items: center;
-  margin: 0 var(--project-gutter);
+  /* No gutter here. `.project-body` owns it; see the note there. */
+  margin: 0;
   padding: 0.7rem 0;
   border-bottom: 1px solid var(--project-line);
 }
@@ -733,1032 +723,581 @@ a:hover .external-arrow {
   font-weight: 750;
 }
 
+/* ===========================================================================
+   How a project arrives
+   ---------------------------------------------------------------------------
+   Seven sections that used to be identical: heading row, well, list of facts,
+   repeated. Individually fine, and together an article — you could feel the
+   template by the third one, and by the fifth nobody is reading.
+
+   Two things fix that here.
+
+   COMPOSITION. Each project picks a `data-stage` variant, and the variants put
+   the heading, the scene and the facts in genuinely different places: beside
+   each other, stacked, or offset with the number set huge behind it. They are
+   assigned so that no two neighbours share one, which is the only rule that
+   matters — a visitor never sees a repeat, because a repeat is always four
+   thousand pixels away from its twin.
+
+   ARRIVAL. Nothing is in place when a section comes up. The heading, the well
+   and each fact travel in from different directions on a stagger, triggered by
+   `is-seen`, which the focus manager sets once and never clears. Once, on
+   purpose: an entrance that replays every time you scroll past stops being an
+   entrance and becomes a twitch.
+
+   The old rail's energy came from cards flying in as you dragged. This is that,
+   moved onto the vertical axis everybody already scrolls on, so nothing is
+   hidden behind a gesture nobody knows to make.
+   =========================================================================== */
+
+/* --- the well the scene sits in ------------------------------------------- */
+
 .project-window {
-  /* A horizontally scrolling box cannot leave its vertical axis visible, so the
-     scroller's clip box is pushed past the section band instead. Cards then
-     overhang the section edge while the band itself still governs their size. */
-  --rail-bleed-top: clamp(14px, 3vh, 34px);
-  /* Matched to the section's bleed on purpose. The scroller is a drag surface,
-     so letting its box reach past the bleed would capture pointer events over
-     the next section's links. Both clips therefore end at the same line. */
-  --rail-bleed-bottom: var(--section-bleed);
   position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 0.65rem var(--project-gutter) 0.85rem;
-}
-
-.project-scroller {
+  /* Above `.project-heading` (2), not below it. The demos throw things upward out
+     of their frames, and a card that slides *under* the project title on its way
+     past looks like a rendering mistake rather than a card. The heading stays
+     readable because the escaping elements are sparse and the layer they live in
+     ignores the pointer. */
+  z-index: 3;
   width: 100%;
-  height: calc(
-    100% + var(--rail-bleed-top) + var(--rail-bleed-bottom)
-  );
-  margin-top: calc(var(--rail-bleed-top) * -1);
-  margin-bottom: calc(var(--rail-bleed-bottom) * -1);
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  overscroll-behavior-y: auto;
-  scrollbar-width: none;
-  cursor: grab;
-  touch-action: pan-y;
+  min-width: 0;
 }
 
-.project-scroller::-webkit-scrollbar {
-  display: none;
+/* --- variant: side by side ------------------------------------------------
+   Heading in a column beside the scene. The scene takes the room it needs and
+   the words wrap into what is left, which is the right way round: the scene is
+   the argument and the heading is the label on it. */
+/* The heading column is a rigid track, not `minmax(0, 20rem)`.
+   As a minmax against a `1fr` scene column it lost: the scene's content min-width
+   won the negotiation and squeezed the words into about 200px, which turned a
+   three-word headline into three lines and every fact into four. A fixed track
+   cannot be argued with. */
+/* --- the gutter, applied exactly once --------------------------------------
+   This was the answer to "why is there so much blank space".
+
+   The gutter used to sit on `.project-heading` as a horizontal margin and on
+   `.project-window` as horizontal padding. Correct when each was a full-width band
+   stacked on the other; wrong the moment these compositions put them in grid
+   tracks, because it was then applied a second time *inside* every column. The
+   heading's track measured 336px and the heading itself 206px, so a third of the
+   column stood empty and "GRT Next Bus" wrapped onto three lines beside the gap.
+   The scene column lost the same 130px, which is why a 340px popup was floating in
+   a 931px well.
+
+   One container owns the inset now, so everything in a track gets the whole track.
+   =========================================================================== */
+.project-body {
+  /* --- and how wide it is allowed to get ---------------------------------
+     Every composition below anchors something to an edge: `beside` puts the
+     heading in the first column, `offset` pushes the window right, `stacked` runs
+     the heading band across the top. That holds while the body is about as wide as
+     its contents. Past that it stops being a layout — the body kept growing with
+     the viewport while `.demo` capped itself at 1180px and centred, so on a 2560px
+     screen the heading sat against the left wall, the summary against the right
+     wall, and the application floated in the middle with 600px of nothing either
+     side. Measured: a 2392px heading band over a 1180px app, and the well fill on
+     the `beside` sections down from 94% to 64%.
+
+     1560px is not picked for looks: it is the heading column at its cap (21rem)
+     plus the gap at its cap (3rem) plus the 1180px `.demo` stops at, which is the
+     widest any of these arrangements needs. The gutter is added on top because
+     `box-sizing` is `border-box`, and it would otherwise be taken out of the
+     measure rather than sit outside it. */
+  --project-measure: 1560px;
+  /* `width` is not redundant next to `max-width`. `.project` is a column flex
+     container, so this is a flex item on its cross axis, and an auto margin on that
+     axis turns `stretch` into shrink-to-fit: the first version of this rule had the
+     body wrapping its own contents at a different width in every section — 904px
+     under PagePack, 1541px under PDF Explainer — with each well collapsing onto its
+     scene. Asking for 100% first, then clamping, then centring, gives the same
+     result in a block, a flex or a grid parent. */
+  width: 100%;
+  max-width: calc(var(--project-measure) + var(--project-gutter) * 2);
+  margin-inline: auto;
+  padding: 0 var(--project-gutter);
 }
 
-.project-scroller.is-dragging {
-  cursor: grabbing;
-  user-select: none;
-}
-
-.project-scroller:focus-visible {
-  outline: 2px solid var(--project-ink);
-  outline-offset: -5px;
-}
-
-/* The bleed is absorbed as padding, so the track's content box stays equal to
-   the visible band and every percentage card height keeps its original size.
-   Cards hang from a shared baseline rather than being centred: centring made
-   each height variant sit a different distance from the section edge, so some
-   overhung while others landed exactly flush with it and looked cut. */
-.project-track {
-  display: flex;
-  width: max-content;
-  height: 100%;
-  align-items: flex-end;
-  gap: clamp(6rem, 10vw, 12rem);
-  padding: calc(0.35rem + var(--rail-bleed-top)) 11vw
-    calc(1rem + var(--rail-bleed-bottom)) clamp(1.2rem, 2.5vw, 3rem);
-}
-
-.project-track--has-live {
-  padding-right: 0;
-}
-
-/* Only the screenshots hang from the rail's baseline; the label column and the
-   end-of-rail column stay centred in the band. */
-.scene-kicker,
-.scene-end {
-  align-self: center;
-}
-
-.scene-kicker {
-  display: flex;
-  width: clamp(86px, 8vw, 120px);
-  height: 72%;
-  flex: 0 0 auto;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 1.1rem 0;
-  color: var(--project-muted);
-}
-
-.scene-kicker span {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  writing-mode: vertical-rl;
-}
-
-.scene-kicker strong {
-  color: var(--project-ink);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 2.5rem;
-  font-weight: 400;
-}
-
-.scene-kicker small {
-  color: var(--project-muted);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.54rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.scene-kicker-mark {
-  color: var(--project-accent) !important;
-}
-
-.scene-card {
-  --card-trim: 0px;
-  --settle-turn: -1.25deg;
-  --enter-x: 150px;
-  --enter-y: 0px;
-  --enter-turn: 20deg;
-  --enter-scale: 0.68;
-  --rail-x: 0px;
-  --rail-y: 0px;
-  --rail-turn: 0deg;
-  --rail-scale: 1;
-  --rail-skew: 0deg;
-  --image-shift-x: 0px;
-  --image-shift-y: 0px;
-  --image-tilt: 0deg;
-  position: relative;
-  width: clamp(450px, 54vw, 740px);
-  /* Cards hang from the baseline, so any height they do not use becomes empty
-     space under the heading. They therefore fill the band and reach past it by
-     --rail-drop; `--card-trim` is how each variant keeps a ragged top edge
-     without leaving a hole. */
-  height: calc(
-    100% + var(--rail-drop) - var(--rail-headroom) - var(--card-trim)
-  );
-  flex: 0 0 auto;
-  z-index: 1;
-  opacity: 0.08;
-  filter: blur(2px);
-  transform: translate3d(
-      calc(var(--enter-x) + var(--rail-x)),
-      calc(var(--enter-y) + var(--rail-y)),
-      0
-    )
-    rotate(calc(var(--enter-turn) + var(--rail-turn)))
-    skewX(var(--rail-skew))
-    scale(var(--enter-scale)) scale(var(--rail-scale));
-  transform-origin: center;
-  transition:
-    opacity 360ms ease,
-    filter 500ms ease,
-    transform 760ms var(--ease-out-back);
-}
-
-/* Pulls every card below the baseline and out of the section. `--rail-scatter`
-   keeps the overhang from reading as a perfectly ruled line.
-   Note: `margin-top` no longer moves these cards, since a bottom-aligned flex
-   item with a definite height is positioned from its bottom edge. It still
-   applies to the absolutely positioned pop-out layers below. */
-.project-track > .scene-card {
-  --rail-scatter: 0px;
-  margin-bottom: calc((var(--rail-drop) + var(--rail-scatter)) * -1);
-}
-
-.scene-card:nth-of-type(3n) {
-  --settle-turn: 1.1deg;
-  --rail-scatter: 7px;
-  margin-top: -10px;
-}
-
-.scene-card:nth-of-type(3n + 1) {
-  --settle-turn: -0.6deg;
-  --rail-scatter: -8px;
-  margin-top: 14px;
-}
-
-.scene-card.is-visible {
-  opacity: 1;
-  filter: blur(0);
-  transform: translate3d(var(--rail-x), var(--rail-y), 0)
-    rotate(calc(var(--settle-turn) + var(--rail-turn)))
-    skewX(var(--rail-skew))
-    scale(var(--rail-scale));
-}
-
-.scene-card--orbit {
-  --enter-x: 170px;
-  --enter-y: -90px;
-  --enter-turn: 38deg;
-  --enter-scale: 0.62;
-  transform-origin: 85% 110%;
-}
-
-.scene-card--drop {
-  --enter-x: 18px;
-  --enter-y: -190px;
-  --enter-turn: -18deg;
-  --enter-scale: 0.78;
-  transform-origin: center top;
-}
-
-.scene-card--pop {
-  --enter-x: 0px;
-  --enter-y: 20px;
-  --enter-turn: -42deg;
-  --enter-scale: 0.2;
-}
-
-.scene-card--whip {
-  --enter-x: -190px;
-  --enter-y: 28px;
-  --enter-turn: -26deg;
-  --enter-scale: 0.84;
-  transform-origin: left center;
-}
-
-.scene-card--rise {
-  --enter-x: 70px;
-  --enter-y: 180px;
-  --enter-turn: 15deg;
-  --enter-scale: 0.72;
-  transform-origin: center bottom;
-}
-
-.scene-card--flip {
-  --enter-x: 130px;
-  --enter-y: -12px;
-  --enter-turn: 190deg;
-  --enter-scale: 0.42;
-}
-
-/* Ragged tops, shared baseline. Trims are lengths rather than percentages so the
-   top edge stays put as the band changes height. */
-.scene-card--layout-2 {
-  --card-trim: clamp(12px, 2.6vh, 30px);
-}
-
-.scene-card--layout-3 {
-  --card-trim: clamp(6px, 1.4vh, 16px);
-}
-
-.scene-card--layout-4 {
-  width: clamp(430px, 51vw, 710px);
-  --card-trim: 0px;
-}
-
-.scene-card:hover {
-  z-index: 7;
-  transform: translate3d(var(--rail-x), calc(var(--rail-y) - 4px), 0)
-    rotate(var(--rail-turn)) skewX(var(--rail-skew))
-    scale(var(--rail-scale)) scale(1.015);
-}
-
-.scene-card--contain {
-  width: clamp(380px, 44vw, 600px);
-}
-
-.scene-card--contained {
-  width: auto;
-  height: calc(
-    100% + var(--rail-drop) - var(--rail-headroom) - var(--card-trim)
-  );
-  aspect-ratio: var(--scene-ratio);
-}
-
-.scene-card--contained.scene-card--sized {
-  width: var(--scene-width);
-  height: auto;
-  align-self: center;
-  margin: 0 !important;
-}
-
-.scene-card--portrait-proxy {
-  width: clamp(230px, 22vw, 340px);
-  height: 84% !important;
-  flex-basis: clamp(230px, 22vw, 340px);
-  margin: 0 !important;
-  opacity: 0;
-  filter: none;
-  pointer-events: none;
-  transform: none;
-}
-
-.project--paper .scene-card {
-  --enter-x: 110px;
-  --enter-y: 0px;
-  --enter-turn: 0deg;
-  --enter-scale: 0.94;
-}
-
-.project--paper .scene-image img {
-  filter: grayscale(1) saturate(0) contrast(1.08);
-  transition:
-    filter 850ms ease,
-    transform 900ms var(--ease-out-soft);
-}
-
-.project--paper .scene-card.is-visible .scene-image img {
-  filter: grayscale(1) saturate(0) contrast(1.18);
-}
-
-.project--paper .scene-card:hover .scene-image img {
-  filter: grayscale(1) saturate(0) contrast(1.24);
-}
-
-.project:not(.project--paper) .scene-image img {
-  filter: saturate(1.13) contrast(1.015);
-}
-
-.project--mint .scene-card {
-  --enter-x: 210px;
-  --enter-y: 0px;
-  --enter-turn: 0deg;
-  --enter-scale: 0.83;
-  transform-origin: left center;
-}
-
-.project--mint .scene-card::after {
-  position: absolute;
-  right: 12%;
-  bottom: -0.12rem;
-  width: 13px;
-  height: 13px;
-  border: 3px solid var(--project-bg);
-  border-radius: 50%;
-  background: var(--project-accent);
-  box-shadow: 0 0 0 2px var(--project-accent);
-  content: "";
-}
-
-.project--black .scene-card {
-  --enter-x: -75px;
-  --enter-y: 72px;
-  --enter-turn: -7deg;
-  --enter-scale: 0.08;
-  transform-origin: -2.2rem 94%;
-}
-
-.project--black .scene-card::after {
-  position: absolute;
-  z-index: 8;
-  bottom: 0.15rem;
-  left: -2.8rem;
+.project[data-stage="beside"] .project-body,
+.project[data-stage="beside-flip"] .project-body {
+  --heading-column: clamp(16rem, 24vw, 21rem);
   display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 13px;
-  background: var(--project-accent);
-  box-shadow: 0 10px 28px rgba(22, 136, 255, 0.4);
-  color: white;
-  content: "⇩";
-  font-size: 1.6rem;
-  opacity: 1;
-  transform: scale(1) rotate(0);
-  transition:
-    opacity 300ms ease,
-    transform 700ms var(--ease-out-soft);
+  gap: clamp(1.4rem, 3vw, 3rem);
+  align-items: center;
+}
+.project[data-stage="beside"] .project-body {
+  grid-template-columns: var(--heading-column) minmax(0, 1fr);
+}
+/* Mirrored, so two `beside` projects on the same page do not read as one template
+   used twice. Ordered by grid placement rather than by DOM order, because the
+   heading has to keep coming first for anything reading the document in sequence. */
+.project[data-stage="beside-flip"] .project-body {
+  grid-template-columns: minmax(0, 1fr) var(--heading-column);
+}
+.project[data-stage="beside-flip"] .project-window {
+  grid-row: 1;
+  grid-column: 1;
+}
+.project[data-stage="beside-flip"] .project-heading {
+  grid-row: 1;
+  grid-column: 2;
 }
 
-.project--black .scene-card.is-visible::after {
-  opacity: 0;
-  transform: translate(90px, -45px) scale(3.2) rotate(18deg);
+/* Every composition sets its heading left-aligned and top-anchored.
+   The rail-era design centred the heading over a full-width band, and inheriting
+   that here put "PagePack", its platform row, its headline and its links all on the
+   centre line of a column pinned to the left edge — which looks like a bug rather
+   than a choice. */
+.project[data-stage] .project-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+  text-align: left;
+}
+.project[data-stage] .project-summary,
+.project[data-stage] .project-identity,
+.project[data-stage] .project-links {
+  text-align: left;
+}
+/* `text-align` cannot move a flex container's own items, and `.project-links` is a
+   flex row that still carried `justify-content: flex-end` from the days when the
+   heading was one full-width band with its links pinned to the right edge. In the
+   `beside` layouts the row is only as wide as its contents, so nothing showed. In
+   `stacked` the grid stretches it across a 748px column, and the links ended up
+   marooned in the middle of the band, three hundred pixels right of the title they
+   belong to and short of the summary column. */
+.project[data-stage] .project-links {
+  justify-content: flex-start;
 }
 
-.project--white .scene-card {
-  --enter-x: 76px;
-  --enter-y: 120px;
-  --enter-turn: 13deg;
-  --enter-scale: 0.72;
-  transform-origin: left bottom;
+/* --- variant: stacked, editorial -----------------------------------------
+   A large heading with the scene below it at a narrower measure, and the facts
+   set as margin notes down the side. For the projects whose *idea* needs stating
+   before the scene makes sense. */
+.project[data-stage="stacked"] .project-body {
+  /* Narrower than the others, and deliberately the same 1180px the demo stops at:
+     here the heading is a band directly above the application rather than a column
+     beside it, so the two share one measure and their edges line up. On the default
+     1560px measure the band overhung the app by 190px a side, which reads as the
+     heading belonging to the page rather than to the thing under it. */
+  --project-measure: 1180px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.1rem, 2.4vw, 2rem);
+}
+/* Two columns, and every child told which cell it is in.
+   There are four children — identity, summary, links, facts — and a two-column grid
+   with no placement flows them into an accidental 2x2: the links landed in row two,
+   column one, where `align-items: end` bottom-aligned a 17px-tall row of links
+   against a 153px list of facts and left them floating 200px under the title with
+   nothing around them. Reading order is the same as the other stages (identity,
+   summary, links, facts); this just folds it into two columns, keeping each column's
+   two parts together. */
+.project[data-stage="stacked"] .project-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(16rem, 26vw, 24rem);
+  align-items: start;
+  gap: 0.85rem clamp(1rem, 3vw, 3rem);
+}
+.project[data-stage="stacked"] .project-identity {
+  grid-area: 1 / 1;
+}
+/* Directly under the title, not bottom-aligned against the facts. Row two is as tall
+   as the facts list, so `end` here put the links 136px below the thing they belong
+   to — the same floating row the explicit placement was added to fix. */
+.project[data-stage="stacked"] .project-links {
+  grid-area: 2 / 1;
+  align-self: start;
+}
+.project[data-stage="stacked"] .project-summary {
+  grid-area: 1 / 2;
+}
+.project[data-stage="stacked"] .demo-facts {
+  grid-area: 2 / 2;
+}
+.project[data-stage="stacked"] .project-identity h2 {
+  font-size: clamp(2.4rem, 6vw, 4.6rem);
+  line-height: 0.92;
 }
 
-.project--white .scene-card::before {
+/* --- variant: offset -----------------------------------------------------
+   The scene pushed off the centre line with the project number set huge behind
+   it. The most deliberately unbalanced of the four, and the one that makes the
+   page feel like it was laid out rather than generated. */
+.project[data-stage="offset"] .project-body {
+  /* Tighter than the default measure, because this composition is the one that
+     depends on its two parts overlapping: a 46rem heading at the top left and a
+     62rem window pushed right only read as one offset block while the window
+     starts underneath the heading. On the 1560px measure they stopped overlapping
+     and the section became a short heading in the top left corner with a 650px
+     square of empty paper under it. At 76rem the window's left edge sits about a
+     third of the way into the heading, which is the arrangement at 1440 where this
+     was designed. */
+  --project-measure: 76rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1rem, 2.4vw, 1.8rem);
+}
+.project[data-stage="offset"] .project-window {
+  width: min(100%, 62rem);
+  margin-left: auto;
+}
+.project[data-stage="offset"] .project-heading {
+  display: flex;
+  max-width: 46rem;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+/* The number, as furniture rather than as information. Sits behind everything,
+   clipped by the section, and drifts against the scroll.
+
+   Selected as a child of `.project` on purpose. `.project > :not(.sr-only)` sets
+   `position: relative; z-index: 1` on every direct child at specificity (0,2,0),
+   which beat a plain `.project-ghost-number` and left this in the flow — a 22rem
+   numeral taking up real space and pushing a hole into the top of every section. */
+.project > .project-ghost-number {
   position: absolute;
-  z-index: -1;
-  inset: 1.1rem 0.2rem 0.2rem 1.1rem;
-  border: 1px solid rgba(101, 82, 255, 0.22);
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.48);
-  box-shadow: 10px -10px 0 rgba(101, 82, 255, 0.08);
-  content: "";
-  transform: rotate(2.2deg) translate(14px, -10px);
-  transition: transform 720ms ease;
-}
-
-.project--white .scene-card.is-visible::before {
-  transform: rotate(0.7deg) translate(7px, -5px);
-}
-
-.project--navy .scene-card {
-  --enter-x: 220px;
-  --enter-y: -135px;
-  --enter-turn: 16deg;
-  --enter-scale: 0.54;
-  transform-origin: center;
-}
-
-.project--navy .scene-card--portrait-proxy {
-  width: clamp(210px, 18vw, 300px);
-  height: 84% !important;
-  flex-basis: clamp(210px, 18vw, 300px);
-  margin: 0 !important;
-  opacity: 0;
-  filter: none;
-  pointer-events: none;
-  transform: none;
-}
-
-@keyframes portrait-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-
-  50% {
-    transform: translateY(-7px) rotate(1.1deg);
-  }
-}
-
-.project > .portrait-popout {
-  --popout-top: clamp(5.5rem, 8vw, 7.5rem);
-  --popout-overhang: clamp(14px, 3.2vh, 44px);
-  --popout-w: clamp(230px, 22vw, 340px);
-  /* Sized from the height it is allowed to occupy -- the space below its top
-     offset plus one overhang -- but never wider than intended. Width-driven
-     sizing let tall screenshots overshoot the section by 150px+ and cover the
-     next heading; this keeps every overhang inside the bleed budget.
-     `aspect-ratio` remains as the fallback if --portrait-aspect is absent. */
-  --popout-fit: calc(
-    var(--project-height) - var(--popout-top) + var(--popout-overhang)
-  );
-  --popout-h: min(
-    var(--popout-fit),
-    calc(var(--popout-w) / var(--portrait-aspect, 0.7))
-  );
-  position: absolute;
-  z-index: 12;
-  top: var(--popout-top);
-  left: clamp(12%, 24vw, 30%);
-  width: calc(var(--popout-h) * var(--portrait-aspect, 0.7));
-  height: var(--popout-h);
-  aspect-ratio: var(--portrait-ratio, 1 / 3.55);
-  --enter-x: 0px;
-  --enter-y: 50px;
-  --enter-turn: 6deg;
-  --enter-scale: 0.94;
-  --settle-turn: -1.2deg;
-  pointer-events: none;
-}
-
-.portrait-popout-image {
-  inset: 0;
-  background: #0b0d0c;
-  box-shadow: 0 28px 70px rgba(15, 23, 37, 0.3);
-}
-
-.portrait-popout-image img {
-  padding: 0.35rem;
-  object-fit: contain;
-}
-
-.portrait-popout.is-visible .portrait-popout-image {
-  animation: portrait-float 7s ease-in-out 1.1s infinite;
-}
-
-.project--navy > .portrait-popout {
-  --popout-top: clamp(6rem, 9vw, 8rem);
-  --popout-w: clamp(210px, 18vw, 300px);
-  top: var(--popout-top);
-  left: clamp(23%, 31vw, 39%);
-}
-
-.project--navy > .portrait-popout .scene-callout {
-  top: 19%;
-  right: -clamp(220px, 22vw, 360px);
-  width: min(320px, 44vw);
-  transform: translate(40px, -24px) rotate(5deg);
-}
-
-.project--black > .portrait-popout {
-  --popout-top: clamp(5.5rem, 8vw, 7.5rem);
-  --popout-w: clamp(230px, 22vw, 340px);
-  top: var(--popout-top);
-}
-
-.project--black > .portrait-popout--step-0,
-.project--black > .portrait-popout--step-2 {
-  left: clamp(8%, 12vw, 18%);
-}
-
-.project--black > .portrait-popout--step-1,
-.project--black > .portrait-popout--step-3 {
-  left: clamp(45%, 51vw, 58%);
-}
-
-.project--black > .portrait-popout--step-0 .scene-callout,
-.project--black > .portrait-popout--step-2 .scene-callout {
-  bottom: -0.2rem;
-  left: -1.5rem;
-}
-
-.project--black > .portrait-popout--step-1 .scene-callout,
-.project--black > .portrait-popout--step-3 .scene-callout {
-  top: -0.1rem;
-  right: -1.5rem;
-}
-
-.project--black > .portrait-popout--step-0 {
-  --enter-x: -180px;
-  --enter-y: 90px;
-  --enter-turn: -18deg;
-  --enter-scale: 0.68;
-  --settle-turn: -3deg;
-}
-
-.project--black > .portrait-popout--step-1 {
-  --enter-x: 86px;
-  --enter-y: -170px;
-  --enter-turn: 14deg;
-  --enter-scale: 0.7;
-  --settle-turn: 4deg;
-}
-
-.project--black > .portrait-popout--step-2 {
-  --enter-x: -70px;
-  --enter-y: 180px;
-  --enter-turn: -10deg;
-  --enter-scale: 0.74;
-  --settle-turn: -2.5deg;
-}
-
-.project--black > .portrait-popout--step-3 {
-  --enter-x: 185px;
-  --enter-y: -74px;
-  --enter-turn: 18deg;
-  --enter-scale: 0.68;
-  --settle-turn: 3deg;
-}
-
-.project--black > .portrait-popout--step-1:not(.is-visible) .scene-callout {
-  top: 18%;
-  right: -2.3rem;
-  transform: translate(48px, -16px) rotate(-7deg);
-}
-
-.project--black > .portrait-popout--step-2:not(.is-visible) .scene-callout {
-  bottom: 12%;
-  left: -2.5rem;
-  transform: translate(-42px, 20px) rotate(6deg);
-}
-
-.project--black > .portrait-popout--step-3:not(.is-visible) .scene-callout {
-  top: 10%;
-  right: -2.5rem;
-  transform: translate(46px, -28px) rotate(-5deg);
-}
-
-.project--mint .scene-card--portrait-proxy {
-  width: clamp(250px, 25vw, 380px);
-  flex-basis: clamp(250px, 25vw, 380px);
-}
-
-.project--mint > .portrait-popout {
-  --popout-w: clamp(250px, 25vw, 380px);
-}
-
-.project--mint > .portrait-popout--step-0 {
-  left: clamp(8%, 11vw, 16%);
-}
-
-.project--mint > .portrait-popout--step-1 {
-  left: clamp(48%, 53vw, 61%);
-}
-
-.project--mint > .portrait-popout--step-2 {
-  left: clamp(14%, 19vw, 26%);
-}
-
-.project--mint > .portrait-popout--step-0 {
-  --enter-x: -170px;
-  --enter-y: -44px;
-  --enter-turn: -16deg;
-  --enter-scale: 0.72;
-  --settle-turn: -3deg;
-}
-
-.project--mint > .portrait-popout--step-1 {
-  --enter-x: 112px;
-  --enter-y: 154px;
-  --enter-turn: 20deg;
-  --enter-scale: 0.7;
-  --settle-turn: 4deg;
-}
-
-.project--mint > .portrait-popout--step-2 {
-  --enter-x: -126px;
-  --enter-y: -130px;
-  --enter-turn: -22deg;
-  --enter-scale: 0.66;
-  --settle-turn: -5deg;
-}
-
-.project--mint > .portrait-popout--step-1:not(.is-visible) .scene-callout {
-  top: 30%;
-  right: -2.2rem;
-  transform: translate(44px, -20px) rotate(-6deg);
-}
-
-.project--mint > .portrait-popout--step-2:not(.is-visible) .scene-callout {
-  bottom: 16%;
-  left: -2.4rem;
-  transform: translate(-46px, 18px) rotate(6deg);
-}
-
-.project--navy > .portrait-popout--step-1 {
-  --enter-x: 170px;
-  --enter-y: 120px;
-  --enter-turn: 26deg;
-  --enter-scale: 0.58;
-  --settle-turn: 2deg;
-}
-
-.project--navy .scene-card--layout-2 {
-  --enter-y: 145px;
-  --enter-turn: -12deg;
-}
-
-.project--navy .scene-card--layout-3 {
-  --enter-y: -72px;
-  --enter-turn: 8deg;
-}
-
-.project--navy .scene-card--layout-4 {
-  --enter-y: 155px;
-  --enter-turn: -18deg;
-}
-
-.project--navy .scene-card::after {
-  position: absolute;
-  z-index: 8;
-  top: 5%;
-  left: -3.2rem;
-  color: #ffad42;
-  content: "♪  ♫";
+  z-index: 0;
+  top: 50%;
+  left: -0.06em;
+  color: transparent;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 2.2rem;
-  letter-spacing: 0.2em;
-  opacity: 0.08;
-  transform: translate(130px, -90px) rotate(28deg);
+  font-size: clamp(9rem, 26vw, 22rem);
+  font-weight: 400;
+  line-height: 0.7;
+  letter-spacing: -0.06em;
+  pointer-events: none;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--project-ink) 12%, transparent);
+  transform: translateY(-50%);
+}
+.project[data-stage="offset"] > .project-ghost-number {
+  right: 4vw;
+  left: auto;
+}
+
+/* --- arrival --------------------------------------------------------------
+   `is-seen` is set once by the focus manager and never removed, so each of
+   these runs exactly one time. The stagger is small: 60ms between the heading,
+   the well and the facts is enough to read as a sequence and not as a queue. */
+
+.project-heading,
+.project-window,
+.project .demo-facts li {
   transition:
-    opacity 500ms ease 120ms,
-    transform 820ms var(--ease-out-back);
+    opacity 620ms var(--ease-out-soft),
+    transform 760ms var(--ease-out-soft);
 }
 
-.project--navy .scene-card.is-visible::after {
-  opacity: 0.88;
-  transform: translate(0, 0) rotate(-8deg);
-}
-
-.project--forest .scene-card {
-  --enter-turn: 0deg;
-  --enter-scale: 0.42;
-}
-
-.project--forest .scene-card--layout-1 {
-  --enter-x: -150px;
-  --enter-y: -105px;
-}
-
-.project--forest .scene-card--layout-2 {
-  --enter-x: 155px;
-  --enter-y: 105px;
-}
-
-.project--forest .scene-card--layout-3 {
-  --enter-x: 150px;
-  --enter-y: -105px;
-}
-
-.project--forest .scene-card--layout-4 {
-  --enter-x: -155px;
-  --enter-y: 105px;
-}
-
-.scene-image {
-  position: absolute;
-  inset: 0.6rem;
-  overflow: hidden;
-  margin: 0;
-  border: 1px solid var(--project-line);
-  border-radius: 13px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
-}
-
-.scene-card--light .scene-image {
-  background: #eef0ed;
-}
-
-.scene-card--dark .scene-image {
-  background: #0b0d0c;
-}
-
-.scene-image img,
-.scene-image video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  transform: translate3d(var(--image-shift-x), var(--image-shift-y), 0)
-    scale(calc(1.06 * var(--scene-zoom, 1)))
-    rotate(calc(0.35deg + var(--image-tilt)));
-  transform-origin: var(--scene-zoom-origin, center);
-  transition: transform 500ms var(--ease-out-soft);
-}
-
-.scene-card.is-visible .scene-image img,
-.scene-card.is-visible .scene-image video {
-  transform: translate3d(var(--image-shift-x), var(--image-shift-y), 0)
-    scale(var(--scene-zoom, 1)) rotate(var(--image-tilt));
-  transform-origin: var(--scene-zoom-origin, center);
-}
-
-.scene-card--cover .scene-image img,
-.scene-card--cover .scene-image video {
-  object-fit: cover;
-  object-position: center;
-}
-
-.scene-card--contain .scene-image img,
-.scene-card--contain .scene-image video {
-  padding: 0.35rem;
-  object-fit: contain;
-}
-
-.scene-image video {
-  background: #090f1c;
-}
-
-.scene-callout {
-  position: absolute;
-  z-index: 4;
-  width: min(320px, 52%);
-  padding: 0.75rem 0.85rem;
-  border: 1px solid var(--project-line);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--project-bg) 88%, transparent);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.13);
-  backdrop-filter: blur(12px);
+.project:not(.is-seen) .project-heading {
   opacity: 0;
+  transform: translate3d(-1.6rem, 0, 0);
+}
+.project[data-stage="beside-flip"]:not(.is-seen) .project-heading,
+.project[data-stage="offset"]:not(.is-seen) .project-heading {
+  transform: translate3d(1.6rem, 0, 0);
+}
+.project:not(.is-seen) .project-window {
+  opacity: 0;
+  transform: translate3d(0, 2.2rem, 0) scale(0.985);
+}
+.project:not(.is-seen) .demo-facts li {
+  opacity: 0;
+  transform: translate3d(0, 0.9rem, 0);
+}
+.project .project-window {
+  transition-delay: 90ms;
+}
+.project .demo-facts li {
+  transition-delay: calc(180ms + var(--fact) * 70ms);
+}
+
+/* The ghost number arrives last and from further away, because it is the one
+   element allowed to be theatrical. */
+.project > .project-ghost-number {
   transition:
-    opacity 280ms ease 180ms,
-    transform 560ms var(--ease-out-soft) 150ms;
+    opacity 900ms ease,
+    transform 1200ms var(--ease-out-soft);
+}
+.project:not(.is-seen) > .project-ghost-number {
+  opacity: 0;
+  transform: translateY(-50%) translateX(-1.2rem);
 }
 
-.scene-card--left .scene-callout {
-  bottom: -0.2rem;
-  left: -1.5rem;
-  transform: translate(-55px, 42px) rotate(-5deg);
-}
+/* --- signature entrances -------------------------------------------------
+   One per theme, each a physical joke about what the project does. These are the
+   reason the page is worth scrolling twice, and they cost one element each.
 
-.scene-card--right .scene-callout {
-  top: -0.1rem;
-  right: -1.5rem;
-  transform: translate(55px, -42px) rotate(5deg);
-}
+   That element is `.project-veil`, and it is new rather than borrowed.
+   `.project-ambience` and its two pseudo-elements were the obvious place — they
+   are already decorative and already per-theme — and using them was wrong: each
+   theme's ambience layer already owns `::before` and `::after` for its drifting
+   background, complete with `content`, insets, rotations and infinite animations.
+   Adding rules to the same pseudo-elements produced a section whose entrance veil
+   inherited the mint theme's music note, its rotation, and an animation that kept
+   the veil half-opaque forever — a grey quadrilateral parked across the heading.
+   A layer of one's own cannot lose that argument.
 
-.scene-card.is-visible .scene-callout {
-  opacity: 1;
-  transform: translate(0, 0) rotate(0);
-}
+   Child selectors throughout, to outrank `.project > :not(.sr-only)`. */
 
-/* These three cards use the screenshot itself as the focus treatment. The
-   callout stays close to the detail instead of floating across the frame. */
-.project--navy .scene-card--step-4 .scene-callout {
-  top: auto;
-  right: auto;
-  bottom: 1rem;
-  left: 10rem;
-  width: min(300px, 46%);
-  transform: translate(-28px, 42px) rotate(-4deg);
-}
-
-.project--navy .scene-card--step-4.is-visible .scene-callout {
-  transform: translate(0, 0) rotate(0);
-}
-
-.project--navy .scene-card--step-5 .scene-callout {
-  top: 42%;
-  right: 1rem;
-  bottom: auto;
-  left: auto;
-  width: min(300px, 48%);
-  transform: translate(36px, -42px) rotate(5deg);
-}
-
-.project--navy .scene-card--step-5.is-visible .scene-callout,
-.project--navy .scene-card--step-6.is-visible .scene-callout {
-  transform: translate(0, 0) rotate(0);
-}
-
-.project--navy .scene-card--step-6 .scene-callout {
-  top: 15rem;
-  right: 1rem;
-  bottom: auto;
-  left: auto;
-  width: min(320px, 48%);
-  transform: translate(36px, -42px) rotate(5deg);
-}
-
-.scene-pointer {
+.project > .project-veil {
   position: absolute;
   z-index: 5;
-  top: var(--pointer-y);
-  left: var(--pointer-x);
-  width: var(--pointer-length);
-  height: 1px;
-  background: var(--project-ink);
-  content: "";
-  opacity: 0;
-  transform: rotate(var(--pointer-angle));
-  transform-origin: left center;
-  transition: opacity 280ms ease 180ms;
-  pointer-events: none;
-}
-
-.scene-pointer::before {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 7px;
-  height: 7px;
-  border: 1px solid var(--project-ink);
-  border-radius: 50%;
-  background: var(--project-bg);
-  content: "";
-  transform: translate(-50%, -50%);
-}
-
-.scene-card.is-visible .scene-pointer {
-  opacity: 0.72;
-}
-
-.scene-callout > span {
-  color: var(--project-muted);
-  font-size: 0.54rem;
-}
-
-.scene-callout h3 {
-  margin: 0.35rem 0 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.15rem, 1.8vw, 1.65rem);
-  font-weight: 400;
-  letter-spacing: -0.035em;
-  line-height: 1;
-}
-
-.scene-callout p {
-  margin: 0.45rem 0 0;
-  color: var(--project-muted);
-  font-size: 0.68rem;
-  line-height: 1.4;
-}
-
-.scene-end {
-  position: relative;
-  display: flex;
-  width: 120px;
-  height: 70%;
-  flex: 0 0 auto;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 1.2rem 0;
-  color: var(--project-muted);
-  font-size: 0.72rem;
-}
-
-.scene-end--with-live {
-  width: clamp(360px, 38vw, 600px);
-}
-
-/* Spans the whole project so the stroke can start inside the rail and finish at
-   the "Open project" link in the heading. Sits under the heading text. The child
-   selector is needed to outrank `.project > :not(.sr-only)`. */
-.project > .scene-end-project-arrow {
-  position: absolute;
-  z-index: 1;
   inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  color: var(--project-accent);
-  opacity: 0;
-  transition: opacity 380ms ease;
+  overflow: hidden;
   pointer-events: none;
 }
 
-.project.is-active.is-rail-end > .scene-end-project-arrow {
+/* Night Neutralizer: the section comes up out of the dark, the way your eyes do. */
+.project--navy > .project-veil {
+  background: #04060a;
+  opacity: 0;
+  transition: opacity 1500ms ease;
+}
+.project--navy:not(.is-seen) > .project-veil {
   opacity: 1;
 }
 
-.scene-end a {
-  position: relative;
-  z-index: 1;
-  color: var(--project-ink);
-  font-weight: 650;
+/* Decaf: arrives saturated and loses it, which is the extension's own job
+   performed on its own section. */
+.project--paper > .project-body {
+  transition: filter 1700ms ease;
+}
+.project--paper:not(.is-seen) > .project-body {
+  filter: saturate(2.4);
 }
 
-.project-scroll-help {
+/* PDF Explainer: the well arrives as a short stack of slides, the top one sliding
+   off the pile into place. */
+.project--black .project-window::before,
+.project--black .project-window::after {
   position: absolute;
-  z-index: 7;
-  top: 0.18rem;
-  left: 50%;
-  display: flex;
-  align-items: center;
-  gap: 0.42rem;
-  margin: 0;
-  padding: 0.28rem 0.55rem;
+  z-index: -1;
+  inset: 0;
   border: 1px solid var(--project-line);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--project-bg) 88%, transparent);
-  color: var(--project-muted);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.52rem;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  text-transform: uppercase;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  pointer-events: none;
-  backdrop-filter: blur(10px);
-}
-
-.project-scroll-help kbd {
-  color: var(--project-ink);
-  font: inherit;
-  letter-spacing: 0.08em;
-}
-
-.project-nav {
-  position: absolute;
-  z-index: 6;
-  top: 50%;
-  right: calc(var(--project-gutter) + 0.3rem);
-  left: calc(var(--project-gutter) + 0.3rem);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.project-nav-button {
-  display: grid;
-  width: 2.25rem;
-  height: 2.25rem;
-  padding: 0;
-  border: 1px solid var(--project-line);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--project-bg) 90%, white 10%);
-  color: var(--project-ink);
-  font-size: 1.15rem;
-  line-height: 1;
-  place-items: center;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
-  cursor: pointer;
-  pointer-events: auto;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--project-ink) 4%, transparent);
+  content: "";
   transition:
-    opacity 180ms ease,
-    transform 180ms ease,
-    background 180ms ease;
-  backdrop-filter: blur(10px);
+    opacity 800ms ease,
+    transform 1000ms var(--ease-out-soft);
+}
+.project--black .project-window::before {
+  transform: translate(1.5rem, 1.2rem) rotate(0.8deg);
+}
+.project--black .project-window::after {
+  transform: translate(0.75rem, 0.6rem) rotate(0.4deg);
+}
+.project--black:not(.is-seen) .project-window::before,
+.project--black:not(.is-seen) .project-window::after {
+  opacity: 0;
+  transform: none;
 }
 
-.project-nav-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--project-bg) 76%, white 24%);
-  transform: scale(1.06);
-}
-
-.project-nav-button:disabled {
-  opacity: 0.22;
-  cursor: default;
-}
-
-.project-nav-button[data-disabled="true"] {
-  opacity: 0.22;
-  cursor: default;
-}
-
-.project-progress {
+/* Choir Practice: staff lines rule themselves across the section. */
+.project--mint > .project-veil::before {
   position: absolute;
-  right: var(--project-gutter);
-  bottom: 4px;
-  left: var(--project-gutter);
+  top: 14%;
+  right: 0;
+  left: 0;
+  height: 5.5rem;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--project-ink) 20%, transparent) 0 1px,
+    transparent 1px 1.1rem
+  );
+  content: "";
+  opacity: 0.45;
+  transform-origin: left center;
+  transition: transform 1600ms var(--ease-out-soft);
+}
+.project--mint:not(.is-seen) > .project-veil::before {
+  transform: scaleX(0);
+}
+
+/* GRT Next Bus and PagePack: a line drawn across the section — a route for one, a
+   connection for the other, and it is the same gesture either way. */
+.project--forest > .project-veil::before,
+.project--white > .project-veil::before {
+  position: absolute;
+  top: 24%;
+  right: 0;
+  left: 0;
   height: 2px;
-  overflow: hidden;
-  background: var(--project-line);
-  pointer-events: none;
+  background: color-mix(in srgb, var(--project-accent) 38%, transparent);
+  content: "";
+  transform-origin: left center;
+  transition: transform 1700ms var(--ease-out-soft);
+}
+.project--forest:not(.is-seen) > .project-veil::before,
+.project--white:not(.is-seen) > .project-veil::before {
+  transform: scaleX(0);
 }
 
-.project-progress span {
-  display: block;
-  height: 100%;
+/* --- facts, as a row rather than a list ---------------------------------- */
+
+.demo-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: 0.5rem 1.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.demo-facts li {
+  position: relative;
+  padding-left: 0.95rem;
+  color: var(--project-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.demo-facts li::before {
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
   background: var(--project-accent);
-  transition: width 180ms linear;
+  content: "";
+}
+/* In the stacked variant the facts are margin notes, so they sit in one column
+   beside the heading instead of spanning the section. */
+.project[data-stage="stacked"] .demo-facts {
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
 }
 
+@media (max-width: 900px) {
+  /* Every variant collapses to the same single column. The compositions exist to
+     stop seven sections looking alike on a wide screen; on a narrow one there is
+     only one arrangement available and pretending otherwise just makes the
+     heading and the scene fight over 380px. */
+  .project[data-stage] .project-body,
+  .project[data-stage] .project-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .project[data-stage="beside-flip"] .project-window,
+  .project[data-stage="beside-flip"] .project-heading {
+    grid-row: auto;
+    grid-column: auto;
+  }
+  .project[data-stage="offset"] .project-window {
+    width: 100%;
+    margin-left: 0;
+  }
+  .project[data-stage="stacked"] .project-identity h2 {
+    font-size: clamp(1.9rem, 8vw, 2.8rem);
+  }
+  .project-ghost-number {
+    font-size: 42vw;
+  }
+}
+
+/* ===========================================================================
+   The gallery, the page trail and the shortcut sheet
+   ---------------------------------------------------------------------------
+   Given a banner of its own because it did not have one, and a section without
+   a banner is a section the block-replacing script will absorb into whatever
+   comes before it. That is not hypothetical: it happened, and it deleted the
+   gallery's rail and card rules while every test stayed green.
+   =========================================================================== */
+
+/* A pinboard, on the same paper as everything else.
+   It used to be a near-black band with unframed photos bleeding into it at
+   different vertical offsets, no heading and no caption — which on a site made of
+   warm paper and a Georgia serif read as a different website spliced onto the end.
+   The rail stays, because a draggable rail of unrelated pictures is the point of
+   the section. What changed is that it now belongs to the page. */
 .fun-section {
-  --fun-ink: #f0efe9;
-  --fun-muted: #a8ada7;
-  --fun-line: rgba(240, 239, 233, 0.18);
-  padding: clamp(4rem, 8vw, 8rem) 3vw clamp(3.5rem, 6vw, 6rem);
+  --fun-ink: var(--ink);
+  --fun-muted: var(--muted);
+  --fun-line: rgba(22, 25, 23, 0.16);
+  --fun-mount: #fbfaf6;
+  position: relative;
+  overflow: hidden;
+  padding: clamp(3.5rem, 7vw, 6.5rem) 0 clamp(3rem, 5vw, 5rem);
   border-top: 1px solid var(--line);
   background:
-    radial-gradient(circle at 87% 18%, rgba(132, 158, 143, 0.18), transparent 24%),
-    radial-gradient(circle at 9% 92%, rgba(170, 128, 91, 0.16), transparent 22%),
-    #161917;
+    radial-gradient(120% 80% at 82% 0%, rgba(132, 158, 143, 0.16), transparent 60%),
+    radial-gradient(90% 70% at 6% 100%, rgba(170, 128, 91, 0.14), transparent 58%),
+    var(--paper);
   color: var(--fun-ink);
+}
+
+/* Faint ruled paper behind the prints, which is what makes it a board rather than
+   a strip of images. */
+.fun-section::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(11vw - 1px),
+      rgba(22, 25, 23, 0.035) calc(11vw - 1px) 11vw
+    ),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 63px,
+      rgba(22, 25, 23, 0.03) 63px 64px
+    );
+  content: "";
+  pointer-events: none;
+}
+
+.fun-head {
+  position: relative;
+  z-index: 1;
+  max-width: 46rem;
+  margin: 0 auto clamp(1.8rem, 3.5vw, 3rem);
+  padding: 0 max(1rem, 3vw);
+}
+.fun-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.7rem;
+  color: var(--fun-muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.fun-eyebrow span {
+  font-size: 0.8rem;
+}
+.fun-head h2 {
+  margin: 0;
+  /* The same serif as the project titles and the hero, at the same weight. This
+     is the whole reason the section now reads as part of the site. */
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.9rem, 4.4vw, 3.1rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.03;
+}
+.fun-lede {
+  max-width: 34rem;
+  margin: 0.8rem 0 0;
+  color: var(--fun-muted);
+  font-size: clamp(0.86rem, 1.1vw, 1rem);
+  line-height: 1.55;
 }
 
 .media-rail-window {
   position: relative;
-  max-width: 1440px;
+  z-index: 1;
+  max-width: 1560px;
   margin: 0 auto;
 }
 
 .fun-scroller {
   width: 100%;
-  min-height: clamp(280px, 48svh, 560px);
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
@@ -1776,6 +1315,11 @@ a:hover .external-arrow {
   user-select: none;
 }
 
+.fun-scroller.is-dragging .fun-card {
+  /* No hover lift mid-drag: the card under the cursor would jump. */
+  transition: none;
+}
+
 .fun-scroller:focus-visible {
   outline: 2px solid var(--fun-ink);
   outline-offset: -5px;
@@ -1784,19 +1328,58 @@ a:hover .external-arrow {
 .fun-rail {
   display: flex;
   width: max-content;
-  min-height: clamp(280px, 48svh, 560px);
-  align-items: stretch;
-  gap: clamp(1.6rem, 3.5vw, 4rem);
-  padding: 1rem max(1rem, 3vw) 2rem 0.5rem;
+  align-items: center;
+  /* Room above and below for the tilts and the shadows; without it the rotated
+     corners are clipped by the scroller. */
+  gap: clamp(1.4rem, 2.6vw, 2.8rem);
+  padding: 2.2rem max(1rem, 3vw) 2.6rem;
 }
 
 .fun-card {
-  width: clamp(250px, 30vw, 520px);
-  height: auto;
+  position: relative;
+  /* No width. The print sets its own, from a shared height — see `.fun-media img`.
+     A fixed card width turned a 9:16 phone clip into a 760px-tall print that
+     overflowed the section. */
   flex: 0 0 auto;
   margin: 0;
   scroll-snap-align: center;
-  align-self: center;
+  transition:
+    transform 380ms var(--ease-out-back),
+    filter 380ms ease;
+}
+/* Four angles, cycled. Random tilts put two neighbours at the same angle often
+   enough that it reads as a bug rather than as a hand. */
+.fun-card[data-tilt="0"] {
+  transform: rotate(-1.6deg);
+}
+.fun-card[data-tilt="1"] {
+  transform: rotate(1.1deg) translateY(-0.7rem);
+}
+.fun-card[data-tilt="2"] {
+  transform: rotate(2deg);
+}
+.fun-card[data-tilt="3"] {
+  transform: rotate(-0.8deg) translateY(0.9rem);
+}
+/* Straightens and lifts under the pointer — the one bit of interaction in the
+   section, and it needs no explaining because everyone has picked a photo off a
+   board. */
+.fun-card:hover {
+  transform: rotate(0deg) translateY(-0.5rem) scale(1.02);
+  z-index: 2;
+}
+
+/* The mount: a paper border around the print, with the image inset in it. */
+.fun-mount {
+  position: relative;
+  display: block;
+  padding: 0.7rem 0.7rem 0.7rem;
+  border-radius: 3px;
+  background: var(--fun-mount);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 2px 4px rgba(22, 25, 23, 0.1),
+    0 18px 40px -18px rgba(22, 25, 23, 0.4);
 }
 
 .fun-media {
@@ -1806,29 +1389,45 @@ a:hover .external-arrow {
   height: auto;
   overflow: hidden;
   align-items: stretch;
-  border: 1px solid var(--fun-line);
-  /* Each card sits on its own photo's average colour, so letterboxing reads as
-     part of the image rather than one flat grey. */
+  border-radius: 1px;
+  /* Each print sits on its own photo's average colour, so letterboxing reads as
+     part of the image rather than as one flat grey. */
   background: var(--media-tint, #252a26);
-  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.22);
 }
 
 .fun-media img,
 .fun-media video {
   display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
+  /* One height for every print in the rail; the width comes from the aspect ratio.
+     Portrait and landscape then sit together as one set instead of one item
+     towering over its neighbours. The max-width is a guard against a panorama
+     stretching the rail; nothing in the set currently reaches it. */
+  height: clamp(210px, 38svh, 390px);
+  width: auto;
+  max-width: min(74vw, 520px);
+  object-fit: cover;
 }
 
 .fun-media picture {
   display: block;
-  width: 100%;
 }
 
 .fun-media video {
   background: var(--media-tint, #252a26);
+}
+
+/* The pin. Purely decorative, and the reason the tilts read as pinned rather
+   than as a layout accident. */
+.fun-pin {
+  position: absolute;
+  top: -0.42rem;
+  left: 50%;
+  width: 0.78rem;
+  height: 0.78rem;
+  margin-left: -0.39rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #f5f4ef, #b9483c 62%, #7d2a21);
+  box-shadow: 0 2px 5px rgba(22, 25, 23, 0.45);
 }
 
 /* Play/pause for the self-starting clips. Always legible while paused, and it
@@ -1901,8 +1500,11 @@ a:hover .external-arrow {
   place-items: center;
   border: 1px solid var(--fun-line);
   border-radius: 50%;
-  background: rgba(22, 25, 23, 0.72);
+  /* Paper, not a hole punched in it. These were near-black discs with pale ink,
+     which was correct against the near-black band this section used to be. */
+  background: color-mix(in srgb, #fff 82%, var(--paper));
   color: var(--fun-ink);
+  box-shadow: 0 2px 8px rgba(22, 25, 23, 0.14);
   cursor: pointer;
   transition:
     background 180ms ease,
@@ -1973,13 +1575,11 @@ a:hover .external-arrow {
 
   .project {
     --project-gutter: 14px;
-    /* Tighter vertical rhythm here, so a smaller overhang. The first term is
-       this breakpoint's own baseline-to-edge distance (0.75rem + 1rem). */
-    --rail-drop: calc(1.75rem + clamp(6px, 1.2vh, 14px));
-    --rail-headroom: clamp(8px, 1.6vh, 18px);
-    --project-height: max(470px, min(560px, 70svh));
-    height: var(--project-height);
-    min-height: 470px;
+    /* A floor only, as above. This breakpoint used to pin the section to a fixed
+       height for the screenshot rail; leaving that in place would crop the
+       demos, and it crops them worst exactly here — a 600px extension popup
+       inside a 560px section. */
+    --project-height: 470px;
   }
 
   .project-heading {
@@ -2014,46 +1614,12 @@ a:hover .external-arrow {
     font-size: 0.66rem;
   }
 
-  .scene-end--with-live {
-    width: min(86vw, 430px);
-  }
-
   .project-window {
     padding-top: 0.55rem;
     padding-bottom: 0.75rem;
   }
 
-  .project-track {
-    gap: clamp(4.5rem, 12vw, 7rem);
-    padding-right: 18vw;
-    padding-left: 0.8rem;
-  }
-
-  .scene-kicker {
-    width: 54px;
-  }
-
-  .scene-kicker strong {
-    font-size: 2rem;
-  }
-
   .scene-card,
-  .scene-card--contain {
-    width: 82vw;
-  }
-
-  .scene-card--layout-2 {
-    --card-trim: clamp(12px, 2.6vh, 28px);
-  }
-
-  .scene-card--layout-3 {
-    --card-trim: clamp(6px, 1.4vh, 15px);
-  }
-
-  .scene-card--portrait-proxy {
-    width: 180px;
-    flex-basis: 180px;
-  }
 
   .project > .portrait-popout {
     --popout-top: 5.25rem;
@@ -2089,19 +1655,6 @@ a:hover .external-arrow {
     width: 220px;
   }
 
-  .scene-callout {
-    width: 72%;
-    padding: 0.6rem 0.65rem;
-  }
-
-  .scene-card--left .scene-callout {
-    left: -0.7rem;
-  }
-
-  .scene-card--right .scene-callout {
-    right: -0.7rem;
-  }
-
   .project--navy .scene-card--step-4 .scene-callout {
     left: 7rem;
     width: min(240px, 68%);
@@ -2117,19 +1670,6 @@ a:hover .external-arrow {
     top: 11rem;
     right: 0.7rem;
     width: 72%;
-  }
-
-  .scene-callout h3 {
-    font-size: 1.08rem;
-  }
-
-  .scene-callout p {
-    font-size: 0.61rem;
-  }
-
-  .project-progress {
-    right: var(--project-gutter);
-    left: var(--project-gutter);
   }
 
   .fun-section {
@@ -2236,52 +1776,9 @@ a:hover .external-arrow {
 
 /* The card itself follows the rail immediately. Its inner layer owns the
    discrete entrance animation, so scroll motion never retargets that easing. */
-.scene-card {
-  opacity: 1;
-  filter: none;
-  transform: translate3d(var(--rail-x), var(--rail-y), 0)
-    rotate(calc(var(--settle-turn) + var(--rail-turn)))
-    skewX(var(--rail-skew)) scale(var(--rail-scale));
-  transition: none;
-}
-
-.scene-card.is-visible {
-  opacity: 1;
-  filter: none;
-  transform: translate3d(var(--rail-x), var(--rail-y), 0)
-    rotate(calc(var(--settle-turn) + var(--rail-turn)))
-    skewX(var(--rail-skew)) scale(var(--rail-scale));
-}
-
-.scene-card:hover {
-  transform: translate3d(var(--rail-x), calc(var(--rail-y) - 4px), 0)
-    rotate(calc(var(--settle-turn) + var(--rail-turn)))
-    skewX(var(--rail-skew)) scale(var(--rail-scale)) scale(1.015);
-}
-
-.scene-card-motion {
-  position: absolute;
-  inset: 0;
-  opacity: 0.06;
-  transform: translate3d(var(--enter-x), var(--enter-y), 0)
-    rotate(var(--enter-turn)) scale(var(--enter-scale));
-  transform-origin: inherit;
-  transition:
-    opacity 320ms ease,
-    transform 680ms cubic-bezier(0.16, 0.86, 0.18, 1.08);
-}
-
-.scene-card.is-visible > .scene-card-motion {
-  opacity: 1;
-  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-}
 
 .scene-card--portrait-proxy,
 .scene-card--portrait-proxy.is-visible,
-.scene-card--portrait-proxy:hover {
-  opacity: 0;
-  transform: none;
-}
 
 .project > .portrait-popout {
   transition:
@@ -2306,10 +1803,6 @@ a:hover .external-arrow {
   height: 100%;
 }
 
-.scene-image img {
-  transition: none;
-}
-
 .project--paper .scene-image img {
   transition: none;
 }
@@ -2318,24 +1811,14 @@ a:hover .external-arrow {
   filter: none;
 }
 
-.scene-callout {
-  background: color-mix(in srgb, var(--project-bg) 96%, transparent);
-  backdrop-filter: none;
-}
-
-.project-scroll-help,
-.project-nav-button {
-  backdrop-filter: none;
-}
-
-.project-progress span {
-  --project-progress: 0.07;
-  width: 100%;
-  transform: scaleX(var(--project-progress));
-  transform-origin: left center;
-  transition: none;
-}
-
+/* The dangling `.project-scroll-help,` that used to sit here took this whole
+   `@supports` block with it. A selector list ending in a comma in front of an
+   at-rule is not valid CSS, so a browser read the two as one qualified rule with a
+   nonsense prelude and dropped both — meaning `content-visibility` had never once
+   been applied to an off-screen section. PostCSS parses it without complaining,
+   which is why the build stayed green and nothing said anything. Found by counting
+   the stylesheet's rules in a browser: three `@supports` blocks in the file, one
+   `CSSSupportsRule` in the CSSOM. */
 @supports (content-visibility: auto) {
   .project:not(.is-active) {
     content-visibility: auto;
@@ -2379,14 +1862,9 @@ html:not(.has-project-focus) .scene-card-motion {
   transform: translate3d(0, 14px, 0);
 }
 
-/* Image parallax follows the rail immediately; the wrapper handles entrance. */
-.scene-image img,
-.scene-card.is-visible .scene-image img {
-  transform: translate3d(var(--image-shift-x), var(--image-shift-y), 0)
-    scale(var(--scene-zoom, 1)) rotate(var(--image-tilt));
-  transform-origin: var(--scene-zoom-origin, center);
-}
-
+/* Same again: a dangling `.scene-image img,` was swallowing this block. The comment
+   above it described image parallax on the screenshot rail, which two redesigns ago
+   stopped existing. */
 @supports (content-visibility: auto) {
   html:not(.has-project-focus) .project:not(.is-active) {
     content-visibility: visible;
@@ -2459,50 +1937,24 @@ html.has-project-focus .project:not(.is-active) .project-window {
    stays still, so scrolling between projects does not move the whole viewport. */
 html.has-project-focus
   .project-track
-  > .scene-card:nth-of-type(odd) {
-  --focus-exit-x: clamp(-140px, -9vw, -56px);
-  --focus-exit-turn: -4deg;
-}
 
 html.has-project-focus
   .project-track
-  > .scene-card:nth-of-type(even) {
-  --focus-exit-x: clamp(56px, 9vw, 140px);
-  --focus-exit-turn: 4deg;
-}
 
 html.has-project-focus
   .project
   .project-track
   > .scene-card
-  > .scene-card-motion {
-  transition:
-    opacity 280ms ease,
-    transform 540ms cubic-bezier(0.22, 0.7, 0.24, 1);
-}
 
 html.has-project-focus
   .project:not(.is-active)
   .project-track
   > .scene-card
-  > .scene-card-motion {
-  opacity: 0;
-  transform: translate3d(
-      var(--focus-exit-x, 0),
-      clamp(64px, 9vh, 104px),
-      0
-    )
-    rotate(var(--focus-exit-turn, 0deg)) scale(0.96);
-}
 
 html.has-project-focus
   .project.is-active
   .project-track
   > .scene-card.is-visible
-  > .scene-card-motion {
-  opacity: 1;
-  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-}
 
 /* Portrait screenshots use the same alternating fan without moving the
    JS-positioned card shell. Delayed visibility prevents adjacent overlap. */
@@ -2535,31 +1987,20 @@ html.has-project-focus .project:not(.is-active) > .portrait-popout {
 html.has-project-focus
   .project
   > .portrait-popout
-  > .scene-card-motion {
-  transition:
-    opacity 280ms ease,
-    transform 540ms cubic-bezier(0.22, 0.7, 0.24, 1);
-}
 
 html.has-project-focus
   .project:not(.is-active)
   > .portrait-popout
-  > .scene-card-motion {
-  opacity: 0;
-  transform: translate3d(
-      var(--focus-exit-x, 0),
-      clamp(64px, 9vh, 104px),
-      0
-    )
-    rotate(var(--focus-exit-turn, 0deg)) scale(0.96);
-}
 
 html.has-project-focus
   .project.is-active
   > .portrait-popout.is-visible
-  > .scene-card-motion {
-  opacity: 1;
-  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+
+/* The chevrons inside them. Sized here rather than in the markup, because the
+   markup's job is the shape and the stylesheet's is how big it is. */
+.fun-nav-button svg {
+  width: 1.05rem;
+  height: 1.05rem;
 }
 
 /* ===========================================================================
@@ -2695,25 +2136,6 @@ html.has-project-focus
   position: relative;
 }
 
-.project-index-peek {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  right: calc(100% + 1rem);
-  width: clamp(120px, 13vw, 190px);
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper);
-  box-shadow: 0 20px 44px rgba(22, 25, 23, 0.24);
-  opacity: 0;
-  transform: translateY(-50%) translateX(14px) rotate(4deg) scale(0.9);
-  transition:
-    opacity 200ms ease,
-    transform 420ms var(--ease-out-back);
-  pointer-events: none;
-}
-
 .project-index a:hover .project-index-peek,
 .project-index a:focus-visible .project-index-peek {
   opacity: 1;
@@ -2721,11 +2143,6 @@ html.has-project-focus
 }
 
 .project-index-peek picture,
-.project-index-peek img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
 
 /* --- Per-theme ambience ---------------------------------------------------
    Each project gets background motion drawn from what the project itself is
@@ -2751,70 +2168,89 @@ html.has-project-focus
   animation-play-state: paused;
 }
 
-/* GRT Next Bus: a vehicle running a dashed route across the section. */
-.project--mint > .project-ambience::before {
-  top: 47%;
-  right: 0;
-  left: 0;
-  height: 1px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--project-accent) 0 13px,
-    transparent 13px 25px
-  );
-  opacity: 0.26;
+/* The mint theme no longer draws anything by itself. Both projects that use it —
+   the transit extension and the choir application — now have real drawn backdrops
+   instead, because a palette is not a subject and two pseudo-elements cannot hold
+   a road with traffic on it. See the Backdrops section below. */
+
+/* --- Decaf: the section is the demo --------------------------------------
+   Decaf's claim is that a page stops shouting at you. Demonstrating that inside a
+   900px frame on an otherwise untouched page argues against itself — it reads as a
+   small effect in a small box. So the section arrives loud, in colour, and the
+   colour goes out of *everything* when the extension is switched on in the scene,
+   driven by `data-scene-reached` which the scene publishes upward (see
+   `app/demos/scene/section-beat.ts`).
+
+   The grayscale sits on the section rather than on a list of its parts. It is one
+   declaration instead of a dozen that would drift, and it catches things a list
+   would miss — the ghost number, the ambience, anything a scene throws out of its
+   frame. It is safe here because nothing in this section relies on `backdrop-filter`
+   or on a fixed-position descendant, which are the two things a filtered ancestor
+   would break. */
+.project--paper {
+  /* Loud on arrival. */
+  --decaf-wash-a: #ff5c7a;
+  --decaf-wash-b: #ffb339;
+  --decaf-wash-c: #3fa9f5;
+  --decaf-wash-d: #7b5cff;
+  transition: filter 1400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.project--paper[data-scene-reached~="drain"] {
+  filter: grayscale(1);
 }
 
-.project--mint > .project-ambience::after {
-  top: calc(47% - 4px);
-  left: -4%;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--project-accent);
-  box-shadow: 0 0 0 5px color-mix(in srgb, var(--project-accent) 18%, transparent);
-  animation: transit-run 15s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-
-@keyframes transit-run {
-  0% {
-    opacity: 0;
-    transform: translateX(0);
-  }
-
-  7%,
-  88% {
-    opacity: 0.85;
-  }
-
-  100% {
-    opacity: 0;
-    transform: translateX(114vw);
-  }
-}
-
-/* blokamine: colour being drained, as a slow sweep across the section. */
 .project--paper > .project-ambience::before {
-  top: 0;
-  bottom: 0;
-  left: -32%;
-  width: 24%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.55),
-    transparent
-  );
-  animation: monochrome-sweep 13s ease-in-out infinite;
+  inset: 0;
+  /* Four colour fields, the kind of palette a feed uses to hold your eye. They
+     drift slowly, so the section is never quite still until it is drained. */
+  background:
+    radial-gradient(
+      42% 38% at 18% 26%,
+      color-mix(in srgb, var(--decaf-wash-a) 66%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      38% 34% at 82% 22%,
+      color-mix(in srgb, var(--decaf-wash-b) 60%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      46% 40% at 74% 82%,
+      color-mix(in srgb, var(--decaf-wash-c) 56%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      40% 36% at 22% 78%,
+      color-mix(in srgb, var(--decaf-wash-d) 50%, transparent),
+      transparent 72%
+    );
+  animation: decaf-wash 19s ease-in-out infinite alternate;
 }
 
-@keyframes monochrome-sweep {
-  0% {
-    transform: translateX(0);
-  }
+/* A second layer of the same idea, offset, so the drift never looks like one
+   object sliding about. */
+.project--paper > .project-ambience::after {
+  inset: -10%;
+  background:
+    radial-gradient(
+      30% 26% at 50% 8%,
+      color-mix(in srgb, var(--decaf-wash-b) 48%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      34% 30% at 8% 62%,
+      color-mix(in srgb, var(--decaf-wash-d) 44%, transparent),
+      transparent 70%
+    );
+  animation: decaf-wash 23s ease-in-out -7s infinite alternate-reverse;
+}
 
+@keyframes decaf-wash {
+  0% {
+    transform: translate3d(-2%, -1.5%, 0) scale(1.04);
+  }
   100% {
-    transform: translateX(560%);
+    transform: translate3d(2.5%, 2%, 0) scale(1.12);
   }
 }
 
@@ -2950,13 +2386,7 @@ html.has-project-focus
 }
 
 @media (max-width: 900px) {
-  /* No room beside the index card for a preview at this width. */
-  .project-index-peek {
-    display: none;
-  }
 }
-
-
 
 /* --- Gallery light --------------------------------------------------------
    A soft light that tracks the pointer across the dark section. The gradient
@@ -3079,103 +2509,14 @@ html.shows-shortcuts .shortcut-sheet {
    them has to be impossible to miss on arrival. It is bold and in the project's
    own accent, drifts to draw the eye, and retires for good the moment that rail
    has been moved by any means. */
-.project-scroll-help {
-  top: 0.5rem;
-  gap: 0.7rem;
-  padding: 0.5rem 1rem 0.5rem 0.75rem;
-  border: 0;
-  background: var(--project-accent);
-  box-shadow: 0 10px 26px color-mix(in srgb, var(--project-accent) 42%, transparent);
-  color: #fff;
-  font-size: 0.72rem;
-  letter-spacing: 0.07em;
-  opacity: 1;
-  transition:
-    opacity 420ms ease,
-    transform 520ms var(--ease-out-soft);
-  animation: prompt-drift 3.4s ease-in-out infinite;
-}
-
-.project-scroll-help strong {
-  font-weight: 700;
-}
-
-/* A hand shoving the rail: two stacked bars that slide right, over and over. */
-.project-scroll-help-grip {
-  position: relative;
-  display: block;
-  width: 1.4rem;
-  height: 0.75rem;
-  flex: 0 0 auto;
-}
 
 .project-scroll-help-grip::before,
-.project-scroll-help-grip::after {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  border-radius: 2px;
-  background: currentColor;
-  content: "";
-  opacity: 0.9;
-  animation: grip-nudge 1.9s ease-in-out infinite;
-}
-
-.project-scroll-help-grip::before {
-  top: 0.1rem;
-}
-
-.project-scroll-help-grip::after {
-  bottom: 0.1rem;
-  animation-delay: 120ms;
-}
-
-.project-scroll-help-alt {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding-left: 0.7rem;
-  border-left: 1px solid rgba(255, 255, 255, 0.35);
-  opacity: 0.8;
-  font-size: 0.62rem;
-  font-weight: 500;
-}
-
-.project-scroll-help kbd {
-  color: #fff;
-  opacity: 0.9;
-}
 
 /* Used once, never shown again. */
 .project.is-rail-explored .project-scroll-help {
   opacity: 0;
   transform: translateX(-50%) translateY(-0.5rem);
   animation: none;
-}
-
-@keyframes prompt-drift {
-  0%,
-  100% {
-    transform: translateX(-50%);
-  }
-
-  50% {
-    transform: translateX(calc(-50% + 5px));
-  }
-}
-
-@keyframes grip-nudge {
-  0%,
-  100% {
-    transform: translateX(-2px);
-    opacity: 0.55;
-  }
-
-  50% {
-    transform: translateX(3px);
-    opacity: 1;
-  }
 }
 
 /* --- Media is not draggable ------------------------------------------------
@@ -3189,12 +2530,4648 @@ html.shows-shortcuts .shortcut-sheet {
 .fun-media video,
 .fun-media picture,
 .hero-art img,
-.project-index-peek img {
-  -webkit-user-drag: none;
-  user-select: none;
-}
 
 .project-scroller,
 .fun-scroller {
   -webkit-user-drag: none;
+}
+
+/* ===========================================================================
+   Demo pods
+   ---------------------------------------------------------------------------
+   What used to be a rail of screenshots is now the software itself, running.
+   That changes what the surrounding chrome is for: it is no longer a frame
+   around a picture, it is a frame around something the visitor can break. So it
+   stays quiet and hands the visual argument to whatever is inside it — each
+   extension popup already has its own complete design language, and the worst
+   thing this layer could do is compete with it.
+
+   `.project-window` keeps its name from the rail era on purpose: the focus and
+   parallax machinery further up already targets it, and renaming it would mean
+   editing rules that are working.
+   =========================================================================== */
+
+.project-window {
+  width: 100%;
+  /* No gutter here either. `.project-body` owns the section's inset; repeating it
+     inside a grid track cost this column 130px and left a 340px popup floating in
+     a 931px well. */
+  padding: 0;
+}
+
+.demo {
+  --demo-radius: 18px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.85rem, 1.6vw, 1.4rem);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+/* --- the strip above a demo ------------------------------------------------
+   Says what the thing is and, where it is true, that it is genuinely computing
+   rather than replaying. The claim is only made by demos that can back it up. */
+.demo-chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem 0.9rem;
+}
+
+.demo-chrome p {
+  flex: 1 1 18ch;
+  min-width: 0;
+  margin: 0;
+  color: var(--project-muted);
+  font-size: clamp(0.82rem, 1.05vw, 0.95rem);
+  line-height: 1.5;
+}
+
+/* `.demo-live` — a pill reading "running the real code", with a pulsing dot — was
+   here. It went with the demos it was describing. Deleted rather than left unused,
+   because a badge sitting in the stylesheet is a badge somebody puts back. */
+
+/* --- the surface a demo sits on -------------------------------------------
+   A recessed slab, so the running thing reads as inset into the page rather
+   than pasted on top of it. */
+.demo-surface {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: clamp(0.9rem, 2vw, 1.9rem);
+  border: 1px solid var(--project-line);
+  border-radius: var(--demo-radius);
+  background:
+    linear-gradient(
+      170deg,
+      color-mix(in srgb, var(--project-ink) 4%, transparent),
+      transparent 60%
+    ),
+    color-mix(in srgb, var(--project-ink) 3%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 26%, transparent);
+}
+
+/* Demos that ship their own dark UI get a dark well, so a light page does not
+   put a bright halo around a 1 a.m. interface. */
+.demo-surface--dark {
+  border-color: rgba(9, 12, 18, 0.5);
+  background: radial-gradient(120% 90% at 78% 6%, #16202f, #080b11 62%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 22px 48px -30px rgba(0, 0, 0, 0.8);
+}
+
+/* --- lazy mount --------------------------------------------------------------
+   A scene's chunk is fetched 300px before it is needed, so there is a moment with
+   nothing in the box. The skeleton holds the space rather than letting the page
+   jump when the code lands.
+
+   `.demo-host` has to grow. `.demo-surface` is a centring flex container, which
+   makes its child shrink-to-fit, and a scene whose width comes from
+   `aspect-ratio` rather than from content then collapses to roughly half the
+   available room — the whole vignette renders at 458px inside an 880px well and
+   looks like a thumbnail of itself. */
+.demo-host {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* --- the spill layer ------------------------------------------------------
+   Every vignette gets one, and it is the reason these read as something other
+   than a screen recording. It is an unclipped positioning context laid exactly
+   over the demo's stage, so a child can be placed in stage coordinates — "the
+   Save button is 130px in from the right edge" — and then thrown a third of a
+   viewport away from there without anything cutting it off.
+
+   Its own box is `inset: 0`. It does not need to be larger: absolutely
+   positioned children are not clipped by a parent that does not clip, so the
+   box only has to establish the coordinate space. Making it huge instead would
+   have put an enormous invisible element over the page for no gain.
+
+   `perspective` lives here rather than on the stage on purpose. A shared
+   perspective origin means several cards tumbling out at once look like they
+   are in the same room, which is most of what sells the depth. Setting it per
+   card would give each its own vanishing point and read as flat rotation.
+   =========================================================================== */
+
+.demo-skeleton {
+  display: flex;
+  width: 100%;
+  min-height: 320px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--project-ink) 4%, transparent);
+}
+.demo-skeleton span {
+  width: 34px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--project-line);
+  animation: demo-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes demo-shimmer {
+  50% {
+    opacity: 0.25;
+    transform: scaleX(0.5);
+  }
+}
+
+/* --- the facts under a demo -----------------------------------------------
+   Numbers rather than adjectives. Anything here should be checkable by reading
+   the source the project links to. */
+.demo-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.demo-facts li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  color: var(--project-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.demo-facts li::before {
+  flex: none;
+  color: var(--project-accent);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.72rem;
+  content: "·";
+}
+
+/* Demos are interactive, so a drag inside one must never be read as a drag on
+   the page, and a double-tap must never zoom the viewport away from it. */
+.demo-surface * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ===========================================================================
+   Night Neutralizer — "same shot, one of them you can see"
+   ---------------------------------------------------------------------------
+   Two panels playing the same eight seconds, driven from `data-beat` on the
+   root. The left one is untouched; the right one is the same markup with the
+   extension's real `feComponentTransfer` over it, so the difference between
+   them is genuinely the extension's transfer function and not two sets of
+   hand-tuned gradients.
+
+   Everything the beats change is brightness and scale on a handful of layers.
+   The interesting consequence: the shot only has to be composed once, and both
+   panels stay in sync for free because they are the same CSS.
+   =========================================================================== */
+
+.nn {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: #e8edf3;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* The filter lives in the document but takes no space. */
+.nn-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.nn-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(0.5rem, 1.4vw, 1rem);
+}
+
+.nn-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nn-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.nn-label small {
+  flex: 0 0 auto;
+  color: rgba(232, 237, 243, 0.45);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+.nn-label small[data-alarm] {
+  transition: color 240ms ease;
+}
+/* The clipping warning only means anything at the moment it clips. */
+.nn[data-beat="blast"] .nn-label small[data-alarm],
+.nn[data-beat="boom"] .nn-label small[data-alarm] {
+  color: #ff6b5f;
+}
+
+.nn-panel-body {
+  display: flex;
+  gap: 0.45rem;
+}
+
+/* --- the shot ------------------------------------------------------------- */
+
+.nn-frame {
+  position: relative;
+  flex: 1 1 auto;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+/* The shot's exposure, per beat.
+   This is the mechanism that makes the comparison honest. Rather than drawing a
+   "blown out" panel and a "contained" panel, both panels get the *same* exposure
+   boost — the room really did get brighter — and only the treated one then has the
+   extension's transfer function after it in the filter chain. `brightness()` runs
+   first, the lookup table second, so what the curve receives is a genuinely
+   over-exposed frame and what it does with the top end is the highlight knee doing
+   its actual job. A white overlay alone was the first attempt and could not blow
+   anything out: 40% white over a near-black room is just grey. */
+.nn {
+  --exposure: 1;
+}
+/* Modest, on purpose. The first attempt drove this to 11 and the shot stopped
+   being a shot: multiplying a near-black room by eleven pushes everything above
+   about 42/255 to pure white, so both panels became featureless rectangles and
+   the comparison had nothing left to compare. The room only needs to be lit
+   enough for the silhouettes to read; the thing that has to be too bright is the
+   fireball, and that is bright in the artwork rather than by multiplication. */
+.nn[data-beat="blast"] {
+  --exposure: 2.6;
+}
+.nn[data-beat="boom"] {
+  --exposure: 2.1;
+}
+.nn[data-beat="settle"] {
+  --exposure: 1.3;
+}
+
+.nn-shot {
+  position: absolute;
+  inset: 0;
+  /* Isolated so the filter on this element cannot reach the panel chrome. */
+  isolation: isolate;
+  filter: brightness(var(--exposure));
+  transition: filter 240ms ease-out;
+}
+.nn[data-beat="settle"] .nn-shot {
+  transition: filter 1400ms ease;
+}
+/* The treated panel: same exposure, then the extension's curve. */
+.nn-frame[data-treated="true"] .nn-shot {
+  filter: brightness(var(--exposure)) url(#nn-tone-curve);
+}
+.nn-shot > span {
+  position: absolute;
+  display: block;
+}
+
+/* --- the scene, and the two things the beats change ----------------------
+   The room is drawn once, in `frame.tsx`, as SVG. All the beats do here is set
+   an exposure and reveal what is happening outside the window. Both panels get
+   the identical treatment; the only asymmetry in the whole demo is the extra
+   `url(#nn-tone-curve)` on the treated panel's filter chain. */
+
+.nn-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The fireball outside the window. */
+.nn-fire {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 42% 62%;
+  transform: scale(0.25);
+  transition:
+    opacity 170ms ease-out,
+    transform 1000ms cubic-bezier(0.12, 0.9, 0.2, 1);
+}
+.nn[data-beat="blast"] .nn-fire,
+.nn[data-beat="boom"] .nn-fire {
+  opacity: 1;
+  transform: scale(1);
+}
+.nn[data-beat="settle"] .nn-fire {
+  opacity: 0;
+  transform: scale(1.15);
+  transition:
+    opacity 1400ms ease,
+    transform 1500ms ease-out;
+}
+
+/* Light thrown into the room by whatever is outside. */
+.nn-spill {
+  opacity: 0;
+  transition: opacity 260ms ease-out;
+}
+.nn[data-beat="blast"] .nn-spill,
+.nn[data-beat="boom"] .nn-spill {
+  opacity: 1;
+}
+.nn[data-beat="settle"] .nn-spill {
+  opacity: 0;
+  transition: opacity 1400ms ease;
+}
+
+/* One shock frame, for the cut itself. A sustained white sheet was tried and it
+   flattened the room to a rectangle, which is the opposite of the point. */
+.nn-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 190ms ease-out;
+}
+.nn[data-beat="blast"] .nn-flash {
+  opacity: 0.3;
+}
+.nn[data-beat="boom"] .nn-flash {
+  opacity: 0.04;
+  transition: opacity 700ms ease;
+}
+
+/* --- meters ---------------------------------------------------------------
+   Not an audio graph. The shape of what the compressor does, which is the part
+   worth showing: the untreated side runs out of headroom and the treated side
+   is held under a ceiling with room left above it. */
+
+.nn-meter {
+  position: relative;
+  display: flex;
+  width: 12px;
+  flex: 0 0 12px;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding: 3px 2px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.nn-seg {
+  flex: 1 1 0;
+  border-radius: 1.5px;
+  background: rgba(255, 255, 255, 0.09);
+  transition:
+    background 120ms linear,
+    opacity 120ms linear;
+}
+
+/* Lit segments per beat. `--lit` is how many of the fourteen are on; a segment
+   lights when its index is below it. Expressed as one custom property so a beat
+   changes one number instead of fourteen rules. */
+.nn {
+  --lit-raw: 2;
+  --lit-treated: 5;
+}
+.nn[data-beat="whisper"] {
+  --lit-raw: 2;
+  --lit-treated: 7;
+}
+.nn[data-beat="blast"],
+.nn[data-beat="boom"] {
+  --lit-raw: 14;
+  --lit-treated: 9;
+}
+.nn[data-beat="settle"] {
+  --lit-raw: 3;
+  --lit-treated: 6;
+}
+
+/* `@container`-free trick: each segment compares its own index against the beat's
+   count using a stepped opacity. `calc()` cannot branch, but a very steep clamp
+   can: (lit - index) clamped to 0..1 is 1 for lit segments and 0 for the rest. */
+.nn-meter[data-treated="false"] .nn-seg {
+  opacity: clamp(0, calc((var(--lit-raw) - var(--seg)) * 100), 1);
+}
+.nn-meter[data-treated="true"] .nn-seg {
+  opacity: clamp(0, calc((var(--lit-treated) - var(--seg)) * 100), 1);
+}
+.nn-meter .nn-seg {
+  background: #6fd3a8;
+}
+/* The top three are the ones that hurt, and only the untreated side reaches them.
+   Qualified by `.nn-meter` so it outranks the rule above rather than losing a
+   specificity fight to it — as the first version did, silently, leaving a meter
+   that pinned at maximum in reassuring green. */
+.nn-meter .nn-seg[data-hot="true"] {
+  background: #ff6b5f;
+  box-shadow: 0 0 5px rgba(255, 107, 95, 0.7);
+}
+
+.nn-ceiling {
+  position: absolute;
+  right: -3px;
+  left: -3px;
+  /* Above the ninth of fourteen segments: the limiter's working ceiling. */
+  bottom: calc(9 / 14 * 100%);
+  height: 1px;
+  background: rgba(111, 211, 168, 0.8);
+  box-shadow: 0 0 6px rgba(111, 211, 168, 0.6);
+}
+
+.nn-reading {
+  margin: 0;
+  min-height: 2.4em;
+  color: rgba(232, 237, 243, 0.5);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+/* --- subtitle and caption ------------------------------------------------- */
+
+.nn-sub {
+  margin: 0;
+  min-height: 1.5em;
+  color: rgba(232, 237, 243, 0.82);
+  font-size: 0.82rem;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+.nn-sub[data-showing="true"] {
+  opacity: 1;
+}
+
+.nn-caption {
+  margin: 0;
+  min-height: 1.5em;
+  color: rgba(232, 237, 243, 0.55);
+  font-size: 0.86rem;
+  text-align: center;
+}
+.nn-caption strong {
+  color: #fff;
+  font-weight: 650;
+}
+
+@media (max-width: 700px) {
+  .nn-split {
+    grid-template-columns: 1fr;
+  }
+  .nn-label {
+    font-size: 0.62rem;
+  }
+}
+
+/* ===========================================================================
+   N-Back — "hold two, compare, let the oldest go"
+   ---------------------------------------------------------------------------
+   A diagram that moves rather than a game. Three parts stacked: the cue that
+   just arrived, the strip of cues being held, and the two answer keys. The
+   bracket drawn across the strip is the whole point of the layout, so its
+   geometry is the thing the rest is arranged around.
+
+   The strip is a four-column grid rather than a flex row, because the bracket
+   has to be positioned against slot boundaries and a grid gives it arithmetic
+   it can trust at any width.
+   =========================================================================== */
+
+.nb {
+  --nb-ink: #eef4ef;
+  --nb-muted: rgba(238, 244, 239, 0.56);
+  --nb-faint: rgba(238, 244, 239, 0.32);
+  --nb-line: rgba(238, 244, 239, 0.14);
+  --nb-well: rgba(255, 255, 255, 0.04);
+  --nb-accent: #7fd8a4;
+  --nb-accent-dim: rgba(127, 216, 164, 0.16);
+  --nb-slots: 4;
+  --nb-gap: clamp(0.4rem, 1vw, 0.7rem);
+
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.9rem, 2vw, 1.4rem);
+  color: var(--nb-ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* --- the cue on screen now ------------------------------------------------ */
+
+.nb-now {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.nb-stage {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.9rem, 2.5vw, 1.6rem);
+}
+
+.nb-board {
+  display: grid;
+  width: clamp(108px, 22vw, 138px);
+  aspect-ratio: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--nb-line);
+  border-radius: 12px;
+  background: var(--nb-well);
+}
+.nb-board > span {
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  transition:
+    background 130ms ease-out,
+    box-shadow 130ms ease-out,
+    transform 130ms ease-out;
+}
+.nb-board > span[data-on="true"] {
+  background: var(--nb-accent);
+  box-shadow: 0 0 18px -2px rgba(127, 216, 164, 0.7);
+  transform: scale(1.04);
+}
+
+/* The spoken letter, drawn as a letter because this page does not talk. */
+.nb-voice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.nb-voice[data-on="true"] {
+  opacity: 1;
+}
+.nb-voice strong {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: clamp(2.4rem, 7vw, 3.4rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.nb-wave {
+  display: flex;
+  height: 26px;
+  align-items: center;
+  gap: 3px;
+}
+.nb-wave i {
+  width: 3px;
+  border-radius: 999px;
+  background: var(--nb-accent);
+  animation: nb-wave 900ms ease-in-out infinite;
+}
+.nb-wave i:nth-child(1) {
+  height: 40%;
+}
+.nb-wave i:nth-child(2) {
+  height: 100%;
+  animation-delay: 120ms;
+}
+.nb-wave i:nth-child(3) {
+  height: 60%;
+  animation-delay: 240ms;
+}
+@keyframes nb-wave {
+  50% {
+    transform: scaleY(0.4);
+  }
+}
+
+.nb-now-label {
+  margin: 0;
+  color: var(--nb-faint);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* --- the memory strip ---------------------------------------------------- */
+
+.nb-memory {
+  position: relative;
+  padding: 0.75rem 0.85rem 1.9rem;
+  border: 1px solid var(--nb-line);
+  border-radius: 14px;
+  background: var(--nb-well);
+}
+.nb-memory-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0 0 0.6rem;
+  color: var(--nb-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.nb-memory-head span {
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  background: var(--nb-accent-dim);
+  color: var(--nb-accent);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+}
+
+.nb-strip {
+  display: grid;
+  grid-template-columns: repeat(var(--nb-slots), 1fr);
+  gap: var(--nb-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.nb-strip > li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.3rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  opacity: 0.3;
+  transition:
+    opacity 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease,
+    transform 260ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+.nb-strip > li[data-filled="true"] {
+  opacity: 1;
+  border-color: var(--nb-line);
+  background: rgba(255, 255, 255, 0.03);
+}
+/* The cue that just landed. */
+.nb-strip > li[data-current="true"] {
+  border-color: rgba(127, 216, 164, 0.5);
+  transform: translateY(-3px);
+}
+/* The cue being compared against. */
+.nb-strip > li[data-target="true"] {
+  border-color: rgba(127, 216, 164, 0.5);
+  background: var(--nb-accent-dim);
+}
+
+.nb-mini {
+  display: grid;
+  width: 34px;
+  aspect-ratio: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+.nb-mini > span {
+  border-radius: 1.5px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.nb-mini > span[data-on="true"] {
+  background: var(--nb-accent);
+}
+.nb-slot-letter {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.nb-slot-index {
+  color: var(--nb-faint);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+}
+
+/* The bracket.
+   Spans from slot `--from` to slot `--from + --span`, measured in the strip's own
+   grid units. One slot is `(100% - (slots-1) * gap) / slots` wide, so the left
+   edge of slot n is `n * (slotWidth + gap)`. Written out rather than approximated,
+   because a bracket that points between two cues instead of at them would teach
+   the wrong rule. */
+.nb-bracket {
+  --slot: calc((100% - (var(--nb-slots) - 1) * var(--nb-gap)) / var(--nb-slots));
+  --step: calc(var(--slot) + var(--nb-gap));
+
+  position: absolute;
+  bottom: 0.55rem;
+  left: calc(0.85rem + var(--from) * var(--step) + var(--slot) / 2);
+  width: calc(var(--span) * var(--step));
+  height: 12px;
+  border-bottom: 1.5px solid var(--nb-accent);
+  border-left: 1.5px solid var(--nb-accent);
+  border-right: 1.5px solid var(--nb-accent);
+  border-radius: 0 0 4px 4px;
+  opacity: 0;
+  transition:
+    opacity 260ms ease,
+    left 320ms ease,
+    width 320ms ease;
+}
+.nb-bracket[data-showing="true"] {
+  opacity: 1;
+}
+.nb-bracket-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  padding: 0.1rem 0.4rem;
+  color: var(--nb-accent);
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  transform: translate(-50%, -0.15rem);
+}
+
+/* --- the answer keys ----------------------------------------------------- */
+
+.nb-answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+.nb-answer {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--nb-line);
+  border-radius: 11px;
+  background: var(--nb-well);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+.nb-answer[data-lit="true"] {
+  border-color: rgba(127, 216, 164, 0.55);
+  background: var(--nb-accent-dim);
+  box-shadow: 0 0 24px -8px rgba(127, 216, 164, 0.6);
+}
+.nb-answer kbd {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--nb-line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.72rem;
+  font-weight: 650;
+  transition: transform 90ms ease;
+}
+/* The key goes down when the answer is being given. */
+.nb-answer[data-lit="true"] kbd {
+  border-bottom-width: 1px;
+  transform: translateY(1px);
+}
+.nb-answer-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.nb-answer-verdict {
+  margin-left: auto;
+  min-width: 2.2em;
+  color: var(--nb-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+/* --- caption ------------------------------------------------------------- */
+
+.nb-caption {
+  margin: 0;
+  min-height: 2.6em;
+  color: var(--nb-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.nb-caption strong {
+  color: var(--nb-ink);
+  font-weight: 650;
+}
+
+@media (max-width: 620px) {
+  .nb-stage {
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+  .nb-voice strong {
+    font-size: 2.2rem;
+  }
+  .nb-answers {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===========================================================================
+   GRT Next Bus — "the wait is on the toolbar"
+   ---------------------------------------------------------------------------
+   Two things share this block: the extension's popup, whose tokens and card
+   layout are its own, and the scene around it — a browser, a notification, and a
+   route line that runs out past both edges of the section with the bus on it.
+
+   The scene classes are `gx-`, the popup's are `grt-`, and the split is not
+   cosmetic: everything under `grt-` is what the product looks like and is copied
+   from its stylesheet, while everything under `gx-` exists only to stage it. When
+   the extension's popup changes, one of those two halves needs editing and the
+   other does not.
+
+   The popup deliberately overhangs its window — up under the toolbar, out past
+   the right edge, and past the bottom. Chrome does not do that. It is here
+   because a 420px panel drawn politely inside a 930px frame is the composition
+   that made this the weakest pod on the page, and because the overhang removes a
+   fragile dependency: the window's height comes from the page behind it, and the
+   popup can be any height it likes without a magic number having to track it.
+
+   What used to be here as well: a light/dark token pair with a three-way theme
+   switcher, a stop search with an add-a-stop picker, and an empty state. All of
+   it was reachable only by clicking, and this pod no longer has controls.
+   =========================================================================== */
+
+.gx {
+  --gx-font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --gx-chrome: #eef1f2;
+  --gx-chrome-line: rgba(16, 40, 44, 0.13);
+  --gx-page: #fbfcfc;
+  --gx-road: color-mix(in srgb, var(--project-accent) 52%, transparent);
+  position: relative;
+  width: 100%;
+  /* Close to the 872px this was composed at. At 1040 the window grew on wide screens
+     and the agenda page grew with it — six mostly empty calendar rows a thousand
+     pixels wide, with the extension reduced to one badge in the corner, which reads
+     as a section about a calendar. */
+  max-width: 940px;
+  font-family: var(--gx-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- the browser ---------------------------------------------------------- */
+
+.gx-browser {
+  position: relative;
+  /* Above the road, which passes behind the window rather than in front of it. */
+  z-index: 2;
+  border: 1px solid var(--gx-chrome-line);
+  border-radius: 14px;
+  background: var(--gx-page);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 30px 66px -34px rgba(8, 26, 30, 0.45);
+}
+
+.gx-chrome {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--gx-chrome-line);
+  border-radius: 13px 13px 0 0;
+  background: linear-gradient(var(--gx-chrome), color-mix(in srgb, var(--gx-chrome) 84%, #fff));
+}
+
+.gx-lights {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.gx-lights i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(16, 40, 44, 0.16);
+}
+
+.gx-tabs {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gx-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 168px;
+  padding: 7px 13px;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  color: rgba(16, 40, 44, 0.5);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gx-tab.is-active {
+  color: #16262c;
+  background: var(--gx-page);
+  box-shadow: 0 -1px 0 var(--gx-chrome-line) inset;
+}
+
+.gx-favicon {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border-radius: 3px;
+  background: rgba(16, 40, 44, 0.2);
+}
+
+.gx-favicon--cal {
+  background: #c26a15;
+}
+
+.gx-bar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gx-omni {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: rgba(16, 40, 44, 0.46);
+  background: color-mix(in srgb, #fff 78%, var(--gx-chrome));
+  box-shadow: 0 0 0 1px var(--gx-chrome-line) inset;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The extension's own button. The only thing clicked in this scene, so it is the
+   only thing in the chrome with full contrast. */
+.gx-action {
+  position: relative;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #0f6a62;
+  transition: background 0.2s ease;
+}
+
+.gx-action[data-open="true"] {
+  background: color-mix(in srgb, #0f6a62 15%, transparent);
+}
+
+.gx-action .grt-mark,
+.gx-action .grt-mark svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  border-radius: 0;
+}
+
+/* A ring while the badge is the only thing on screen doing anything. It stops
+   once the popup is open, where it would be pointing at old news. */
+.gx-action[data-live="true"]::before {
+  position: absolute;
+  border: 1.5px solid #0f6a62;
+  border-radius: 10px;
+  content: "";
+  inset: -3px;
+  opacity: 0;
+  animation: gx-ping 2.8s ease-out infinite;
+}
+
+@keyframes gx-ping {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.86);
+  }
+  55%,
+  100% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+}
+
+.gx-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  min-width: 18px;
+  padding: 0 3px;
+  border-radius: 5px;
+  color: #fff;
+  box-shadow: 0 0 0 1.5px var(--gx-chrome);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  /* Remounted on every change — the element is keyed by its own text — so the
+     tick plays without the scene having to say when a minute passed. */
+  animation: gx-tick 0.5s ease-out;
+}
+
+@keyframes gx-tick {
+  from {
+    transform: translateY(-3px) scale(1.2);
+  }
+}
+
+/* --- the tab you had open ------------------------------------------------- */
+
+/* This carries the window's height, and it is why the popup needs no magic
+   number: six agenda rows of a fixed minimum are taller than any popup this
+   scene shows, and the popup simply overhangs if that ever stops being true. */
+.gx-page {
+  position: relative;
+  padding: 18px 20px 20px;
+  border-radius: 0 0 13px 13px;
+  overflow: hidden;
+}
+
+.gx-page-head {
+  margin: 0 0 12px;
+  color: rgba(16, 40, 44, 0.42);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gx-page-head b {
+  color: rgba(16, 40, 44, 0.72);
+  font-weight: 750;
+}
+
+.gx-agenda {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The row height is what keeps this column taller than the popup beside it. At 74px
+   the popup hung ~40px below the window and the bus leaving at the end of the loop
+   passed behind it, which looks like a clipping bug rather than like depth. */
+.gx-agenda li {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  min-height: 84px;
+  border-top: 1px solid rgba(16, 40, 44, 0.09);
+}
+
+.gx-agenda-time {
+  flex: 0 0 44px;
+  padding-top: 6px;
+  color: rgba(16, 40, 44, 0.34);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.gx-agenda-slot {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The reason the countdown matters. Dimmed, because it is set dressing, but
+   legible, because "5:30" against a bus at "5:18 PM" is the whole stake. */
+.gx-agenda-event {
+  margin: 4px 0 6px;
+  padding: 9px 12px;
+  border-left: 3px solid #c26a15;
+  border-radius: 4px 7px 7px 4px;
+  color: color-mix(in srgb, #c26a15 78%, #16262c);
+  background: color-mix(in srgb, #c26a15 12%, transparent);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* --- the popup ------------------------------------------------------------ */
+
+.gx-popup {
+  position: absolute;
+  z-index: 3;
+  /* Clear of the chrome, not over it. The badge is the feature this project leads
+     with, and the first version of this pulled the popup up across the toolbar and
+     hid the very button it had just been opened from. */
+  top: 44px;
+  right: -26px;
+  width: 420px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow:
+    0 0 0 1px rgba(16, 40, 44, 0.09),
+    0 36px 72px -30px rgba(6, 20, 24, 0.5);
+  opacity: 0;
+  /* Grows out of its own button, which is where a popup comes from. */
+  transform: scale(0.965) translateY(-9px);
+  transform-origin: 84% 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none;
+}
+
+.gx-popup[data-open="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* --- the extension's own styles ------------------------------------------- */
+
+.grt {
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bg: #f2f6f6;
+  --bg-glow: #dceceb;
+  --surface: #ffffff;
+  --surface-2: #eef4f4;
+  --border: #dde6e7;
+  --border-strong: #c9d7d8;
+  --text: #16262c;
+  --text-soft: #486067;
+  --text-muted: #6d8087;
+  --accent: #0f6a62;
+  --accent-soft: #e2f0ee;
+  --accent-contrast: #ffffff;
+  --live: #17784b;
+  --live-soft: #e6f4ec;
+  --warn: #a95d10;
+  --danger: #b6382f;
+  --shadow-card: 0 1px 2px rgba(18, 44, 48, 0.05), 0 6px 20px rgba(18, 44, 48, 0.05);
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 9px;
+  font-family: var(--font);
+}
+
+.grt-app {
+  padding: 0 14px 18px;
+  border-radius: 14px;
+  color: var(--text);
+  background:
+    radial-gradient(120% 60% at 100% 0%, var(--bg-glow) 0%, transparent 62%),
+    var(--bg);
+}
+
+.grt-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 12px;
+}
+
+.grt-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.grt-brand p {
+  margin: 0;
+}
+
+.grt-mark,
+.grt-mark svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 11px;
+  color: var(--accent);
+}
+
+.grt-eyebrow {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.grt-title {
+  margin-top: 2px;
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.grt-feed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 20px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.grt-feed-state {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.grt-feed-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.grt-feed-state.is-live {
+  color: var(--live);
+}
+
+.grt-feed-state.is-live .grt-feed-dot {
+  background: var(--live);
+  box-shadow: 0 0 0 3px var(--live-soft);
+  animation: grt-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes grt-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.grt-feed-detail {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+/* --- stop cards ----------------------------------------------------------- */
+
+.grt-stop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grt-stop-card {
+  padding: 14px 14px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+}
+
+.grt-stop-card.is-nearest {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+}
+
+/* The card for the stop the bus has just reached. Not a colour change — the row
+   already went red on its own — just enough lift to tie it to the pole outside. */
+.grt-stop-card[data-hit="true"] {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+.grt-stop-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.grt-stop-identity {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Wraps to two lines rather than truncating: a stop name is the one thing that
+   has to stay readable. */
+.grt-stop-name {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.32;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.grt-stop-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.grt-stop-tag {
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.grt-departures {
+  margin: 12px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+/* Baseline alignment, not centring: the copy column is taller than the time
+   column, so matching first baselines keeps the headsign, the route number and
+   the countdown reading as one line across the row. */
+.grt-departure {
+  display: flex;
+  min-height: 54px;
+  align-items: baseline;
+  gap: 11px;
+  padding: 10px 0 0;
+}
+
+.grt-route-badge {
+  display: inline-flex;
+  min-width: 34px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 7px;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  font-size: 11.5px;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.grt-departure-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.grt-headsign {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Both of these keep their height when empty, so a row does not resize as live
+   information arrives and drops away. */
+.grt-departure-note,
+.grt-departure-then {
+  display: flex;
+  min-height: 16px;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.grt-departure-then {
+  margin-top: 3px;
+}
+
+.grt-note-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grt-note-sep {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.grt-note-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--live);
+  font-weight: 750;
+}
+
+.grt-note-live::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.grt-note-late {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.grt-note-early {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.grt-then-label {
+  color: var(--text-muted);
+}
+
+.grt-then-time {
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.grt-departure-time {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.grt-countdown {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  /* Keyed by its own text, so a minute passing is visible rather than inferred. */
+  animation: gx-count 0.45s ease-out;
+}
+
+@keyframes gx-count {
+  from {
+    opacity: 0.15;
+    transform: translateY(-4px);
+  }
+}
+
+.grt-is-soon {
+  color: var(--danger);
+}
+
+.grt-is-near {
+  color: var(--warn);
+}
+
+.grt-is-distant {
+  color: var(--text-soft);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.grt-clock {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the notification ----------------------------------------------------- */
+
+/* Arrives from outside the frame, because that is where a system notification
+   comes from: not from the page, and not from anything the rider did. */
+.gx-alert {
+  position: absolute;
+  z-index: 8;
+  top: 54px;
+  right: -6.5vw;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 352px;
+  padding: 14px 14px 15px;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(16, 40, 44, 0.08),
+    0 30px 64px -26px rgba(8, 26, 30, 0.5);
+  opacity: 0;
+  transform: translateX(62px) scale(0.97);
+  transition:
+    opacity 0.3s ease,
+    transform 0.44s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.gx-alert[data-in="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.gx-alert-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #0f6a62;
+  background: #e2f0ee;
+}
+
+.gx-alert-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.gx-alert-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.gx-alert-copy p {
+  margin: 0;
+}
+
+.gx-alert-title {
+  color: #16262c;
+  font-size: 13.5px;
+  font-weight: 750;
+}
+
+.gx-alert-body {
+  margin-top: 3px;
+  overflow: hidden;
+  color: #486067;
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
+
+.gx-alert-context {
+  margin-top: 5px;
+  color: #6d8087;
+  font-size: 11px;
+}
+
+.gx-alert-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: rgba(16, 40, 44, 0.32);
+}
+
+.gx-alert-close svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* --- the route ------------------------------------------------------------ */
+
+/* Runs out past both edges of the section, so the bus the countdown is counting
+   arrives from somewhere rather than from the border of a card. The band sits in
+   the space the caption's top margin reserves. */
+/* Wider than the viewport at any viewport, and centred on the stage.
+   This used to be `left: -34vw; right: -20vw`, which worked only while the stage grew
+   with the window. Once `.project-body` was given a measure the stage stopped growing
+   at about 1600px, so on a 2560px screen those overhangs no longer reached: the road
+   started 80px inside the left edge and stopped 50px short of the right one, and a
+   road with two visible ends is a drawn line rather than a street passing through.
+   Anchoring the width to the viewport instead keeps both ends off-screen at every
+   width, and because the pole and the bus are placed as percentages of this element,
+   their spacing scales with it rather than sliding off one end. */
+.gx-street {
+  position: absolute;
+  z-index: 1;
+  bottom: 46px;
+  left: 50%;
+  width: 148vw;
+  height: 94px;
+  margin-left: -74vw;
+}
+
+.gx-road {
+  position: absolute;
+  right: 0;
+  bottom: 30px;
+  left: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--gx-road);
+}
+
+/* Lane markings, sliding left at the speed the traffic in the backdrop moves, so
+   the two read as the same road rather than as two drawings of one. */
+.gx-dashes {
+  position: absolute;
+  right: 0;
+  bottom: -11px;
+  left: 0;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--gx-road) 0 22px,
+    transparent 22px 48px
+  );
+  opacity: 0.7;
+  animation: gx-dash-run 2.6s linear infinite;
+}
+
+@keyframes gx-dash-run {
+  to {
+    transform: translateX(-48px);
+  }
+}
+
+/* The stops behind yours. There are as many between the bus and the pole as the
+   card says there are, because both come from the same clock. */
+.gx-stop-tick {
+  position: absolute;
+  bottom: 33px;
+  width: 2px;
+  height: 13px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--project-accent) 34%, transparent);
+}
+
+.gx-pole {
+  position: absolute;
+  bottom: 30px;
+  height: 56px;
+}
+
+.gx-pole-mast {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--project-accent) 62%, transparent);
+}
+
+.gx-pole-flag {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 27px;
+  height: 17px;
+  border-radius: 3px;
+  background: var(--project-accent);
+}
+
+/* To the right of the mast, where the bus does not cover it: the bus stops with
+   its nose at the pole and its body trailing back the way it came. */
+.gx-pole-label {
+  position: absolute;
+  bottom: 0;
+  left: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--project-ink);
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.gx-pole-label b {
+  font-weight: 700;
+}
+
+.gx-pole-label span {
+  color: var(--project-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gx-pole[data-hit="true"] .gx-pole-flag {
+  animation: gx-pole-hit 1.2s ease-out;
+}
+
+@keyframes gx-pole-hit {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--project-accent) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 18px transparent;
+  }
+}
+
+/* `left` is the bus's *nose*, so it can pull up at the pole without covering the
+   name of the stop it has pulled up at. */
+.gx-bus-slot {
+  position: absolute;
+  bottom: 27px;
+  width: 138px;
+  transform: translateX(-100%);
+  transition: left 1.5s cubic-bezier(0.35, 0.1, 0.5, 0.9);
+}
+
+.gx[data-arrived="true"] .gx-bus-slot {
+  /* Slows into the stop. */
+  transition-timing-function: cubic-bezier(0.16, 0.72, 0.24, 1);
+}
+
+.gx[data-beat="gone"] .gx-bus-slot {
+  /* And pulls away from it. */
+  transition-timing-function: cubic-bezier(0.5, 0, 0.85, 0.55);
+}
+
+.gx-bus {
+  position: relative;
+  display: block;
+}
+
+.gx-bus-body {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.gx-bus-shell {
+  fill: color-mix(in srgb, var(--project-accent) 88%, #0b2b2c);
+}
+
+.gx-bus-sign {
+  fill: color-mix(in srgb, #fff 22%, transparent);
+}
+
+.gx-bus-glass {
+  fill: color-mix(in srgb, #fff 78%, var(--project-accent));
+}
+
+.gx-bus-wheels {
+  fill: #1b2b2e;
+}
+
+/* The route number on the destination sign, which is the same number as the badge
+   in the card. */
+.gx-bus-route {
+  position: absolute;
+  top: 12.5%;
+  left: 7%;
+  width: 22.7%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 19px;
+  text-align: center;
+}
+
+/* --- caption -------------------------------------------------------------- */
+
+.gx-caption {
+  /* Reserves the band the road is drawn in. */
+  margin: 142px 0 0;
+  min-height: 2.6em;
+  color: var(--project-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.gx-caption strong {
+  color: var(--project-ink);
+  font-weight: 650;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The two loops that would otherwise run forever. The scene itself is held on
+     one frame by the storyboard. */
+  .gx-dashes,
+  .gx-action[data-live="true"]::before,
+  .grt-feed-state.is-live .grt-feed-dot {
+    animation: none;
+  }
+}
+
+/* ===========================================================================
+   PagePack — "the signal drops and the pack still opens"
+   ---------------------------------------------------------------------------
+   A thirteen-second film in five acts: a page open, a save, cards tearing off
+   the page into a stack, the connection dying, and the stack surviving it.
+
+   Everything is driven from `data-beat` on the root, so the whole scene is one
+   state machine and the stylesheet reads as the shot list. Transitions rather
+   than keyframes wherever a property just needs to arrive somewhere, because a
+   beat change should be able to interrupt the previous beat mid-move — which is
+   what keeps the cursor and the cards from stuttering when a beat is short.
+   =========================================================================== */
+
+.pp {
+  /* The extension's own token set, unashamedly Apple-flavoured. */
+  --canvas: #ececef;
+  --surface: #fff;
+  --surface-2: #f6f6f8;
+  --ink: #1d1d1f;
+  --ink-2: #5f5f68;
+  --ink-3: #8e8e97;
+  --hairline: rgba(0, 0, 0, 0.09);
+  --accent: #0b6fd6;
+  --accent-soft: rgba(11, 111, 214, 0.12);
+  --good: #1f8f4e;
+  --alarm: #c8382f;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px -14px rgba(0, 0, 0, 0.28);
+
+  position: relative;
+  width: 100%;
+  max-width: 880px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- the browser ---------------------------------------------------------- */
+
+.pp-browser {
+  position: relative;
+  /* A stacking context, explicitly.
+     Without one, `z-index: auto` here let the browser's inner layers — the popup
+     at 4, the outage wash at 2 — be compared against `.pp-spill` at 6 in a
+     shared ancestor context instead of against each other. The wash then painted
+     over the escaped cards that happened to land back across the frame, so three
+     of the seven saved pages went dark along with the browser they had just
+     escaped from. Confining them keeps the whole frame at 0, under the spill. */
+  z-index: 0;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--canvas);
+  box-shadow: var(--shadow);
+}
+
+/* The outage.
+   Done as an overlay, not as `filter` on the browser. A filter on the container
+   was the obvious first attempt and it was wrong: filters compose down the tree,
+   so desaturating the frame also desaturated the popup inside it — and the popup
+   staying lit while everything around it dies is the entire point of the shot.
+   An overlay only affects what paints beneath it, so the popup and the saved page
+   sit above it in full colour and become the only light in the frame. */
+.pp-drain {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: rgba(13, 15, 19, 0.88);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 640ms ease;
+}
+.pp[data-dead="true"] .pp-drain {
+  opacity: 1;
+}
+
+/* Draining the colour is a separate job from darkening, and it is done here, on
+   the chrome's own subtree.
+   `backdrop-filter: grayscale(1)` on the wash was tried first and produced a
+   subtle, expensive bug: Chromium promotes a backdrop-filtered element into its
+   own compositing layer, which reordered it against its siblings, and the saved-page
+   card at `z-index: 5` came out grey underneath a wash at `z-index: 2`. The one
+   card that has to look alive was the one thing being killed. A filter on a subtree
+   that contains no popup and no reader cannot have that problem. */
+.pp-chrome {
+  transition: filter 640ms ease;
+}
+.pp[data-dead="true"] .pp-chrome {
+  filter: grayscale(1) brightness(0.42);
+}
+
+.pp-chrome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(#fafafc, #f1f1f4);
+}
+.pp-dots {
+  display: flex;
+  gap: 5px;
+}
+.pp-dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #d3d3d8;
+}
+.pp-omnibox {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.pp-lock {
+  flex: 0 0 auto;
+  font-size: 9px;
+  line-height: 1;
+}
+.pp-url {
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp[data-offline="true"] .pp-url {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+/* The signal, and the moment it goes. */
+.pp-wifi {
+  flex: 0 0 auto;
+  width: 17px;
+  color: var(--ink-2);
+}
+.pp-wifi svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pp-wifi-arc,
+.pp-wifi-dot {
+  transition: opacity 200ms ease;
+}
+.pp-wifi-slash {
+  stroke: var(--alarm);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  /* Drawn on, so the cut has a direction instead of appearing. */
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  transition: stroke-dashoffset 380ms cubic-bezier(0.16, 0.8, 0.2, 1);
+}
+.pp[data-offline="true"] .pp-wifi {
+  color: var(--alarm);
+}
+/* The arcs drop outside-in, which is how a connection actually feels like it
+   fails: the far bars go first. */
+.pp[data-offline="true"] .pp-wifi-arc--3 {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+.pp[data-offline="true"] .pp-wifi-arc--2 {
+  opacity: 0;
+  transition-delay: 110ms;
+}
+.pp[data-offline="true"] .pp-wifi-arc--1 {
+  opacity: 0;
+  transition-delay: 220ms;
+}
+.pp[data-offline="true"] .pp-wifi-slash {
+  stroke-dashoffset: 0;
+  transition-delay: 260ms;
+}
+
+.pp-toolbar {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--ink-2);
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    transform 220ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+.pp-toolbar svg {
+  width: 15px;
+  height: 15px;
+}
+.pp[data-beat="reach"] .pp-toolbar,
+.pp[data-beat="open"] .pp-toolbar {
+  color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.08);
+}
+.pp-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  min-width: 14px;
+  padding: 0 3px;
+  border: 1.5px solid #f5f5f7;
+  border-radius: 999px;
+  background: var(--good);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  animation: pp-badge-in 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+@keyframes pp-badge-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+/* --- the page, and its failure ------------------------------------------- */
+
+.pp-viewport {
+  position: relative;
+  height: 306px;
+  padding: 20px 22px;
+  background: var(--surface);
+}
+
+.pp-page {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 7px;
+  transition:
+    opacity 420ms ease,
+    transform 520ms ease;
+}
+.pp-page h4 {
+  max-width: 26ch;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.pp-byline {
+  margin: -2px 0 4px;
+  color: var(--ink-3);
+  font-size: 8.5px;
+  letter-spacing: 0.09em;
+}
+.pp-line {
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: #ececed;
+}
+.pp-figure {
+  height: 54px;
+  margin: 5px 0;
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(
+        -45deg,
+        rgba(0, 0, 0, 0.05) 0 6px,
+        transparent 6px 12px
+      ),
+    #f4f4f6;
+}
+/* Once the connection is gone the page is not dimmed, it is *absent*. Dimming
+   would say "still there, quieter"; this has to say "gone". */
+.pp[data-offline="true"] .pp-page {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* Above the wash, and styled for it: this is the browser's own dead-end screen,
+   so it is the one thing that should be legible in a frame gone dark. */
+.pp-crash {
+  position: absolute;
+  z-index: 3;
+  top: 26px;
+  left: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  opacity: 0;
+  color: rgba(255, 255, 255, 0.4);
+  transition:
+    opacity 420ms ease,
+    transform 520ms ease;
+  transform: translateY(8px);
+}
+.pp[data-dead="true"] .pp-crash {
+  opacity: 1;
+  transform: none;
+}
+.pp-crash-glyph {
+  width: 34px;
+  color: rgba(255, 255, 255, 0.28);
+}
+.pp-crash-glyph svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pp-crash strong {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+  font-weight: 600;
+}
+.pp-crash span:last-child {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+}
+
+/* --- pages leaving the building ------------------------------------------
+   Seven cards tear off the page, tumble out through the browser window, and come
+   to rest scattered across the section — over the project title, out past the
+   gutters, down into the copy. They do not come back. That is the argument: the
+   reading has left the browser, and is now somewhere the browser cannot lose it.
+
+   `.pp-spill` lives outside `.pp-browser`, for the plain reason that the browser
+   clips its own contents and these have to get out of it. The perspective the cards
+   tumble in comes from there too, so all seven look like they are in the same room.
+   There was once a shared `.demo-spill` base class for this; no demo ever applied
+   it, so it has been removed and each scene now sizes its own spill layer.
+
+   One keyframe, a per-card delay, three custom properties for the landing spot:
+   seven cards cost seven composited transforms and no JavaScript. */
+
+.pp-spill {
+  /* Stage coordinates matched to the popup's own position, so a card leaves the
+     Save button rather than the middle of a rectangle. */
+  --emit-right: 130px;
+  --emit-top: 150px;
+}
+.pp-flyer {
+  position: absolute;
+  top: var(--emit-top);
+  right: var(--emit-right);
+  display: flex;
+  width: 84px;
+  height: 104px;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 8px 9px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: 7px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 18px 40px -16px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  will-change: transform;
+}
+.pp-flyer-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+.pp-flyer-head i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.pp-flyer-head span {
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 6.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp-flyer-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: #e6e6e9;
+}
+.pp-flyer-bar:nth-child(4) {
+  width: 78%;
+}
+.pp-flyer-bar:last-child {
+  width: 52%;
+}
+
+/* Timed against the beats, not chosen for feel. Seven cards at 1900ms with a
+   235ms stagger means the last one settles as `finish` ends — 3310ms after the
+   press, which is exactly `press + read + collect + finish`. An earlier attempt
+   used 1500ms and a 165ms stagger, and the pages were all gone before the beat
+   was over, leaving the middle of the shot empty. */
+.pp-flyer[data-flying="true"] {
+  animation: pp-burst 1900ms cubic-bezier(0.22, 0.9, 0.24, 1) forwards;
+  animation-delay: calc(var(--order) * 235ms);
+}
+@keyframes pp-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-14deg) scale(0.22);
+  }
+  8% {
+    opacity: 1;
+  }
+  /* Through the glass and toward the viewer. The positive Z is the whole trick:
+     it makes this a card coming out of a window rather than a sprite sliding
+     across one. */
+  44% {
+    transform:
+      translate3d(calc(var(--to-x) * 0.4), calc(var(--to-y) * 0.3 - 9vh), 220px)
+      rotate3d(1, 0.55, 0.22, 212deg)
+      scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(var(--to-x), var(--to-y), 0) rotate(var(--rot)) scale(1);
+  }
+}
+
+/* When the connection dies, these are the only things that do not. Outlined and
+   lifted, so a glance at the dead frame finds them instead of it. */
+.pp-flyer[data-kept="true"] {
+  border-color: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 46px -10px rgba(255, 255, 255, 0.32),
+    0 22px 48px -18px rgba(0, 0, 0, 0.55);
+}
+
+/* --- the popup ------------------------------------------------------------ */
+
+.pp-popup {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  right: 14px;
+  width: 232px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 22px 48px -18px rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  transform-origin: 88% 0;
+  transition:
+    opacity 240ms ease,
+    transform 340ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+.pp-popup[data-open="true"] {
+  opacity: 1;
+  transform: none;
+}
+/* It sits above the wash, so it keeps its colour for free. The glow is what turns
+   "not dimmed" into "the only thing still on". */
+.pp[data-dead="true"] .pp-popup {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 0 58px -6px rgba(120, 180, 255, 0.4),
+    0 22px 48px -18px rgba(0, 0, 0, 0.7);
+}
+
+.pp-popup-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-2);
+}
+.pp-popup-mark {
+  width: 14px;
+  color: var(--accent);
+}
+.pp-popup-mark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pp-popup-head strong {
+  font-size: 11.5px;
+  font-weight: 650;
+}
+.pp-tabs {
+  display: flex;
+  margin-left: auto;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.05);
+}
+.pp-tabs span {
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: var(--ink-3);
+  font-size: 9.5px;
+  font-weight: 600;
+  transition:
+    background 220ms ease,
+    color 220ms ease;
+}
+.pp-tabs span[data-on="true"] {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.pp-save,
+.pp-library {
+  padding: 11px 11px 12px;
+}
+.pp-target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 10px;
+}
+.pp-target-title {
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp-target-host {
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+.pp-primary {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  transition:
+    transform 120ms ease,
+    filter 200ms ease;
+}
+.pp[data-beat="press"] .pp-primary {
+  filter: brightness(0.86);
+  transform: scale(0.96);
+}
+.pp-options {
+  margin: 8px 0 0;
+  color: var(--ink-3);
+  font-size: 10px;
+  text-align: center;
+}
+
+.pp-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 11px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+  animation: pp-rise 260ms cubic-bezier(0.16, 0.8, 0.2, 1);
+}
+@keyframes pp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+.pp-bar {
+  position: relative;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.pp-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+/* Indeterminate for a link-following save, because it genuinely does not know
+   its own total yet. The sliding bar is the honest shape of that. */
+.pp-bar[data-indeterminate="true"] i {
+  width: 42%;
+  animation: pp-slide 1250ms ease-in-out infinite;
+}
+@keyframes pp-slide {
+  0% {
+    transform: translateX(-105%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+.pp-progress-label {
+  color: var(--ink-2);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the library, after the lights go out -------------------------------- */
+
+.pp-library-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.pp-library-head strong {
+  font-size: 11.5px;
+}
+.pp-library-head span {
+  color: var(--ink-3);
+  font-size: 9.5px;
+}
+.pp-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pp-shelf li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  animation: pp-land 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12) backwards;
+  animation-delay: calc(var(--order) * 80ms);
+  transition:
+    background 260ms ease,
+    box-shadow 260ms ease;
+}
+@keyframes pp-land {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+.pp-shelf li[data-open="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.3);
+}
+.pp-shelf-title {
+  overflow: hidden;
+  font-size: 10.5px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp-shelf-meta {
+  flex: 0 0 auto;
+  color: var(--ink-3);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.pp-offline-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 9px 0 0;
+  color: var(--good);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+.pp-offline-note span {
+  font-size: 7px;
+}
+
+/* The saved page, reopened outside the window it came from.
+   Positioned in the spill layer and pushed left of the browser on purpose: the
+   frame behind it is dead, and a reading pane floating clear of it says so more
+   plainly than one tucked neatly inside the dead frame's borders. Deliberately
+   the brightest, largest thing on screen by this point — it is the payoff. */
+.pp-reader {
+  position: absolute;
+  z-index: 8;
+  bottom: 3vh;
+  left: -11vw;
+  display: flex;
+  width: min(300px, 74vw);
+  flex-direction: column;
+  gap: 7px;
+  padding: 14px 16px 17px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow:
+    0 0 70px -6px rgba(255, 255, 255, 0.3),
+    0 30px 66px -18px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translate3d(46px, 26px, 0) rotate(-5deg) scale(0.88);
+  transition:
+    opacity 420ms ease,
+    transform 640ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+.pp-reader[data-open="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 90px) rotate(-1.5deg) scale(1);
+}
+.pp-reader-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 3px;
+}
+.pp-reader-head span {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.pp-reader-head small {
+  flex: 0 0 auto;
+  color: var(--good);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pp-reader .pp-line {
+  background: #e9e9ec;
+}
+
+/* --- caption -------------------------------------------------------------- */
+
+.pp-caption {
+  position: relative;
+  /* Above the scatter: the cards land around the section, and one of them settling
+     on top of the sentence that explains them would be a joke at its own expense. */
+  z-index: 9;
+  margin: 0;
+  min-height: 2.6em;
+  color: var(--project-muted);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.pp-caption strong {
+  color: var(--project-ink);
+  font-weight: 650;
+}
+
+@media (max-width: 720px) {
+  .pp-viewport {
+    height: 268px;
+    padding: 14px 15px;
+  }
+  .pp-popup {
+    right: 8px;
+    width: 196px;
+  }
+  .pp-spill {
+    --emit-right: 104px;
+    --emit-top: 132px;
+  }
+  /* Smaller cards, and no scaling up mid-flight. At this width a card at 1.18
+     scale covers most of the browser it is supposed to be escaping from. The
+     landing spots need no override: they are in viewport units, so the spread
+     shrinks with the screen on its own. */
+  .pp-flyer {
+    width: 62px;
+    height: 78px;
+  }
+  .pp-reader {
+    left: -6vw;
+    bottom: -3vh;
+  }
+}
+
+/* ===========================================================================
+   The hand in the frame
+   ---------------------------------------------------------------------------
+   Shared by every vignette. A button that depresses on its own reads as a
+   glitch; a pointer that travels to it, lands, and clicks reads as somebody
+   using software. That is the whole difference between an animation and a
+   demonstration, and it costs one element.
+
+   Positioned in percentages of its stage, so the same numbers hold when the
+   stage is 880px on a desktop and 340px on a phone. The travel is a transition
+   rather than a keyframe: a beat change part-way through a move should redirect
+   it, not restart it.
+   =========================================================================== */
+
+.ghost-cursor {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  margin: -3px 0 0 -3px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    left 620ms cubic-bezier(0.33, 0, 0.15, 1),
+    top 620ms cubic-bezier(0.33, 0, 0.15, 1),
+    opacity 260ms ease,
+    transform 130ms ease;
+}
+.ghost-cursor[data-visible="true"] {
+  opacity: 1;
+}
+/* The click. Small, quick, and downward — the amount a real cursor moves when a
+   finger presses a trackpad, which is barely any. */
+.ghost-cursor[data-pressing="true"] {
+  transform: translate(1px, 1px) scale(0.9);
+}
+.ghost-cursor-arrow {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+.ghost-cursor-ring {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  opacity: 0;
+  color: #fff;
+  transform: scale(0.3);
+}
+.ghost-cursor[data-pressing="true"] .ghost-cursor-ring {
+  animation: ghost-ping 460ms cubic-bezier(0.16, 0.8, 0.2, 1);
+}
+@keyframes ghost-ping {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+
+/* ===========================================================================
+   PDF Explainer — "reach for the notes and they wake"
+   ---------------------------------------------------------------------------
+   One interaction, reproduced exactly: resting opacity 0.26, awake 1.0, a 300ms
+   ease-out on opacity, box-shadow and border colour. Those are the app's own
+   figures, and they are the only numbers in this block that are not free to
+   change.
+
+   Driven from `data-awake` rather than `:hover`, matching the real component. It
+   tracks wakefulness in state so that clicking a control inside the card cannot
+   make it fade out from under the pointer, and so tabbing in wakes it too. Here it
+   also means the scene can wake the card with a pointer that does not exist.
+   =========================================================================== */
+
+.pdfx {
+  --canvas: #f2f2f5;
+  --surface: #ffffff;
+  --elevated: rgba(255, 255, 255, 0.82);
+  --ink: #1d1d1f;
+  --ink-2: #61616b;
+  --ink-3: #8e8e97;
+  --line: rgba(0, 0, 0, 0.09);
+  --line-strong: rgba(0, 0, 0, 0.16);
+  --accent: #0b6fd6;
+  --violet: #6d28d9;
+  --violet-soft: rgba(109, 40, 217, 0.09);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+  --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.pdfx-stage {
+  position: relative;
+  border-radius: 14px;
+  background: var(--canvas);
+  padding: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* --- the slide ------------------------------------------------------------ */
+
+.pdfx-slide {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  padding: clamp(1rem, 3vw, 2.2rem);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.07),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+.pdfx-slide-rule {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 6px;
+  background: var(--accent);
+}
+.pdfx-slide h4 {
+  max-width: 22ch;
+  margin: 0 0 0.9rem;
+  color: var(--ink);
+  font-size: clamp(1rem, 2.3vw, 1.6rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.pdfx-slide ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ink-2);
+  font-size: clamp(0.72rem, 1.3vw, 0.95rem);
+  line-height: 1.7;
+  list-style: disc;
+}
+.pdfx-figure {
+  position: absolute;
+  right: clamp(1rem, 3vw, 2.2rem);
+  bottom: clamp(1rem, 3vw, 2.2rem);
+  width: min(46%, 300px);
+  color: var(--ink-3);
+}
+.pdfx-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pdfx-slide-number {
+  position: absolute;
+  bottom: clamp(0.6rem, 2vw, 1.2rem);
+  left: clamp(1rem, 3vw, 2.2rem);
+  color: var(--ink-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the floating notes --------------------------------------------------- */
+
+.pdfx-notes {
+  position: absolute;
+  top: 26px;
+  right: 26px;
+  bottom: 26px;
+  z-index: 2;
+  display: flex;
+  width: min(360px, 46%);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  opacity: 0;
+  box-shadow: var(--shadow-soft);
+  /* The card slides in from the right the first time, then never moves again. */
+  transform: translateX(16px);
+  transition:
+    opacity 300ms ease-out,
+    transform 420ms cubic-bezier(0.16, 0.86, 0.18, 1.12),
+    box-shadow 300ms ease-out,
+    border-color 300ms ease-out;
+}
+.pdfx-notes[data-present="true"] {
+  opacity: 0.26;
+  transform: none;
+}
+.pdfx-notes[data-awake="true"] {
+  border-color: var(--line-strong);
+  opacity: 1;
+  box-shadow: var(--shadow-float);
+}
+
+.pdfx-notes-backing {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--elevated);
+  backdrop-filter: blur(24px);
+}
+
+.pdfx-notes-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+.pdfx-notes-eyebrow {
+  color: var(--violet);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+/* The number itself, so the mechanism is legible and not just felt. */
+.pdfx-opacity {
+  color: var(--ink-3);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdfx-notes-body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.85rem 1rem 1.1rem;
+  scrollbar-width: thin;
+}
+.pdfx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+.pdfx-chip {
+  padding: 0.12rem 0.42rem;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+.pdfx-chip--violet {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+.pdfx-notes-body h5 {
+  margin: 0 0 0.4rem;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.pdfx-notes-body p {
+  margin: 0 0 0.6rem;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+.pdfx-equation {
+  padding: 0.5rem 0.6rem;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--ink) !important;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px !important;
+  text-align: center;
+}
+.pdfx-sensitivity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+}
+.pdfx-sensitivity > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.28rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.pdfx-sensitivity dt {
+  color: var(--ink-2);
+  font-size: 10.5px;
+}
+.pdfx-sensitivity dd {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- caption -------------------------------------------------------------- */
+
+.pdfx-caption {
+  margin: 0;
+  min-height: 2.6em;
+  color: var(--project-muted);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.pdfx-caption strong {
+  color: var(--project-ink);
+  font-weight: 650;
+}
+
+/* --- the act rail ---------------------------------------------------------
+   Four labels across the top, the current one lit and the finished ones ticked
+   down. Not navigation, and not clickable: it exists so that "this project has
+   four parts" is legible in the first second, rather than being something a
+   visitor discovers by watching a loop twice. */
+.pdfx-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.pdfx-acts li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-3);
+  transition: color 320ms ease;
+}
+.pdfx-acts li[data-done="true"] {
+  color: var(--ink-3);
+}
+.pdfx-acts li[data-on="true"] {
+  color: var(--violet);
+}
+.pdfx-act-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.32;
+  transition:
+    opacity 320ms ease,
+    transform 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+.pdfx-acts li[data-done="true"] .pdfx-act-dot {
+  opacity: 0.7;
+}
+.pdfx-acts li[data-on="true"] .pdfx-act-dot {
+  opacity: 1;
+  transform: scale(1.5);
+}
+
+/* --- the split ------------------------------------------------------------
+   The slide keeps the whole stage for the overlay act and gives up a third of it
+   when a panel opens, which is what the real workspace does. Animating
+   `grid-template-columns` is the one layout property worth animating here: the
+   alternative is transforming the slide, which would scale its type. */
+.pdfx-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 0fr;
+  gap: 0;
+  transition:
+    grid-template-columns 620ms cubic-bezier(0.22, 0.9, 0.24, 1),
+    gap 620ms cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+.pdfx-stage[data-split="true"] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+  gap: 14px;
+}
+
+/* The satellite diagram is sized for a full-width slide, where it sits clear of
+   the bullets in the bottom-right corner. On a narrowed slide it crossed straight
+   through "Timing error → position error", so it shrinks and drops into the corner
+   for the acts that split the stage. It is only load-bearing in the first act,
+   where it is the thing the notes must not cover. */
+.pdfx-stage[data-split="true"] .pdfx-figure {
+  width: 38%;
+  opacity: 0.5;
+  transition:
+    width 620ms cubic-bezier(0.22, 0.9, 0.24, 1),
+    opacity 620ms ease;
+}
+
+/* --- the panel ------------------------------------------------------------ */
+.pdfx-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 420ms ease;
+}
+.pdfx-panel[data-open="true"] {
+  opacity: 1;
+}
+.pdfx-panel-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.pdfx-panel-tabs span {
+  padding: 3px 9px;
+  border-radius: 6px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  transition:
+    background 260ms ease,
+    color 260ms ease;
+}
+.pdfx-panel-tabs span[data-on="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* --- II. the tutor -------------------------------------------------------- */
+.pdfx-chat {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  /* Newest at the bottom, which is where a conversation grows. */
+  justify-content: flex-end;
+}
+.pdfx-bubble {
+  max-width: 88%;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 14px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  animation: pdfx-bubble-in 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+@keyframes pdfx-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.pdfx-bubble--user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 5px;
+}
+.pdfx-bubble--bot {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom-left-radius: 5px;
+}
+/* The app's own thinking state: three dots that bounce out of phase. */
+.pdfx-thinking {
+  display: flex;
+  gap: 4px;
+  padding: 11px 12px;
+}
+.pdfx-thinking i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pdfx-bounce 900ms ease-in-out infinite;
+}
+.pdfx-thinking i:nth-child(2) {
+  animation-delay: 150ms;
+}
+.pdfx-thinking i:nth-child(3) {
+  animation-delay: 300ms;
+}
+@keyframes pdfx-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+.pdfx-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+.pdfx-suggest span {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 10px;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    color 220ms ease;
+}
+.pdfx-suggest span[data-picked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.pdfx-composer {
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+/* --- III/IV. practice cards ----------------------------------------------
+   The real cards are tinted by kind — violet for quizzes, teal for matching —
+   and the tint is a left edge rather than a fill, so the card still reads as
+   paper. */
+.pdfx-card {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 13px 13px 15px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 12px;
+  background: var(--surface);
+  animation: pdfx-card-in 340ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+@keyframes pdfx-card-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+.pdfx-card--violet {
+  border-left-color: var(--violet);
+}
+.pdfx-card--teal {
+  border-left-color: #0f7f76;
+}
+.pdfx-card-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 10px;
+}
+.pdfx-chip--teal {
+  background: rgba(15, 127, 118, 0.11);
+  color: #0f7f76;
+}
+.pdfx-question {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+
+.pdfx-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pdfx-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  font-size: 11.5px;
+  line-height: 1.45;
+  transition:
+    background 260ms ease,
+    border-color 260ms ease,
+    opacity 260ms ease;
+}
+.pdfx-option-letter {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+}
+.pdfx-option[data-state="chosen"] {
+  border-color: var(--violet);
+  background: var(--violet-soft);
+}
+.pdfx-option[data-state="reveal"] {
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+.pdfx-option[data-state="reveal"] .pdfx-option-letter {
+  border-color: var(--good);
+  background: var(--good);
+  color: #fff;
+}
+/* Everything else recedes once the answer is out, rather than disappearing. */
+.pdfx-option[data-state="dim"] {
+  opacity: 0.42;
+}
+.pdfx-verdict {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.5;
+  animation: pdfx-bubble-in 300ms ease-out;
+}
+.pdfx-verdict strong {
+  color: var(--good);
+}
+
+/* --- matching ------------------------------------------------------------- */
+.pdfx-match {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 6px;
+}
+.pdfx-match ul {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pdfx-match li {
+  position: relative;
+  padding: 7px 20px 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  font-size: 10.5px;
+  line-height: 1.4;
+  transition:
+    background 300ms ease,
+    border-color 300ms ease,
+    color 300ms ease;
+}
+.pdfx-match li[data-matched="true"] {
+  border-color: #0f7f76;
+  background: rgba(15, 127, 118, 0.09);
+}
+.pdfx-tick {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  color: #0f7f76;
+  font-size: 10px;
+  font-style: normal;
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 260ms ease,
+    transform 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+.pdfx-match li[data-matched="true"] .pdfx-tick {
+  opacity: 1;
+  transform: none;
+}
+
+@media (max-width: 760px) {
+  /* One column: a 0.82fr panel beside a slide is unreadable at this width, and
+     the acts still read in sequence stacked. */
+  .pdfx-stage[data-split="true"] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .pdfx-match {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .pdfx-notes {
+    top: 14px;
+    right: 14px;
+    bottom: 14px;
+    width: 58%;
+    border-radius: 14px;
+  }
+  .pdfx-notes-body {
+    padding: 0.6rem 0.7rem 0.8rem;
+  }
+  .pdfx-sensitivity {
+    display: none;
+  }
+}
+
+/* ===========================================================================
+   Choir Practice
+   ---------------------------------------------------------------------------
+   Just a frame. The application inside it brings its own design language, and
+   the worst thing this layer could do is compete with it — so there is no
+   chrome, no border treatment, and nothing that reads as a player around a
+   video.
+
+   `.choir-poster` used to live here: a large invitation card with an icon and
+   three lines of copy, shown until the visitor pressed it. It is gone because
+   the frame now loads and opens a score by itself. Deleted rather than left
+   unreferenced, since an unused component with styles is a component somebody
+   wires back up.
+   =========================================================================== */
+
+.choir {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.choir-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 520px;
+  border: 0;
+  border-radius: 12px;
+  background: #000;
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.7);
+  /* Fades up rather than appearing, so a 1.6 MB application arriving does not
+     land as a jump-cut in the middle of a page that is otherwise composed. */
+  animation: choir-in 520ms ease-out;
+}
+@keyframes choir-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Holds the space before the frame exists, at the same size, so nothing on the
+   page moves when it arrives. */
+.choir-holding {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 520px;
+  place-items: center;
+  border-radius: 12px;
+  background: radial-gradient(120% 120% at 18% 0%, #16222a, #0a0e11 72%);
+}
+.choir-holding span {
+  width: 34px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  animation: demo-shimmer 1.5s ease-in-out infinite;
+}
+
+.choir-note {
+  margin: 0;
+  color: rgba(245, 245, 247, 0.55);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  text-align: center;
+}
+.choir-note code {
+  padding: 0.06em 0.32em;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.94em;
+}
+
+/* The notes that used to live here moved into the backdrop (see the Backdrops
+   section). In this layer they sat in front of the application and converged on a
+   point, which put them across the engraved score — litter on top of the one thing
+   they were meant to draw attention to. Behind everything, riding the drawn staves,
+   they can only add to the section. */
+
+/* ===========================================================================
+   Decaf — "not blocked, three seconds away"
+   ---------------------------------------------------------------------------
+   A feed losing its grip, in ten seconds. Everything is driven from `data-beat`
+   plus three cumulative flags on the root — `data-grey`, `data-paused`,
+   `data-on` — because most of what happens here is a state the page stays in
+   rather than a moment it passes through.
+
+   The layout constraint is the interesting one. The header and both sidebars
+   must not move a pixel while the feed empties, because "the page does not jump"
+   is the product's quiet advantage over every other extension in this category.
+   So `.dc-app` is a fixed three-column grid and `.dc-feed` has a fixed height:
+   the notice replaces the posts inside a box whose geometry never depends on
+   what is in it.
+   =========================================================================== */
+
+.dc {
+  --paper: #fbfbfd;
+  --panel: #ffffff;
+  --ink: #16181c;
+  --ink-2: #5b616b;
+  --ink-3: #8b919b;
+  --line: rgba(0, 0, 0, 0.08);
+  --accent: #4a5bd6;
+  --alarm: #e8443a;
+  --calm: #7c828d;
+
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 12px;
+}
+
+.dc-browser {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--paper);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 16px 40px -20px rgba(0, 0, 0, 0.3);
+}
+
+/* --- tab strip ------------------------------------------------------------
+   Here for exactly one detail: the `(3)` a site writes into its own title, and
+   the moment it stops being there. */
+.dc-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  background: #eeeef2;
+}
+.dc-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 7px 7px 0 0;
+  background: #fff;
+  box-shadow: 0 -1px 0 var(--line) inset;
+}
+.dc-favicon {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #f0546a, #f0a154);
+  transition: filter 700ms ease;
+}
+.dc[data-grey="true"] .dc-favicon {
+  filter: grayscale(1);
+}
+.dc-tab-title {
+  color: var(--ink-2);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.dc-tab-title b {
+  color: var(--alarm);
+  font-weight: 700;
+}
+
+.dc-toolbar {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--ink-3);
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    transform 220ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+.dc-toolbar svg {
+  width: 15px;
+  height: 15px;
+}
+.dc[data-beat="reach"] .dc-toolbar,
+.dc[data-beat="press"] .dc-toolbar {
+  color: var(--accent);
+  background: rgba(74, 91, 214, 0.12);
+  transform: scale(1.1);
+}
+.dc[data-on="true"] .dc-toolbar {
+  color: var(--accent);
+}
+
+/* --- the app: three columns that never move ------------------------------- */
+
+.dc-app {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) 168px;
+  gap: 14px;
+  padding: 14px;
+}
+
+.dc-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.dc-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f0546a, #f0a154);
+  transition: filter 700ms ease;
+}
+.dc[data-grey="true"] .dc-logo {
+  filter: grayscale(1);
+}
+.dc-nav {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+  font-size: 11px;
+}
+.dc-nav i {
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.dc-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 11px;
+}
+.dc-top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.dc-search {
+  flex: 1 1 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink-3);
+  font-size: 10.5px;
+}
+.dc-avatar {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6fc3f0, #4a5bd6);
+  transition: filter 700ms ease;
+}
+.dc[data-grey="true"] .dc-avatar {
+  filter: grayscale(1);
+}
+
+/* The badge that keeps its number and loses its urgency. Decaf does not remove
+   it, on purpose: a real message still has to get through. */
+.dc-bell {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--ink-2);
+}
+.dc-bell svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.dc-bell b {
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  min-width: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--alarm);
+  color: #fff;
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  transition:
+    background 620ms ease,
+    color 620ms ease,
+    box-shadow 620ms ease;
+  box-shadow: 0 0 10px rgba(232, 68, 58, 0.55);
+}
+/* Muted, not erased. The first version dropped it to a 10%-black pill with grey
+   text and the number stopped being readable, which quietly turned "keeps its
+   count so a real message still gets through" into "removes the badge" — the
+   opposite of the design decision being shown. */
+.dc-bell[data-calm="true"] b {
+  background: rgba(0, 0, 0, 0.16);
+  color: #3d424b;
+  box-shadow: none;
+}
+
+/* --- the feed box, whose size never depends on its contents --------------- */
+
+.dc-feed {
+  display: flex;
+  height: 268px;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.dc-post {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.dc-post-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 10.5px;
+}
+.dc-post-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8ad07a, #4aa0d6);
+  transition: filter 700ms ease;
+}
+
+/* The media, and the drain.
+   Staggered so the colour leaves left to right across the page rather than
+   snapping off everywhere at once — the difference between a setting being
+   applied and a thing happening. */
+.dc-media {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 7px;
+  transition: filter 900ms ease;
+}
+.dc-media--a {
+  background: linear-gradient(122deg, #f0546a, #f0a154 46%, #f5d06a);
+}
+.dc-media--b {
+  background: linear-gradient(122deg, #4aa0d6, #8ad07a 52%, #f5d06a);
+}
+.dc[data-grey="true"] .dc-media,
+.dc[data-grey="true"] .dc-post-avatar {
+  filter: grayscale(1);
+}
+.dc[data-grey="true"] .dc-media--b {
+  transition-delay: 260ms;
+}
+/* The autoplaying thing in the middle of it. */
+.dc-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  transform: translate(-50%, -50%);
+  transition: opacity 500ms ease;
+}
+.dc-play::after {
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid var(--ink);
+  content: "";
+  transform: translate(-50%, -50%);
+}
+/* Muted autoplay outside a page you opened yourself is stopped. */
+.dc[data-on="true"] .dc-play {
+  opacity: 0;
+}
+
+.dc-post-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 10px;
+}
+.dc-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  /* Tabular so a number becoming a dash does not shuffle the row. */
+  font-variant-numeric: tabular-nums;
+}
+.dc-count b {
+  color: var(--alarm);
+  font-size: 9px;
+  transition: color 620ms ease;
+}
+.dc[data-grey="true"] .dc-count b {
+  color: var(--ink-3);
+}
+.dc-comments[data-gone="true"] {
+  display: none;
+}
+
+/* --- the notice that takes the feed's place ------------------------------- */
+
+.dc-notice {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 18px;
+  border: 1px dashed rgba(0, 0, 0, 0.16);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.015);
+  text-align: center;
+  animation: dc-notice-in 420ms ease-out;
+}
+@keyframes dc-notice-in {
+  from {
+    opacity: 0;
+  }
+}
+.dc-notice-head {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.dc-notice-body {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+.dc-notice-foot {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 9.5px;
+}
+
+/* The hold. A ring that fills while the button is held down — the whole design
+   in one control: the feed is not blocked, it just costs three seconds, and
+   seven tomorrow. */
+.dc-hold {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin: 3px 0;
+  place-items: center;
+}
+.dc-hold svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.dc-hold-track,
+.dc-hold-fill {
+  fill: none;
+  stroke-width: 3;
+}
+.dc-hold-track {
+  stroke: rgba(0, 0, 0, 0.1);
+}
+.dc-hold-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  /* 2πr for r=19. */
+  stroke-dasharray: 119.4;
+  stroke-dashoffset: 119.4;
+}
+.dc-hold[data-holding="true"] .dc-hold-fill {
+  /* Three seconds, which is the real first-pass duration. */
+  animation: dc-fill 1800ms linear forwards;
+}
+.dc-hold[data-done="true"] .dc-hold-fill {
+  stroke-dashoffset: 0;
+  stroke: #1f8f4e;
+}
+@keyframes dc-fill {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.dc-hold-label {
+  color: var(--ink-2);
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.dc-hold[data-done="true"] .dc-hold-label {
+  color: #1f8f4e;
+}
+
+/* --- the rail that goes entirely ----------------------------------------- */
+
+.dc-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  transition:
+    opacity 520ms ease,
+    transform 520ms ease;
+}
+.dc-suggest[data-gone="true"] {
+  opacity: 0;
+  transform: translateX(10px);
+  /* `visibility` rather than `display`, so the column keeps its width and the
+     middle of the page does not widen when the rail leaves. */
+  visibility: hidden;
+}
+.dc-suggest-head {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dc-suggest-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+.dc-suggest-row i {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0a154, #4a5bd6);
+  transition: filter 700ms ease;
+}
+.dc[data-grey="true"] .dc-suggest-row i {
+  filter: grayscale(1);
+}
+.dc-suggest-row span {
+  overflow: hidden;
+  color: var(--ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dc-suggest-row b {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* --- caption -------------------------------------------------------------- */
+
+.dc-caption {
+  margin: 0;
+  min-height: 2.6em;
+  color: var(--project-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.dc-caption strong {
+  color: var(--project-ink);
+  font-weight: 650;
+}
+
+@media (max-width: 720px) {
+  .dc-app {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+  /* The rail is the first thing to go on a narrow screen, and it is also the
+     thing the scene deletes — so it is dropped from the layout entirely rather
+     than reserving a column nobody can see. */
+  .dc-suggest {
+    display: none;
+  }
+  .dc-nav {
+    font-size: 10px;
+  }
+  .dc-feed {
+    height: 232px;
+  }
+}
+
+/* ===========================================================================
+   Backdrops
+   ---------------------------------------------------------------------------
+   The drawn backgrounds from `app/backdrops.tsx`. A road with traffic on it
+   behind the transit extension, sheet music behind the choir application.
+
+   These replace what used to be here for the mint theme: one dashed line with a
+   dot travelling along it, shared by both projects because both are mint. A
+   palette is not a subject.
+
+   Everything animates with `transform` and `opacity` only, so all of it composites
+   and none of it triggers layout. The whole layer inherits `pointer-events: none`
+   from `.project-ambience` and every element is `aria-hidden`.
+   =========================================================================== */
+
+.bd {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* Punched-out details — bus windows, wheel hubs, the clef's counters — are
+     filled with the section's own background rather than white, so a vehicle looks
+     glazed instead of stickered on. */
+  --backdrop-hole: var(--project-bg);
+  color: var(--project-accent);
+}
+
+/* Only the section being read animates. Seven backdrops running at once is a
+   cost paid for six things nobody is looking at. */
+.project:not(.is-active) .bd * {
+  animation-play-state: paused !important;
+}
+
+/* --------------------------------------------------------------- transit ---- */
+
+.bd--transit {
+  --road: color-mix(in srgb, var(--project-accent) 52%, transparent);
+}
+
+/* A wash at the top, so the traffic reads as being on the ground. */
+.bd-sky {
+  position: absolute;
+  inset: 0 0 42% 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--project-accent) 9%, transparent),
+    transparent 78%
+  );
+}
+
+/* Each lane is a full-width strip holding a road line and its vehicles. Vehicles
+   are positioned against the lane, so a lane can be moved without touching them. */
+.bd-lane {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 0;
+}
+.bd-lane--far {
+  /* Above the heading, not through it. The lanes were at 38/62/92% and the
+     middle one ran a 310px bus straight across the facts list. */
+  top: 24%;
+  --scale: 1.45;
+  --ink: 0.15;
+}
+.bd-lane--mid {
+  top: 74%;
+  --scale: 2.35;
+  --ink: 0.26;
+}
+.bd-lane--near {
+  top: 97%;
+  --scale: 3.1;
+  --ink: 0.12;
+}
+
+.bd-road {
+  position: absolute;
+  right: -2%;
+  left: -2%;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--road);
+  opacity: 0.7;
+}
+
+/* Lane markings, on the middle road only. On all three they read as a ladder. */
+.bd-dashes {
+  position: absolute;
+  top: 7px;
+  right: -4%;
+  left: -4%;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--road) 0 22px,
+    transparent 22px 44px
+  );
+  opacity: 0.75;
+  /* Slides at the speed of the lane it belongs to, which is what stops the road
+     from looking like a static rail the traffic slides along. */
+  animation: bd-dash-run 2.6s linear infinite;
+}
+@keyframes bd-dash-run {
+  to {
+    transform: translateX(-44px);
+  }
+}
+
+.bd-vehicle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  display: block;
+  height: auto;
+  opacity: var(--ink);
+  /* Sits *on* the road: the SVGs put their wheels at the bottom of the viewBox. */
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+.bd-vehicle svg,
+svg.bd-vehicle {
+  display: block;
+}
+
+/* Widths are set per vehicle rather than scaled, so stroke weights and punched
+   holes stay honest at every depth. */
+.bd-vehicle--bus-a {
+  width: calc(132px * var(--scale));
+  animation: bd-drive-right 26s linear infinite;
+}
+.bd-vehicle--car-a {
+  width: calc(92px * var(--scale));
+  animation: bd-drive-right 19s linear -11s infinite;
+}
+.bd-vehicle--bus-b {
+  width: calc(132px * var(--scale));
+  animation: bd-drive-right 17s linear -4s infinite;
+}
+.bd-vehicle--car-b {
+  width: calc(92px * var(--scale));
+  /* The only one going the other way. A street with all traffic in one direction
+     is a conveyor belt. */
+  animation: bd-drive-left 21s linear -9s infinite;
+}
+.bd-vehicle--car-c {
+  width: calc(92px * var(--scale));
+  animation: bd-drive-right 12s linear -3s infinite;
+}
+
+@keyframes bd-drive-right {
+  from {
+    transform: translateX(-18vw);
+  }
+  to {
+    transform: translateX(122vw);
+  }
+}
+/* Mirrored with `scaleX`, so one drawing serves both directions. */
+@keyframes bd-drive-left {
+  from {
+    transform: translateX(122vw) scaleX(-1);
+  }
+  to {
+    transform: translateX(-18vw) scaleX(-1);
+  }
+}
+
+.bd-pole {
+  position: absolute;
+  width: 62px;
+  height: auto;
+  opacity: 0.2;
+}
+.bd-pole--a {
+  top: calc(74% - 198px);
+  left: 6%;
+}
+.bd-pole--b {
+  top: calc(24% - 124px);
+  right: 12%;
+  width: 40px;
+  opacity: 0.14;
+}
+
+/* ----------------------------------------------------------------- choir ---- */
+
+.bd--choir {
+  --rule: color-mix(in srgb, var(--project-ink) 20%, transparent);
+}
+
+/* A stave is five rules with even gaps, drawn as one repeating gradient so the
+   spacing cannot drift. */
+.bd-stave {
+  position: absolute;
+  right: -4%;
+  left: -4%;
+  height: 52px;
+  opacity: 0.5;
+}
+.bd-stave-lines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--rule) 0 1px,
+    transparent 1px 13px
+  );
+}
+.bd-clef {
+  position: absolute;
+  top: -14px;
+  left: 6%;
+  width: 30px;
+  height: auto;
+  color: var(--rule);
+  opacity: 0.9;
+}
+
+/* Three staves at different sizes, drifting slowly sideways — the page breathing
+   rather than scrolling. */
+.bd-stave--a {
+  top: 12%;
+  animation: bd-stave-drift 34s ease-in-out infinite alternate;
+}
+.bd-stave--b {
+  top: 47%;
+  height: 68px;
+  opacity: 0.34;
+  animation: bd-stave-drift 43s ease-in-out -12s infinite alternate-reverse;
+}
+.bd-stave--c {
+  top: 84%;
+  height: 40px;
+  opacity: 0.42;
+  animation: bd-stave-drift 39s ease-in-out -22s infinite alternate;
+}
+@keyframes bd-stave-drift {
+  from {
+    transform: translate3d(-1.5%, 0, 0);
+  }
+  to {
+    transform: translate3d(1.5%, 0, 0);
+  }
+}
+
+/* Two sheets of manuscript behind the frame, so the application reads as sitting
+   on a music stand instead of floating on a gradient. */
+.bd-page {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  padding: 6% 7%;
+  border: 1px solid color-mix(in srgb, var(--project-ink) 12%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, #fff 42%, transparent);
+  box-shadow: 0 24px 60px -30px color-mix(in srgb, var(--project-ink) 40%, transparent);
+}
+/* The ruled blocks on each page. */
+.bd-page i {
+  height: 26px;
+  background: repeating-linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--project-ink) 16%, transparent) 0 1px,
+    transparent 1px 7px
+  );
+}
+.bd-page--a {
+  top: 6%;
+  left: -6%;
+  width: 26%;
+  height: 46%;
+  transform: rotate(-6deg);
+}
+.bd-page--b {
+  right: -7%;
+  bottom: 4%;
+  width: 23%;
+  height: 38%;
+  transform: rotate(5deg);
+}
+
+@media (max-width: 900px) {
+  /* The pages are the first thing to go: at this width they sit under the frame
+     and only muddy it. */
+  .bd-page,
+  .bd-pole {
+    display: none;
+  }
+  .bd-lane--far {
+    top: 18%;
+  }
+}
+
+/* Notes riding the staves.
+   In the backdrop rather than in the demo's spill layer, which is where they used
+   to be: in front of the application, converging on a point in the middle of the
+   section, and therefore strewn across the engraved score. Behind everything they
+   can only ever add to the section, and they travel along the same three staves
+   that are already drawn, so the music and the ruling belong to each other. */
+.bd-note {
+  position: absolute;
+  left: 0;
+  color: color-mix(in srgb, var(--project-ink) 46%, var(--project-accent));
+  font-size: var(--glyph-size);
+  line-height: 1;
+  opacity: 0;
+  animation: bd-note-run var(--dur) linear var(--delay) infinite;
+  will-change: transform;
+}
+/* One lane per stave, sitting on it rather than near it. */
+.bd-note--lane-0 {
+  top: calc(12% - 6px);
+}
+.bd-note--lane-1 {
+  top: calc(47% - 4px);
+}
+.bd-note--lane-2 {
+  top: calc(84% - 8px);
+}
+
+@keyframes bd-note-run {
+  0% {
+    opacity: 0;
+    transform: translate3d(106vw, 0, 0) rotate(var(--spin));
+  }
+  /* Fades up once it is properly on the page and down before it leaves, so the
+     stream has no visible entry or exit point. */
+  12% {
+    opacity: 0.5;
+  }
+  84% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-8vw, var(--drift), 0) rotate(0deg);
+  }
+}
+
+/* ===========================================================================
+   Reduced motion
+   ---------------------------------------------------------------------------
+   This page moves a lot on purpose: letters land, ambience drifts, a skeleton
+   shimmers, a bus icon runs along a line. Individual demos already turn their
+   own motion off, but the page around them did not, which left the loudest
+   movement on the site — a hero title that assembles itself — running for
+   someone who asked the operating system for none of it.
+
+   Blanket rather than a list, because a list goes stale the moment a keyframe is
+   added. It is safe to be blanket here: no animation on this page uses a
+   `forwards` fill, so nothing depends on an animation finishing in order to be
+   visible. The hero letters fill `backwards`, so cancelling the animation leaves
+   them at their base style, which is simply "there".
+
+   Delays are flattened too. Zeroing duration alone would still leave the last
+   hero letter invisible for the 594ms it was waiting its turn.
+   =========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0s !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-delay: 0s !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ===========================================================================
+   /legal
+   ---------------------------------------------------------------------------
+   Documents, not sections. Someone lands here from a Chrome Web Store listing
+   or from a permission prompt, wanting to read prose and leave — so this is the
+   one part of the site with no ambience, no parallax and no reveal. Just a
+   single column at a readable measure, on the same paper as everything else so
+   it does not feel like a different website.
+   =========================================================================== */
+.legal-shell {
+  min-height: 100svh;
+  padding: clamp(3rem, 8vh, 6rem) 1.25rem clamp(4rem, 10vh, 7rem);
+  background: var(--paper);
+}
+.legal {
+  max-width: 68ch;
+  margin: 0 auto;
+}
+.legal-head {
+  padding-bottom: 1.6rem;
+  border-bottom: 1px solid rgba(22, 25, 23, 0.14);
+  margin-bottom: 2.2rem;
+}
+.legal-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 1.1rem;
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.legal-eyebrow a {
+  color: var(--muted);
+  text-decoration-color: rgba(22, 25, 23, 0.3);
+  text-decoration-line: underline;
+  text-underline-offset: 0.25em;
+}
+.legal-eyebrow a:hover {
+  color: var(--ink);
+}
+.legal-eyebrow span[aria-hidden] {
+  opacity: 0.45;
+}
+.legal h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.9rem, 4.6vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.legal-effective {
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.legal-effective strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* --- the document itself --------------------------------------------------- */
+.legal-body {
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.72;
+}
+.legal-body h2 {
+  margin: 2.6rem 0 0.9rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.32rem;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+.legal-body h3 {
+  margin: 1.9rem 0 0.7rem;
+  font-size: 1.02rem;
+  font-weight: 650;
+}
+.legal-body h2:first-child,
+.legal-body h3:first-child {
+  margin-top: 0;
+}
+.legal-body p {
+  margin: 0 0 1.15rem;
+}
+.legal-body strong {
+  font-weight: 650;
+}
+.legal-body ul {
+  margin: 0 0 1.3rem;
+  padding-left: 1.15rem;
+  /* Tailwind's preflight strips list markers globally. Everywhere else on the
+     site that is what we want; in a document where several clauses are lists,
+     unmarked items read as stray short paragraphs. */
+  list-style: disc;
+}
+.legal-body li {
+  margin-bottom: 0.5rem;
+  padding-left: 0.2rem;
+}
+.legal-body li::marker {
+  color: rgba(22, 25, 23, 0.4);
+}
+.legal-body code {
+  padding: 0.08em 0.28em;
+  border-radius: 5px;
+  background: rgba(22, 25, 23, 0.06);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.85em;
+  /* Storage keys and permission names break badly at a narrow measure. */
+  overflow-wrap: anywhere;
+}
+.legal-body a,
+.legal-foot a {
+  color: var(--ink);
+  text-decoration-color: rgba(22, 25, 23, 0.42);
+  text-decoration-line: underline;
+  text-underline-offset: 0.22em;
+}
+.legal-body a:hover,
+.legal-foot a:hover {
+  text-decoration-color: var(--ink);
+}
+
+/* The one table, in the vendored-copies README. */
+.legal-table-wrap {
+  overflow-x: auto;
+  margin: 0 0 1.4rem;
+}
+.legal-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.legal-body th,
+.legal-body td {
+  padding: 0.5rem 0.7rem 0.5rem 0;
+  border-bottom: 1px solid rgba(22, 25, 23, 0.12);
+  text-align: left;
+  vertical-align: top;
+}
+.legal-body th {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --- the index ------------------------------------------------------------- */
+/* The index is built from nested lists but reads as a table of contents, so it
+   opts back out of the markers `.legal-body ul` just turned on. Both levels are
+   named, and both are qualified by `.legal-body`, so they outrank it rather than
+   depending on which rule happens to come last. */
+.legal-body .legal-index,
+.legal-body .legal-index ul {
+  list-style: none;
+}
+.legal-index {
+  margin: 0 0 2.4rem;
+  padding: 0;
+}
+.legal-index > li {
+  padding: 0;
+  margin-bottom: 1.9rem;
+}
+.legal-index > li > h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.16rem;
+}
+.legal-index ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.legal-index ul li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid rgba(22, 25, 23, 0.1);
+  margin: 0;
+}
+.legal-index ul li > span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+/* --- the footer ----------------------------------------------------------- */
+.legal-foot {
+  padding-top: 1.6rem;
+  border-top: 1px solid rgba(22, 25, 23, 0.14);
+  margin-top: 2.8rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+.legal-foot p {
+  margin: 0 0 0.6rem;
+}
+.legal-foot p:last-child {
+  margin-bottom: 0;
+}
+
+/* No dark variant here on purpose. The site itself is light-only — the only
+   `prefers-color-scheme` rule in this file is scoped to the GRT demo's Auto
+   theme, because that demo is reproducing an extension that has one. Adding a
+   dark palette for these pages alone would put pale text on the same paper
+   background every other page keeps. */
+
+/* --- policy links in a project heading ------------------------------------
+   Quieter than Source and Open project, because they are for the small number
+   of visitors who want them and should not compete with the two links everyone
+   uses. The row is allowed to wrap now that a heading can carry four links. */
+.project-links {
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+}
+.project-policy-link {
+  color: var(--project-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.project-policy-link:hover {
+  color: var(--project-ink);
+}
+
+/* --- site footer ----------------------------------------------------------
+   The last thing on the page, deliberately plain. Everything above it is doing
+   something; this just tells you where to write and where the policies are. */
+.site-foot {
+  padding: clamp(2.5rem, 6vw, 4rem) 3vw clamp(2rem, 5vw, 3rem);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+.site-foot p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem 0.85rem;
+  margin: 0;
+}
+.site-foot a {
+  color: var(--muted);
+  text-decoration-color: rgba(22, 25, 23, 0.28);
+  text-decoration-line: underline;
+  text-underline-offset: 0.25em;
+}
+.site-foot a:hover {
+  color: var(--ink);
+  text-decoration-color: var(--ink);
+}
+.site-foot span[aria-hidden] {
+  opacity: 0.5;
 }

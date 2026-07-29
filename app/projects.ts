@@ -1,29 +1,37 @@
-export type ProjectStep = {
-  title: string;
-  text: string;
-  image: string;
-  video?: string;
-  poster?: string;
-  alt: string;
-  fit?: "cover" | "contain";
-  surface?: "light" | "dark";
-  position?: string;
-  zoom?: {
-    scale: number;
-    origin: string;
-  };
-  cardRatio?: string;
-  cardWidth?: string;
-  display?: "portrait-popout";
-  portraitRatio?: string;
-  pointer?: {
-    x: string;
-    y: string;
-    length: string;
-    angle: string;
-  };
-  calloutSide?: "left" | "right";
-};
+/**
+ * What is on this site, and what each section is allowed to claim.
+ *
+ * The old shape of this file described screenshots: an image per step, a caption,
+ * a pointer angle, a crop. It described pictures of software. Every one of those
+ * pictures went stale — four of the projects had been renamed, one had been
+ * rewritten from scratch, and one did not exist yet.
+ *
+ * So a project no longer carries media. It carries an id for a demo component
+ * that runs the actual thing, and a short list of facts that are checkable by
+ * reading the source it links to. If a fact here cannot be found in that
+ * repository, it should be deleted rather than softened.
+ */
+
+/** Which demo component a section mounts. */
+export type DemoId =
+  | "night-neutralizer"
+  | "grt-next-bus"
+  | "n-back"
+  | "pagepack"
+  | "decaf"
+  | "pdf-explainer"
+  | "choir-practice";
+
+/**
+ * Where the heading, the scene and the facts sit.
+ *
+ * Four compositions rather than seven, assigned so that no two neighbours share
+ * one. That is the only constraint worth enforcing: a visitor never notices a
+ * repeat, because any two sections using the same arrangement are four thousand
+ * pixels apart. Seven bespoke layouts would have been seven things to maintain for
+ * an effect nobody can perceive.
+ */
+export type Stage = "beside" | "beside-flip" | "stacked" | "offset";
 
 export type Project = {
   id: string;
@@ -31,432 +39,205 @@ export type Project = {
   name: string;
   platform: string;
   status?: string;
-  mode?: string;
+  /** Which composition this section uses. See `Stage`. */
+  stage: Stage;
+  /** What it does, in one line, without selling it. */
   headline: string;
+  /** Why it exists. The problem, not the feature. */
   why: string;
   theme: "paper" | "mint" | "black" | "white" | "navy" | "forest";
   source: string;
   live?: string;
-  steps: ProjectStep[];
+  demo: DemoId;
+  /**
+   * How the well behind the demo is lit. Demos that ship their own dark interface
+   * get a dark recess, so a pale page does not put a glowing halo around a UI
+   * designed to be the dimmest thing on a screen at 1 a.m.
+   */
+  well: "light" | "dark";
+  /**
+   * One line of framing above the scene.
+   *
+   * These read as descriptions of what is happening rather than instructions,
+   * because there is nothing to operate. An earlier version invited the visitor to
+   * drag, press and play, which was honest about demos that had been built as
+   * working software and is the wrong promise now that they are films.
+   */
+  invitation: string;
+  facts: string[];
 };
 
 const projectData: Project[] = [
   {
-    id: "blokamine",
-    number: "01",
-    name: "blokamine",
+    id: "choir-practice",
+    stage: "stacked",
+    number: "07",
+    name: "Choir Practice",
+    platform: "Web app",
+    headline: "Rehearse your part with the other three voices behind it.",
+    why: "Learning an inner line from a recording of the whole choir is guesswork. You need your line loud and the rest quiet, then the reverse.",
+    theme: "mint",
+    source: "https://github.com/xiangthebung/satb-practice",
+    live: "https://satb-practice.xiangli3625.workers.dev/",
+    demo: "choir-practice",
+    well: "dark",
+    invitation:
+      "Not a scene — the actual application, running in this page with a score already open. Sound is one press away.",
+    facts: [
+      "No notation library: every clef, stem and beam is drawn as a Canvas path",
+      "No samples either — each voice is a section of detuned singers through formant filters",
+      "YIN pitch detection, compensated back to where you actually sang it",
+      "281 unit tests, 70 browser tests, zero runtime dependencies",
+    ],
+  },
+  {
+    id: "decaf",
+    stage: "beside",
+    number: "05",
+    name: "Decaf",
     platform: "Chrome extension",
     status: "Work in progress",
-    mode: "Monochrome mode",
-    headline: "Make social media less rewarding.",
-    why: "Remove the parts that keep you scrolling.",
+    headline: "Make social media boring on purpose.",
+    why: "Blocking a site makes you want it. Removing the colour, the counts and the autoplay just makes it dull.",
     theme: "paper",
-    source: "https://github.com/xiangthebung/blokamine",
-    steps: [
-      {
-        title: "Make the feed less interesting.",
-        text: "Keep the sites. Remove colour, numbers, and other attention triggers.",
-        image: "/projects/blokamine.png",
-        alt: "YouTube with desaturated, upside-down media",
-        fit: "cover",
-        cardRatio: "1600 / 923",
-        surface: "dark",
-        position: "center bottom",
-        pointer: { x: "56%", y: "48%", length: "22%", angle: "158deg" },
-      },
-      {
-        title: "Hide the reward signals.",
-        text: "Remove likes, views, follower counts, and notification badges.",
-        image: "/projects/blokamine-settings.png",
-        alt: "blokamine core experience settings",
-        fit: "contain",
-        surface: "light",
-        pointer: { x: "88%", y: "22%", length: "26%", angle: "166deg" },
-      },
-      {
-        title: "Choose what to remove.",
-        text: "Hide Reels, comments, Explore, suggested posts, and Shorts per site.",
-        image: "/projects/blokamine-sites.png",
-        alt: "blokamine site-specific controls",
-        fit: "contain",
-        surface: "light",
-        pointer: { x: "58%", y: "58%", length: "24%", angle: "158deg" },
-      },
-      {
-        title: "Turn down the rest.",
-        text: "Blur or remove media, or flip the page upside down.",
-        image: "/projects/blokamine-instagram.png",
-        alt: "Instagram with media turned upside down and desaturated",
-        fit: "contain",
-        cardRatio: "1600 / 900",
-        surface: "dark",
-        pointer: { x: "52%", y: "48%", length: "22%", angle: "-14deg" },
-      },
-    ],
-  },
-  {
-    id: "grt-next-bus",
-    number: "02",
-    name: "GRT Next Bus",
-    platform: "Chrome extension",
-    headline: "See the next bus without opening Google Maps.",
-    why: "Faster than searching Google Maps for the same stop.",
-    theme: "mint",
-    source: "https://github.com/xiangthebung/grt-bus-time",
-    steps: [
-      {
-        title: "See the next departures.",
-        text: "Saved stops show live or scheduled times on the front page.",
-        image: "/projects/grt-next-bus.png",
-        alt: "GRT Next Bus saved stops and departure times",
-        fit: "contain",
-        surface: "light",
-        display: "portrait-popout",
-        portraitRatio: "842 / 1200",
-        pointer: { x: "54%", y: "43%", length: "52%", angle: "158deg" },
-      },
-      {
-        title: "Save a stop once.",
-        text: "Choose a route, direction, and stop.",
-        image: "/projects/grt-add-stop.png",
-        alt: "GRT Next Bus add a stop form",
-        fit: "contain",
-        surface: "light",
-        display: "portrait-popout",
-        portraitRatio: "830 / 720",
-        pointer: { x: "50%", y: "72%", length: "48%", angle: "-14deg" },
-      },
-      {
-        title: "Use Pro for alerts.",
-        text: "Add closest-stop sorting, countdowns, and alerts.",
-        image: "/projects/grt-pro.png",
-        alt: "GRT Next Bus Pro countdown and alert controls",
-        fit: "contain",
-        surface: "light",
-        display: "portrait-popout",
-        portraitRatio: "842 / 1196",
-        pointer: { x: "85%", y: "8%", length: "52%", angle: "156deg" },
-      },
-      {
-        title: "Leave when the alert arrives.",
-        text: "Get a Chrome notification when the bus is close.",
-        image: "/projects/grt-alert-popup.png",
-        alt: "Chrome notification for an arriving GRT bus",
-        fit: "cover",
-        cardRatio: "688 / 147",
-        cardWidth: "clamp(300px, 72vw, 720px)",
-        surface: "dark",
-        pointer: { x: "52%", y: "39%", length: "22%", angle: "-14deg" },
-      },
-    ],
-  },
-  {
-    id: "pagepack",
-    number: "03",
-    name: "PagePack",
-    platform: "Chrome extension",
-    headline: "Save websites. Read them offline.",
-    why: "Useful when you have no mobile data.",
-    theme: "black",
-    source: "https://github.com/xiangthebung/pagepack-extension",
-    steps: [
-      {
-        title: "Save one page or a whole browse.",
-        text: "Keep one page or collect pages as you browse.",
-        image: "/projects/pagepack.png",
-        alt: "PagePack save page and browsing journey options",
-        fit: "contain",
-        surface: "dark",
-        display: "portrait-popout",
-        portraitRatio: "826 / 1304",
-        pointer: { x: "54%", y: "43%", length: "52%", angle: "158deg" },
-      },
-      {
-        title: "Choose what to save.",
-        text: "Follow same-site links, keep supported scripts, and save to a folder.",
-        image: "/projects/pagepack-options.png",
-        alt: "PagePack link depth and script options",
-        fit: "contain",
-        surface: "dark",
-        display: "portrait-popout",
-        portraitRatio: "758 / 904",
-        pointer: { x: "61%", y: "58%", length: "48%", angle: "-14deg" },
-      },
-      {
-        title: "Keep a local library.",
-        text: "Search saved pages and sort them into folders.",
-        image: "/projects/pagepack-library.png",
-        alt: "PagePack saved pages library",
-        fit: "contain",
-        surface: "dark",
-        display: "portrait-popout",
-        portraitRatio: "760 / 1194",
-        pointer: { x: "53%", y: "52%", length: "52%", angle: "158deg" },
-      },
-      {
-        title: "Save packs, not just pages.",
-        text: "Open any saved link and read the pack without a connection.",
-        image: "/projects/pagepack-folder.png",
-        alt: "A PagePack folder containing a 57-page pack",
-        fit: "contain",
-        surface: "dark",
-        display: "portrait-popout",
-        portraitRatio: "752 / 1186",
-        pointer: { x: "52%", y: "46%", length: "50%", angle: "-14deg" },
-      },
-      {
-        title: "Keep the original look.",
-        text: "Styles, images, fonts, and supported media come along. DRM video, live streams, and heavily scripted pages may not.",
-        image: "/projects/pagepack-reader.png",
-        alt: "A full website open inside the PagePack offline reader",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "light",
-        position: "center bottom",
-        pointer: { x: "56%", y: "54%", length: "22%", angle: "158deg" },
-      },
+    // The repository was renamed along with the extension; the old `blokamine`
+    // path is not a redirect.
+    source: "https://github.com/xiangthebung/Decaf",
+    demo: "decaf",
+    well: "light",
+    invitation:
+      "A feed doing everything it can to hold you, and then the same feed with all of it switched off.",
+    facts: [
+      "Empties the feed where it sits — the header and sidebars do not move a pixel",
+      "Reward counts become a dash in the text and in the label a screen reader reads",
+      "Notification badges keep their number and lose the red, so a real message gets through",
+      "Twelve sites, and messaging deliberately excluded — a conversation is not a feed",
+      "The first pass each day costs a 3-second hold, the next 7, then 11, then 15",
     ],
   },
   {
     id: "pdf-explainer",
-    number: "04",
-    name: "PDF Slide Explainer",
-    platform: "Web app",
-    status: "Work in progress",
-    headline: "Turn a lecture PDF into an interactive study layer.",
-    why: "Hover for help, move away to read, then quiz or ask the current slide.",
-    theme: "white",
-    source: "https://github.com/xiangthebung/pdf-explainer",
-    live: "https://pdf-explainer-833706869963.us-east1.run.app/",
-    steps: [
-      {
-        title: "Study without leaving the deck.",
-        text: "Upload a lecture PDF. Notes, questions, and tutoring open over the current slide.",
-        image: "/projects/pdf-explainer-demo-poster.png",
-        video: "/projects/pdf-explainer-demo.mp4",
-        poster: "/projects/pdf-explainer-demo-poster.png",
-        alt: "PDF Slide Explainer demo showing notes, a quiz, and the AI tutor over lecture slides",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "center bottom",
-        pointer: { x: "81%", y: "53%", length: "28%", angle: "150deg" },
-      },
-      {
-        title: "Move away. The slide comes back.",
-        text: "The study layer fades when the pointer leaves it, keeping the original slide easy to reach.",
-        image: "/projects/pdf-explainer-transparency.png",
-        alt: "The PDF Slide Explainer study layer fading to reveal the lecture slide underneath",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "center bottom",
-        pointer: { x: "82%", y: "52%", length: "22%", angle: "-16deg" },
-      },
-      {
-        title: "Interactive exercise. See what you missed.",
-        text: "Answer a multiple-choice question and get immediate feedback on the correct choice and reasoning.",
-        image: "/projects/pdf-explainer-interactive-quiz.png",
-        alt: "PDF Slide Explainer interactive quiz showing an incorrect answer and the correct choice",
-        fit: "contain",
-        cardRatio: "1780 / 846",
-        surface: "dark",
-        pointer: { x: "75%", y: "64%", length: "24%", angle: "158deg" },
-      },
-      {
-        title: "Ask a tutor that knows the slide.",
-        text: "Get a slide-specific answer while the diagram and source context stay visible underneath.",
-        image: "/projects/pdf-explainer-tutor.png",
-        alt: "PDF Slide Explainer AI tutor comparing trilateration and triangulation",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "center bottom",
-        pointer: { x: "75%", y: "48%", length: "22%", angle: "-16deg" },
-      },
-      {
-        title: "Switch up the practice.",
-        text: "Generate matching, fill-in-the-blank, practice problems, and quizzes. A Gemini API key is required.",
-        image: "/projects/pdf-explainer-match.png",
-        alt: "PDF Slide Explainer matching activity with correct and incorrect concept pairs",
-        fit: "contain",
-        cardRatio: "1374 / 772",
-        surface: "dark",
-        pointer: { x: "53%", y: "57%", length: "22%", angle: "158deg" },
-      },
-    ],
-  },
-  {
-    id: "choir-practice",
-    number: "05",
-    name: "Choir Practice Tool",
-    platform: "Web app",
-    headline: "Turn a MusicXML score into a personal choir rehearsal.",
-    why: "Shape the mix, scrub the score, check pitch, change tempo, and export WAV.",
-    theme: "navy",
-    source: "https://github.com/xiangthebung/satb-practice",
-    live: "https://satb-practice.xiangli3625.workers.dev/",
-    steps: [
-      {
-        title: "See the full rehearsal flow.",
-        text: "A short demo zooms in on presets, scrubbing, BPM, metronome, pitch validation, and WAV export.",
-        image: "/projects/choir-demo-poster.png",
-        video: "/projects/choir-demo.mp4",
-        poster: "/projects/choir-demo-poster.png",
-        alt: "Choir Practice Tool demo with labeled close-ups of its rehearsal controls",
-        fit: "contain",
-        cardRatio: "1280 / 828",
-        surface: "dark",
-        pointer: { x: "63%", y: "27%", length: "22%", angle: "150deg" },
-      },
-      {
-        title: "Open a score in one step.",
-        text: "Choose a bundled sample or drag in an uncompressed .musicxml file.",
-        image: "/projects/choir-import.png",
-        alt: "Choir Practice Tool sample library and MusicXML upload area",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "center bottom",
-        pointer: { x: "57%", y: "79%", length: "25%", angle: "150deg" },
-      },
-      {
-        title: "Scrub straight to the hard measure.",
-        text: "Drag the progress bar and the score follows the new playback position.",
-        image: "/projects/choir-scrub.png",
-        alt: "Choir Practice Tool after scrubbing to a later measure in the score",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "center bottom",
-        pointer: { x: "44%", y: "94%", length: "20%", angle: "-150deg" },
-      },
-      {
-        title: "Sing your line. Check the pitch.",
-        text: "Trace your voice over your section and see Lower, Higher, or On pitch as you sing.",
-        image: "/projects/choir-pitch.png",
-        alt: "Choir Practice Tool marking the singer on pitch and tracing their voice over the tenor line",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "center bottom",
-        pointer: { x: "60%", y: "45%", length: "21%", angle: "-14deg" },
-      },
-      {
-        title: "Mix around your voice.",
-        text: "Set your section, move each volume, or start with Just Yours, Mostly Yours, All, or Everything But Yours.",
-        image: "/projects/choir-mix.png",
-        alt: "Choir Practice Tool showing individual part volumes and the Mostly Yours rehearsal preset",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "left bottom",
-        zoom: { scale: 1.32, origin: "left bottom" },
-        calloutSide: "left",
-        pointer: { x: "13%", y: "73%", length: "11%", angle: "-18deg" },
-      },
-      {
-        title: "Slow it down. Add a pulse.",
-        text: "Change BPM for difficult passages and toggle the metronome from the player controls.",
-        image: "/projects/choir-tempo.png",
-        alt: "Choir Practice Tool playing at 111 BPM with the metronome control selected",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "right bottom",
-        zoom: { scale: 1.18, origin: "center bottom" },
-        calloutSide: "right",
-        pointer: { x: "95%", y: "95%", length: "9%", angle: "-90deg" },
-      },
-      {
-        title: "Export the rehearsal mix.",
-        text: "Render the current preset and voice balance to WAV for practice away from the browser.",
-        image: "/projects/choir-export.png",
-        alt: "Choir Practice Tool rendering the current rehearsal mix as a WAV file",
-        fit: "cover",
-        cardRatio: "1600 / 922",
-        surface: "dark",
-        position: "right top",
-        zoom: { scale: 2.4, origin: "right top" },
-        calloutSide: "right",
-        pointer: { x: "88%", y: "38%", length: "11%", angle: "90deg" },
-      },
-    ],
-  },
-  {
-    id: "zen-n-back",
+    stage: "beside-flip",
     number: "06",
-    name: "Zen N-Back",
+    name: "PDF Explainer",
+    platform: "Web app",
+    headline: "Read a lecture deck with the explanation on top of it.",
+    why: "The slide and the thing that explains the slide are usually in different windows, and you lose one to look at the other.",
+    theme: "black",
+    source: "https://github.com/xiangthebung/pdf-explainer",
+    demo: "pdf-explainer",
+    well: "light",
+    invitation:
+      "Four parts of the workspace in turn: notes floating over the slide, a tutor that knows which slide you are on, a marked quiz, and the terms paired up.",
+    facts: [
+      "Notes arrive in batches of 3–12 slides, sized by how dense the slides are",
+      "Review sets are planned around the model's rate limit, not the network's",
+      "Model output is treated as hostile: repaired where possible, dropped where not",
+      "Your API key, your device — session storage by default, never logged server-side",
+    ],
+  },
+  {
+    id: "pagepack",
+    stage: "offset",
+    number: "04",
+    name: "PagePack",
+    platform: "Chrome extension",
+    headline: "Save whole websites. Read them with no connection.",
+    why: "Reading lists assume you will always have data. On a plane or underground, they are just a list of links.",
+    theme: "white",
+    source: "https://github.com/xiangthebung/pagepack-extension",
+    demo: "pagepack",
+    well: "light",
+    invitation:
+      "One save, then the connection dies. Every label under the bar is the string the extension actually prints.",
+    facts: [
+      "Streams the live DOM back in 4 MiB chunks, because Chrome caps message size",
+      "Re-parses stylesheets and inlines their @import and url() dependencies recursively",
+      "Saved scripts run in a sandbox with connect-src 'none' — nothing phones home",
+      "IndexedDB, up to 1,000 pages and 4 GiB in a single save",
+    ],
+  },
+  {
+    id: "grt-next-bus",
+    stage: "beside",
+    number: "02",
+    name: "GRT Next Bus",
+    platform: "Chrome extension",
+    headline: "See the next bus without opening a map.",
+    why: "Checking one stop should not mean loading a route planner and finding it again.",
+    theme: "mint",
+    source: "https://github.com/xiangthebung/grt-bus-time",
+    demo: "grt-next-bus",
+    well: "light",
+    invitation:
+      "Counting down on the toolbar with nothing open, and a notification five minutes before the bus reaches your stop.",
+    facts: [
+      "Parses the full regional GTFS feed in the browser: 310k stop times into typed arrays",
+      "Live predictions merged over the timetable under six documented accuracy rules",
+      "Service-day maths survives times past midnight — the agency publishes 25:05:00",
+      "Location, when granted, is used on the device and never sent anywhere",
+    ],
+  },
+  {
+    id: "n-back",
+    stage: "beside-flip",
+    number: "03",
+    name: "N-Back",
     platform: "Web game",
-    headline: "Play dual or triple N-back.",
-    why: "Set the difficulty, learn the rules, and play a short session.",
+    headline: "Dual and triple n-back, without the gamification.",
+    why: "Most versions of this either look like a research instrument or promise to raise your IQ. It can just be a quiet thing you do for four minutes.",
     theme: "forest",
     source: "https://github.com/xiangthebung/n-back",
     live: "https://n-back.ai.studio/",
-    steps: [
-      {
-        title: "Set the difficulty.",
-        text: "Choose dual or triple N-back, memory depth, speed, and optional help.",
-        image: "/projects/zen-n-back.png",
-        alt: "Zen N-Back setup screen",
-        fit: "contain",
-        cardRatio: "1600 / 1467",
-        surface: "dark",
-        pointer: { x: "50%", y: "35%", length: "22%", angle: "158deg" },
-      },
-      {
-        title: "Learn what counts.",
-        text: "See how position, letters, and colour count as matches.",
-        image: "/projects/nback-tutorial.png",
-        alt: "Zen N-Back tutorial explaining a dual match",
-        fit: "contain",
-        cardRatio: "1600 / 1527",
-        surface: "dark",
-        pointer: { x: "51%", y: "53%", length: "21%", angle: "-14deg" },
-      },
-      {
-        title: "Play a short session.",
-        text: "Use the buttons or keyboard, then check your stats. It’s a game, not a clinical test.",
-        image: "/projects/nback-game.png",
-        alt: "Zen N-Back game board",
-        fit: "contain",
-        cardRatio: "1600 / 1459",
-        surface: "dark",
-        pointer: { x: "52%", y: "48%", length: "22%", angle: "158deg" },
-      },
+    demo: "n-back",
+    well: "dark",
+    invitation:
+      "Two back means comparing what is on screen now with what was on screen two cues ago. Here is one match arriving.",
+    facts: [
+      "Exactly 6 matches per stream in 20 scored trials, planned up front rather than rolled",
+      "Scored on balanced accuracy, so pressing everything does worse than pressing nothing",
+      "The app speaks the letter; this page prints it. C H K L Q R S T, picked for not rhyming",
+      "Practice, not an assessment — the transfer research is contested and this makes no claim",
+    ],
+  },
+  {
+    id: "night-neutralizer",
+    stage: "stacked",
+    number: "01",
+    name: "Night Neutralizer",
+    platform: "Chrome extension",
+    headline: "Watch things at night without the volume war.",
+    why: "Turn the screen down and dark scenes vanish. Turn the volume down and dialogue vanishes. Neither has to be true.",
+    theme: "navy",
+    source: "https://github.com/xiangthebung/night-neutralizer",
+    demo: "night-neutralizer",
+    well: "dark",
+    invitation:
+      "The same shot twice: once as the film shipped it, once through the extension. Watch what the explosion does to the volume.",
+    facts: [
+      "An SVG feComponentTransfer filter, 33-entry lookup table, rewritten every frame",
+      "Frames measured at 48×27, Rec.709 luma, 64-bin histogram",
+      "Dims in 0.3 s and recovers in 1.6 s — asymmetric on purpose",
+      "Paints over frames instead of reading them, so it also works on DRM video",
+      "217 unit tests, 60 end-to-end checks in real Chrome",
     ],
   },
 ];
 
-// Keep the monochrome blokamine section between two color-led projects.
-export const projects: Project[] = [
-  projectData[1],
-  projectData[0],
-  projectData[2],
-  projectData[3],
-  projectData[4],
-  projectData[5],
-].map((project, index) => ({
+export const projects: Project[] = projectData.map((project, index) => ({
   ...project,
   number: String(index + 1).padStart(2, "0"),
 }));
 
-export const entranceStyles = [
-  "orbit",
-  "drop",
-  "pop",
-  "whip",
-  "rise",
-  "flip",
-] as const;
-
+/** A quiet mark per section, used by the heading. Decorative. */
 export const projectMotifs: Record<string, { label: string; mark: string }> = {
-  blokamine: { label: "colour off", mark: "B/W" },
+  "night-neutralizer": { label: "after dark", mark: "◑" },
   "grt-next-bus": { label: "next stop", mark: "●—●" },
-  pagepack: { label: "saved offline", mark: "⇩" },
-  "pdf-explainer": { label: "next slide", mark: "▱" },
-  "choir-practice": { label: "follow along", mark: "♪" },
-  "zen-n-back": { label: "next round", mark: "▦" },
+  "n-back": { label: "two back", mark: "▦" },
+  pagepack: { label: "kept offline", mark: "⇩" },
+  decaf: { label: "colour off", mark: "B/W" },
+  "pdf-explainer": { label: "slide over slide", mark: "▱" },
+  "choir-practice": { label: "four voices", mark: "♪" },
 };
 
 export const funMedia = [
