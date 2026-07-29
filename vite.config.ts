@@ -36,6 +36,11 @@ const localBindingConfig = {
 export default defineConfig(async () => {
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
+  //
+  // These live here rather than as a `VAR=value` prefix on the npm scripts: that
+  // prefix is shell syntax that cmd.exe and PowerShell do not understand, so it
+  // made `npm run build` fail outright on Windows. Setting them before the
+  // Cloudflare plugin is imported below has the same effect on every platform.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
   process.env.WRANGLER_LOG_PATH ??= ".wrangler/logs";
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
