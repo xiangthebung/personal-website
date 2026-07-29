@@ -1,0 +1,75 @@
+name: verify
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    name: typecheck + lint + rendered HTML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx tsc --noEmit
+
+      - run: npm run lint
+
+      # `npm test` builds first and then reads the server-rendered HTML out of the
+      # worker. Two of its checks compare this site's copy of another project
+      # against that project's own repository and skip when the sibling checkout is
+      # absent, which it is here -- they are the local guard against the published
+      # privacy policies drifting, not a CI one.
+      - run: npm test
+
+  browser:
+    name: the page, driven in Chromium
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run build
+
+      # Seven of the eight sections are self-running scenes, and a scene can
+      # server-render perfectly and then throw on its first frame. This walks all
+      # of them and fails on a console error, a failed request, a scene that stops
+      # advancing, or one that cannot finish a loop in 24 seconds.
+      - run: node scripts/drive-site.mjs --shots
+
+      # Every layout hole this page has had opened above 1600px, because it was
+      # only ever checked at 1440. Both widths, every time.
+      - run: node scripts/wide-shot.mjs 1440
+
+      - run: node scripts/wide-shot.mjs 2560
+
+      # Cheap, and each one has caught something real: a selector list ending in a
+      # comma silently swallowing the block after it, and an em dash written as
+      # UTF-8 and read back as Latin-1.
+      - run: node scripts/dangling-selectors.mjs
+
+      - run: node scripts/find-mojibake.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: page-screenshots
+          path: outputs/
+          if-no-files-found: warn
