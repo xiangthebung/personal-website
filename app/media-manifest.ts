@@ -165,26 +165,11 @@ export const mediaManifest: Record<string, MediaAsset> = {
     tint: "#5f5547",
     avif: "/derived/fun/pan-fried-fish-420.avif 420w, /derived/fun/pan-fried-fish-640.avif 640w, /derived/fun/pan-fried-fish-1040.avif 1040w, /derived/fun/pan-fried-fish-3024.avif 3024w",
   },
-  "/hero-face-1440.avif": {
-    width: 1440,
-    height: 1920,
-    tint: "#6d736c",
-  },
   "/hero-face-1600.jpg": {
     width: 1600,
     height: 2133,
     tint: "#6d726c",
     avif: "/derived/hero-face-1600-768.avif 768w, /derived/hero-face-1600-1200.avif 1200w, /derived/hero-face-1600-1600.avif 1600w",
-  },
-  "/hero-face-2200.avif": {
-    width: 2200,
-    height: 2933,
-    tint: "#6d726c",
-  },
-  "/hero-face-768.avif": {
-    width: 768,
-    height: 1024,
-    tint: "#6d726c",
   },
   "/projects/blokamine-instagram.avif": {
     width: 1600,

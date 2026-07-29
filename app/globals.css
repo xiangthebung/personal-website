@@ -111,11 +111,11 @@ a:hover .external-arrow {
   align-items: end;
   min-height: 66svh;
   padding: clamp(4rem, 7vw, 7rem) 3vw 3vw;
+  /* The photograph is the <picture> in `.hero-art`, which can serve AVIF and pick a
+     width. This used to also set `background-image: url("/hero-face.png")`, with a
+     later rule in the performance pass setting it back to `none` — so the file was
+     never fetched by a browser and still shipped in every deploy, at 7.7 MiB. */
   background-color: var(--paper);
-  background-image: url("/hero-face.png");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
 }
 
 .hero-github {
@@ -158,14 +158,6 @@ a:hover .external-arrow {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
-.project-index {
-  padding: 0.55rem 0.75rem;
-  border-radius: 1.2rem;
-  background: rgba(240, 239, 233, 0.64);
-  box-shadow: 0 18px 48px rgba(22, 25, 23, 0.1);
-  backdrop-filter: blur(18px) saturate(0.75);
-}
-
 .hero-copy h1 {
   max-width: 900px;
   margin: 0.9rem 0 1.2rem;
@@ -184,43 +176,11 @@ a:hover .external-arrow {
   line-height: 1.5;
 }
 
-.project-index {
-  border-top: 0;
-}
-
-.project-index a {
-  display: grid;
-  grid-template-columns: 2.5rem 1fr auto;
-  gap: 1rem;
-  align-items: center;
-  padding: 0.72rem 0.25rem;
-  border-bottom: 1px solid rgba(22, 25, 23, 0.16);
-  text-shadow: 0 1px 5px rgba(240, 239, 233, 0.72);
-  transition:
-    background 180ms ease,
-    padding 180ms ease;
-}
-
-.project-index a:last-child {
-  border-bottom: 0;
-}
-
-.project-index a:hover {
-  background: rgba(255, 255, 255, 0.24);
-  padding-right: 0.55rem;
-  padding-left: 0.55rem;
-}
-
-.project-index span {
-  color: var(--muted);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.64rem;
-}
-
-.project-index strong {
-  font-size: 0.82rem;
-  font-weight: 560;
-}
+/* The index's own rules live in one block near the end of this file, next to the
+   seven marks they arrange. What used to be here was a second, earlier definition
+   of the same component -- a three-column grid, a pill radius, a translucent
+   panel -- and with both present the cascade decided the component rather than
+   either author doing it. */
 
 .project {
   --project-scroll-shift: 0px;
@@ -1693,9 +1653,6 @@ a:hover .external-arrow {
 }
 
 /* Rendering and motion performance pass. */
-.hero {
-  background-image: none;
-}
 
 .hero-art {
   position: absolute;
@@ -7174,4 +7131,983 @@ svg.bd-vehicle {
 }
 .site-foot span[aria-hidden] {
   opacity: 0.5;
+}
+
+/* ===========================================================================
+   The index in the hero, and the seven living marks in it
+   ---------------------------------------------------------------------------
+   The hero claims all seven projects are running on this page. The index used to
+   be seven names in a rounded box, which is the one element here that could have
+   come from anywhere. Each row now carries its scene in miniature.
+
+   Every mark is divs and keyframes. No canvas, no client component, no timers:
+   seven of these run at once for the cost of compositing, and the server sends
+   them down finished. Durations are deliberately co-prime-ish so the seven never
+   fall into step with each other and start reading as one animation.
+   =========================================================================== */
+
+.project-index {
+  --imark-w: 46px;
+  --imark-h: 26px;
+  position: relative;
+  z-index: 2;
+  align-self: end;
+  /* The hero's second grid track is a fraction, so above about 1900px the panel
+     kept growing while its contents did not: at 2560 that was a 800px row with a
+     mark, a name and 560px of nothing. */
+  justify-self: end;
+  width: 100%;
+  max-width: 27rem;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(22, 25, 23, 0.14);
+  border-radius: 14px;
+  /* Sits on the photo, so it needs its own ground rather than transparency. */
+  background: rgba(246, 245, 240, 0.9);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 18px 50px -28px rgba(22, 25, 23, 0.5);
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+
+.project-index a {
+  display: grid;
+  grid-template-columns: auto var(--imark-w) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.62rem 1rem;
+  border-top: 1px solid rgba(22, 25, 23, 0.09);
+  font-size: 0.9rem;
+  transition:
+    background-color 200ms var(--ease-out-soft),
+    padding-left 240ms var(--ease-out-soft);
+}
+
+.project-index a:first-child {
+  border-top: 0;
+}
+
+.project-index a:hover,
+.project-index a:focus-visible {
+  padding-left: 1.35rem;
+  background: rgba(22, 25, 23, 0.05);
+}
+
+.project-index-number {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+.project-index a strong {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.project-index-arrow {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition:
+    opacity 200ms ease,
+    transform 200ms var(--ease-out-soft);
+}
+
+.project-index-arrow svg {
+  width: 14px;
+  height: 14px;
+}
+
+.project-index a:hover .project-index-arrow,
+.project-index a:focus-visible .project-index-arrow {
+  opacity: 0.75;
+  transform: translateY(0);
+}
+
+/* --- the slot every mark is drawn inside ---------------------------------- */
+
+.imark-slot {
+  display: block;
+  width: var(--imark-w);
+  height: var(--imark-h);
+}
+
+.imark {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 4px;
+  /* Every mark is composited on its own layer. Without this the seven of them
+     repaint the frosted panel behind them on every frame. */
+  isolation: isolate;
+  contain: strict;
+}
+
+.imark > * {
+  position: absolute;
+  will-change: transform, opacity;
+}
+
+/* --- 01 Choir Practice: a stave, and a voice over it ---------------------- */
+
+.imark--choir {
+  background: rgba(38, 92, 78, 0.09);
+}
+
+.imark--choir .imark-stave {
+  right: 3px;
+  left: 3px;
+  height: 1px;
+  background: rgba(23, 63, 54, 0.42);
+  /* Four lines at 4px, which puts the stave in the middle rather than filling. */
+  top: calc(50% - 6px + var(--step) * 4px);
+}
+
+.imark--choir .imark-voice {
+  top: calc(50% - 8px);
+  left: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #1d5c4d;
+  animation: imark-voice 4300ms var(--ease-out-soft) infinite;
+}
+
+@keyframes imark-voice {
+  0% {
+    transform: translate(0, 12px);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  /* Lands on each line in turn: soprano down to bass and back. */
+  28% {
+    transform: translate(9px, 0);
+  }
+  46% {
+    transform: translate(18px, 8px);
+  }
+  64% {
+    transform: translate(27px, 4px);
+  }
+  82% {
+    transform: translate(36px, 12px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(40px, 12px);
+    opacity: 0;
+  }
+}
+
+/* --- 02 Decaf: the colour going out of a feed ----------------------------- */
+
+.imark--decaf {
+  background: rgba(22, 25, 23, 0.06);
+  /* Not a stepped cut: the point of the extension is that the colour leaves, and
+     a hard switch would read as a different image being swapped in. */
+  animation: imark-drain 5900ms var(--ease-out-soft) infinite;
+}
+
+.imark--decaf .imark-swatch {
+  left: 4px;
+  height: 4px;
+  border-radius: 2px;
+  top: calc(5px + var(--step) * 6px);
+  /* Widths differ so it reads as posts, not as a progress bar. */
+  width: calc(20px + var(--step) * 8px);
+  background: hsl(calc(8 + var(--step) * 96) 74% 58%);
+}
+
+@keyframes imark-drain {
+  0%,
+  46% {
+    filter: none;
+  }
+  100% {
+    filter: grayscale(1) contrast(0.92);
+  }
+}
+
+/* --- 03 PDF Explainer: a note settling onto a slide ----------------------- */
+
+.imark--pdf {
+  background: rgba(22, 25, 23, 0.82);
+}
+
+.imark--pdf .imark-slide {
+  inset: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.imark--pdf .imark-note {
+  top: 8px;
+  left: 12px;
+  width: 24px;
+  height: 10px;
+  border-radius: 2px;
+  background: #f3f1e8;
+  box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.7);
+  animation: imark-note 5200ms var(--ease-out-back) infinite;
+}
+
+@keyframes imark-note {
+  0% {
+    transform: translate(6px, -12px) rotate(-6deg);
+    opacity: 0;
+  }
+  18%,
+  62% {
+    transform: translate(0, 0) rotate(-1.5deg);
+    opacity: 1;
+  }
+  84%,
+  100% {
+    transform: translate(-4px, 10px) rotate(2deg);
+    opacity: 0;
+  }
+}
+
+/* --- 04 PagePack: a page dropping onto the saved stack -------------------- */
+
+.imark--pagepack {
+  /* Darker ground than the other paper-themed marks. At 46 x 26 a stack of pale
+     sheets on a pale panel is a smudge; the stack has to be the light thing
+     against something, and the project is about pages kept somewhere offline. */
+  background: #2b312d;
+}
+
+.imark--pagepack .imark-sheet {
+  bottom: calc(4px + var(--step) * 3px);
+  left: calc(11px + var(--step) * 2px);
+  width: calc(24px - var(--step) * 4px);
+  height: 3px;
+  border-radius: 1px;
+  background: rgba(243, 241, 232, calc(0.9 - var(--step) * 0.2));
+}
+
+.imark--pagepack .imark-falling {
+  top: 3px;
+  left: 13px;
+  width: 20px;
+  height: 12px;
+  border-radius: 2px;
+  background: #f6f4ec;
+  box-shadow: 0 4px 9px -3px rgba(0, 0, 0, 0.7);
+  animation: imark-fall 4700ms var(--ease-out-soft) infinite;
+}
+
+@keyframes imark-fall {
+  0% {
+    transform: translateY(-14px) scale(1.06);
+    opacity: 0;
+  }
+  22%,
+  54% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  /* Collapses into the stack rather than fading: it was filed, not lost. */
+  78%,
+  100% {
+    transform: translateY(9px) scaleY(0.22);
+    opacity: 0;
+  }
+}
+
+/* --- 05 GRT Next Bus: the thing the countdown counts --------------------- */
+
+.imark--grt {
+  background: rgba(38, 92, 78, 0.09);
+}
+
+.imark--grt .imark-road {
+  top: calc(50% + 3px);
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(23, 63, 54, 0.5) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+.imark--grt .imark-pole {
+  top: calc(50% - 7px);
+  right: 7px;
+  width: 1px;
+  height: 10px;
+  background: rgba(23, 63, 54, 0.6);
+}
+
+.imark--grt .imark-pole::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 3px;
+  border-radius: 1px;
+  background: #1d5c4d;
+  content: "";
+}
+
+.imark--grt .imark-bus {
+  top: calc(50% - 4px);
+  left: -10px;
+  width: 12px;
+  height: 6px;
+  border-radius: 1.5px;
+  background: #1d5c4d;
+  animation: imark-bus 5300ms cubic-bezier(0.4, 0, 0.7, 1) infinite;
+}
+
+@keyframes imark-bus {
+  0% {
+    transform: translateX(0);
+  }
+  /* Slows into the stop, waits, pulls away — the same shape as the section. */
+  62% {
+    transform: translateX(24px);
+  }
+  74% {
+    transform: translateX(26px);
+  }
+  100% {
+    transform: translateX(58px);
+  }
+}
+
+/* --- 06 N-Back: cues landing, and one coming back ------------------------ */
+
+.imark--nback {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 2px;
+  padding: 4px;
+  background: rgba(24, 42, 35, 0.9);
+}
+
+.imark--nback .imark-cell {
+  position: relative;
+  border-radius: 1.5px;
+  background: rgba(143, 181, 163, 0.16);
+}
+
+.imark--nback .imark-cell[data-lit] {
+  /* Nine cues over 5.9s, each lit for one slot. The two that repeat two steps
+     apart are positions 1 and 4 in the order, which is the whole game. */
+  animation: imark-cue 5900ms steps(1, end) infinite;
+  animation-delay: calc(var(--step) * 655ms);
+}
+
+@keyframes imark-cue {
+  0%,
+  11% {
+    background: #8fb5a3;
+  }
+  12%,
+  100% {
+    background: rgba(143, 181, 163, 0.16);
+  }
+}
+
+/* --- 07 Night Neutralizer: the frame coming down ------------------------- */
+
+.imark--night {
+  background: #0d1220;
+}
+
+.imark--night .imark-frame {
+  inset: 3px 16px 3px 3px;
+  border-radius: 2px;
+  background: radial-gradient(circle at 40% 40%, #fff6d8, #d9a13a 62%, #6b4a12);
+  animation: imark-dim 6100ms cubic-bezier(0.3, 0, 0.2, 1) infinite;
+}
+
+/* Asymmetric, like the extension: 0.3s down, 1.6s back. */
+@keyframes imark-dim {
+  0%,
+  22% {
+    filter: brightness(1);
+  }
+  30%,
+  64% {
+    filter: brightness(0.34);
+  }
+  92%,
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.imark--night .imark-level {
+  right: calc(4px + var(--step) * 3px);
+  bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: #7fd8c0;
+  animation: imark-level 6100ms var(--ease-out-soft) infinite;
+  animation-delay: calc(var(--step) * 90ms);
+  height: calc(6px + var(--step) * 3px);
+  transform-origin: bottom;
+}
+
+@keyframes imark-level {
+  0%,
+  20% {
+    transform: scaleY(1);
+  }
+  /* The loud part gets pulled down, which is the whole point of the thing. */
+  32%,
+  62% {
+    transform: scaleY(0.3);
+  }
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+/* --- narrow viewports and reduced motion --------------------------------- */
+
+@media (max-width: 900px) {
+  .project-index {
+    --imark-w: 38px;
+    --imark-h: 22px;
+  }
+
+  .project-index a {
+    gap: 0.7rem;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.84rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Each mark is composed so its resting frame is still the right shape: the
+     stave is a stave, the grid is a grid, the bus is on the road. */
+  .imark *,
+  .imark {
+    animation: none !important;
+  }
+
+  .imark--decaf {
+    filter: grayscale(1) contrast(0.92);
+  }
+
+  .imark--night .imark-frame {
+    filter: brightness(0.34);
+  }
+}
+
+/* ===========================================================================
+   The receipts band, under the hero
+   ---------------------------------------------------------------------------
+   Four figures, set as an editorial rule rather than as cards. A visitor who
+   reads one screen and leaves should still know the scale of what is below.
+
+   The figures are large and the notes under them are small on purpose: the
+   number is the argument and the note is the footnote that makes it checkable.
+   =========================================================================== */
+
+.receipts {
+  position: relative;
+  padding: clamp(2.6rem, 4vw, 4rem) clamp(1.4rem, 4vw, 3.4rem) clamp(2.2rem, 3vw, 3rem);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(22, 25, 23, 0.035), transparent 70%);
+}
+
+.receipts-row {
+  display: grid;
+  /* Four across down to about a tablet, then two, then one. Not auto-fit: the
+     figures must line up in a row a reader can compare, and auto-fit will happily
+     leave three on one line and one orphaned on the next. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(1.2rem, 2.6vw, 2.6rem);
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.receipts-row > li {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  padding-top: 1.1rem;
+  border-top: 2px solid var(--ink);
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.receipts.is-seen .receipts-row > li {
+  animation: receipt-land 720ms var(--ease-out-soft) forwards;
+  animation-delay: calc(var(--order) * 110ms);
+}
+
+@keyframes receipt-land {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.receipts-figure {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: clamp(2.1rem, 3.4vw, 3.4rem);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.receipts-label {
+  font-size: clamp(0.95rem, 1.1vw, 1.08rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.receipts-note {
+  max-width: 26ch;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.receipts-source {
+  max-width: 1560px;
+  margin: clamp(1.8rem, 2.6vw, 2.6rem) auto 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.receipts-source code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+
+@media (max-width: 1080px) {
+  .receipts-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .receipts-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ===========================================================================
+   The closing section
+   ---------------------------------------------------------------------------
+   The page used to stop at the photo rail and a three-link footer, so the last
+   thing anyone saw was a picture of dinner. This is the last paragraph of the
+   argument: what the work has in common, what was hard about it, and the checks
+   that will not let the page make a claim it cannot keep.
+   =========================================================================== */
+
+.closing {
+  position: relative;
+  padding: clamp(4rem, 7vw, 7.5rem) clamp(1.4rem, 4vw, 3.4rem) clamp(3rem, 5vw, 5rem);
+  border-top: 1px solid var(--line);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(22, 25, 23, 0.06), transparent 60%),
+    var(--paper);
+}
+
+.closing-head,
+.closing-body,
+.closing-contact,
+.closing .tally {
+  max-width: 1560px;
+  margin: 0 auto;
+}
+
+.closing-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.9rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.closing-head h2 {
+  max-width: 24ch;
+  margin: 0;
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-size: clamp(2.1rem, 4.6vw, 4rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+}
+
+.closing-body {
+  display: grid;
+  /* The thesis is capped at a reading measure, so giving it the wider track left
+     a column of empty paper beside it at 1440 and a lake of it at 2560. The
+     checks are the long list; they get the room. */
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  margin-top: clamp(2.4rem, 4vw, 4rem);
+  align-items: start;
+}
+
+.closing-thesis p {
+  max-width: 44ch;
+  margin: 0 0 1.25rem;
+  /* Larger than body copy elsewhere. It is the argument the page has been making
+     for seven sections, and it is also what fills the height the checks column
+     takes up beside it. */
+  font-size: clamp(1.06rem, 1.32vw, 1.28rem);
+  line-height: 1.58;
+}
+
+.closing-thesis p:last-child {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+.closing-thesis code,
+.closing-checks code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.88em;
+}
+
+.closing-checks h3 {
+  margin: 0 0 1.2rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 2px solid var(--ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.closing-checks dl {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+}
+
+.closing-checks dl > div {
+  display: grid;
+  gap: 0.28rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.closing-checks dl > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.closing.is-seen .closing-checks dl > div {
+  animation: receipt-land 640ms var(--ease-out-soft) forwards;
+  animation-delay: calc(180ms + var(--order) * 90ms);
+}
+
+.closing-checks dt code {
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.closing-checks dd {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* --- the per-repository tally --------------------------------------------- */
+
+.tally {
+  margin-top: clamp(2.6rem, 5vw, 5rem);
+  overflow-x: auto;
+}
+
+.tally table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.tally caption {
+  margin-bottom: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--muted);
+}
+
+.tally th,
+.tally td {
+  padding: 0.72rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.tally thead th {
+  border-bottom: 2px solid var(--ink);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tally tbody th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tally-number {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tally-zero {
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(22, 25, 23, 0.08);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+/* The bar and its figure share a cell: a separate column for the bar would let
+   the two drift apart when the table scrolls sideways on a phone. */
+.tally-bar-cell {
+  display: grid;
+  grid-template-columns: minmax(60px, 200px) auto;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.tally-bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(22, 25, 23, 0.09);
+}
+
+.tally-bar::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fill);
+  border-radius: 999px;
+  background: var(--ink);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.closing.is-seen .tally-bar::after {
+  animation: tally-fill 900ms var(--ease-out-soft) forwards;
+  animation-delay: 260ms;
+}
+
+@keyframes tally-fill {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.tally-self th,
+.tally-self td {
+  border-bottom: 0;
+  color: var(--muted);
+}
+
+.tally-self th {
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* --- contact -------------------------------------------------------------- */
+
+.closing-contact {
+  margin-top: clamp(3rem, 6vw, 6rem);
+  padding-top: clamp(2rem, 3vw, 3rem);
+  border-top: 1px solid var(--line);
+}
+
+.closing-contact-lead {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.closing-mail {
+  position: relative;
+  display: inline-block;
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  /* Sized to be the largest thing in the section, because it is the only thing
+     in it a reader might act on. */
+  font-size: clamp(1.7rem, 4.2vw, 3.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  word-break: break-word;
+}
+
+.closing-mail::after {
+  position: absolute;
+  right: 0;
+  bottom: 0.06em;
+  left: 0;
+  height: 2px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 320ms var(--ease-out-soft);
+}
+
+.closing-mail:hover::after,
+.closing-mail:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.closing-contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 1.4rem 0 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.closing-contact-links a {
+  text-decoration: underline;
+  text-decoration-color: rgba(22, 25, 23, 0.28);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 200ms ease;
+}
+
+.closing-contact-links a:hover {
+  text-decoration-color: currentColor;
+}
+
+@media (max-width: 900px) {
+  .closing-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tally-bar-cell {
+    grid-template-columns: minmax(48px, 120px) auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipts-row > li,
+  .closing-checks dl > div {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  .tally-bar::after {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
+/* ===========================================================================
+   Hero legibility
+   ---------------------------------------------------------------------------
+   The name was always readable — it is nine rem of serif and it happens to land
+   on sky. Everything under it was not. The sentence that states what the site is
+   sat at `--muted` over a photograph of trees and a timber rail, and the cue that
+   tells a first-time visitor where to go was 0.6rem of the same grey at 30%
+   opacity on the same background.
+
+   The fix is a ground rather than a heavier weight: a soft wash anchored to the
+   bottom-left of the hero, behind the copy and in front of the photograph. Type
+   over a photo needs a known background, not a text-shadow doing the work of one.
+   =========================================================================== */
+
+/* Sits between `.hero::before` (z-index -1) and `.hero-copy` (z-index 1). */
+.hero::after {
+  position: absolute;
+  z-index: 0;
+  bottom: 0;
+  left: 0;
+  width: min(74ch, 62%);
+  height: min(60%, 30rem);
+  background: radial-gradient(
+    118% 100% at 0% 100%,
+    rgba(240, 239, 233, 0.94) 0%,
+    rgba(240, 239, 233, 0.82) 34%,
+    rgba(240, 239, 233, 0.42) 66%,
+    transparent 100%
+  );
+  content: "";
+  pointer-events: none;
+}
+
+.hero-copy > p {
+  max-width: 54ch;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1rem, 1.35vw, 1.24rem);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+
+.hero-cue {
+  /* Was 0.6rem of --muted at low contrast; the one instruction on the page can
+     afford to be readable. */
+  color: var(--ink);
+  font-size: 0.72rem;
+  opacity: 0.86;
+  transition: opacity 200ms ease;
+}
+
+.hero-cue:hover,
+.hero-cue:focus-visible {
+  opacity: 1;
+}
+
+.hero-cue-line {
+  opacity: 0.55;
+}
+
+@media (max-width: 900px) {
+  /* On a narrow screen the copy uses the full width, so the wash has to as well
+     or the right-hand half of every line falls off the ground it was given. */
+  .hero::after {
+    width: 100%;
+    height: min(72%, 34rem);
+    background: linear-gradient(
+      0deg,
+      rgba(240, 239, 233, 0.94) 0%,
+      rgba(240, 239, 233, 0.8) 46%,
+      transparent 100%
+    );
+  }
 }

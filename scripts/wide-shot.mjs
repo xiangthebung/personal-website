@@ -135,6 +135,41 @@ for (const id of ids) {
   );
 }
 
+/* The two sections that are not projects. They hold the page's numeric claims and
+   its closing argument, and both are wide multi-column layouts, so they belong
+   under the same width discipline as everything else — the measure below is the
+   one that catches a figure row stretching to 2392px over a 1180px page. */
+for (const [selector, label] of [
+  [".receipts", "receipts"],
+  [".closing", "closing"],
+]) {
+  if (only.length > 0 && !only.includes(label)) continue;
+  const node = page.locator(selector);
+  if ((await node.count()) === 0) {
+    console.error(`  ${label}: not on the page`);
+    continue;
+  }
+
+  await node.scrollIntoViewIfNeeded();
+  /* Both arrive on an IntersectionObserver and stagger their children in, so an
+     immediate shot catches half of them mid-flight at opacity 0. */
+  await page.waitForTimeout(1400);
+  await node.screenshot({ path: path.join(outDir, `${width}-${label}.png`) });
+
+  const measured = await node.evaluate((el) => {
+    const inner = el.querySelector(".receipts-row, .closing-body");
+    return {
+      section: el.offsetWidth,
+      measure: inner?.offsetWidth ?? 0,
+      columns: inner ? getComputedStyle(inner).gridTemplateColumns.split(" ").length : 0,
+    };
+  });
+  console.log(
+    `  ${label.padEnd(18)} section ${String(measured.section).padStart(4)}  ` +
+      `measure ${String(measured.measure).padStart(4)}  columns ${measured.columns}`,
+  );
+}
+
 const overflow = await page.evaluate(() => ({
   scrollWidth: document.scrollingElement.scrollWidth,
   clientWidth: document.scrollingElement.clientWidth,

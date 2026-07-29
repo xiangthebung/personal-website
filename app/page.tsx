@@ -2,6 +2,9 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Backdrop } from "./backdrops";
+import { Closing } from "./closing";
+import { IndexMark } from "./index-marks";
+import { ReceiptsBand } from "./ledger";
 import { MediaRail, ProjectFocusManager } from "./page-chrome";
 import { DemoMount } from "./demos/demo-mount";
 import { policiesFor } from "./legal/policies";
@@ -311,16 +314,37 @@ export default function Home() {
           </a>
         </div>
 
+        {/* Not a list of names. Each row carries the scene in miniature, running,
+            so the line above it is already true before anything is scrolled. See
+            app/index-marks.tsx. */}
         <nav className="project-index" aria-label="Project index">
-          {projects.map((project) => (
-            <a href={`#${project.id}`} key={project.id}>
-              <span>{project.number}</span>
+          {projects.map((project, order) => (
+            <a
+              href={`#${project.id}`}
+              key={project.id}
+              style={{ "--order": order } as CSSProperties}
+            >
+              <span className="project-index-number">{project.number}</span>
+              <IndexMark project={project.id} />
               <strong>{project.name}</strong>
-              <span aria-hidden="true">↓</span>
+              <span className="project-index-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 5v14M6 13l6 6 6-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
             </a>
           ))}
         </nav>
       </section>
+
+      <ReceiptsBand />
 
       <div id="projects">
         {projects.map((project, index) => (
@@ -386,20 +410,11 @@ export default function Home() {
         <small>Press ? or Esc to close</small>
       </aside>
 
-      {/* Small, at the very bottom, where a footer belongs. It is here because
-          two of these things take money and one reads a sensor, and that has to
-          be reachable from the page that sells them. */}
-      <footer className="site-foot">
-        <p>
-          <a href="https://github.com/xiangthebung" target="_blank" rel="noreferrer">
-            GitHub
-          </a>
-          <span aria-hidden="true">·</span>
-          <a href="mailto:xiangli3625@gmail.com">xiangli3625@gmail.com</a>
-          <span aria-hidden="true">·</span>
-          <Link href="/legal">Privacy &amp; terms</Link>
-        </p>
-      </footer>
+      {/* The last paragraph of the argument. It carries the contact details and
+          the policy index that used to live in a thin footer under the photo
+          rail — a page that spends seven sections proving it is careful should not
+          end on a picture of dinner. */}
+      <Closing />
 
       <ProjectFocusManager />
     </main>
