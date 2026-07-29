@@ -362,9 +362,12 @@ test("the home page links to the policies of the projects that have them", async
     assert.match(html, new RegExp(`/legal/${slug}`), `home page does not link /legal/${slug}`);
   }
 
-  // And a footer, so the policies are reachable without hunting for a section.
-  assert.match(html, /class="site-foot"/);
+  // And the closing section, so the policies are reachable without hunting for a
+  // project. This used to look for `.site-foot`, a thin strip under the photo
+  // rail; the closing section replaced it and carries the same links.
+  assert.match(html, /class="closing"/);
   assert.match(html, /href="\/legal"/);
+  assert.match(html, /mailto:xiangli3625@gmail\.com/);
 });
 
 test("the published policies still match the originals in the project repos", async (t) => {
@@ -389,4 +392,102 @@ test("the published policies still match the originals in the project repos", as
   }
 
   if (compared === 0) t.skip("no sibling project checkouts present");
+});
+
+test("the index in the hero previews every project rather than listing it", async () => {
+  const response = await render();
+  const html = await response.text();
+
+  const marks = await read("../app/index-marks.tsx");
+  const ids = [...(await read("../app/projects.ts")).matchAll(/^\s{4}id: "([^"]+)",$/gm)].map(
+    (match) => match[1],
+  );
+  assert.equal(ids.length, 7, "projects.ts no longer declares seven ids");
+
+  /* The hero says all seven are running on this page. If a project is added and
+     nobody draws it a mark, that sentence quietly stops being true and the index
+     goes back to being a list with one gap in it. */
+  for (const id of ids) {
+    assert.match(
+      marks,
+      new RegExp(`"?${id}"?:\\s`),
+      `app/index-marks.tsx has no mark for ${id}`,
+    );
+  }
+
+  const slots = html.match(/class="imark-slot"/g) ?? [];
+  assert.equal(slots.length, ids.length, `rendered ${slots.length} index marks, wanted ${ids.length}`);
+
+  /* Decorative, so each one must be hidden from assistive tech: the link's own
+     text already carries the name and the number. */
+  assert.match(html, /class="imark-slot" aria-hidden="true"|aria-hidden="true" class="imark-slot"/);
+});
+
+test("every figure the page prints comes from the generated ledger", async () => {
+  const response = await render();
+  const html = await response.text();
+  const text = html.replace(/<[^>]+>/g, " ");
+
+  const source = await read("../app/ledger.generated.ts");
+  const ledger = JSON.parse(
+    `{${source.slice(source.indexOf("{", source.indexOf("= {")) + 1, source.lastIndexOf("} as const"))}}`,
+  );
+
+  const groups = new Intl.NumberFormat("en-CA");
+
+  /* The point of the generated file is that no number on this page was typed by a
+     person. If the band and the file disagree, someone edited one of them. */
+  for (const figure of [
+    groups.format(ledger.totals.tests),
+    groups.format(ledger.totals.lines),
+    String(ledger.totals.files),
+    `${ledger.totals.zeroDependencyProjects} of ${ledger.totals.projects}`,
+  ]) {
+    assert.ok(text.includes(figure), `the page does not print ${figure} from the ledger`);
+  }
+
+  // The tally names every project, at the commit it was measured at.
+  for (const repo of ledger.repos) {
+    assert.ok(text.includes(repo.label), `the tally is missing ${repo.label}`);
+    assert.ok(text.includes(repo.head), `the tally is missing ${repo.slug} at ${repo.head}`);
+  }
+
+  /* Claimed in the band as "every one of them green". The generator throws rather
+     than record a failing suite, so a zero here would mean a suite vanished. */
+  for (const repo of ledger.repos) {
+    assert.ok(repo.tests > 0, `${repo.slug} records no tests`);
+    assert.equal(
+      repo.tests,
+      repo.suites.reduce((sum, suite) => sum + suite.passed, 0),
+      `${repo.slug}'s total does not match its suites`,
+    );
+  }
+
+  // Every project on the page has a row, and every row is a project on the page.
+  const ids = [...(await read("../app/projects.ts")).matchAll(/^\s{4}id: "([^"]+)",$/gm)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(
+    ledger.repos.map((repo) => repo.projectId).sort(),
+    [...ids].sort(),
+    "the ledger and projects.ts disagree about which projects exist",
+  );
+});
+
+test("the closing section names checks that exist", async () => {
+  const response = await render();
+  const html = await response.text();
+
+  /* The section's credibility rests entirely on these being real. A renamed or
+     deleted script must fail here rather than leave the page describing
+     machinery it no longer has. */
+  const named = [...(await read("../app/closing.tsx")).matchAll(/script:\s*"([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(named.length >= 4, "the closing section stopped naming its checks");
+
+  for (const script of named) {
+    assert.ok(await exists(`../${script}`), `closing.tsx names ${script}, which does not exist`);
+    assert.ok(html.includes(script), `${script} is not rendered on the page`);
+  }
 });

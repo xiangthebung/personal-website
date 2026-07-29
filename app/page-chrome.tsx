@@ -635,6 +635,14 @@ export function ProjectFocusManager() {
     );
     projects.forEach((project) => arrivals.observe(project));
 
+    /* The same one-shot arrival for anything outside the project run that wants
+       it — the receipts band and the closing section. They are server components
+       several levels up from here, so they opt in with an attribute rather than by
+       becoming client components for one class name. */
+    document
+      .querySelectorAll<HTMLElement>("[data-arrive]")
+      .forEach((element) => arrivals.observe(element));
+
     writeProgress();
     window.addEventListener("scroll", requestProgress, { passive: true });
     window.addEventListener("resize", requestProgress);

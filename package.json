@@ -1,7 +1,8 @@
 {
-  "name": "site-creator-vinext-starter",
-  "version": "0.1.0",
+  "name": "personal-website",
+  "version": "1.0.0",
   "private": true,
+  "description": "Xiang Li's portfolio: seven side projects, each running on the page as a self-driving scene.",
   "engines": {
     "node": ">=22.13.0"
   },
@@ -15,6 +16,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "media": "node scripts/build-media.mjs",
+    "ledger": "node scripts/ledger.mjs",
+    "ledger:check": "node scripts/ledger.mjs --check",
+    "wide": "node scripts/wide-shot.mjs",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
@@ -37,6 +41,7 @@
     "eslint-config-next": "16.2.6",
     "playwright": "1.62.0",
     "react-server-dom-webpack": "19.2.6",
+    "sharp": "0.34.5",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",

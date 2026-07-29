@@ -34,8 +34,16 @@ const WIDTH_PLAN = [
   { prefix: "hero-face", widths: [768, 1200, 1600, 2200] },
 ];
 
-// Social preview images are never rendered in the page.
-const SKIP = new Set(["og.png", "og-v2.png", "og-xiang-li.png", "hero-face.png"]);
+/**
+ * The social preview image is never rendered in the page, so it gets no
+ * derivatives and no manifest entry.
+ *
+ * This used to also list `og.png`, `og-v2.png` and `hero-face.png`. Being on this
+ * list is what let them sit in `public/` unreferenced by anything and unnoticed:
+ * skipped by the media pipeline, absent from the manifest, and still uploaded on
+ * every deploy — 10.9 MiB between them. They have been deleted.
+ */
+const SKIP = new Set(["og-xiang-li.png"]);
 
 async function collect(dir, base = "") {
   const entries = await readdir(dir, { withFileTypes: true });
