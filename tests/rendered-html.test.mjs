@@ -346,9 +346,18 @@ test("no caption goes by faster than it can be read", async () => {
   );
   assert.ok(floor > 0, "MIN_CAPTION_MS is no longer declared in the storyboard hook");
 
-  /* grt-next-bus builds its captions in a switch with interpolated live figures rather
-     than in a map, so it is checked by a different route below. */
-  const scenes = ["decaf", "n-back", "night-neutralizer", "pagepack", "pdf-explainer"];
+  /* Whichever scenes still have one. Five of the seven now have no caption at all --
+     their sections already carry a headline, a reason, an invitation and three notes, and
+     the captions were paraphrasing the notes while the scene demonstrated the same claim
+     a third time. Discovered rather than listed, so removing or restoring a caption map
+     does not need this test edited to keep meaning something. */
+  const all = ["choir-practice", "decaf", "grt-next-bus", "n-back", "night-neutralizer", "pagepack", "pdf-explainer"];
+  const scenes = [];
+  for (const scene of all) {
+    const source = await read(`../app/demos/${scene}/demo.tsx`);
+    if (/const CAPTION[^=]*=\s*\{/.test(source)) scenes.push(scene);
+  }
+  assert.ok(scenes.length >= 1, "no scene has a caption map at all any more");
   let checked = 0;
 
   for (const scene of scenes) {
@@ -413,21 +422,45 @@ test("no caption goes by faster than it can be read", async () => {
       checked += 1;
     }
 
-    assert.ok(spoken >= 3, `${scene}: only ${spoken} caption(s) say anything at all`);
+    assert.ok(spoken >= 2, `${scene}: only ${spoken} caption(s) say anything at all`);
   }
 
-  assert.ok(checked >= 25, `only ${checked} caption groups were checked`);
+  assert.ok(checked >= 5, `only ${checked} caption groups were checked`);
+});
 
-  /* GRT's captions are a switch returning tuples, with figures interpolated from its
-     clock. The only pairing it relies on is `reach` and `open` — 900ms and 600ms, which
-     are both under the floor alone — so this asserts the fall-through that joins them
-     rather than re-implementing the parser for one scene. */
-  const grt = await read("../app/demos/grt-next-bus/demo.tsx");
-  assert.match(
-    grt,
-    /case "reach":\s*\r?\n\s*case "open":/,
-    "grt-next-bus: reach and open no longer share a caption, and neither clears the floor alone",
-  );
+/**
+ * The scenes that were meant to lose their captions still have none.
+ *
+ * Removing them was the point of the change, and the failure mode is not that they come
+ * back deliberately — it is that a caption gets reintroduced one beat at a time by
+ * someone solving a local "this frame is unclear" problem, which is exactly how there
+ * came to be five layers of prose per project in the first place. If a scene genuinely
+ * needs words again, delete its entry here and say why in the commit.
+ */
+test("the scenes without captions have not grown them back", async () => {
+  for (const scene of ["decaf", "grt-next-bus", "night-neutralizer", "pagepack", "pdf-explainer"]) {
+    const source = await read(`../app/demos/${scene}/demo.tsx`);
+    assert.doesNotMatch(
+      source,
+      /className="[a-z]+-caption"/,
+      `${scene} has a caption element again`,
+    );
+  }
+
+  /* Comments stripped first. The notes explaining *why* these are gone naturally name
+     them — the `.gx-caption` margin that used to reserve the road's band is worth
+     recording — and a check that cannot tell a rule from a sentence about a rule would
+     forbid documenting the removal. */
+  const css = (await read("../app/globals.css")).replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const gone of ["dc-caption", "pdfx-caption", "pp-caption", "gx-caption", "nn-caption", "nn-sub"]) {
+    /* Bounded, because `.nn-sub` is a prefix of `.nn-subrow` — which survives and holds
+       the level meter. A substring search reported the meter as the deleted subtitle. */
+    assert.doesNotMatch(
+      css,
+      new RegExp(`\\.${gone}(?![\\w-])`),
+      `.${gone} is still styled in globals.css`,
+    );
+  }
 });
 
 /* ===========================================================================

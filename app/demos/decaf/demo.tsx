@@ -111,53 +111,6 @@ const BEATS: readonly Beat<BeatName>[] = [
 ];
 
 /**
- * The things the picture cannot say.
- *
- * Not a commentary track. Every beat used to carry a line, and most of those lines
- * described what was already on screen — "And it speeds up" over a feed visibly speeding
- * up, "Reaching for Decaf, and pressing it" over a cursor visibly reaching for Decaf and
- * pressing it. A caption that repeats the picture costs the reader attention and returns
- * nothing, and worse, it trains them to stop reading the ones that do carry something.
- *
- * So a line appears only where there is a claim a picture cannot make: that the layout
- * does not move, that the dashes reach a screen reader too, that the badge keeps its
- * number on purpose, that every other blocker collapses the page, that the feed is three
- * seconds away rather than blocked. The flood needs no words, and neither does the click
- * — it has a scrim, a lit toolbar, a halo and a slow pointer, which is four cues more
- * than a sentence.
- *
- * Where nothing needs saying the line is empty, and the caption area simply goes quiet.
- * `min-height` in the stylesheet holds the space, so nothing shifts. The silence through
- * the three beats of the click is the page going quiet along with the feed, which is the
- * argument.
- *
- * A line persists across consecutive beats by being the identical string — see
- * `MIN_CAPTION_MS`. Fewer lines, each held longer, is the whole point.
- */
-const CAPTION: Record<BeatName, readonly [string, string]> = {
-  /* One frame of interpretation over the whole flood: it says why the flood is there,
-     which is the one thing watching it cannot tell you. */
-  arrive: ["Every number here is a reason to stay.", ""],
-  raw: ["Every number here is a reason to stay.", ""],
-  pull: ["Every number here is a reason to stay.", ""],
-
-  // Silent for the click. The frame is doing all of the pointing.
-  notice: ["", ""],
-  reach: ["", ""],
-  press: ["", ""],
-
-  // One claim per beat from here, and every one of them is invisible.
-  drain: ["Nothing moves but the colour.", ""],
-  dashes: ["The counts go too — for screen readers as well as eyes.", ""],
-  calm: ["The badge keeps its number, so a real message still gets through.", ""],
-  pause: ["Emptied where it sat. Every other blocker collapses the page.", ""],
-
-  "aim-hold": ["Not blocked — three seconds away.", "Tomorrow's first pass is seven."],
-  hold: ["Not blocked — three seconds away.", "Tomorrow's first pass is seven."],
-  settle: ["Nothing was taken away.", "It just stopped being worth anything."],
-};
-
-/**
  * Where the pointer is.
  *
  * It enters on `notice` rather than on `reach`, which is the beat that fixed the
@@ -700,10 +653,9 @@ export function DecafDemo() {
         />
       )}
 
-      <p className="dc-caption" aria-hidden="true">
-        <strong>{CAPTION[beat][0]}</strong>
-        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
-      </p>
+      {/* No caption. See the note above `BEATS`: the reading column beside this scene
+          already lists every claim the caption was making, and the notice card inside the
+          browser says the rest. */}
     </div>
   );
 }

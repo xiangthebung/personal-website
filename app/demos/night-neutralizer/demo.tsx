@@ -102,39 +102,25 @@ const BEATS: readonly Beat<BeatName>[] = [
 ];
 
 /**
- * The line of dialogue nobody can hear.
- *
- * Third attempt, and each previous one failed the same way: a visitor read the line,
- * looked for a meaning in it, and did not find one.
- *
- * It was "…we should not be here.", which was asked about directly. That was replaced
- * with "I said I'd call you when we landed" on the theory that the problem was the
- * ominousness, and that was asked about too — "a user has no idea what that means".
- * Which is the actual lesson: the problem was never the register, it was that *any*
- * line referring to events outside the frame sends the reader looking for a story. A
- * missed phone call implies a journey, a person waiting, a reason it matters. There is
- * none of that here, so the search comes up empty and the reader concludes they have
- * missed something.
- *
- * So the line now refers to nothing at all. Somebody cannot find their keys. There is
- * no story to reconstruct, which frees the reader to notice the only thing this beat is
- * about: they are reading it because they cannot hear it.
- *
- * The rest of the framing does that work. It is set like a burnt-in cinema subtitle
- * (see `.nn-sub`), it carries a speaker dash, and it sits beside a level meter showing
- * the sound at the bottom of its range. The explosion then pins the same meter with the
- * setting unchanged, and the meter's own label says so.
- */
-const SUBTITLE: Partial<Record<BeatName, string>> = {
-  whisper: "— Have you seen my keys?",
-};
-
-/**
  * What is making noise, and how much of it.
  *
- * `level` drives the meter beside the subtitle. The pair is the argument in miniature:
- * dialogue mixed so low you would reach for the volume, and then an explosion on the
- * same setting.
+ * There was a line of dialogue beside this meter, set like a burnt-in cinema subtitle,
+ * and it took three attempts and a plain observation to see that the whole idea was
+ * broken. It was "…we should not be here", then "I said I'd call you when we landed",
+ * then "Have you seen my keys?", each replacement chasing the wrong fault — first that
+ * the line was too ominous, then that it implied a story the reader could not
+ * reconstruct.
+ *
+ * The actual fault: *this page has no sound*. A subtitle exists because you cannot hear
+ * something, and a visitor here cannot hear anything at all, so a quiet line is
+ * indistinguishable from a loud one and nothing about the beat lands. Printing dialogue
+ * to demonstrate inaudibility on a silent page is a conceit that only works if you
+ * already know what it is for.
+ *
+ * The meter survives, and does the job on its own: dialogue at two bars of seven, then
+ * an explosion at all seven with the top three hot, and the label saying the volume did
+ * not change in between. That is the argument, made in the one medium the page actually
+ * has.
  */
 const SOUND: Partial<Record<BeatName, { level: "low" | "peak"; what: string }>> = {
   whisper: { level: "low", what: "dialogue" },
@@ -168,28 +154,6 @@ const VOL_BARS = 7;
    "left blows out to white" points at a panel that is above rather than beside. Using
    the words already printed on the two panels — Before and After — is correct in both
    layouts and saves the reader working out which is which. */
-const CAPTION: Record<BeatName, readonly [string, string]> = {
-  /* Worth stating once: two dark rectangles side by side could be two different shots,
-     and the whole argument depends on them being the same one. The Before and After
-     labels are already on the panels, so the caption does not repeat them. */
-  night: ["The same night shot, twice.", ""],
-  /* Names the reader's own action rather than describing the meter, which the meter is
-     already doing. The point of this beat is not that the dialogue is quiet — it is
-     that being unable to hear it is what makes you turn the volume up, which is the
-     decision the explosion four seconds later punishes. */
-  whisper: ["You cannot hear the line, so you read it.", "This is where you turn it up."],
-  /* `blast` and `boom` share this. What the panels cannot say is that nothing about the
-     playback changed between the whisper and this — the caption used to add "Before
-     blows out to white", which is the one thing on screen impossible to miss. */
-  blast: ["The explosion, at the volume you just turned up.", ""],
-  boom: ["The explosion, at the volume you just turned up.", ""],
-  /* The insight rather than the observation. That one panel has shadows and the other
-     is black is visible; that the detail was in the signal the whole time and the
-     untreated display was throwing it away is the product. */
-  settle: ["The room was always there. One of them is showing it.", ""],
-  hold: ["One film, one volume setting.", "One of them you can watch at midnight."],
-};
-
 /** Level meter. Fourteen segments, with a limiter ceiling above the ninth. */
 const SEGMENTS = 14;
 
@@ -347,14 +311,11 @@ export function NightNeutralizerDemo() {
         </section>
       </div>
 
-      {/* The subtitle row: what is being said, and how loud it is.
-          The meter is what makes the line legible as a subtitle rather than as a
-          sentence the page decided to print. */}
-      <div
-        className="nn-subrow"
-        data-showing={Boolean(SUBTITLE[beat] || SOUND[beat])}
-        aria-hidden="true"
-      >
+      {/* What the soundtrack is doing, on one meter.
+          The line of dialogue that used to sit beside this is gone — see the note on
+          `SOUND`. The meter stays, because the volume half of the argument has to be
+          visible on a silent page and a meter is how you show sound without any. */}
+      <div className="nn-subrow" data-showing={Boolean(SOUND[beat])} aria-hidden="true">
         <span className="nn-vol" data-level={SOUND[beat]?.level ?? "low"}>
           <span className="nn-vol-bars">
             {Array.from({ length: VOL_BARS }, (_, index) => (
@@ -363,16 +324,10 @@ export function NightNeutralizerDemo() {
           </span>
           <small>{SOUND[beat]?.what ?? ""}</small>
         </span>
-
-        <p className="nn-sub" data-showing={Boolean(SUBTITLE[beat])}>
-          {SUBTITLE[beat] ?? ""}
-        </p>
       </div>
 
-      <p className="nn-caption" aria-hidden="true">
-        <strong>{CAPTION[beat][0]}</strong>
-        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
-      </p>
+      {/* No caption. The two panels are labelled Before and After and carry the
+          extension's own readings underneath them. */}
     </div>
   );
 }

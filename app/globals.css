@@ -3194,9 +3194,11 @@ html.shows-shortcuts .shortcut-sheet {
 /* --- subtitle and caption ------------------------------------------------- */
 
 /* --- the subtitle row ------------------------------------------------------
-   A level meter beside the line, because the line on its own was a mystery. See the
-   comment on `SUBTITLE` in the demo: an unattributed ominous fragment reads as a bug,
-   and the meter is what turns it into a subtitle of the shot above. */
+   A level meter, and nothing else now. It used to sit beside a line of film dialogue set
+   like a burnt-in subtitle; see the note on `SOUND` in the demo for why that went. The
+   meter is how you show a soundtrack on a page with no sound: dialogue at two bars of
+   seven, then an explosion at all seven with the top three hot, and a label saying the
+   volume setting did not change in between. */
 .nn-subrow {
   display: flex;
   align-items: center;
@@ -3253,43 +3255,14 @@ html.shows-shortcuts .shortcut-sheet {
   text-transform: uppercase;
 }
 
-/* Subtitles, at the size a cinema sets them.
-   This was 0.82rem — 13px — for the one line in the scene whose job is to be too
-   quiet to hear. A whisper you have to squint at is a different complaint from the
-   one the extension fixes, and the line has to be unmissable for the explosion
-   after it to land as an assault. Set like a subtitle rather than like a caption:
-   large, centred, warm white, with the shadow a burnt-in subtitle carries so it
-   stays legible over whatever is behind it. */
-.nn-sub {
-  margin: 0;
-  min-height: 1.6em;
-  color: rgba(255, 251, 240, 0.94);
-  font-size: clamp(1.05rem, 1.9vw, 1.6rem);
-  font-weight: 500;
-  letter-spacing: 0.005em;
-  text-align: center;
-  text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.55),
-    0 0 18px rgba(0, 0, 0, 0.7);
-  text-wrap: balance;
-  opacity: 0;
-  transition: opacity 320ms ease;
-}
-.nn-sub[data-showing="true"] {
-  opacity: 1;
-}
+/* The cinema-set subtitle that used to live here is gone, along with the line of
+   dialogue it carried. See the note on `SOUND` in the demo: a subtitle exists because you
+   cannot hear something, and this page has no sound at all, so a quiet line and a loud
+   one looked identical and the beat argued nothing. The level meter does that job in the
+   medium the page actually has.
 
-.nn-caption {
-  margin: 0;
-  min-height: 1.5em;
-  color: rgba(232, 237, 243, 0.55);
-  font-size: 0.86rem;
-  text-align: center;
-}
-.nn-caption strong {
-  color: #fff;
-  font-weight: 650;
-}
+   `.nn-caption` went with it. The panels are labelled Before and After and print the
+   extension's own readings underneath. */
 
 @media (max-width: 700px) {
   .nn-split {
@@ -3695,6 +3668,14 @@ html.shows-shortcuts .shortcut-sheet {
      pixels wide, with the extension reduced to one badge in the corner, which reads
      as a section about a calendar. */
   max-width: 940px;
+  /* The band the road runs in.
+     `.gx-street` is absolutely positioned 46px from the bottom of this box and is 94px
+     tall, so it needs 140px of clear space below the browser window or it draws across
+     it. That space used to be a side effect of `.gx-caption`'s 142px top margin — and a
+     layout requirement that exists only as a margin on a paragraph of prose is a layout
+     requirement waiting to vanish, which it duly did when the caption was removed. It
+     belongs here, on the box that owns the road. */
+  padding-bottom: 152px;
   font-family: var(--gx-font);
   -webkit-font-smoothing: antialiased;
 }
@@ -4762,21 +4743,6 @@ html.shows-shortcuts .shortcut-sheet {
 
 /* --- caption -------------------------------------------------------------- */
 
-.gx-caption {
-  /* Reserves the band the road is drawn in. */
-  margin: 142px 0 0;
-  min-height: 2.6em;
-  color: var(--project-muted);
-  font-size: 0.86rem;
-  line-height: 1.5;
-  text-align: center;
-}
-
-.gx-caption strong {
-  color: var(--project-ink);
-  font-weight: 650;
-}
-
 /* The road dashes, the live badge pulse and the feed dot used to stop here for
    `prefers-reduced-motion`. They no longer do — see "Motion" further down. */
 
@@ -5536,26 +5502,6 @@ html.shows-shortcuts .shortcut-sheet {
   background: #e9e9ec;
 }
 
-/* --- caption -------------------------------------------------------------- */
-
-.pp-caption {
-  position: relative;
-  /* Above the scatter: the cards land around the section, and one of them settling
-     on top of the sentence that explains them would be a joke at its own expense. */
-  z-index: 9;
-  margin: 0;
-  min-height: 2.6em;
-  color: var(--project-muted);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  text-align: center;
-}
-.pp-caption strong {
-  color: var(--project-ink);
-  font-weight: 650;
-}
-
 @media (max-width: 720px) {
   .pp-viewport {
     height: 268px;
@@ -5895,22 +5841,6 @@ html.shows-shortcuts .shortcut-sheet {
   font-size: 10.5px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-}
-
-/* --- caption -------------------------------------------------------------- */
-
-.pdfx-caption {
-  margin: 0;
-  min-height: 2.6em;
-  color: var(--project-muted);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  text-align: center;
-}
-.pdfx-caption strong {
-  color: var(--project-ink);
-  font-weight: 650;
 }
 
 /* --- the act rail ---------------------------------------------------------
@@ -7564,21 +7494,6 @@ html.shows-shortcuts .shortcut-sheet {
   font-size: 9px;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-}
-
-/* --- caption -------------------------------------------------------------- */
-
-.dc-caption {
-  margin: 0;
-  min-height: 2.6em;
-  color: var(--project-muted);
-  font-size: 0.86rem;
-  line-height: 1.5;
-  text-align: center;
-}
-.dc-caption strong {
-  color: var(--project-ink);
-  font-weight: 650;
 }
 
 @media (max-width: 720px) {
@@ -11345,14 +11260,13 @@ svg.bd-vehicle {
   inset: -0.35rem -0.55rem;
 }
 
-:is(
-    #choir-practice .choir-note,
-    #decaf .dc-caption,
-    #pdf-explainer .pdfx-caption,
-    #pagepack .pp-caption,
-    #n-back .nb-caption,
-    #night-neutralizer .nn-caption
-  ) {
+/* Only two of these are left. Five scenes lost their per-beat caption entirely — the
+   section around each of them already carries a headline, a reason, an invitation and
+   three notes, and the captions were paraphrasing the notes while the scene demonstrated
+   the same claim a third time. N-Back keeps one because its subject is a rule rather
+   than an interface, and Choir keeps its footnote because it names where the embedded
+   app comes from. */
+:is(#choir-practice .choir-note, #n-back .nb-caption) {
   position: relative;
   z-index: 12;
   width: fit-content;

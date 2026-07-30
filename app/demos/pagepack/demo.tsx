@@ -212,45 +212,20 @@ const SCATTER = [
  * moves the frame above it.
  */
 /**
- * The claims, not the commentary.
+ * There is no caption under this scene.
  *
- * Every beat used to carry a line and most were describing the frame: "Reaching for the
- * PagePack button" over a pointer reaching for the PagePack button, "Save page, pressed"
- * over a button being pressed, "The signal cuts out" over a signal visibly cutting out.
- * Those cost a reader attention and gave nothing back.
+ * There were thirteen lines here, one per beat, and they were cut to nine, and then to
+ * six, and the six were still wrong. "Text, styles, images and fonts — not a list of
+ * links" against a reading column four inches away that says "Saves the page exactly as
+ * you saw it, pictures and all". "It takes the pages this one links to, as well" against
+ * "Follow the links and it takes the whole section with it". The caption was not too
+ * verbose; it was a fifth layer of prose paraphrasing the fourth while the scene
+ * demonstrated the same thing a third time.
  *
- * What is left is the set of things this scene cannot show: that the save reaches the
- * *linked* pages and why that matters, that it stores real assets rather than a list of
- * URLs, that nothing was uploaded anywhere, and that the reading survives the tab. The
- * press, the progress bar and the outage speak for themselves.
+ * The popup narrates its own save — "Reading this page…", the page count, the badge —
+ * and the invitation above the frame says "One save, then the connection dies". Between
+ * them there is nothing left for a caption to add.
  */
-const CAPTION: Record<BeatName, readonly [string, string]> = {
-  // Foreshadowing rather than description — the only thing worth saying about a page
-  // that is merely open.
-  settle: ["Online, for now.", ""],
-
-  // The popup names this page. What it does not make obvious is the rest of the job.
-  reach: ["It takes the pages this one links to, as well.", ""],
-  open: ["It takes the pages this one links to, as well.", ""],
-  aim: ["It takes the pages this one links to, as well.", ""],
-
-  // What a "save" actually consists of, which no progress bar can tell you.
-  press: ["Text, styles, images and fonts — not a list of links.", ""],
-  read: ["Text, styles, images and fonts — not a list of links.", ""],
-
-  // Why it bothers with the links at all.
-  collect: ["A saved page with dead links is half a page.", ""],
-  // Silent: a bar finishing and a count landing on a badge.
-  finish: ["", ""],
-
-  // Silent for the cut itself, then the one thing the dead tab cannot say.
-  cut: ["", ""],
-  dead: ["Nothing left on this screen needs the network.", ""],
-
-  reveal: ["Already on disk. Nothing was uploaded anywhere.", ""],
-  "read-offline": ["Figures and linked pages, with no connection.", ""],
-  hold: ["The tab is dead. The reading is not.", ""],
-};
 
 /** The real label for a beat, through the extension's own formatter. */
 function labelFor(beat: BeatName): string {
@@ -559,10 +534,8 @@ export function PagePackDemo() {
         />
       )}
 
-      <p className="pp-caption" aria-hidden="true">
-        <strong>{CAPTION[beat][0]}</strong>
-        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
-      </p>
+      {/* No caption. The popup narrates its own save — "Reading this page…", the page
+          count, the badge — and the reading column beside it makes the claims. */}
     </div>
   );
 }

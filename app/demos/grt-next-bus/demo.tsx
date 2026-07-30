@@ -366,39 +366,13 @@ export function GrtNextBusDemo() {
    * countdown say, and a caption that repeats those figures from memory is a caption
    * that goes wrong the first time a beat's clock position moves.
    */
-  const caption: readonly [string, string] = ((): readonly [string, string] => {
-    switch (beat) {
-      /* The badge already shows the number, so the caption does not repeat it. What the
-         frame cannot say is that this is the whole interaction: nothing is open, nothing
-         was asked. */
-      case "street":
-        return ["Nothing is open. The wait is just there.", ""];
-      case "alert":
-        return ["It tells you without being asked.", ""];
-      /* Silent. A pointer reaching for a toolbar button and a popup growing out of it are
-         two things a picture says completely, and these beats are 900ms and 600ms — a
-         line nobody could read describing something nobody needed described. */
-      case "reach":
-      case "open":
-        return ["", ""];
-      /* The order is a decision, and it is the only thing about this list that is not
-         legible from looking at it. */
-      case "stops":
-        return ["Sorted by how close you are, not by when you saved them.", ""];
-      /* Shared with `near`, and the one line in the scene that stops the road being
-         decoration: it says the drawing below and the number above are the same bus. */
-      case "tick":
-      case "near":
-        return ["The bus on the road below is that bus.", ""];
-      /* Late is not the same as due, and a countdown reaching zero cannot tell you the
-         difference. The figure is derived rather than typed, from the same clock the
-         board reads. */
-      case "due":
-        return [`It knows this run is ${formatDelay(closest.delaySec)}, not just due.`, ""];
-      case "gone":
-        return ["It rolls to the next run on its own.", ""];
-    }
-  })();
+  /* There is no caption under this scene.
+     Every figure it was reporting is printed on screen already: the badge counts down,
+     the notification says how many minutes out, and the three stop rows carry the
+     countdown, the delay and the stops-away note. A line saying "It knows this run is 2
+     min late" under a row that reads "2 min late" is a fifth layer of copy after the
+     headline, the reason, the invitation and the notes — all four of which are on the
+     same screen. */
 
   return (
     <div
@@ -747,10 +721,8 @@ export function GrtNextBusDemo() {
         />
       )}
 
-      <p className="gx-caption" aria-hidden="true">
-        <strong>{caption[0]}</strong>
-        {caption[1] && ` ${caption[1]}`}
-      </p>
+      {/* No caption. Every figure this scene is about is already printed on the badge,
+          the notification and the three stop rows. */}
     </div>
   );
 }

@@ -121,19 +121,17 @@ const CHECKS = [
     required: false,
     note: "must be on top of the frame, which is the point of it",
   },
-  {
-    label: "night subtitle",
-    section: "night-neutralizer",
-    selector: "#night-neutralizer .nn-sub",
-    beat: { section: "night-neutralizer", name: "whisper" },
-    required: true,
-  },
+  /* The subtitle this used to check for is gone — a line of film dialogue printed to
+     demonstrate that you cannot hear it, on a page with no sound. The meter carries the
+     volume half of the argument now, so it is the thing worth checking, and it is
+     `required`: it is the only element on the page that says the explosion and the
+     whisper share a setting. */
   {
     label: "night volume cue",
     section: "night-neutralizer",
     selector: "#night-neutralizer .nn-vol",
     beat: { section: "night-neutralizer", name: "whisper" },
-    required: false,
+    required: true,
   },
   /* At `pull`, the peak of the flood, which is the only part of the loop these are
      meant to be visible for. Naming no beat meant sampling whatever happened to be on

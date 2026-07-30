@@ -215,57 +215,24 @@ const CURSOR: Partial<Record<BeatName, string>> = {
 };
 
 /**
- * What each frame is showing, in the present tense.
+ * There is no caption under this scene, and getting to that took three attempts.
  *
- * The caption used to change once per act, so it was a summary of four acts rather
- * than a description of seventeen frames — and two of the four were written as
- * instructions ("Reach for the notes", "Ask about the slide you are on") to a visitor
- * who cannot reach or ask, because nothing here responds to a real pointer. Filming
- * the beats made the mismatch plain: the line under `split` was inviting you to ask a
- * question, and the panel it was pointing at was still empty.
+ * It began as one line per act, which described four acts rather than seventeen frames.
+ * That became one line per beat, which put a fresh sentence under beats sized for a
+ * 600ms cursor glide. Then the narration was stripped out and what remained was worse
+ * than either: "It wakes on approach", "Nobody had to tell it which slide you are on" —
+ * implementation notes, phrased as though a visitor might be impressed that software
+ * knows which page it is displaying.
  *
- * Now every beat names what is on screen while it is on screen. Lead clause first,
- * rest of the sentence second, so the emphasis the stylesheet expects survives.
+ * The real problem was never the wording. This section already carries a headline, a
+ * reason, an invitation and three notes, and the notes say "Notes sit over the slide,
+ * faint until you move towards them" and "Ask it questions about the slide you are
+ * looking at" — so the caption was a fifth layer of prose restating the fourth, four
+ * inches away, while the scene demonstrated it. And the rail across the top of the frame
+ * already names the four parts and lights the one playing.
+ *
+ * So it is gone. The `ACT_NAMES` rail is the label.
  */
-const CAPTION: Record<BeatName, readonly [string, string]> = {
-  // Which deck and which slide. Not visible anywhere else at a glance.
-  slide: ["Slide 2 of a lecture deck.", ""],
-
-  // The card prints its own 0.26; what it does not say is why it is faint.
-  arrive: ["The notes sit at a quarter opacity, so the slide stays readable.", ""],
-  resting: ["The notes sit at a quarter opacity, so the slide stays readable.", ""],
-
-  /* The rule, not the movement. A pointer visibly travelling and a card visibly
-     brightening need no narration; that it responds to *proximity* rather than to a
-     click is the part you could watch all day and not know. */
-  reach: ["It wakes on approach. Nothing was clicked.", ""],
-  awake: ["It wakes on approach. Nothing was clicked.", ""],
-
-  /* Silent. A panel opening, a chip being picked and three dots pulsing are three
-     things a picture says perfectly well, and the claim worth making about the tutor
-     lands on the next beat with its answer. */
-  split: ["", ""],
-  ask: ["", ""],
-  thinking: ["", ""],
-
-  answer: ["Nobody had to tell it which slide you are on.", ""],
-
-  // Silent: a tab being pressed and an option being chosen.
-  "to-quiz": ["", ""],
-  pick: ["", ""],
-
-  // The tick and the reasoning are on screen. Where the question came from is not.
-  verdict: ["The question was written from the deck itself.", ""],
-
-  // Silent: two lists, and rows pairing up.
-  "to-match": ["", ""],
-  "pair-a": ["", ""],
-  "pair-b": ["", ""],
-
-  matched: ["Cloze cards and worked examples are in here too.", ""],
-  hold: ["One window, four ways to work on the slide in front of you.", ""],
-};
-
 const LETTERS = ["A", "B", "C", "D"];
 
 export function PdfExplainerDemo() {
@@ -546,10 +513,8 @@ export function PdfExplainerDemo() {
         )}
       </div>
 
-      <p className="pdfx-caption" aria-hidden="true">
-        <strong>{CAPTION[beat][0]}</strong>
-        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
-      </p>
+      {/* No caption. The act rail across the top names the four parts and lights the one
+          you are watching, which is the only labelling this scene ever needed. */}
     </div>
   );
 }
