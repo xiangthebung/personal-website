@@ -85,8 +85,11 @@ const BEATS: readonly Beat<BeatName>[] = [
   // The subtitle and the level meter beside it, which is a second comparison inside
   // the first one.
   { name: "whisper", ms: 2100 },
-  // A cut is a cut. It should feel like an assault — but the white flash it fires is
-  // a 190ms transition, so anything under about 300ms cut off its own punch.
+  /* A cut is a cut. It should feel like an assault — but the white flash it fires is
+     a 190ms transition, so anything under about 300ms cut off its own punch.
+     It shares `boom`'s caption rather than carrying one of its own: 300ms was the
+     shortest caption exposure anywhere on the site, and "Then something explodes" is
+     the one line on this page that a picture says better than prose can. */
   { name: "blast", ms: 300 },
   // The frame the whole section exists to produce: one panel blown to white with its
   // meter pinned, one panel intact under a ceiling.
@@ -94,26 +97,36 @@ const BEATS: readonly Beat<BeatName>[] = [
   // Longer than the 1400–1500ms fades the stylesheet runs on the fire and the spill,
   // so the room is actually back to dark before the beat is over.
   { name: "settle", ms: 2300 },
-  { name: "hold", ms: 1200 },
+  // 1200ms was under the caption floor and was only clearing it on the loop gap.
+  { name: "hold", ms: 1400 },
 ];
 
 /**
  * The line of dialogue nobody can hear.
  *
- * This was "…we should not be here.", and it was asked about — which is the whole
- * problem with it. Dropped into a portfolio with nothing around it to say "this is a
- * subtitle of the shot above", an ominous sentence fragment just reads as a stray
- * string, and a visitor spends their attention wondering what it means instead of
- * noticing that they cannot hear it.
+ * Third attempt, and each previous one failed the same way: a visitor read the line,
+ * looked for a meaning in it, and did not find one.
  *
- * Two changes. The line is now plainly mundane film dialogue — nobody wonders what a
- * missed phone call is a metaphor for — and it is set with a speaker dash beside a
- * level meter that shows *why* it is a subtitle: the sound is at the bottom of its
- * range. The explosion then pins the same meter. The volume war stops being something
- * the caption claims and becomes something on screen.
+ * It was "…we should not be here.", which was asked about directly. That was replaced
+ * with "I said I'd call you when we landed" on the theory that the problem was the
+ * ominousness, and that was asked about too — "a user has no idea what that means".
+ * Which is the actual lesson: the problem was never the register, it was that *any*
+ * line referring to events outside the frame sends the reader looking for a story. A
+ * missed phone call implies a journey, a person waiting, a reason it matters. There is
+ * none of that here, so the search comes up empty and the reader concludes they have
+ * missed something.
+ *
+ * So the line now refers to nothing at all. Somebody cannot find their keys. There is
+ * no story to reconstruct, which frees the reader to notice the only thing this beat is
+ * about: they are reading it because they cannot hear it.
+ *
+ * The rest of the framing does that work. It is set like a burnt-in cinema subtitle
+ * (see `.nn-sub`), it carries a speaker dash, and it sits beside a level meter showing
+ * the sound at the bottom of its range. The explosion then pins the same meter with the
+ * setting unchanged, and the meter's own label says so.
  */
 const SUBTITLE: Partial<Record<BeatName, string>> = {
-  whisper: "— I said I'd call you when we landed.",
+  whisper: "— Have you seen my keys?",
 };
 
 /**
@@ -125,8 +138,12 @@ const SUBTITLE: Partial<Record<BeatName, string>> = {
  */
 const SOUND: Partial<Record<BeatName, { level: "low" | "peak"; what: string }>> = {
   whisper: { level: "low", what: "dialogue" },
-  blast: { level: "peak", what: "explosion" },
-  boom: { level: "peak", what: "explosion" },
+  /* "same volume" is the punchline, and it belongs on the meter rather than only in the
+     caption. The two beats are one setting and two wildly different levels; a label
+     that just says "explosion" leaves the reader to remember, four seconds later, that
+     nothing about the playback changed in between. */
+  blast: { level: "peak", what: "explosion · same volume" },
+  boom: { level: "peak", what: "explosion · same volume" },
 };
 
 const VOL_BARS = 7;
@@ -153,9 +170,14 @@ const VOL_BARS = 7;
    layouts and saves the reader working out which is which. */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
   night: ["The same night shot, twice.", "One before the extension, one after it."],
-  whisper: ["Someone speaks, quietly.", "The meter beside the line barely moves."],
-  blast: ["Then something explodes.", ""],
-  boom: ["Before blows out to white and its meter pins.", "After holds the shape of it."],
+  /* Names the reader's own action rather than describing the meter, which the meter is
+     already doing. The point of this beat is not that the dialogue is quiet — it is
+     that being unable to hear it is what makes you turn the volume up, which is the
+     decision the explosion four seconds later punishes. */
+  whisper: ["You cannot hear the line, so you read it.", "This is where you turn it up."],
+  // `blast` and `boom` share this. See the note on the `blast` beat.
+  blast: ["Then the explosion, at the volume you just set.", "Before blows out to white."],
+  boom: ["Then the explosion, at the volume you just set.", "Before blows out to white."],
   settle: ["Back to the dark.", "After still has a room in it. Before has black."],
   hold: ["One film, one volume setting.", "One of them you can watch at midnight."],
 };

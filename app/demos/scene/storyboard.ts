@@ -87,6 +87,31 @@ export function sceneDuration(beats: readonly Beat[]): number {
   return beats.reduce((total, beat) => total + beat.ms, 0);
 }
 
+/**
+ * The shortest time any line of caption may be on screen.
+ *
+ * Beat durations answer "how long does this movement take". Caption durations answer
+ * "how long does it take to read this". Those are different questions, and every scene
+ * on this page was answering the second with the first — one line of prose per beat,
+ * including beats sized for a 320ms button press or a 600ms cursor glide. Measured
+ * across the seven scenes, twenty-one captions were on screen for under 1.4 seconds and
+ * six of those carried nine words or more. The worst asked for 771 words a minute;
+ * comfortable silent reading is 200 to 250.
+ *
+ * The fix is not slower beats — that would make every scene sag in the middle. It is
+ * that a caption may span several beats. A scene groups its transitional beats under
+ * the line belonging to the beat they lead into, by giving them the *identical* caption
+ * text, and the reader gets the sum of their durations. Nothing flickers, because
+ * identical text renders identically and no caption element on this page has an
+ * entrance animation.
+ *
+ * `tests/rendered-html.test.mjs` enforces this by reading the beat lists and caption
+ * maps back out of the source and computing the dwell of every group. It deliberately
+ * does not count the 1100ms loop gap, which would otherwise excuse whatever the final
+ * beat happens to be.
+ */
+export const MIN_CAPTION_MS = 1400;
+
 export function useStoryboard<Name extends string>(
   beats: readonly Beat<Name>[],
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- see `stillBeat`.

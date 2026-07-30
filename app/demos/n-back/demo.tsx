@@ -72,7 +72,9 @@ const BEATS: readonly Beat<BeatName>[] = [
   { name: "match-square", ms: 2400 },
   { name: "cue-4", ms: 1500 },
   { name: "match-letter", ms: 2400 },
-  { name: "hold", ms: 1200 },
+  /* 1400 rather than 1200 so the closing line clears the caption floor on its own,
+     instead of borrowing the storyboard's 1100ms loop gap to get there. */
+  { name: "hold", ms: 1400 },
 ];
 
 /**

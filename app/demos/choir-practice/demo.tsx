@@ -25,10 +25,25 @@
  * refreshed from its own repository and a rename there would otherwise turn this
  * into a silent no-op.
  *
- * What it deliberately does *not* do is press play. Autoplaying four-part harmony
- * because somebody scrolled past is how you get a tab closed, and `allow="autoplay"`
- * on the frame is there for the transport's own `AudioContext.resume()` when a
- * visitor presses play themselves — not as an invitation to do it for them.
+ * WHEN IT PLAYS
+ *
+ * On the click that hands the visitor the app, and never before. The distinction that
+ * matters here is between scrolling past something and asking for it: autoplaying
+ * four-part harmony because somebody scrolled past is how you get a tab closed, and
+ * that is still true. But the shield already exists and already requires a deliberate
+ * click, and making that click *also* start the music removes the one step nobody
+ * should have had to work out — "click the screen, then find Play" was reported as
+ * exactly that.
+ *
+ * `allow="autoplay"` on the frame is what lets it work, together with the fact that
+ * user activation propagates through same-origin frames: a real click on the shield
+ * gives the framed document sticky activation, so the app's own
+ * `AudioContext.resume()` succeeds on the forwarded press. This is the same mechanism
+ * the microphone button has always used.
+ *
+ * It reads the transport's state before pressing, because `#play-btn` is a toggle and
+ * the shield can be re-armed by scrolling away and back. Without the check, a second
+ * visit to the section would have clicked *pause* on a rehearsal already in progress.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -52,11 +67,27 @@ import { useOnScreen } from "../use-on-screen";
  */
 const SCORE = "Quick! We have but a second.musicxml";
 
-/** Selectors inside the vendored app. Kept together, and covered by a test. */
+/**
+ * Selectors inside the vendored app, and the one piece of its state this reads.
+ *
+ * Kept together and covered by `tests/rendered-html.test.mjs`, because the copy under
+ * `public/demos/choir/` is refreshed from its own repository and a rename there would
+ * turn this whole file into a silent no-op — automation that fails quietly is exactly
+ * the kind that stays broken.
+ *
+ * `playing` is the transport's own signal: `TransportView.setPlaying` writes
+ * `aria-label="Pause"` while a piece is running and `"Play"` while it is not. Reading a
+ * label rather than a class is deliberate — the label is a published accessibility
+ * contract that the app has to keep for its own users, so it is the most stable thing
+ * about that button.
+ */
 const HOOKS = {
   sample: `button.sample[data-sample-path$="${SCORE}"]`,
   transport: "#play-btn",
   parts: "#parts-btn",
+  mic: "#mic-btn",
+  /** What `#play-btn` says about itself when a press would *start* playback. */
+  idleLabel: "Play",
 };
 
 const CHOIR_BEATS = [{ name: "loading" }, { name: "score" }] as const;
@@ -186,11 +217,37 @@ function chainScroll(frame: HTMLIFrameElement | null): () => void {
   return () => doc.removeEventListener("wheel", onWheel);
 }
 
+/**
+ * Starts the piece, if it is not already going.
+ *
+ * Called from the shield's click and nowhere else, so the music only ever begins on a
+ * gesture that was a request for this application. The guard is what makes the shield
+ * re-armable: scroll away, come back, click again, and this does nothing rather than
+ * pausing what is already playing.
+ *
+ * Silent on every failure, like the rest of the automation here. A renamed control
+ * leaves a visitor with a working app and a Play button, which is the state this page
+ * shipped in for months.
+ */
+function startPlayback(frame: HTMLIFrameElement | null): boolean {
+  const doc = frame?.contentDocument;
+  if (!doc) return false;
+  try {
+    const button = doc.querySelector<HTMLElement>(HOOKS.transport);
+    if (!button) return false;
+    if (button.getAttribute("aria-label") !== HOOKS.idleLabel) return false;
+    button.click();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function askForMicrophone(frame: HTMLIFrameElement | null): boolean {
   const doc = frame?.contentDocument;
   if (!doc) return false;
   try {
-    const button = doc.querySelector<HTMLElement>("#mic-btn");
+    const button = doc.querySelector<HTMLElement>(HOOKS.mic);
     if (!button) return false;
     /* Focused before the click so the app's <dialog> takes focus inside the frame
        rather than opening behind a page the visitor is still scrolled on. */
@@ -359,7 +416,15 @@ export function ChoirPracticeDemo() {
             <div
               className="choir-shield"
               data-engaged={engaged}
-              onClick={() => setEngaged(true)}
+              /* One click does both jobs: hands the app the wheel and starts the
+                 piece. Two clicks to hear anything — one on the shield, one on a Play
+                 button the visitor had to go and find — was reported, and it was never
+                 a decision, just the shield and the transport not knowing about each
+                 other. */
+              onClick={() => {
+                setEngaged(true);
+                startPlayback(frameRef.current);
+              }}
               role="presentation"
             />
           )}
@@ -403,7 +468,7 @@ export function ChoirPracticeDemo() {
                     </span>
                   )}
                   {opened
-                    ? "Click to use it — scrolling moves the page"
+                    ? "Click to play — scrolling still moves the page"
                     : "Opening a score…"}
                 </span>
 
@@ -450,8 +515,8 @@ export function ChoirPracticeDemo() {
         <p className="choir-note">
           {opened ? (
             <>
-              The real application, from <code>/demos/choir/</code>. Silent until you
-              press Play.
+              The real application, from <code>/demos/choir/</code>. Click the score and
+              it sings all four parts.
             </>
           ) : (
             <>

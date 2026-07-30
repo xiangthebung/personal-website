@@ -266,6 +266,160 @@ test("the vendored Choir Practice copy is complete and carries nothing it should
   assert.match(html, /src="js\/app\.js"/);
 });
 
+/**
+ * The pod reaches into the framed app and drives it: it opens a score, reveals the
+ * mixer, presses play on the visitor's click and forwards a microphone request. All of
+ * that is `querySelector` against a copy that gets refreshed from its own repository,
+ * so a rename over there silently turns the whole thing into a no-op — the app still
+ * works by hand, nothing throws, and the page just quietly stops arranging anything.
+ * That is the failure this test exists to make loud.
+ *
+ * `demo.tsx` claimed to be covered by this file before it actually was.
+ */
+test("the controls the Choir pod drives still exist in the vendored copy", async () => {
+  const html = await read("../public/demos/choir/index.html");
+  const transport = await read("../public/demos/choir/js/ui/transport.js");
+  const pod = await read("../app/demos/choir-practice/demo.tsx");
+
+  // The selectors the pod names, read out of the pod rather than duplicated here.
+  const hooks = pod.slice(pod.indexOf("const HOOKS = {"));
+  const score = pod.match(/const SCORE = "([^"]+)"/)?.[1];
+  assert.ok(score, "the pod no longer names a score to open");
+  assert.ok(
+    await exists(`../public/demos/choir/sample-pieces/${score}`),
+    `the pod opens "${score}", which is not in the vendored sample-pieces`,
+  );
+
+  for (const [label, id] of [
+    ["transport", "play-btn"],
+    ["parts", "parts-btn"],
+    ["mic", "mic-btn"],
+  ]) {
+    assert.ok(hooks.includes(`#${id}`), `the pod stopped naming #${id} as its ${label}`);
+    assert.match(html, new RegExp(`id="${id}"`), `#${id} is gone from the vendored app`);
+  }
+
+  // The sample buttons the pod finds a score by.
+  assert.match(html, /class="sample"|class="[^"]*\bsample\b/);
+  assert.match(html, /data-sample-path=/);
+
+  /* The play/pause contract. `startPlayback` reads this label to decide whether a press
+     would start or stop the music, which is what stops a re-armed shield pausing a
+     rehearsal already in progress. If the app switches to a class or a data attribute,
+     the guard silently starts returning false and clicking the score does nothing. */
+  const idle = pod.match(/idleLabel: "([^"]+)"/)?.[1];
+  assert.equal(idle, "Play", "startPlayback's idle label changed");
+  assert.match(
+    transport,
+    /setPlaying\(isPlaying\)\s*\{[\s\S]*?isPlaying \? 'Pause' : 'Play'[\s\S]*?setAttribute\('aria-label', label\)/,
+    "the transport no longer reports play state through #play-btn's aria-label",
+  );
+});
+
+/**
+ * Every line of caption has to be on screen long enough to read.
+ *
+ * This is the second time the page has been reported as moving text too fast, and both
+ * times the cause was the same structural mistake rather than a bad number: each scene
+ * wrote one caption per beat, so beats sized for a 320ms click or a 600ms cursor glide
+ * were handed a fresh sentence. Twenty-one captions across seven scenes were under 1.4
+ * seconds; the worst demanded about 771 words a minute against a comfortable 200–250.
+ *
+ * Scenes fix it by giving consecutive beats the *identical* caption string, which makes
+ * the reader's time the sum of those beats. This checks that the arithmetic actually
+ * works out, by reading the beat lists and caption maps back out of the source.
+ *
+ * Source parsing rather than importing, because these are `"use client"` modules that
+ * would drag React and the whole scene runtime into a node test to read two arrays —
+ * the same trade `policyRegistry` below makes for the same reason. The parser is strict
+ * about what it finds: if a scene stops matching, the test fails rather than silently
+ * checking nothing, which is the only way a test like this is worth having.
+ *
+ * The 1100ms loop gap is deliberately not counted. It only ever applies to the last
+ * beat, and letting it count would excuse whatever that beat happens to be.
+ */
+test("no caption goes by faster than it can be read", async () => {
+  const floor = Number(
+    (await read("../app/demos/scene/storyboard.ts")).match(
+      /MIN_CAPTION_MS = (\d+)/,
+    )?.[1],
+  );
+  assert.ok(floor > 0, "MIN_CAPTION_MS is no longer declared in the storyboard hook");
+
+  /* grt-next-bus builds its captions in a switch with interpolated live figures rather
+     than in a map, so it is checked by a different route below. */
+  const scenes = ["decaf", "n-back", "night-neutralizer", "pagepack", "pdf-explainer"];
+  let checked = 0;
+
+  for (const scene of scenes) {
+    const source = await read(`../app/demos/${scene}/demo.tsx`);
+
+    const beatsBlock = source.match(/const BEATS[^=]*=\s*\[([\s\S]*?)\n\];/);
+    assert.ok(beatsBlock, `${scene}: could not find its BEATS array`);
+    const beats = [...beatsBlock[1].matchAll(/\{\s*name:\s*"([^"]+)",\s*ms:\s*(\d+)\s*\}/g)].map(
+      ([, name, ms]) => ({ name, ms: Number(ms) }),
+    );
+    assert.ok(beats.length >= 5, `${scene}: parsed only ${beats.length} beats`);
+
+    const captionBlock = source.match(/const CAPTION[^=]*=\s*\{([\s\S]*?)\n\};/);
+    assert.ok(captionBlock, `${scene}: could not find its CAPTION map`);
+    const captions = new Map();
+    for (const entry of captionBlock[1].matchAll(
+      /^\s{2}(?:"([^"]+)"|([A-Za-z][\w-]*)):\s*\[([\s\S]*?)\],\s*$/gm,
+    )) {
+      const key = entry[1] ?? entry[2];
+      // Normalised so a line broken across two source lines matches its one-line twin.
+      captions.set(key, entry[3].replace(/\s+/g, " ").trim());
+    }
+
+    for (const beat of beats) {
+      assert.ok(captions.has(beat.name), `${scene}: beat "${beat.name}" has no caption`);
+    }
+
+    /* Walk the beats, accumulating runs of identical caption text. */
+    let runName = beats[0].name;
+    let runText = captions.get(beats[0].name);
+    let runMs = 0;
+    const groups = [];
+    for (const beat of beats) {
+      const text = captions.get(beat.name);
+      if (text !== runText) {
+        groups.push({ from: runName, ms: runMs, text: runText });
+        runName = beat.name;
+        runText = text;
+        runMs = 0;
+      }
+      runMs += beat.ms;
+    }
+    groups.push({ from: runName, ms: runMs, text: runText });
+
+    for (const group of groups) {
+      const words = group.text.split(/\s+/).length;
+      assert.ok(
+        group.ms >= floor,
+        `${scene}: the caption starting at "${group.from}" is on screen for ` +
+          `${group.ms}ms, under the ${floor}ms floor — ${words} words at ` +
+          `${Math.round((words / group.ms) * 60_000)} words a minute. Either lengthen a ` +
+          `beat or give the neighbouring beat the identical caption text.`,
+      );
+      checked += 1;
+    }
+  }
+
+  assert.ok(checked >= 40, `only ${checked} caption groups were checked`);
+
+  /* GRT's captions are a switch returning tuples, with figures interpolated from its
+     clock. The only pairing it relies on is `reach` and `open` — 900ms and 600ms, which
+     are both under the floor alone — so this asserts the fall-through that joins them
+     rather than re-implementing the parser for one scene. */
+  const grt = await read("../app/demos/grt-next-bus/demo.tsx");
+  assert.match(
+    grt,
+    /case "reach":\s*\r?\n\s*case "open":/,
+    "grt-next-bus: reach and open no longer share a caption, and neither clears the floor alone",
+  );
+});
+
 /* ===========================================================================
    /legal
    ---------------------------------------------------------------------------

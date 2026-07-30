@@ -57,7 +57,7 @@ type BeatName =
   | "settle";
 
 /**
- * Thirteen beats, just under twenty seconds.
+ * Thirteen beats, 20.3 seconds.
  *
  * The account of what was wrong with the old eleven is worth keeping, because it was
  * a first-time visitor's account and it was not about any single beat being short:
@@ -123,13 +123,18 @@ const CAPTION: Record<BeatName, readonly [string, string]> = {
   raw: ["It starts arriving on its own.", "Nobody asked it to."],
   pull: ["And it speeds up.", "Every number on screen is a reason to stay."],
   notice: ["There is one thing here that is not the feed.", "Up in the toolbar."],
-  reach: ["Reaching for Decaf.", ""],
-  press: ["Pressed.", ""],
+  /* The travel and the press share a line. "Pressed." on its own was one word holding
+     the caption for 800ms, and splitting a reach from its click gives a reader two
+     sentences for one gesture. 2,400ms together. */
+  reach: ["Reaching for Decaf, and pressing it.", ""],
+  press: ["Reaching for Decaf, and pressing it.", ""],
   drain: ["The colour goes first.", "The layout does not move a pixel."],
   dashes: ["Then every count becomes a dash.", "In the text, and in what a screen reader says."],
   calm: ["The badge keeps its number and loses the red.", "A real message still gets through."],
   pause: ["The feed itself is gone.", "The header and sidebar are exactly where they were."],
-  "aim-hold": ["Going back for another look.", ""],
+  /* Reaching back for the pass, and the pass itself. The notice card is on screen
+     through both, so the line is true from the first frame of the pair. 2,700ms. */
+  "aim-hold": ["Not blocked — three seconds away.", "Tomorrow's first pass is seven."],
   hold: ["Not blocked — three seconds away.", "Tomorrow's first pass is seven."],
   settle: ["Nothing was taken away.", "It just stopped being worth anything."],
 };
@@ -205,15 +210,39 @@ function burst(count: number, spec: { spread: number; from: number; glyphs: read
   return Array.from({ length: count }, (_, index) => {
     const degrees = spec.from + ((index * 47) % spec.spread);
     const radians = (degrees * Math.PI) / 180;
-    const reach = 42 + ((index * 29) % 52);
+    /**
+     * How far out this one flies, and it has to land somewhere it can be seen.
+     *
+     * This was `42 + (index * 29) % 52` — up to 94vh of vertical travel — and filming
+     * the flood showed what that costs: nineteen of forty-six rewards were outside the
+     * window entirely, and more were inside the window but outside the layer's clip to
+     * Decaf's own band. Half the cloud was hanging where nobody could see it, so the
+     * flood looked thin while paying for every element in it.
+     *
+     * 18 to 48, weighted wide rather than tall: the fan is roughly ±45vw across and
+     * ±28vh down, which fits inside a section that is 84svh tall and reads as filling
+     * the screen because it is filling the part of the screen this section owns.
+     *
+     * The modulus has to be coprime with the stride, and the first version of this was
+     * `(index * 29) % 29` — which is zero for every index, so all forty-eight rewards
+     * came out at exactly radius 18 and the flood rendered as a tidy ring around the
+     * counter. Every stepped value in this function relies on that property; 29 against
+     * 31 gives all thirty-one radii before repeating.
+     */
+    const reach = 18 + ((index * 29) % 31);
     return {
       glyph: spec.glyphs[index % spec.glyphs.length],
-      // Cosine across the width, sine up the height, so the fan is wide and tall.
-      dx: `${(Math.cos(radians) * reach * 0.62).toFixed(2)}vw`,
-      dy: `${(Math.sin(radians) * reach).toFixed(2)}vh`,
-      size: 20 + ((index * 13) % 34),
+      // Cosine across the width, sine down the height. Wider than tall, like a window.
+      dx: `${(Math.cos(radians) * reach * 0.95).toFixed(2)}vw`,
+      dy: `${(Math.sin(radians) * reach * 0.58).toFixed(2)}vh`,
+      size: 26 + ((index * 13) % 42),
       delay: (index * 137) % 2600,
       spin: ((index * 53) % 90) - 45,
+      /* For the fall. Nothing drops straight: a small sideways drift and some extra
+         tumble on the way down, both stepped in coprime strides like the headings above
+         so no two neighbours behave alike and no seed produces a clump. */
+      drift: `${(((index * 31) % 9) - 4).toFixed(1)}vw`,
+      tumble: ((index * 67) % 220) - 110,
     };
   });
 }
@@ -227,14 +256,14 @@ function burst(count: number, spec: { spread: number; from: number; glyphs: read
  * burst around the thing that produced it and reads as an explosion out of a button rather
  * than as a fountain aimed at the neighbours.
  */
-const LIKE_BITS = burst(26, {
+const LIKE_BITS = burst(48, {
   from: 0,
   spread: 360,
   glyphs: ["♥", "♥", "★", "♥", "▲", "♥", "★"],
 });
 
 /** Comment bubbles out of the comment counter. Fewer, and they do not travel as far. */
-const COMMENT_BITS = burst(14, {
+const COMMENT_BITS = burst(20, {
   from: 18,
   spread: 360,
   glyphs: ["💬"],
@@ -328,8 +357,32 @@ export function DecafDemo() {
 
     const section = stageRef.current?.closest("[data-project-section]");
 
+    /* Only measured when the geometry can actually have moved.
+       This used to read three `getBoundingClientRect`s and write five custom properties
+       on every single frame — 180 layout reads a second, and forced synchronous ones
+       whenever anything else had invalidated layout. It was the most expensive thing in
+       the scene by a wide margin.
+       Two things make it unnecessary. The page's scroll position and the window's height
+       are the only inputs that move the counters relative to the viewport, so comparing
+       those two numbers is enough to know whether a measurement is worth taking. And
+       the drops now fly out once and hang, rather than cycling forever, so the origin
+       only has to be right at the moment each one launches — tracking the counter as
+       the reel scrolls underneath it would actively drag the whole suspended cloud
+       upward, which is the opposite of what it should do. */
+    let lastY = Number.NaN;
+    let lastHeight = Number.NaN;
+
     let frame = 0;
     const write = () => {
+      const y = window.scrollY;
+      const height = window.innerHeight;
+      if (y === lastY && height === lastHeight) {
+        frame = window.requestAnimationFrame(write);
+        return;
+      }
+      lastY = y;
+      lastHeight = height;
+
       const layer = delugeRef.current;
       if (layer) {
         const like = likeRef.current?.getBoundingClientRect();
@@ -587,10 +640,16 @@ export function DecafDemo() {
                       "--size": `${bit.size}px`,
                       "--delay": `${bit.delay}ms`,
                       "--spin": `${bit.spin}deg`,
+                      "--drift": bit.drift,
+                      "--tumble": `${bit.tumble}deg`,
                     } as React.CSSProperties
                   }
                 >
-                  {bit.glyph}
+                  {/* Two elements, because there are two independent movements: the
+                      outer one flies out and later falls, the inner one bobs on the
+                      spot while it hangs. One element cannot do both — they would be
+                      fighting over `transform`. */}
+                  <i className="dc-drop-body">{bit.glyph}</i>
                 </span>
               )),
             )}

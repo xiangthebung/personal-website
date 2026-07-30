@@ -71,7 +71,7 @@ type BeatName =
   | "gone";
 
 /**
- * Nine beats over nineteen seconds.
+ * Nine beats over 18.7 seconds.
  *
  * Two of them were doing work they could not finish in the time they had. `street`
  * asks the visitor to find a 26px badge on a toolbar and notice that the number in it
@@ -376,10 +376,13 @@ export function GrtNextBusDemo() {
           `${ALERT_LEAD_MINUTES} minutes out, it tells you.`,
           "A notification, whether or not you looked.",
         ];
+      /* One line across both, and it has to be the identical string: these are 900ms and
+         600ms, and a caption that changes on either is a caption nobody read. The popup
+         growing out of its own button is the whole of what happens here. 1,500ms. See
+         `MIN_CAPTION_MS` in the storyboard hook. */
       case "reach":
-        return ["Reaching for the extension.", ""];
       case "open":
-        return ["The popup, hanging off its own button.", ""];
+        return ["Reaching for the extension.", "The popup hangs off its own button."];
       case "stops":
         return [
           "Three saved stops, closest first.",

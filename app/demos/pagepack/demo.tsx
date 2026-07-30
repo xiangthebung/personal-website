@@ -67,10 +67,12 @@ type BeatName =
  * where they were. 16.7s now.
  *
  * The four save beats are also load-bearing arithmetic: `press + read + collect +
- * finish` is the window the cards fly in, and `FLYER_STAGGER` below re-derives the
- * stagger from it. Changing one of the four without reading that note leaves the
- * pages either landing early into a dead pause or still in the air when the
- * connection dies.
+ * finish` is the window the cards fly in, and `FLYER_STAGGER` below derives the stagger
+ * from it, so moving any of them keeps the cards landing on `finish` rather than
+ * stranding them mid-air or parking them early.
+ *
+ * 17.6s now. `reveal` and `hold` went up to clear the floor a line of caption needs;
+ * see `MIN_CAPTION_MS` in the storyboard hook and the groupings in `CAPTION`.
  */
 const BEATS: readonly Beat<BeatName>[] = [
   // The establishing shot: a browser, a page, a toolbar nobody has looked at yet.
@@ -89,36 +91,35 @@ const BEATS: readonly Beat<BeatName>[] = [
   // The cards leaving the window. The longest beat of the save, because it is the
   // one carrying the idea that a save takes the linked pages with it.
   { name: "collect", ms: 2000 },
-  // The count landing on the toolbar badge: small, and the proof the save worked.
-  { name: "finish", ms: 1000 },
+  /* The count landing on the toolbar badge: small, and the proof the save worked.
+     1000ms could not carry its own caption, and this is the beat whose length was
+     previously untouchable because a hand-computed stagger depended on it. It is not
+     untouchable now — `FLYER_STAGGER` re-derives itself from these four beats. */
+  { name: "finish", ms: 1400 },
   // A cut. Long enough for the signal arcs to drop outside-in and the slash to draw
   // across them — 640ms of transition in the stylesheet — and no longer.
   { name: "cut", ms: 800 },
   { name: "dead", ms: 1900 },
-  // The Library tab, a pack, and a file list. Three new things in one frame.
-  { name: "reveal", ms: 1200 },
+  /* Three new things in one frame — the Library tab, a pack, and a file list — and
+     1200ms was under the floor a line of caption needs. */
+  { name: "reveal", ms: 1500 },
   // The payoff, and the only frame with real prose in it.
   { name: "read-offline", ms: 2400 },
-  { name: "hold", ms: 1200 },
+  { name: "hold", ms: 1400 },
 ];
 
 /**
- * How far apart the cards leave the button, as a multiple of the stylesheet's own
- * 235ms step.
+ * The window the cards fly in: press, read, collect, finish.
  *
- * `.pp-flyer[data-flying="true"]` runs a 1900ms flight with
- * `animation-delay: calc(var(--order) * 235ms)`, and the stylesheet's comment
- * records why: seven cards have to settle exactly as `finish` ends, so the last one
- * lands the instant before the connection dies. That was tuned against a 3310ms
- * save; the save is 4720ms now, and leaving the stagger alone would have parked all
- * seven cards a second and a half early with nothing happening after them.
- *
- * So the scene scales `--order` instead of the stylesheet scaling the step —
- * 235 × 2 = 470ms apart, 1900 + 6 × 470 = 4720ms, which is `press + read + collect
- * + finish` to the millisecond. Slower per card than it was, which is the point: at
- * 235ms the pages left in a single spray and you could not follow one of them.
+ * Named and summed rather than written down, because it is the input to
+ * `FLYER_STAGGER` below and the previous version of that constant was a hand-computed
+ * `2` with a comment warning that changing any of these four beats would silently
+ * strand the animation. That warning came true the first time one of them moved.
  */
-const FLYER_STAGGER = 2;
+const SAVE_BEATS = ["press", "read", "collect", "finish"] as const;
+const SAVE_MS = BEATS.filter((beat) =>
+  (SAVE_BEATS as readonly string[]).includes(beat.name),
+).reduce((total, beat) => total + beat.ms, 0);
 
 /** Where the cursor is on each beat. `null` means it has left the frame. */
 const CURSOR: Partial<Record<BeatName, string>> = {
@@ -144,6 +145,28 @@ const CAPTURED = [
 ];
 
 const TOTAL_BYTES = CAPTURED.reduce((sum, page) => sum + page.bytes, 0);
+
+/**
+ * How far apart the cards leave the button, as a multiple of the stylesheet's own
+ * 235ms step.
+ *
+ * `.pp-flyer[data-flying="true"]` runs a 1900ms flight with
+ * `animation-delay: calc(var(--order) * 235ms)`, so the last of seven cards lands at
+ * `1900 + 6 × 235 × stagger`. That has to equal the save window exactly: the cards
+ * should settle as `finish` ends, so the last one arrives the instant before the
+ * connection dies.
+ *
+ * This used to be a hand-computed `2`, correct against a 4,720ms save, under a comment
+ * warning that changing any of the four save beats would silently strand the animation.
+ * The warning was accurate and the arrangement still failed, because raising `finish`
+ * to clear the caption floor is exactly the kind of edit that has no visible connection
+ * to a constant seventy lines away. Deriving it means the coupling cannot rot: move any
+ * of those beats and the stagger follows.
+ */
+const FLYER_FLIGHT_MS = 1900;
+const FLYER_STEP_MS = 235;
+const FLYER_STAGGER =
+  (SAVE_MS - FLYER_FLIGHT_MS) / (FLYER_STEP_MS * (CAPTURED.length - 1));
 
 /**
  * Where each card comes to rest, in viewport units, measured from the Save button
@@ -190,17 +213,29 @@ const SCATTER = [
  */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
   settle: ["A page open in the browser.", "Online, for now."],
-  reach: ["Reaching for the PagePack button.", ""],
+
+  /* Reaching, the popup opening and the pointer moving to its button are one event with
+     one thing worth saying about it. Three beats, 3,000ms, one line — where before this
+     was three lines of 900ms, 1,400ms and 700ms, two of them under the reading floor. */
+  reach: ["PagePack offers to save this page.", "And the pages it links to."],
   open: ["PagePack offers to save this page.", "And the pages it links to."],
-  aim: ["Moving to Save page.", ""],
-  press: ["Save page, pressed.", ""],
-  read: ["Reading this page first.", "Its text, styles, images and fonts."],
+  aim: ["PagePack offers to save this page.", "And the pages it links to."],
+
+  /* The press stays 320ms because a press is a press; its caption does not, because 320ms
+     was the shortest caption exposure on the page after Night Neutralizer's cut. It runs
+     on into `read`, which is the beat that says what the press started. 1,720ms. */
+  press: ["Pressed. It reads this page first.", "Text, styles, images and fonts."],
+  read: ["Pressed. It reads this page first.", "Text, styles, images and fonts."],
+
   collect: ["Then every page it links to.", "Each saved page leaves the browser."],
   // "Finishing up…" under the bar, and a 7 on the toolbar. The caption says both
   // rather than declaring the save over a beat before the interface does.
   finish: ["Seven pages, finishing up.", "The toolbar badge shows the count."],
-  cut: ["The signal cuts out.", ""],
-  dead: ["The tab can load nothing.", "The pack beside it is untouched."],
+
+  // The cut and its aftermath. 2,700ms.
+  cut: ["The signal cuts out.", "The tab can load nothing. The pack beside it is untouched."],
+  dead: ["The signal cuts out.", "The tab can load nothing. The pack beside it is untouched."],
+
   reveal: ["The library, with one pack in it.", "Seven pages, already on disk."],
   "read-offline": [
     "A saved page, reopened with no connection.",

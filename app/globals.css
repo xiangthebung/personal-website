@@ -7100,22 +7100,33 @@ html.shows-shortcuts .shortcut-sheet {
     filter 900ms ease,
     opacity 1600ms ease 500ms;
 }
+/* Every reward on screen loses its colour at once, in one composited pass on the layer
+   rather than forty-six on its children. The drops do their own falling — see
+   `dc-fall` — so this no longer takes the layer's opacity to zero with it; a layer
+   fading out while its contents drop is two exits competing, and the fade wins. */
 .dc-deluge[data-spent="true"] {
   filter: grayscale(1);
-  opacity: 0;
 }
-/* Out of the way of the click. See `data-quiet` in the demo: for the two beats where a
-   pointer is reaching for the toolbar and pressing it, the flood drops back so the
-   press is the only thing moving. It is not stopped — stopping it would read as the
-   extension having already worked, a beat early. */
+
+/* Out of the way of the click. See `data-quiet` in the demo: for the three beats where
+   a pointer is reaching for the toolbar and pressing it, the flood drops back so the
+   press is the only thing moving.
+
+   Blurred rather than nearly erased. 0.07 did make the button the only legible thing
+   and it also threw away the payoff: the hearts have to still be visibly *there*,
+   hanging, for their falling to read as something that happened to them. A blur is the
+   cinema answer to the same problem — it moves them behind the plane of attention
+   instead of removing them — and it costs one filter on one layer for two seconds. The
+   bob stops too, so nothing in the frame is moving except the pointer. */
 .dc-deluge[data-quiet="true"] {
-  /* 0.18 was still legible. These glyphs are saturated pink on a near-white page and
-     the notification cards are opaque white on it, so a fifth of full strength left
-     four readable headlines in the corner of the window and a scatter of pink across
-     it — competing with a 24px button for the same three beats that exist to make that
-     button the only thing worth looking at. */
-  opacity: 0.07;
-  transition: opacity 300ms ease;
+  opacity: 0.3;
+  filter: blur(3.5px);
+  transition:
+    opacity 300ms ease,
+    filter 300ms ease;
+}
+.dc-deluge[data-quiet="true"] .dc-drop-body {
+  animation-play-state: paused;
 }
 
 /* Each bit starts exactly on its counter and flies out from there.
@@ -7123,6 +7134,28 @@ html.shows-shortcuts .shortcut-sheet {
    because the counters are inside a reel that scrolls inside a section that scrolls. The
    fallback centres the burst if the measurement has not landed yet, so a first frame can
    never put a heart in the top-left corner. */
+/* --- the rewards, and then gravity ----------------------------------------
+   These used to cycle: fly out of the counter, fade, restart, forever. It was a
+   fountain, and a fountain is scenery — nothing about it could be *ended*, so when the
+   extension went on the only available exit was to fade the whole layer out, which read
+   as the effect being switched off rather than as anything happening to the rewards.
+
+   Now they fly out once and stop, hanging in the air over the page with a slow bob on
+   them, and they accumulate: by the end of the flood there are forty-six of them
+   suspended across the window. Then the extension goes on and every one of them loses
+   its colour and falls.
+
+   That is the argument, and it is the same argument the caption makes — nothing was
+   taken away, it just stopped being worth anything. A thing that fades out has been
+   removed. A thing that drops has become worthless while remaining exactly where it
+   was.
+
+   Two elements per reward: this one flies and falls, `.dc-drop-body` inside it bobs.
+   One element cannot do both, because both are `transform`.
+
+   No `will-change`. The browser promotes an element with a running transform animation
+   on its own and releases the layer afterwards; declaring it here would pin forty-six
+   compositor layers for the eight seconds the cloud is merely sitting still. */
 .dc-drop {
   position: absolute;
   top: var(--comment-y, 50vh);
@@ -7130,43 +7163,96 @@ html.shows-shortcuts .shortcut-sheet {
   color: #f0546a;
   font-size: var(--size);
   line-height: 1;
-  opacity: 0;
-  animation: dc-spew 3200ms cubic-bezier(0.16, 0.68, 0.3, 1) infinite;
+  /* `both`, so the last frame holds. This is what makes them hang rather than cycle. */
+  animation: dc-lift 1400ms cubic-bezier(0.1, 0.74, 0.22, 1) both;
   animation-delay: var(--delay);
   animation-play-state: paused;
-  will-change: transform, opacity;
 }
 .dc-drop[data-from="like"] {
   top: var(--like-y, 50vh);
   left: var(--like-x, 50vw);
 }
 .dc-drop[data-from="comment"] {
-  /* Bubbles read as objects rather than as glyphs, so they want to be smaller and to
-     leave on a flatter arc. */
+  /* Bubbles read as objects rather than as glyphs, so they want to be smaller. */
   font-size: calc(var(--size) * 0.78);
 }
 .dc-deluge[data-running="true"] .dc-drop {
   animation-play-state: running;
 }
-@keyframes dc-spew {
+
+/* Out of the counter and up to where it will hang. */
+@keyframes dc-lift {
   0% {
     opacity: 0;
-    transform: translate3d(-50%, -50%, 0) scale(0.25) rotate(0deg);
+    transform: translate3d(-50%, -50%, 0) scale(0.2) rotate(0deg);
   }
-  8% {
+  12% {
     opacity: 1;
-    transform: translate3d(calc(-50% + var(--dx) * 0.12), calc(-50% + var(--dy) * 0.12), 0)
-      scale(1.05) rotate(calc(var(--spin) * 0.15));
   }
-  74% {
-    opacity: 0.9;
+  100% {
+    opacity: 1;
+    transform: translate3d(calc(-50% + var(--dx)), calc(-50% + var(--dy)), 0) scale(1)
+      rotate(var(--spin));
+  }
+}
+
+/* Suspended. Long, staggered off the same delay that spaced the launches, and small —
+   nine pixels is enough to read as floating and not enough to look like weather. */
+.dc-drop-body {
+  display: block;
+  animation: dc-bob 3200ms ease-in-out infinite alternate;
+  animation-delay: var(--delay);
+}
+@keyframes dc-bob {
+  to {
+    transform: translateY(-9px);
+  }
+}
+
+/* And down.
+   The starting frame is the resting transform, exactly as `dc-lift` left it, so each
+   reward detaches from precisely where it hung. `both` again, so nothing snaps back.
+   The curve is an ease-in because that is what falling is — the first version used the
+   site's standard ease-out and every heart arrived at the bottom decelerating, which
+   reads as being lowered rather than dropped.
+   Faded from 62% so they are gone before they reach the bottom of Decaf's band, where
+   the layer's clip would otherwise cut them off along an invisible horizontal line. */
+.dc-deluge[data-spent="true"] .dc-drop {
+  animation: dc-fall 1450ms cubic-bezier(0.4, 0, 0.9, 0.5) both;
+  /* A sixteenth of the launch stagger. They have to let go at slightly different
+     moments — a cloud dropping in formation reads as one object — but the whole fall,
+     stagger included, has to finish inside `drain`'s 1700ms or the last few rewards are
+     still coming down while the caption has moved on to the counts becoming dashes. */
+  animation-delay: calc(var(--delay) * 0.06);
+  animation-play-state: running;
+}
+.dc-deluge[data-spent="true"] .dc-drop-body {
+  animation: none;
+}
+@keyframes dc-fall {
+  0% {
+    opacity: 1;
+    transform: translate3d(calc(-50% + var(--dx)), calc(-50% + var(--dy)), 0) scale(1)
+      rotate(var(--spin));
+  }
+  /* The strings being cut. A few pixels of sag before the acceleration, which is the
+     oldest trick in animation and the thing that makes a drop read as a loss of support
+     rather than as a downward move. */
+  7% {
+    transform: translate3d(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 6px), 0)
+      scale(0.97) rotate(var(--spin));
+  }
+  58% {
+    opacity: 1;
   }
   100% {
     opacity: 0;
-    /* Out past the edge, growing, so it reads as coming towards the viewer rather than
-       merely travelling across them. */
-    transform: translate3d(calc(-50% + var(--dx)), calc(-50% + var(--dy)), 0) scale(1.75)
-      rotate(var(--spin));
+    transform: translate3d(
+        calc(-50% + var(--dx) + var(--drift, 0vw)),
+        calc(-50% + var(--dy) + 76vh),
+        0
+      )
+      scale(0.84) rotate(calc(var(--spin) + var(--tumble, 90deg)));
   }
 }
 
@@ -7196,13 +7282,39 @@ html.shows-shortcuts .shortcut-sheet {
   box-shadow:
     0 0 0 1px rgba(20, 22, 30, 0.07),
     0 22px 44px -20px rgba(16, 18, 26, 0.45);
-  opacity: 0;
-  animation: dc-spam-in 3600ms cubic-bezier(0.2, 0.9, 0.3, 1) infinite;
-  animation-delay: calc(700ms + var(--card) * 620ms);
+  /* Arrive and stay, rather than cycling in and out. Four notifications that keep
+     replacing themselves are a carousel; four that pile up and remain are a backlog,
+     which is the thing being complained about. They fall with the hearts. */
+  animation: dc-spam-in 560ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  /* Compressed from `700ms + card * 620ms`, which put the fourth card 2,560ms after the
+     flood started — still arriving during `pull`, the beat that is supposed to *be* the
+     flood at its loudest. It also made the pod's visibility check flaky, because a
+     `both`-filled animation still inside its delay renders its 0% frame, and 0% is
+     `opacity: 0`: the harness was correctly reporting an invisible card and the card was
+     correctly invisible. All four are now up 1,580ms in, well inside `raw`. */
+  animation-delay: calc(320ms + var(--card) * 420ms);
   animation-play-state: paused;
 }
 .dc-deluge[data-running="true"] .dc-spam-card {
   animation-play-state: running;
+}
+.dc-deluge[data-spent="true"] .dc-spam-card {
+  animation: dc-spam-fall 1400ms cubic-bezier(0.4, 0, 0.9, 0.5) both;
+  animation-delay: calc(var(--card) * 80ms);
+  animation-play-state: running;
+}
+@keyframes dc-spam-fall {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  58% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-2vw, 62vh, 0) rotate(7deg);
+  }
 }
 .dc-spam-dot {
   grid-row: 1 / span 2;
@@ -7221,20 +7333,21 @@ html.shows-shortcuts .shortcut-sheet {
   color: #6d7280;
   font-size: 11.5px;
 }
+/* In from the right edge, and it stays.
+   These keyframes used to make a round trip — in at 8%, out again by 76% — because the
+   animation ran on an infinite loop and each card had to clear the way for its own next
+   pass. It runs once now, so a round trip means it holds its *last* frame, and the last
+   frame was `opacity: 0`. The cards duly arrived, left, and stayed gone, which the
+   visibility harness reported as an invisible notification and which no amount of
+   adjusting the delays was ever going to fix. */
 @keyframes dc-spam-in {
-  0% {
+  from {
     opacity: 0;
     transform: translate3d(26px, 0, 0);
   }
-  8%,
-  62% {
+  to {
     opacity: 1;
     transform: none;
-  }
-  76%,
-  100% {
-    opacity: 0;
-    transform: translate3d(26px, 0, 0);
   }
 }
 

@@ -112,8 +112,17 @@ type BeatName =
  * a quiz explanation — that cannot be read in a second. The split is now sharper
  * rather than uniformly slower: the seven beats that are a pointer moving or a panel
  * swapping are close to where they were, and the six that ask you to *read something*
- * got most of the extra time. 20.0s, which makes this the longest scene on the page and
+ * got most of the extra time. 20.6s, which makes this the longest scene on the page and
  * the one the lap window in `scripts/drive-site.mjs` is sized against.
+ *
+ * Lengthening the reading beats fixed the panels and left the caption broken, which was
+ * reported next: the text under the frame was still changing seventeen times, and ten of
+ * those changes were on beats too short to read a sentence in. `split` was the worst —
+ * nine words in 700ms, about 771 words a minute. Beat durations are answers to "how long
+ * does this movement take" and were being used as answers to "how long does it take to
+ * read this". Those are now separate: the beats below are unchanged apart from `hold`,
+ * and `CAPTION` groups them into nine lines whose shortest exposure is 1,750ms. See
+ * `MIN_CAPTION_MS` in the storyboard hook.
  */
 const BEATS: readonly Beat<BeatName>[] = [
   // I. the notes overlay
@@ -149,7 +158,10 @@ const BEATS: readonly Beat<BeatName>[] = [
   // Same 620ms travel, and this one carries a press too.
   { name: "pair-b", ms: 900 },
   { name: "matched", ms: 1700 },
-  { name: "hold", ms: 800 },
+  /* 800ms, and the line it carries is the one that says there are four parts to this
+     app — the single most useful sentence in the scene, on screen for less time than any
+     other. It was only clearing the caption floor by borrowing the loop gap. */
+  { name: "hold", ms: 1400 },
 ];
 
 /** Which act each beat belongs to. Drives the rail and the panel's contents. */
@@ -217,20 +229,36 @@ const CURSOR: Partial<Record<BeatName, string>> = {
  */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
   slide: ["Slide 2 of a lecture deck.", "Nothing on top of it yet."],
-  arrive: ["A notes card arrives over the slide.", ""],
-  resting: ["The notes rest at a quarter opacity.", "The slide underneath stays readable."],
-  reach: ["The pointer moves toward the notes.", ""],
-  awake: ["The notes wake to full opacity.", "The slide is still there underneath."],
-  split: ["The workspace splits.", "A panel opens beside the slide."],
-  ask: ["A question about this slide, asked.", ""],
-  thinking: ["The tutor is working on it.", ""],
+
+  /* The overlay arriving and the overlay resting are one statement, and the arrival was
+     600ms of it. Together: 2,100ms. */
+  arrive: ["A notes card arrives at a quarter opacity.", "The slide underneath stays readable."],
+  resting: ["A notes card arrives at a quarter opacity.", "The slide underneath stays readable."],
+
+  /* Reaching and waking, likewise — and this pairing is the signature interaction, so
+     it is the one that most needed a line that stays put while it happens. 2,700ms. */
+  reach: ["Move towards it and it wakes to full opacity.", "The slide is still there under it."],
+  awake: ["Move towards it and it wakes to full opacity.", "The slide is still there under it."],
+
+  /* The panel opening, the question being picked and the tutor thinking are three beats
+     of one event, and none of them is worth its own sentence. 2,500ms. */
+  split: ["A panel opens beside the slide.", "A question about this slide, asked."],
+  ask: ["A panel opens beside the slide.", "A question about this slide, asked."],
+  thinking: ["A panel opens beside the slide.", "A question about this slide, asked."],
+
   answer: ["It answers about slide 2.", "Nobody had to tell it which slide that is."],
-  "to-quiz": ["Switching to Practice.", ""],
-  pick: ["An answer, chosen.", ""],
+
+  // Switching tab and choosing an answer. 1,750ms.
+  "to-quiz": ["Switching to Practice, and choosing an answer.", ""],
+  pick: ["Switching to Practice, and choosing an answer.", ""],
+
   verdict: ["Marked, with the reasoning.", "The question came from the deck itself."],
-  "to-match": ["Next exercise: matching.", ""],
-  "pair-a": ["Pairing a term with its definition.", ""],
-  "pair-b": ["And the next pair.", ""],
+
+  // The whole matching exercise, rather than one line per pair. 2,250ms.
+  "to-match": ["Next exercise: matching terms to definitions.", ""],
+  "pair-a": ["Next exercise: matching terms to definitions.", ""],
+  "pair-b": ["Next exercise: matching terms to definitions.", ""],
+
   matched: ["All three matched.", "Cloze cards and worked examples are in here too."],
   hold: ["Four parts of one study workspace.", "Notes, tutor, quiz, matching."],
 };
