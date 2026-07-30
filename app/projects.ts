@@ -43,7 +43,7 @@ export type Project = {
   stage: Stage;
   /** What it does, in one line, without selling it. */
   headline: string;
-  /** Why it exists. The problem, not the feature. */
+  /** Why it exists. The problem, not the feature. One sentence. */
   why: string;
   theme: "paper" | "mint" | "black" | "white" | "navy" | "forest";
   source: string;
@@ -56,101 +56,98 @@ export type Project = {
    */
   well: "light" | "dark";
   /**
-   * One line of framing above the scene.
+   * A fragment of framing above the scene. Shorter than a sentence, ideally.
    *
-   * These read as descriptions of what is happening rather than instructions,
-   * because there is nothing to operate. An earlier version invited the visitor to
-   * drag, press and play, which was honest about demos that had been built as
-   * working software and is the wrong promise now that they are films.
+   * These describe what is about to happen rather than instructing anyone, because
+   * there is nothing to operate. An earlier version invited the visitor to drag,
+   * press and play, which was honest about demos built as working software and is
+   * the wrong promise now that they are films.
    */
   invitation: string;
   /**
-   * What the project does, four or five lines of it.
+   * Three short notes about the project. Fragments, not sentences.
    *
-   * Each line has to describe the software from outside: what it does for the
-   * person using it, and where a technical decision is the reason something is
-   * possible, that decision stated as the reason. Not internals for their own
-   * sake, and never a count of anything.
+   * This was `facts`, and it read like one: five or six full lines each, stacked
+   * into a bulleted column beside every scene. Two problems with that. It was more
+   * words than anyone reads beside something that is moving — the scene and the
+   * list competed, and the list lost while still taking up the room. And the
+   * register was flat: a row of declarative claims about software reads as a
+   * specification sheet, which is the opposite of curious.
    *
-   * This list used to hold lines like "Frames measured at 48x27, Rec.709 luma,
-   * 64-bin histogram" and one that counted the project's own test suite. Both
-   * were true and neither told a reader what the extension is for.
+   * So: three, short, and only the things a picture cannot say on its own. Where a
+   * note and the scene would say the same thing, the note goes and the scene keeps
+   * it — that is the whole point of having seven of them running.
    *
-   * A line still has to be checkable by reading the repository the section links
-   * to. If it cannot be found there, delete it rather than softening it.
+   * Still no counts of anything, and still nothing that cannot be found by reading
+   * the repository the section links to.
    */
-  facts: string[];
+  notes: string[];
 };
 
 const projectData: Project[] = [
   {
     id: "choir-practice",
     stage: "stacked",
-    number: "07",
+    number: "01",
     name: "Choir Practice",
     platform: "Web app",
-    headline: "Rehearse your part with the other three voices behind it.",
-    why: "Learning an inner line from a recording of the whole choir is guesswork. You need your line loud and the rest quiet, then the reverse.",
+    headline: "Hear your own part against the other three.",
+    why: "A recording of the whole choir tells you almost nothing about your line.",
     theme: "mint",
     source: "https://github.com/xiangthebung/satb-practice",
     live: "https://satb-practice.xiangli3625.workers.dev/",
     demo: "choir-practice",
     well: "dark",
-    invitation:
-      "Not a scene — the actual application, running in this page with a score already open. Sound is one press away.",
-    facts: [
-      "Open a MusicXML score and it engraves the whole thing — beams, ties, slurs, key changes",
-      "Four rehearsal mixes: mostly your part, only your part, everyone but you, everyone",
-      "Every voice is synthesised, so a score plays without waiting for a recording of it",
-      "Sing into the microphone and it shows where your pitch sat against the written note",
-      "Scores never leave the device, and the finished mix exports as a WAV",
+    invitation: "The real app, open on a score. Sound is one press away.",
+    notes: [
+      "Turn your part up and the other three down, or the reverse",
+      "It sings all four parts itself, so you never need a recording",
+      "Sing along and it shows whether you were sharp or flat",
     ],
   },
   {
     id: "decaf",
     stage: "beside",
-    number: "05",
+    number: "02",
     name: "Decaf",
     platform: "Chrome extension",
     status: "Work in progress",
     headline: "Make social media boring on purpose.",
-    why: "Blocking a site makes you want it. Removing the colour, the counts and the autoplay just makes it dull.",
+    why: "Blocking a site makes you want it. Dullness doesn't.",
     theme: "paper",
     // The repository was renamed along with the extension; the old `blokamine`
     // path is not a redirect.
     source: "https://github.com/xiangthebung/Decaf",
     demo: "decaf",
     well: "light",
-    invitation:
-      "A feed doing everything it can to hold you, and then the same feed with all of it switched off.",
-    facts: [
-      "Empties the feed where it sits — the header and sidebars do not move a pixel",
-      "Reward counts become a dash in the text and in the label a screen reader reads",
-      "Notification badges keep their number and lose the red, so a real message gets through",
-      "Twelve sites, and messaging deliberately excluded — a conversation is not a feed",
-      "The first pass each day costs a 3-second hold, the next 7, then 11, then 15",
+    invitation: "The same feed, with all of it switched off.",
+    /* These were written from the inside. "Empties the feed where it sits, without
+       the page jumping" is a thing I was pleased with in the code and nothing a
+       person wants; "Badges" meant notification badges and did not say so. Each line
+       now names something the reader would notice happening to them. */
+    notes: [
+      "The colour, the view counts and the autoplay all switch off",
+      "Notification badges keep their number but lose the red",
+      "The feed isn't blocked, just three seconds away. Tomorrow, seven.",
     ],
   },
   {
     id: "pdf-explainer",
     stage: "beside-flip",
-    number: "06",
+    number: "03",
     name: "PDF Explainer",
     platform: "Web app",
-    headline: "Read a lecture deck with the explanation on top of it.",
-    why: "The slide and the thing that explains the slide are usually in different windows, and you lose one to look at the other.",
+    headline: "The slide, and what it means, in one window.",
+    why: "Otherwise you lose sight of the slide to read the explanation of it.",
     theme: "black",
     source: "https://github.com/xiangthebung/pdf-explainer",
     demo: "pdf-explainer",
     well: "light",
-    invitation:
-      "Four parts of the workspace in turn: notes floating over the slide, a tutor that knows which slide you are on, a marked quiz, and the terms paired up.",
-    facts: [
-      "Explanations arrive a batch of slides at a time, so reading starts in seconds",
-      "A tutor you can ask about the slide you are on, given that slide's text and notes",
-      "Practice built from the same deck: quizzes, matched pairs and fill-in-the-blanks",
-      "Three layouts — notes beside the slide, floating over it, or out of the way",
-      "Your Gemini key stays on your device, and the server strips it from every log line",
+    invitation: "Four parts of the workspace, in turn.",
+    notes: [
+      "Notes sit over the slide, faint until you move towards them",
+      "Ask it questions about the slide you are looking at",
+      "It writes quizzes and flashcards from your own deck",
     ],
   },
   {
@@ -160,25 +157,22 @@ const projectData: Project[] = [
     name: "PagePack",
     platform: "Chrome extension",
     headline: "Save whole websites. Read them with no connection.",
-    why: "Reading lists assume you will always have data. On a plane or underground, they are just a list of links.",
+    why: "A reading list is just a list of links once the signal drops.",
     theme: "white",
     source: "https://github.com/xiangthebung/pagepack-extension",
     demo: "pagepack",
     well: "light",
-    invitation:
-      "One save, then the connection dies. Every label under the bar is the string the extension actually prints.",
-    facts: [
-      "Saves the page as rendered, with its stylesheets, images and the fonts they ask for",
-      "Follow the links and a whole section of a site comes with it, up to 1,000 pages",
-      "Save as I browse collects the pages you visit, then you untick the ones you do not want",
-      "A library with folders, and search that reaches the text inside a saved page",
-      "With no connection, opening a saved address serves the saved copy instead",
+    invitation: "One save, then the connection dies.",
+    notes: [
+      "Saves the page exactly as you saw it, pictures and all",
+      "Follow the links and it takes the whole section with it",
+      "On a plane or underground, the saved copy just opens",
     ],
   },
   {
     id: "grt-next-bus",
     stage: "beside",
-    number: "02",
+    number: "05",
     name: "GRT Next Bus",
     platform: "Chrome extension",
     headline: "See the next bus without opening a map.",
@@ -187,60 +181,54 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/grt-bus-time",
     demo: "grt-next-bus",
     well: "light",
-    invitation:
-      "Counting down on the toolbar with nothing open, and a notification five minutes before the bus reaches your stop.",
-    facts: [
-      "Your saved stops, with the next departure counting down on the toolbar icon",
-      "Live predictions laid over the published timetable, so a late bus reads as late",
-      "An alert before the bus reaches your stop, and how many stops away it is now",
-      "Region of Waterloo open data, read straight from the source with no server in between",
-      "Location, when you grant it, is used on the device and never sent anywhere",
-    ],
-  },
-  {
-    id: "n-back",
-    stage: "beside-flip",
-    number: "03",
-    name: "N-Back",
-    platform: "Web game",
-    headline: "Dual and triple n-back, without the gamification.",
-    why: "Most versions of this either look like a research instrument or promise to raise your IQ. It can just be a quiet thing you do for four minutes.",
-    theme: "forest",
-    source: "https://github.com/xiangthebung/n-back",
-    live: "https://n-back.ai.studio/",
-    demo: "n-back",
-    well: "dark",
-    invitation:
-      "Two back means comparing what is on screen now with what was on screen two cues ago. Here is one match arriving.",
-    facts: [
-      "Dual mode tracks a position and a spoken letter; triple mode adds a colour",
-      "One back to six back, a cue every 1.5 to 4 seconds, and it suggests where to go next",
-      "Scored on balanced accuracy, so pressing everything does worse than pressing nothing",
-      "Colours differ in lightness as well as hue, so the third stream survives colour blindness",
-      "Practice, not an assessment — the transfer research is contested and this makes no claim",
+    invitation: "Nothing open. Five minutes out, it tells you.",
+    notes: [
+      "The countdown sits on your toolbar with nothing open",
+      "Real bus positions, so a late bus shows up as late",
+      "It taps you on the shoulder five minutes before your bus",
     ],
   },
   {
     id: "night-neutralizer",
     stage: "stacked",
-    number: "01",
+    number: "06",
     name: "Night Neutralizer",
     platform: "Chrome extension",
     headline: "Watch things at night without the volume war.",
-    why: "Turn the screen down and dark scenes vanish. Turn the volume down and dialogue vanishes. Neither has to be true.",
+    why: "Turn the screen down and dark scenes vanish. Turn the volume down and the dialogue does.",
     theme: "navy",
     source: "https://github.com/xiangthebung/night-neutralizer",
     demo: "night-neutralizer",
     well: "dark",
-    invitation:
-      "The same shot twice: once as the film shipped it, once through the extension. Watch what the explosion does to the volume.",
-    facts: [
-      "Closes the gap between the explosions and the dialogue, and lifts the picture's shadows with it",
-      "Adapts to the scene: shadows open on a dark shot, highlights hold back on a bright one",
-      "A bright cut is dimmed on the next frame and let back up over about a second and a half",
-      "Paints a filter over the frames rather than reading them, so it works on DRM video too",
-      "Music is left alone — dynamic range is the point of a record and a nuisance in a film",
-      "Stands down until night: a light sensor decides where there is one, the clock otherwise",
+    invitation: "The same shot twice. Watch what the explosion does.",
+    notes: [
+      "Explosions come down, whispers come up",
+      "Dark scenes brighten without the bright ones blowing out",
+      "Works on the streaming sites that block other extensions",
+    ],
+  },
+  /* Last on purpose. It is the hardest section to arrive at cold — the other six
+     describe a problem you have had, and this one has to teach a rule before its
+     scene means anything — so it reads better as the thing you find at the end than
+     as the third thing you are asked to understand. */
+  {
+    id: "n-back",
+    stage: "beside-flip",
+    number: "07",
+    name: "N-Back",
+    platform: "Web game",
+    headline: "Dual and triple n-back, without the gamification.",
+    why: "Most versions look like a lab instrument or promise you a higher IQ. This one is four quiet minutes.",
+    theme: "forest",
+    source: "https://github.com/xiangthebung/n-back",
+    live: "https://n-back.ai.studio/",
+    demo: "n-back",
+    well: "dark",
+    invitation: "Two back: now, against two cues ago.",
+    notes: [
+      "Watch a square and hear a letter. Triple adds a colour.",
+      "Pressing everything scores worse than pressing nothing",
+      "Practice, not a test of you",
     ],
   },
 ];

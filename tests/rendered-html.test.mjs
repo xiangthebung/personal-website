@@ -367,7 +367,10 @@ test("the home page links to the policies of the projects that have them", async
   // rail; the closing section replaced it and carries the same links.
   assert.match(html, /class="closing"/);
   assert.match(html, /href="\/legal"/);
-  assert.match(html, /mailto:xiangli3625@gmail\.com/);
+  /* There was a third assertion here, for a `mailto:` in the closing section. The
+     address was removed from the page on purpose, so the assertion went with it —
+     the GitHub profile and the policy index are the two things that still have to
+     survive down there. */
 });
 
 test("the published policies still match the originals in the project repos", async (t) => {

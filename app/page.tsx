@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- Local static assets are served directly by the Cloudflare/vinext build. */
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { Backdrop } from "./backdrops";
+import { Backdrop, BackdropFront } from "./backdrops";
 import { Closing } from "./closing";
 import { IndexMark } from "./index-marks";
 import { MediaRail, ProjectFocusManager } from "./page-chrome";
@@ -231,13 +231,13 @@ function ProjectSection({ project, index }: { project: Project; index: number })
             ))}
           </div>
 
-          {project.facts.length > 0 && (
+          {project.notes.length > 0 && (
             <ul className="demo-facts">
-              {project.facts.map((fact, order) => (
+              {project.notes.map((note, order) => (
                 /* `--fact` drives the arrival stagger. An index is the right
                    thing here rather than a key: the delay is positional. */
-                <li key={fact} style={{ "--fact": order } as CSSProperties}>
-                  {fact}
+                <li key={note} style={{ "--fact": order } as CSSProperties}>
+                  {note}
                 </li>
               ))}
             </ul>
@@ -257,6 +257,14 @@ function ProjectSection({ project, index }: { project: Project; index: number })
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Anything that belongs over the scene rather than behind it. Almost always
+          nothing — see `BackdropFront`. PagePack's cable is here because it has to be
+          seen being pulled apart, and behind the scene it was covered by the reader
+          panel and therefore did not exist. */}
+      <div className="project-foreground" aria-hidden="true">
+        <BackdropFront project={project.id} />
       </div>
     </section>
   );
@@ -312,7 +320,7 @@ export default function Home() {
             <span className="sr-only">Xiang Li</span>
             <HeroLetters text="Xiang Li" />
           </h1>
-          <p>Seven things I built with AI. All of them are running on this page.</p>
+
           <a className="hero-cue" href={`#${projects[0].id}`}>
             <span className="hero-cue-line" aria-hidden="true" />
             Start exploring

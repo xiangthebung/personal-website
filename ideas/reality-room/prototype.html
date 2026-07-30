@@ -1,0 +1,2023 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reality Room — scene prototype</title>
+
+    <!--
+      ==========================================================================
+      Reality Room — self-driving scene prototype
+      ==========================================================================
+
+      One file. No build step, no imports, no network requests. Open it and it
+      plays, forever, on its own.
+
+      THE PATTERN
+      -----------
+      This mirrors how the real site drives its vignettes. The storyboard is
+      declared as data (a name and a duration), a single requestAnimationFrame
+      loop walks it, and the loop only ever touches three things on the root
+      node:
+
+          data-beat   which beat is showing   -> every CSS rule keys off this
+          data-lap    how many laps so far    -> changing it restarts CSS anims
+          --beat-t    0..1 through this beat   -> for anything continuous
+
+      JS does work once per beat. Continuous motion is CSS's job. That division
+      is what lets several of these sit on one page without the fan spinning up.
+
+      No prefers-reduced-motion branch, deliberately, matching the real site: on
+      Windows that flag gets flipped by battery savers and remote sessions far
+      more often than by anyone choosing it, and the result was captioned stills
+      describing motion that never arrived.
+
+      WHAT THE SCENE ARGUES
+      ---------------------
+      Reality Room puts a conversation in a place. Two groups can talk at the
+      same time because a wall between them genuinely filters one of them out.
+      So the scene shows, in order: the link, the place, the two conversations,
+      the wall — and then the beat that earns the project, which is a spectrum
+      plot proving the wall removes bandwidth rather than loudness. A volume
+      slider can fake every beat before that one. It cannot fake beat 6.
+
+      EVERY NUMBER ON SCREEN IS DERIVED, NOT INVENTED
+      -----------------------------------------------
+      The constants below are lifted from the project, and the figures shown are
+      computed from them at load time (see deriveOcclusion). Nothing is a
+      hardcoded string that could drift away from the real behaviour.
+
+        OPEN_HZ                    20000   client/src/audio/spatial.js
+        OCCLUSION_MIN_HZ             320   client/src/audio/spatial.js
+        OCCLUSION_WALL_THICKNESS     0.7   client/src/audio/engine.js
+        gain term            1 - 0.72*occ  client/src/audio/spatial.js
+        cave rt60Low / rt60High  4.1 / 1.7 client/src/audio/impulse.js
+        cave tail length             5.5   client/src/audio/impulse.js
+        cave crossoverHz             800   client/src/audio/impulse.js
+        STATE_SEND_HZ                 18   client/src/main.js
+
+      Worth knowing: the inline comment next to OCCLUSION_WALL_THICKNESS claims
+      "~76% occlusion", but the curve it feeds is 1 - exp(-chord/0.7), which is
+      1 - e^-1 = 63% at one reference thickness. 76% would need a full metre of
+      material. This scene prints the derived 63%, not the comment.
+    -->
+
+    <style>
+      /* ================================================================ reset */
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        /* Reality Room's own palette: near-black, with its fog colour just
+           above it. */
+        background: #05060a;
+        color: #eef2ff;
+        font: 400 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        overflow: hidden;
+      }
+
+      /* =============================================================== tokens */
+
+      .rr {
+        --ink: #eef2ff;
+        --dim: #8b93ad;
+        --faint: #4d5470;
+
+        /* The four maps' real accent colours, from world/maps/index.js. */
+        --pink: #ff4fa3; /* Neon Lounge     */
+        --cyan: #2ad6ff; /* Moonlit Rooftop */
+        --violet: #a98cff; /* Crystal Caverns */
+        --green: #7cff8a; /* Zen Garden      */
+        --red: #ff6b5f; /* occluded / blocked */
+
+        --floor: #0a0b12; /* the lounge's fog colour */
+
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: radial-gradient(120% 90% at 50% 0%, #10131f 0%, #05060a 62%, #04050a 100%);
+      }
+
+      /* ==================================================================
+         THE TILE
+         ------------------------------------------------------------------
+         Beat 1 is a small card, the size a project tile would be on a
+         portfolio page. From beat 2 it fills the viewport, and on the last
+         beat it shrinks back. That growth is the full-screen takeover: the
+         promise that this project is a place and not a panel.
+         ================================================================== */
+
+      .rr-tile {
+        position: relative;
+        width: min(660px, 88vw);
+        height: min(408px, 62vh);
+        border-radius: 18px;
+        overflow: hidden; /* so the ripple in beats 7-8 visibly ESCAPES it */
+        background: linear-gradient(180deg, #0b0d16 0%, var(--floor) 100%);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.07),
+          0 30px 90px -30px rgba(0, 0, 0, 0.9);
+        transition:
+          width 880ms cubic-bezier(0.16, 0.9, 0.2, 1),
+          height 880ms cubic-bezier(0.16, 0.9, 0.2, 1),
+          border-radius 880ms ease;
+      }
+      .rr:not([data-beat="invite"], [data-beat="settle"]) .rr-tile {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      /* Survey grid. Off in the tile, on once we have taken the screen, so the
+         full-bleed state reads as a technical drawing. */
+      .rr-grid {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 700ms ease;
+        background-image:
+          linear-gradient(to right, rgba(42, 214, 255, 0.07) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(42, 214, 255, 0.07) 1px, transparent 1px);
+        background-size: 38px 38px;
+      }
+      .rr:not([data-beat="invite"], [data-beat="settle"]) .rr-grid {
+        opacity: 1;
+      }
+
+      /* ==================================================================
+         BEAT 1 — invite
+         ------------------------------------------------------------------
+         A room code and a phantom cursor copying it. This is the entire
+         onboarding story of the app: no install, no headset, no account,
+         only a link like /r/kmp-3xd-9tq. The code shape is real — three
+         groups of three from a 31-character alphabet with the ambiguous
+         glyphs (i l o 0 1) removed so it survives being read aloud.
+         ================================================================== */
+
+      .rr-card {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        justify-items: center;
+        gap: 14px;
+        opacity: 1;
+        transition: opacity 400ms ease;
+      }
+      .rr:not([data-beat="invite"], [data-beat="settle"]) .rr-card {
+        opacity: 0;
+      }
+
+      .rr-chip {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 10px;
+        padding: 9px 15px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 13px;
+      }
+      .rr-chip span {
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        font-size: 10px;
+      }
+      .rr-chip strong {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        letter-spacing: 0.06em;
+        color: var(--cyan);
+      }
+      /* Flashes on the frame the phantom cursor clicks it, and once more at the
+         end when the loop lands back home. */
+      .rr[data-beat="invite"] .rr-chip {
+        animation: rr-chip-copy 1400ms ease-out both;
+      }
+      .rr[data-beat="settle"] .rr-chip {
+        animation: rr-chip-copy 1400ms 300ms ease-out both;
+      }
+      @keyframes rr-chip-copy {
+        0%,
+        50% {
+          box-shadow: 0 0 0 0 rgba(42, 214, 255, 0);
+          border-color: rgba(255, 255, 255, 0.14);
+        }
+        62% {
+          box-shadow: 0 0 0 7px rgba(42, 214, 255, 0.16);
+          border-color: rgba(42, 214, 255, 0.8);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(42, 214, 255, 0);
+          border-color: rgba(255, 255, 255, 0.14);
+        }
+      }
+
+      .rr-copied {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--green);
+        opacity: 0;
+      }
+      .rr[data-beat="invite"] .rr-copied {
+        animation: rr-note-in 1400ms ease-out both;
+      }
+      @keyframes rr-note-in {
+        0%,
+        56% {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        70%,
+        100% {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      /* Two avatars: the host, then whoever clicked the link. */
+      .rr-pair {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 22px;
+      }
+      .rr-pip {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: var(--pink);
+        box-shadow: 0 0 14px 2px rgba(255, 79, 163, 0.55);
+      }
+      .rr-pip.second {
+        background: var(--cyan);
+        box-shadow: 0 0 14px 2px rgba(42, 214, 255, 0.55);
+        opacity: 0;
+        transform: scale(0.2);
+      }
+      /* Arrives just after the copy flash — the visual beat of "somebody opened
+         your link". */
+      .rr[data-beat="invite"] .rr-pip.second {
+        animation: rr-pop-in 1400ms ease-out both;
+      }
+      @keyframes rr-pop-in {
+        0%,
+        72% {
+          opacity: 0;
+          transform: scale(0.2);
+        }
+        85% {
+          opacity: 1;
+          transform: scale(1.25);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      /* The closing beat has to land on the frame beat 1 *ended* on, which is two
+         people in the room. Without this the second avatar vanishes on the way
+         round and the loop reads as a reset instead of a return. */
+      .rr[data-beat="settle"] .rr-pip.second {
+        opacity: 1;
+        transform: none;
+      }
+
+      /* Phantom cursor: reaches for the chip, presses, retreats. */
+      .rr-cursor {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 16px;
+        height: 16px;
+        margin: -2px 0 0 -2px;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 40;
+      }
+      .rr-cursor::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: #fff;
+        clip-path: polygon(0 0, 0 72%, 26% 55%, 44% 96%, 62% 88%, 44% 47%, 72% 44%);
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+      }
+      .rr[data-beat="invite"] .rr-cursor {
+        animation: rr-reach 1400ms ease-in-out both;
+      }
+      @keyframes rr-reach {
+        0% {
+          opacity: 0;
+          transform: translate(90px, 96px);
+        }
+        18% {
+          opacity: 1;
+        }
+        50% {
+          transform: translate(12px, -12px);
+        }
+        58% {
+          transform: translate(12px, -9px) scale(0.86);
+        }
+        66% {
+          transform: translate(12px, -12px);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(66px, 74px);
+        }
+      }
+
+      /* ==================================================================
+         BEATS 2-5 — the floorplan
+         ------------------------------------------------------------------
+         Top-down plan of the Neon Lounge: one open carpeted room, and the
+         hard-tiled Vault off the east side through a single doorway. In the
+         real app the Vault exists purely to make the acoustics legible —
+         stand in it and you ring, step out and it dries up, and from the
+         lounge someone talking in there is audibly behind a wall.
+         ================================================================== */
+
+      .rr-plan {
+        position: absolute;
+        inset: 13% 6% 24% 6%;
+        opacity: 0;
+        transform: scale(0.97);
+        transition:
+          opacity 560ms ease,
+          transform 680ms cubic-bezier(0.16, 0.9, 0.2, 1),
+          filter 520ms ease;
+      }
+      .rr:is([data-beat="open"], [data-beat="crowd"], [data-beat="fan"], [data-beat="wall"]) .rr-plan {
+        opacity: 1;
+        transform: none;
+      }
+      /* Held on screen, dimmed, under the spectrum plot — so the two views read
+         as the same room seen two ways rather than as a hard cut. */
+      .rr[data-beat="spectrum"] .rr-plan {
+        opacity: 0.12;
+        transform: scale(0.94);
+        filter: blur(1.5px);
+      }
+
+      .rr-room,
+      .rr-vault {
+        position: absolute;
+        border: 1.5px solid rgba(238, 242, 255, 0.34);
+        border-radius: 3px;
+        /* Revealed by opening a clip, left to right, so it reads as being
+           surveyed rather than fading up. */
+        clip-path: inset(0 100% 0 0);
+        transition: clip-path 600ms cubic-bezier(0.3, 0.9, 0.25, 1);
+      }
+      .rr-room {
+        left: 0;
+        top: 8%;
+        width: 62%;
+        height: 84%;
+        background: rgba(255, 79, 163, 0.05); /* carpet, lounge pink */
+      }
+      .rr-vault {
+        left: 70%;
+        top: 22%;
+        width: 30%;
+        height: 52%;
+        background: rgba(42, 214, 255, 0.06); /* bare tile, reads colder */
+      }
+      .rr:not([data-beat="invite"], [data-beat="settle"]) :is(.rr-room, .rr-vault) {
+        clip-path: inset(0 0 0 0);
+      }
+      .rr:not([data-beat="invite"], [data-beat="settle"]) .rr-vault {
+        transition-delay: 240ms; /* the Vault is surveyed second */
+      }
+
+      .rr-tag {
+        position: absolute;
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--dim);
+        white-space: nowrap;
+      }
+      .rr-tag.room-tag {
+        left: 0;
+        top: -19px;
+      }
+      .rr-tag.vault-tag {
+        left: 70%;
+        top: 12%;
+        color: rgba(42, 214, 255, 0.75);
+      }
+
+      /* The doorway gap between lounge and Vault. */
+      .rr-door {
+        position: absolute;
+        left: 62%;
+        top: 40%;
+        width: 8%;
+        height: 16%;
+        border-top: 1.5px dashed rgba(238, 242, 255, 0.22);
+        border-bottom: 1.5px dashed rgba(238, 242, 255, 0.22);
+      }
+
+      /* The wall. Slides down across the doorway on beat 5 and stays for 6.
+         Its box exactly fills the gap between the lounge and the Vault (62% to
+         70%) and overhangs the door opening top and bottom, so it seals the one
+         sightline the two rooms have. Every far-cluster line is aimed through
+         that gap on purpose: before the wall lands all six voices are clean,
+         after it lands the three from the Vault are not. */
+      .rr-wall {
+        position: absolute;
+        left: 62%;
+        top: 38%;
+        width: 8%;
+        height: 20%;
+        border-radius: 2px;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(255, 107, 95, 0.55) 0 4px,
+          rgba(255, 107, 95, 0.16) 4px 8px
+        );
+        box-shadow: 0 0 22px 3px rgba(255, 107, 95, 0.28);
+        transform: translateY(-280%);
+        /* Parked out of frame AND transparent. Translate alone was not enough:
+           nothing clips the full-bleed tile, so the waiting slab showed up as a
+           red brick hanging above the floorplan through the earlier beats. */
+        opacity: 0;
+        transition:
+          transform 500ms cubic-bezier(0.22, 1.4, 0.4, 1),
+          opacity 160ms ease;
+      }
+      .rr:is([data-beat="wall"], [data-beat="spectrum"], [data-beat="strike"]) .rr-wall {
+        transform: none;
+        opacity: 1;
+      }
+
+      /* -------------------------------------------------------------- people */
+
+      /* Positions come from --x/--y so one rule serves all six, and so the JS
+         that lays out the sound lines can measure where they actually landed. */
+      .rr-dot {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+        width: 14px;
+        height: 14px;
+        margin: -7px 0 0 -7px;
+        border-radius: 50%;
+        background: var(--c, var(--pink));
+        opacity: 0;
+        transform: scale(0.3);
+        transition:
+          opacity 400ms ease,
+          transform 500ms cubic-bezier(0.2, 1.5, 0.4, 1);
+      }
+      .rr-dot::after {
+        /* Speaking aura, same idea as the ring around a talking avatar in the
+           app. Pulses only while that cluster is being heard clearly. */
+        content: "";
+        position: absolute;
+        inset: -7px;
+        border-radius: 50%;
+        border: 1.5px solid var(--c, var(--pink));
+        opacity: 0;
+      }
+      .rr:is([data-beat="crowd"], [data-beat="fan"], [data-beat="wall"], [data-beat="spectrum"]) .rr-dot {
+        opacity: 1;
+        transform: none;
+      }
+      .rr:is([data-beat="crowd"], [data-beat="fan"]) .rr-dot::after {
+        animation: rr-aura 1400ms ease-out infinite;
+      }
+      /* Once the wall is up, only the near cluster still reads as audible. */
+      .rr[data-beat="wall"] .rr-dot[data-side="near"]::after {
+        animation: rr-aura 1400ms ease-out infinite;
+      }
+      @keyframes rr-aura {
+        0% {
+          opacity: 0.75;
+          transform: scale(0.7);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.7);
+        }
+      }
+
+      /* The listener: the visitor's stand-in, and the one head every figure in
+         the audio model is computed relative to. */
+      .rr-me {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+        width: 26px;
+        height: 26px;
+        margin: -13px 0 0 -13px;
+        opacity: 0;
+        transition: opacity 380ms ease;
+      }
+      .rr-me::before,
+      .rr-me::after {
+        content: "";
+        position: absolute;
+        background: var(--ink);
+      }
+      .rr-me::before {
+        left: 50%;
+        top: 0;
+        margin-left: -0.75px;
+        width: 1.5px;
+        height: 100%;
+      }
+      .rr-me::after {
+        top: 50%;
+        left: 0;
+        margin-top: -0.75px;
+        height: 1.5px;
+        width: 100%;
+      }
+      .rr:is([data-beat="crowd"], [data-beat="fan"], [data-beat="wall"], [data-beat="spectrum"]) .rr-me {
+        opacity: 1;
+      }
+      .rr-me em {
+        position: absolute;
+        left: 50%;
+        top: 118%;
+        transform: translateX(-50%);
+        font-size: 9px;
+        font-style: normal;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      /* ------------------------------------------------- sound lines (beat 4) */
+
+      /* One line per mouth. The point is that every voice stays its own stream:
+         a conference server that mixed them down would throw away the position,
+         which is the whole app. Geometry is measured in JS because it depends on
+         where the percentage-positioned dots actually landed. */
+      .rr-ray {
+        position: absolute;
+        height: 1.5px;
+        transform-origin: 0 50%;
+        background: linear-gradient(to right, rgba(124, 255, 138, 0.9), rgba(124, 255, 138, 0.12));
+        opacity: 0;
+        transform: rotate(var(--a)) scaleX(0.02);
+        transition:
+          opacity 300ms ease,
+          transform 600ms cubic-bezier(0.2, 0.9, 0.25, 1),
+          background 360ms ease,
+          filter 360ms ease;
+      }
+      .rr:is([data-beat="fan"], [data-beat="wall"], [data-beat="spectrum"]) .rr-ray {
+        opacity: 1;
+        transform: rotate(var(--a)) scaleX(1);
+      }
+      /* On beat 4 each line re-fires on the real 18 Hz transform tick, so the
+         fan visibly pulses at the rate the app actually sends positions. */
+      .rr[data-beat="fan"] .rr-ray {
+        animation: rr-tick calc(1000ms / 18) steps(2, end) infinite;
+      }
+      @keyframes rr-tick {
+        0% {
+          filter: brightness(1.55);
+        }
+        100% {
+          filter: brightness(0.85);
+        }
+      }
+      /* Lines that now cross the wall go red and visibly attenuate. This is the
+         occlusion model made literal: what matters is how much solid material
+         sits on the line, not how far away the person is. */
+      .rr:is([data-beat="wall"], [data-beat="spectrum"]) .rr-ray[data-blocked="1"] {
+        background: linear-gradient(
+          to right,
+          rgba(255, 107, 95, 0.85),
+          rgba(255, 107, 95, 0.05) 62%,
+          rgba(255, 107, 95, 0)
+        );
+        filter: blur(0.7px);
+      }
+
+      /* ----------------------------------------------------------- subtitles */
+
+      /* Two conversations, running at once. Legibility stands in for audibility:
+         the near group stays sharp, and when the wall drops the far group's
+         consonants go — which is exactly what a wall does to a voice, because
+         it is a steep low-pass filter and not a volume control. */
+      .rr-sub {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+        width: var(--w);
+        font-size: clamp(11px, 1.15vw, 14px);
+        line-height: 1.45;
+        opacity: 0;
+        transition: opacity 400ms ease;
+      }
+      .rr:is([data-beat="crowd"], [data-beat="fan"], [data-beat="wall"]) .rr-sub {
+        opacity: 1;
+      }
+      .rr-sub b {
+        display: block;
+        margin-bottom: 3px;
+        font-weight: 600;
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--c);
+      }
+      .rr-sub .line {
+        display: block;
+        position: relative;
+      }
+      .rr-sub .clear,
+      .rr-sub .mush {
+        display: block;
+        transition:
+          opacity 360ms ease,
+          filter 360ms ease;
+      }
+      .rr-sub .mush {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        color: var(--dim);
+        filter: blur(1.6px);
+        /* Monospace so the muffled version occupies the same ground as the clear
+           one and the crossfade does not reflow. */
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        letter-spacing: -0.01em;
+      }
+      .rr[data-beat="wall"] .rr-sub[data-side="far"] .clear {
+        opacity: 0;
+        filter: blur(3px);
+      }
+      .rr[data-beat="wall"] .rr-sub[data-side="far"] .mush {
+        opacity: 1;
+      }
+
+      /* ------------------------------------------------------- the readout */
+
+      .rr-readout {
+        position: absolute;
+        left: 6%;
+        bottom: 10%;
+        display: flex;
+        gap: 20px;
+        align-items: flex-end;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        color: var(--red);
+        opacity: 0;
+        transition: opacity 300ms ease;
+      }
+      .rr:is([data-beat="wall"], [data-beat="spectrum"]) .rr-readout {
+        opacity: 1;
+      }
+      .rr-readout i {
+        display: block;
+        font-style: normal;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+      .rr-readout u {
+        text-decoration: none;
+        font-size: 20px;
+        line-height: 1.1;
+      }
+
+      /* ==================================================================
+         BEAT 6 — the spectrum guillotine
+         ------------------------------------------------------------------
+         The plan proves there IS a wall. This proves what the wall does.
+
+         One voice, plotted 20 Hz to 20 kHz on a log axis. A slab of brick
+         drops through the plot, the cutoff marker slides down from 20 kHz
+         to 1.47 kHz, and every bar above it collapses to what a one-pole
+         low-pass at that frequency would leave. Meanwhile the loudness
+         meter beside it moves 5.3 dB and stops.
+
+         That asymmetry is the whole argument: three and three-quarter
+         octaves gone, almost no volume lost. No volume slider can do this,
+         which is why this is the beat that earns the project.
+         ================================================================== */
+
+      .rr-spectrum {
+        position: absolute;
+        inset: 15% 6% 21% 6%;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: clamp(14px, 3vw, 40px);
+        opacity: 0;
+        transform: translateY(22px) scale(0.985);
+        transition:
+          opacity 480ms ease,
+          transform 640ms cubic-bezier(0.16, 0.9, 0.2, 1);
+        pointer-events: none;
+      }
+      .rr[data-beat="spectrum"] .rr-spectrum {
+        opacity: 1;
+        transform: none;
+      }
+
+      .sp-plot {
+        position: relative;
+        border-left: 1px solid rgba(238, 242, 255, 0.16);
+        border-bottom: 1px solid rgba(238, 242, 255, 0.16);
+      }
+
+      /* The bars themselves, laid out bottom-aligned across the plot. */
+      .sp-bars {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        gap: 1px;
+      }
+      /* The outer element is the DRY voice: a dim ghost that stays put, so the
+         part that got removed is still visible as an absence. */
+      .sp-bar {
+        position: relative;
+        flex: 1 1 auto;
+        min-width: 1px;
+        height: calc(var(--h) * 100%);
+        background: rgba(238, 242, 255, 0.09);
+        border-radius: 1px 1px 0 0;
+      }
+      /* The inner element is what actually arrives. It shears down to --k, the
+         ratio the filter leaves at that bar's frequency. */
+      .sp-bar b {
+        position: absolute;
+        inset: 0;
+        border-radius: 1px 1px 0 0;
+        background: var(--bc);
+        transform-origin: 50% 100%;
+        transform: scaleY(1);
+      }
+      .rr[data-beat="spectrum"] .sp-bar b {
+        animation: sp-shear 2400ms cubic-bezier(0.3, 0.85, 0.2, 1) both;
+      }
+      /* Holds full for the first quarter (the slab is still falling), shears
+         between 26% and 58%, then holds so the still frame is readable. */
+      @keyframes sp-shear {
+        0%,
+        26% {
+          transform: scaleY(1);
+        }
+        58%,
+        100% {
+          transform: scaleY(var(--k));
+        }
+      }
+
+      /* The brick. Falls from above the plot and comes to rest across the top of
+         it. The tallest bass bars end up poking through its stripes, which looks
+         like a z-order slip until you notice it is correct: low frequencies do
+         pass through a wall, which is exactly why the neighbours only ever hear
+         the bassline. Left deliberately. */
+      .sp-slab {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 26%;
+        border-radius: 0 0 3px 3px;
+        background: repeating-linear-gradient(
+          0deg,
+          rgba(255, 107, 95, 0.5) 0 5px,
+          rgba(255, 107, 95, 0.14) 5px 10px
+        );
+        box-shadow: 0 8px 30px rgba(255, 107, 95, 0.28);
+        transform: translateY(-140%);
+        z-index: 3;
+      }
+      .rr[data-beat="spectrum"] .sp-slab {
+        animation: sp-drop 2400ms cubic-bezier(0.4, 0.05, 0.2, 1) both;
+      }
+      @keyframes sp-drop {
+        0% {
+          transform: translateY(-140%);
+        }
+        24%,
+        100% {
+          transform: translateY(0);
+        }
+      }
+      .sp-slab span {
+        position: absolute;
+        left: 12px;
+        bottom: 7px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        color: #ffd9d2;
+      }
+
+      /* Cutoff marker. Starts at the far right (open, 20 kHz) and slides left to
+         the derived cutoff. --x0 and --x1 are written by JS as percentages. */
+      .sp-cut {
+        position: absolute;
+        top: -6%;
+        bottom: 0;
+        left: var(--x0);
+        width: 0;
+        border-left: 1.5px dashed rgba(255, 107, 95, 0.85);
+        z-index: 4;
+      }
+      .rr[data-beat="spectrum"] .sp-cut {
+        animation: sp-slide 2400ms cubic-bezier(0.3, 0.85, 0.2, 1) both;
+      }
+      @keyframes sp-slide {
+        0%,
+        22% {
+          left: var(--x0);
+        }
+        58%,
+        100% {
+          left: var(--x1);
+        }
+      }
+      .sp-cut em {
+        position: absolute;
+        left: 6px;
+        top: 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-style: normal;
+        font-size: 10px;
+        white-space: nowrap;
+        color: var(--red);
+      }
+
+      /* Log frequency axis. Tick positions are computed in JS from the same log
+         mapping the bars use, so labels cannot drift off the data. */
+      .sp-axis {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -20px;
+        height: 18px;
+      }
+      .sp-axis i {
+        position: absolute;
+        left: var(--x);
+        transform: translateX(-50%);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-style: normal;
+        font-size: 9px;
+        color: var(--faint);
+        white-space: nowrap;
+      }
+      .sp-label {
+        position: absolute;
+        left: 0;
+        top: -20px;
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+
+      /* -------------------------------------------- the loudness meter beside */
+
+      /* Deliberately placed right next to the plot. The two readings together
+         are the argument; either one alone is unremarkable. */
+      .sp-meter {
+        position: relative;
+        width: clamp(62px, 9vw, 104px);
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 8px;
+        justify-items: center;
+      }
+      .sp-meter > span {
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--dim);
+        text-align: center;
+      }
+      .sp-gauge {
+        position: relative;
+        width: 26px;
+        border-radius: 3px;
+        background: rgba(238, 242, 255, 0.07);
+        overflow: hidden;
+      }
+      .sp-gauge i {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 100%;
+        background: linear-gradient(180deg, var(--green), rgba(124, 255, 138, 0.35));
+        transform-origin: 50% 100%;
+        transform: scaleY(1);
+      }
+      /* Same timing as the shear, so the eye reads them as one event: the bars
+         lose most of their width, the meter loses a sliver of its height. */
+      .rr[data-beat="spectrum"] .sp-gauge i {
+        animation: sp-dip 2400ms cubic-bezier(0.3, 0.85, 0.2, 1) both;
+      }
+      @keyframes sp-dip {
+        0%,
+        26% {
+          transform: scaleY(1);
+        }
+        58%,
+        100% {
+          transform: scaleY(var(--g));
+        }
+      }
+      .sp-figure {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 15px;
+        text-align: center;
+        color: var(--green);
+      }
+      .sp-figure small {
+        display: block;
+        margin-top: 2px;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        color: var(--faint);
+      }
+
+      /* The verdict line, under the plot. Arrives after the shear has settled so
+         it reads as a conclusion rather than a label. */
+      .sp-verdict {
+        position: absolute;
+        left: 6%;
+        right: 6%;
+        bottom: 11%;
+        text-align: center;
+        font-size: clamp(12px, 1.5vw, 17px);
+        color: var(--ink);
+        opacity: 0;
+        z-index: 6;
+      }
+      .rr[data-beat="spectrum"] .sp-verdict {
+        animation: sp-verdict 2400ms ease-out both;
+      }
+      @keyframes sp-verdict {
+        0%,
+        62% {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        76%,
+        100% {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .sp-verdict b {
+        color: var(--red);
+        font-weight: 600;
+      }
+      .sp-verdict u {
+        text-decoration: none;
+        color: var(--green);
+        font-weight: 600;
+      }
+
+      /* ==================================================================
+         BEATS 7-8 — the strike, and the page ringing
+         ------------------------------------------------------------------
+         Cut to the Crystal Caverns. A crystal is struck and the ring leaves
+         the tile entirely — it lives on .rr, not inside .rr-tile, so it
+         crosses the whole viewport. Then the tail draws itself in two bands,
+         because that two-band decay is the honest technical story: real
+         rooms lose treble far faster than bass, so the impulse response is
+         white noise split at a crossover with a separate RT60 per band.
+         ================================================================== */
+
+      .rr-ripple {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 42px;
+        height: 42px;
+        margin: -21px 0 0 -21px;
+        border-radius: 50%;
+        border: 2px solid var(--violet);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 30;
+      }
+      .rr[data-beat="strike"] .rr-ripple {
+        animation: rr-ripple 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+      }
+      /* A second, slower ring during `tail`, so the wavefront is still crossing
+         the screen while the decay curves come in. */
+      .rr[data-beat="tail"] .rr-ripple {
+        animation: rr-ripple-slow 2400ms cubic-bezier(0.15, 0.6, 0.2, 1) both;
+      }
+      @keyframes rr-ripple {
+        0% {
+          opacity: 0;
+          transform: scale(0.2);
+          border-width: 10px;
+        }
+        14% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.5;
+          transform: scale(26);
+          border-width: 1px;
+        }
+      }
+      @keyframes rr-ripple-slow {
+        0% {
+          opacity: 0.45;
+          transform: scale(26);
+          border-width: 1px;
+        }
+        100% {
+          opacity: 0;
+          transform: scale(74);
+          border-width: 0.5px;
+        }
+      }
+
+      .rr-crystal {
+        position: absolute;
+        left: 50%;
+        top: 34%;
+        width: 54px;
+        height: 86px;
+        margin: -43px 0 0 -27px;
+        background: linear-gradient(180deg, rgba(169, 140, 255, 0.95), rgba(90, 62, 190, 0.35));
+        clip-path: polygon(50% 0, 100% 34%, 78% 100%, 22% 100%, 0 34%);
+        opacity: 0;
+        transform: scale(0.7);
+        transition:
+          opacity 240ms ease,
+          transform 300ms cubic-bezier(0.2, 1.5, 0.4, 1);
+        z-index: 20;
+      }
+      .rr:is([data-beat="strike"], [data-beat="tail"]) .rr-crystal {
+        opacity: 1;
+        transform: none;
+      }
+      .rr[data-beat="strike"] .rr-crystal {
+        animation: rr-struck 700ms ease-out both;
+      }
+      @keyframes rr-struck {
+        0% {
+          filter: brightness(4.4) drop-shadow(0 0 44px rgba(169, 140, 255, 1));
+          transform: scale(1.16);
+        }
+        100% {
+          filter: brightness(1) drop-shadow(0 0 16px rgba(169, 140, 255, 0.5));
+          transform: scale(1);
+        }
+      }
+
+      /* ----------------------------------------------- two-band decay curves */
+
+      .rr-tail {
+        position: absolute;
+        left: 13%;
+        right: 13%;
+        top: 46%;
+        display: grid;
+        /* Wide gap on purpose: each row's label lives in the gap above it, and a
+           tight grid put the treble label on top of the bass bars. */
+        gap: 30px;
+        opacity: 0;
+        transition: opacity 400ms ease;
+        z-index: 22;
+      }
+      .rr[data-beat="tail"] .rr-tail {
+        opacity: 1;
+      }
+      /* States the y axis once, so neither row has to carry it. */
+      .rr-tail-cap {
+        position: absolute;
+        left: 0;
+        top: -38px;
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--dim);
+      }
+
+      .rr-band {
+        position: relative;
+      }
+      .rr-band > span {
+        position: absolute;
+        left: 0;
+        top: -16px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 10px;
+        color: var(--dim);
+      }
+      .rr-band .bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: clamp(44px, 8.5vh, 82px);
+      }
+
+      /* Vertical guides at each band's RT60, spanning both rows, so the two
+         decays can be compared as durations rather than as shapes. Without
+         these the rows just look like two similar slopes. */
+      .rr-mark {
+        position: absolute;
+        top: -8px;
+        bottom: 20px;
+        left: var(--x);
+        width: 0;
+        border-left: 1px dashed var(--mc);
+        opacity: 0;
+        z-index: 24;
+      }
+      .rr[data-beat="tail"] .rr-mark {
+        animation: rr-mark-in 2400ms ease-out both;
+        /* Each guide appears as its band actually reaches the floor, which is
+           what makes "treble goes first" land as an observation and not a
+           caption. --at is the fraction of the 5.5 s tail. */
+        animation-delay: calc(var(--at) * 1400ms);
+      }
+      @keyframes rr-mark-in {
+        0% {
+          opacity: 0;
+        }
+        14%,
+        100% {
+          opacity: 1;
+        }
+      }
+      .rr-mark em {
+        position: absolute;
+        left: 5px;
+        bottom: 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-style: normal;
+        font-size: 10px;
+        white-space: nowrap;
+        color: var(--mc);
+      }
+      .rr-mark.treble {
+        --mc: rgba(42, 214, 255, 0.75);
+      }
+      .rr-mark.bass {
+        --mc: rgba(169, 140, 255, 0.75);
+      }
+
+      /* Time axis under the lower row: 0 to 5.5 s, the cave preset's tail. */
+      .rr-taxis {
+        position: relative;
+        height: 14px;
+        border-top: 1px solid rgba(238, 242, 255, 0.12);
+      }
+      .rr-taxis i {
+        position: absolute;
+        top: 2px;
+        left: var(--x);
+        transform: translateX(-50%);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-style: normal;
+        font-size: 9px;
+        color: var(--faint);
+        white-space: nowrap;
+      }
+      .rr-band i {
+        flex: 1 1 auto;
+        min-width: 1px;
+        height: calc(var(--h) * 100%);
+        border-radius: 1px 1px 0 0;
+        background: var(--bc);
+        transform-origin: 50% 100%;
+        transform: scaleY(0);
+      }
+      /* Drawn left to right in real time, so you watch the treble row vanish
+         while the bass row is still going. That split is most of the difference
+         between "a reverb effect" and "a room". */
+      .rr[data-beat="tail"] .rr-band i {
+        animation: rr-grow 240ms ease-out both;
+        animation-delay: calc(var(--i) * 34ms);
+      }
+      @keyframes rr-grow {
+        from {
+          transform: scaleY(0);
+        }
+        to {
+          transform: scaleY(1);
+        }
+      }
+      .rr-band.low i {
+        --bc: rgba(169, 140, 255, 0.85);
+      }
+      .rr-band.high i {
+        --bc: rgba(42, 214, 255, 0.8);
+      }
+
+      /* ==================================================================
+         THE HEADLINE, AND THE PAGE CATCHING THE ROOM
+         ------------------------------------------------------------------
+         During `tail` the site's own typography picks up the room: the
+         headline ghosts into blurred copies of itself, offset in time like
+         early reflections. That is the conceit of the whole scene — the room
+         is not confined to the tile.
+         ================================================================== */
+
+      .rr-title {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 8%;
+        margin: 0;
+        text-align: center;
+        font-size: clamp(19px, 3vw, 40px);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+        opacity: 0;
+        transition: opacity 600ms ease;
+        z-index: 25;
+      }
+      .rr:is([data-beat="tail"], [data-beat="settle"]) .rr-title {
+        opacity: 1;
+      }
+      .rr-title::before,
+      .rr-title::after {
+        content: attr(data-text);
+        position: absolute;
+        left: 0;
+        right: 0;
+        opacity: 0;
+        color: var(--violet);
+        pointer-events: none;
+      }
+      .rr[data-beat="tail"] .rr-title::before {
+        animation: rr-ghost-a 2400ms ease-out both;
+      }
+      .rr[data-beat="tail"] .rr-title::after {
+        animation: rr-ghost-b 2400ms ease-out both;
+      }
+      @keyframes rr-ghost-a {
+        0% {
+          opacity: 0.66;
+          filter: blur(0);
+          transform: translate(-14px, -5px);
+        }
+        100% {
+          opacity: 0;
+          filter: blur(11px);
+          transform: translate(-40px, -14px);
+        }
+      }
+      @keyframes rr-ghost-b {
+        0% {
+          opacity: 0.52;
+          filter: blur(1px);
+          transform: translate(14px, 5px);
+        }
+        100% {
+          opacity: 0;
+          filter: blur(15px);
+          transform: translate(44px, 16px);
+        }
+      }
+
+      /* The frame edge rings too, so the tail reads as belonging to the page
+         rather than to the tile. */
+      .rr-edge {
+        position: absolute;
+        inset: 0;
+        border: 1px solid transparent;
+        pointer-events: none;
+        z-index: 26;
+      }
+      .rr[data-beat="tail"] .rr-edge {
+        animation: rr-edge-ring 2400ms ease-out both;
+      }
+      @keyframes rr-edge-ring {
+        0% {
+          border-color: rgba(169, 140, 255, 0.9);
+          box-shadow: inset 0 0 90px rgba(169, 140, 255, 0.28);
+        }
+        100% {
+          border-color: rgba(169, 140, 255, 0);
+          box-shadow: inset 0 0 0 rgba(169, 140, 255, 0);
+        }
+      }
+
+      /* ------------------------------------------------------------ captions */
+
+      /* One line of prose per beat, so the scene argues instead of just moving.
+         Swapped by JS on the beat change. */
+      .rr-caption {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 20px;
+        margin: 0;
+        padding: 0 24px;
+        text-align: center;
+        font-size: clamp(11px, 1.2vw, 13px);
+        color: var(--dim);
+        transition: opacity 300ms ease;
+        z-index: 28;
+      }
+      /* On the last two beats the headline owns the bottom of the frame, so the
+         caption steps out of its way. */
+      .rr:is([data-beat="tail"], [data-beat="settle"]) .rr-caption {
+        opacity: 0;
+      }
+
+      /* Beat ticker, top right. Purely a prototype affordance: it makes the
+         storyboard legible while iterating, and it is what the verification
+         script reads. It would not ship. */
+      .rr-hud {
+        position: absolute;
+        right: 16px;
+        top: 14px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--dim);
+        z-index: 50;
+      }
+      .rr-hud b {
+        color: var(--cyan);
+        font-weight: 500;
+      }
+      .rr-hud .track {
+        position: relative;
+        width: 76px;
+        height: 2px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+      .rr-hud .track i {
+        position: absolute;
+        inset: 0 auto 0 0;
+        /* --beat-t is written every frame by the loop, with no re-render and no
+           layout. Continuous motion is CSS's job. */
+        width: calc(var(--beat-t, 0) * 100%);
+        background: var(--cyan);
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- data-beat drives every rule above. data-lap changes each lap, which is
+         what restarts the CSS animations. --beat-t is written every frame. -->
+    <div
+      class="rr"
+      id="stage"
+      data-beat="invite"
+      data-lap="0"
+      role="img"
+      aria-label="Reality Room: a floorplan where a wall slides between two conversations, then a spectrum plot showing the wall removes the top of one voice rather than its volume."
+    >
+      <div class="rr-ripple"></div>
+      <div class="rr-crystal"></div>
+      <div class="rr-edge"></div>
+
+      <div class="rr-tile">
+        <div class="rr-grid"></div>
+
+        <!-- BEAT 1 -------------------------------------------------------- -->
+        <div class="rr-card">
+          <div class="rr-pair">
+            <span class="rr-pip"></span>
+            <span class="rr-pip second"></span>
+          </div>
+          <div class="rr-chip"><span>Room</span><strong>kmp-3xd-9tq</strong></div>
+          <div class="rr-copied">Invite link copied</div>
+        </div>
+        <div class="rr-cursor"></div>
+
+        <!-- BEATS 2-5 ----------------------------------------------------- -->
+        <div class="rr-plan" id="plan">
+          <div class="rr-room"></div>
+          <div class="rr-vault"></div>
+          <div class="rr-door"></div>
+          <span class="rr-tag room-tag">Neon Lounge · carpet · rt60 0.85 s</span>
+          <span class="rr-tag vault-tag">The Vault · tile</span>
+
+          <!-- Sound lines are generated in here once the dots have real
+               on-screen positions to measure. -->
+          <div id="rays"></div>
+
+          <div class="rr-wall"></div>
+
+          <!-- Near cluster: in the lounge, your side of the wall. None of these
+               lines reaches x=62%, so none of them can ever be occluded. -->
+          <span class="rr-dot" data-side="near" style="--x: 32%; --y: 66%; --c: #ff4fa3"></span>
+          <span class="rr-dot" data-side="near" style="--x: 42%; --y: 58%; --c: #ff4fa3"></span>
+          <span class="rr-dot" data-side="near" style="--x: 29%; --y: 44%; --c: #ff4fa3"></span>
+
+          <!-- Far cluster: through the doorway, in the tiled Vault. Placed so
+               that all three sightlines from the listener enter the wall's box
+               (x 62-70%, y 38-58%) well inside its vertical extent. Because both
+               ends are percentages, that crossing point is the same at every
+               aspect ratio, so the beat does not break on a narrow window. -->
+          <span class="rr-dot" data-side="far" style="--x: 79%; --y: 40%; --c: #2ad6ff"></span>
+          <span class="rr-dot" data-side="far" style="--x: 89%; --y: 50%; --c: #2ad6ff"></span>
+          <span class="rr-dot" data-side="far" style="--x: 78%; --y: 56%; --c: #2ad6ff"></span>
+
+          <!-- Listener sits roughly level with the doorway, so the fan is flat
+               and reads as a sightline rather than a starburst. -->
+          <span class="rr-me" id="me" style="--x: 16%; --y: 52%"><em>You</em></span>
+
+          <div class="rr-sub" data-side="near" style="--x: 6%; --y: 11%; --w: 40%; --c: #ff4fa3">
+            <b>Near you · 3.1 m</b>
+            <span class="line">
+              <span class="clear">no, he actually walked straight back out again</span>
+              <span class="mush"></span>
+            </span>
+          </div>
+
+          <div class="rr-sub" data-side="far" style="--x: 58%; --y: 79%; --w: 40%; --c: #2ad6ff">
+            <b>In the Vault · 14.8 m</b>
+            <span class="line">
+              <span class="clear">put the next one on, this track is far too slow</span>
+              <span class="mush"></span>
+            </span>
+          </div>
+        </div>
+
+        <div class="rr-readout">
+          <div><i>solid material</i><u id="thick">0.00 m</u></div>
+          <div><i>occluded</i><u id="occ">0 %</u></div>
+        </div>
+
+        <!-- BEAT 6 -------------------------------------------------------- -->
+        <div class="rr-spectrum">
+          <div class="sp-plot">
+            <span class="sp-label">One voice · 20 Hz to 20 kHz</span>
+            <div class="sp-bars" id="spBars"></div>
+            <div class="sp-slab"><span id="slabLabel">0.70 m brick</span></div>
+            <div class="sp-cut" id="spCut"><em id="cutLabel"></em></div>
+            <div class="sp-axis" id="spAxis"></div>
+          </div>
+
+          <div class="sp-meter">
+            <span>loudness</span>
+            <div class="sp-gauge" id="spGauge"><i></i></div>
+            <div class="sp-figure" id="dbFigure">—<small>change</small></div>
+          </div>
+        </div>
+        <p class="sp-verdict" id="verdict"></p>
+
+        <!-- BEAT 8 -------------------------------------------------------- -->
+        <div class="rr-tail" id="tail">
+          <span class="rr-tail-cap">Synthesised tail · level in dB, 0 down to −60</span>
+          <div class="rr-band low">
+            <span>bass · rt60 4.1 s</span>
+            <div class="bars" id="bandLow"></div>
+          </div>
+          <div class="rr-band high">
+            <span>treble · rt60 1.7 s — gone first, the way real rooms behave</span>
+            <div class="bars" id="bandHigh"></div>
+          </div>
+          <div class="rr-taxis" id="tailAxis"></div>
+          <!-- The two RT60 guides are injected here, positioned from the same
+               constants that drew the bars. -->
+        </div>
+
+        <p class="rr-caption" id="caption"></p>
+
+        <div class="rr-hud">
+          <span>beat</span><b id="beatName">invite</b>
+          <span class="track"><i></i></span>
+          <span>lap</span><b id="lapNo">0</b>
+        </div>
+      </div>
+
+      <!-- Outside the tile on purpose. During `tail` it sits at the foot of the
+           whole screen and catches the room's reverb; during `settle`, once the
+           tile has shrunk back, it reads as that tile's caption. -->
+      <h2 class="rr-title" data-text="A wall takes your treble, not your volume.">
+        A wall takes your treble, not your volume.
+      </h2>
+    </div>
+
+    <script>
+      "use strict";
+
+      /* ======================================================================
+         CONSTANTS LIFTED FROM THE PROJECT
+         ----------------------------------------------------------------------
+         Kept together and named the same as their originals so a reader can go
+         and check them. Everything the scene displays is derived from these.
+         ====================================================================== */
+
+      const OPEN_HZ = 20000; // spatial.js — filter fully open
+      const OCCLUSION_MIN_HZ = 320; // spatial.js — filter fully closed
+      const OCCLUSION_GAIN_TERM = 0.72; // spatial.js — gain *= 1 - 0.72 * occ
+      const OCCLUSION_WALL_THICKNESS = 0.7; // engine.js — metres, the e-folding constant
+      const CAVE_RT60_LOW = 4.1; // impulse.js — cave preset
+      const CAVE_RT60_HIGH = 1.7; // impulse.js — cave preset
+      const CAVE_SECONDS = 5.5; // impulse.js — cave tail length
+      const STATE_SEND_HZ = 18; // main.js — transform stream rate
+
+      const WALL_METRES = 0.7; // the slab this scene drops
+
+      /**
+       * The engine's occlusion model, reimplemented exactly, so the numbers on
+       * screen are computed rather than typed.
+       *
+       *   occ    = 1 - exp(-chord / thickness)      (engine.js obstruction)
+       *   cutoff = OPEN_HZ * (MIN/OPEN)^occ         (spatial.js occlusionLP)
+       *   gain   = 1 - 0.72 * occ                   (spatial.js gain node)
+       *
+       * The interesting part is how far apart those last two land. At one wall
+       * thickness the cutoff falls by nearly four octaves while the level falls
+       * about five decibels — which is why a wall in this app muffles you rather
+       * than turning you down.
+       */
+      function deriveOcclusion(metres) {
+        const occ = 1 - Math.exp(-metres / OCCLUSION_WALL_THICKNESS);
+        const cutoffHz = OPEN_HZ * Math.pow(OCCLUSION_MIN_HZ / OPEN_HZ, occ);
+        const gain = 1 - OCCLUSION_GAIN_TERM * occ;
+        return {
+          occ,
+          cutoffHz,
+          gain,
+          db: 20 * Math.log10(gain),
+          octaves: Math.log2(OPEN_HZ / cutoffHz),
+        };
+      }
+
+      const WALL = deriveOcclusion(WALL_METRES);
+
+      /* ======================================================================
+         THE STORYBOARD
+         ----------------------------------------------------------------------
+         Declared as data so the scene reads as a shot list rather than a pile
+         of setTimeout calls. Durations match the recommended scene in
+         ../reality-room.md.
+         ====================================================================== */
+
+      const BEATS = [
+        {
+          name: "invite",
+          ms: 1400,
+          caption: "A link is the whole invitation. No install, no headset, no account.",
+        },
+        {
+          name: "open",
+          ms: 1100,
+          caption: "Neon Lounge — one open carpeted room, and a hard-tiled vault off the side.",
+        },
+        {
+          name: "crowd",
+          ms: 1500,
+          caption: "Six people, two conversations, nobody waiting their turn.",
+        },
+        {
+          name: "fan",
+          ms: 1300,
+          caption: `Every mouth keeps its own line to your ears, ${STATE_SEND_HZ} times a second. Nothing is mixed.`,
+        },
+        {
+          name: "wall",
+          ms: 1600,
+          caption: "A wall slides across the doorway, and the far conversation loses its consonants.",
+        },
+        {
+          name: "spectrum",
+          ms: 2400,
+          caption: "Here is what the wall actually did.",
+        },
+        { name: "strike", ms: 700, caption: "Strike a crystal, down in the caverns…" },
+        {
+          name: "tail",
+          ms: 2400,
+          caption: "…and the tail is synthesised on the spot, bass outlasting treble.",
+        },
+        {
+          name: "settle",
+          ms: 1700,
+          caption: "Send someone a link. Then walk behind a wall.",
+        },
+      ];
+
+      const LOOP_GAP_MS = 800;
+
+      const stage = document.getElementById("stage");
+      const beatNameOut = document.getElementById("beatName");
+      const lapOut = document.getElementById("lapNo");
+      const captionOut = document.getElementById("caption");
+      const thickOut = document.getElementById("thick");
+      const occOut = document.getElementById("occ");
+
+      /* ======================================================================
+         ONE-TIME SETUP
+         ====================================================================== */
+
+      /* ------------------------------------------------- muffled subtitles */
+
+      /**
+       * Build the "heard through a wall" version of a line.
+       *
+       * The crisp consonants — the fricatives and plosives — are where the high
+       * frequency energy of speech lives, and a wall is a steep low-pass filter
+       * rather than a volume control. So those are the letters that go, and the
+       * vowels and sonorants (l m n r v w y) survive. It is a visual pun on the
+       * real filter, and it is the right way round.
+       */
+      function muffle(text) {
+        return text.replace(/[bcdfghjkpqstxz]/gi, "·");
+      }
+
+      for (const mush of document.querySelectorAll(".rr-sub .mush")) {
+        const clear = mush.parentElement.querySelector(".clear");
+        mush.textContent = muffle(clear.textContent.trim());
+      }
+
+      /* ------------------------------------------------------- sound lines */
+
+      /**
+       * Lay out one line from the listener to each person's mouth.
+       *
+       * Measured from the DOM rather than hardcoded, because the dots are
+       * positioned in percentages and the plan's aspect ratio changes with the
+       * viewport — any hand-written angle would be right at exactly one size.
+       *
+       * A line is marked blocked when it crosses the wall's box. That stands in
+       * for what the engine really does: accumulate the chord length through
+       * every solid box on the segment, then map total thickness to a filter
+       * cutoff. So a thin partition muffles you and a rock face nearly silences
+       * you, and two thin walls add up.
+       */
+      function layoutRays() {
+        const plan = document.getElementById("plan");
+        const rays = document.getElementById("rays");
+        const me = document.getElementById("me");
+        const wall = document.querySelector(".rr-wall");
+
+        const planBox = plan.getBoundingClientRect();
+        if (planBox.width < 2) return; // not laid out yet
+
+        const meBox = me.getBoundingClientRect();
+        const ox = meBox.left + meBox.width / 2 - planBox.left;
+        const oy = meBox.top + meBox.height / 2 - planBox.top;
+
+        /* The wall is translated off-screen at the moment this runs, so its live
+           rect is useless. Read the CSS-declared box instead: that is where it
+           lands once it slides in. */
+        const style = getComputedStyle(wall);
+        const wx = parseFloat(style.left);
+        const wy = parseFloat(style.top);
+        const ww = parseFloat(style.width);
+        const wh = parseFloat(style.height);
+
+        rays.textContent = "";
+
+        for (const dot of plan.querySelectorAll(".rr-dot")) {
+          const box = dot.getBoundingClientRect();
+          const tx = box.left + box.width / 2 - planBox.left;
+          const ty = box.top + box.height / 2 - planBox.top;
+
+          const dx = tx - ox;
+          const dy = ty - oy;
+          const length = Math.hypot(dx, dy);
+          const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+          /* Sample along the segment and see whether any sample lands inside the
+             wall. Forty-eight samples is enough that even the shortest line puts
+             several points inside an 8%-wide slab, and it saves the prototype
+             from carrying a real slab-intersection routine. */
+          let blocked = 0;
+          for (let s = 1; s < 48; s++) {
+            const t = s / 48;
+            const px = ox + dx * t;
+            const py = oy + dy * t;
+            if (px >= wx && px <= wx + ww && py >= wy && py <= wy + wh) {
+              blocked = 1;
+              break;
+            }
+          }
+
+          const ray = document.createElement("i");
+          ray.className = "rr-ray";
+          ray.style.left = ox + "px";
+          ray.style.top = oy + "px";
+          ray.style.width = length + "px";
+          ray.style.setProperty("--a", angle.toFixed(2) + "deg");
+          ray.dataset.blocked = String(blocked);
+          ray.dataset.side = dot.dataset.side;
+          rays.appendChild(ray);
+        }
+      }
+
+      /* ------------------------------------------ the spectrum plot (beat 6) */
+
+      const F_MIN = 20;
+      const F_MAX = 20000;
+
+      /** Where a frequency sits on the log axis, 0..1. */
+      const logPos = (hz) => Math.log(hz / F_MIN) / Math.log(F_MAX / F_MIN);
+
+      /**
+       * A rough but honest speech spectrum, in linear amplitude 0..1.
+       *
+       * Not a measurement — a shape with the features that matter to the
+       * argument: little energy below 90 Hz, the fundamental region around
+       * 150-350 Hz, a broad body through the low mids, and a presence bump near
+       * 3 kHz where intelligibility lives. Everything the wall takes is up
+       * there, which is why removing it costs you the words while barely
+       * touching the level.
+       */
+      function speechAmplitude(hz) {
+        const lowRoll = 1 / (1 + Math.pow(95 / hz, 4)); // nothing much under 95 Hz
+        const body = 1 / (1 + Math.pow(hz / 620, 1.15)); // gentle roll off above the low mids
+        const presence = 0.42 * Math.exp(-Math.pow(Math.log(hz / 3000), 2) / 0.5);
+        return lowRoll * (body + presence);
+      }
+
+      /** One-pole low-pass magnitude response — the shape occlusionLP applies. */
+      const onePole = (hz, cutoffHz) => 1 / Math.sqrt(1 + Math.pow(hz / cutoffHz, 2));
+
+      function buildSpectrum() {
+        const host = document.getElementById("spBars");
+        const bars = 68;
+
+        /* Deterministic jitter so every reload draws the same voice and review
+           screenshots are comparable. */
+        let seed = 20240617;
+        const rand = () => {
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          return seed / 0x7fffffff;
+        };
+
+        /* Normalise against the peak of the shape so the tallest bar fills the
+           plot regardless of how the curve is tuned. */
+        let peak = 0;
+        const rows = [];
+        for (let i = 0; i < bars; i++) {
+          const t = (i + 0.5) / bars;
+          const hz = F_MIN * Math.pow(F_MAX / F_MIN, t);
+          const amp = speechAmplitude(hz) * (0.86 + rand() * 0.28);
+          peak = Math.max(peak, amp);
+          rows.push({ hz, amp });
+        }
+
+        for (let i = 0; i < rows.length; i++) {
+          const { hz, amp } = rows[i];
+          const h = amp / peak;
+
+          /* --k is what the filter leaves at this frequency. Below the cutoff
+             it is essentially 1 and the bar does not visibly move; above it,
+             it collapses. The bars either side of the cutoff are what make the
+             shear read as a filter rather than a mask. */
+          const k = onePole(hz, WALL.cutoffHz);
+
+          const bar = document.createElement("div");
+          bar.className = "sp-bar";
+          bar.style.setProperty("--h", h.toFixed(4));
+          bar.style.setProperty("--k", k.toFixed(4));
+          /* Colour by side of the cutoff: what survives reads as signal, what
+             goes reads as loss. */
+          bar.style.setProperty(
+            "--bc",
+            hz <= WALL.cutoffHz ? "rgba(124, 255, 138, 0.85)" : "rgba(42, 214, 255, 0.8)"
+          );
+          bar.dataset.hz = Math.round(hz);
+          bar.dataset.survives = hz <= WALL.cutoffHz ? "1" : "0";
+
+          const fill = document.createElement("b");
+          bar.appendChild(fill);
+          host.appendChild(bar);
+        }
+
+        /* Axis ticks, positioned with the same log mapping as the bars so a
+           label can never drift away from its data. */
+        const axis = document.getElementById("spAxis");
+        for (const [hz, label] of [
+          [100, "100"],
+          [1000, "1k"],
+          [10000, "10k"],
+        ]) {
+          const tick = document.createElement("i");
+          tick.textContent = label;
+          tick.style.setProperty("--x", (logPos(hz) * 100).toFixed(2) + "%");
+          axis.appendChild(tick);
+        }
+
+        /* The cutoff marker travels from wide open to the derived cutoff. */
+        const cut = document.getElementById("spCut");
+        cut.style.setProperty("--x0", "99%");
+        cut.style.setProperty("--x1", (logPos(WALL.cutoffHz) * 100).toFixed(2) + "%");
+        document.getElementById("cutLabel").textContent =
+          `cutoff ${Math.round(WALL.cutoffHz).toLocaleString("en-GB")} Hz`;
+
+        /* The meter dips to the gain the engine applies alongside the filter. */
+        document.getElementById("spGauge").style.setProperty("--g", WALL.gain.toFixed(4));
+        document.getElementById("dbFigure").innerHTML =
+          `${WALL.db.toFixed(1)} dB<small>that is all</small>`;
+
+        document.getElementById("slabLabel").textContent =
+          `${WALL_METRES.toFixed(2)} m brick · ${(WALL.occ * 100).toFixed(0)}% occluded`;
+
+        document.getElementById("verdict").innerHTML =
+          `<b>${WALL.octaves.toFixed(1)} octaves gone.</b> ` +
+          `Loudness down <u>${Math.abs(WALL.db).toFixed(1)} dB</u>. ` +
+          `The wall did not turn the voice down — it took the top off it.`;
+      }
+
+      /* -------------------------------------------- two-band tail (beat 8) */
+
+      /**
+       * The cave preset's decay, drawn.
+       *
+       * RT60 is the time to fall 60 dB, that is to one thousandth, so the
+       * envelope is exp(-ln(1000) * t / rt60). Bass gets 4.1 s and treble 1.7 s,
+       * straight out of the project's cave preset. Watching the treble row
+       * vanish while the bass row is still going is the point: that split is
+       * most of the difference between a reverb effect and a room.
+       */
+      function buildTail() {
+        const LN1000 = Math.log(1000);
+        const bars = 44;
+
+        /**
+         * Plotted on a decibel axis rather than a linear amplitude one.
+         *
+         * The envelope in the code is exp(-ln(1000) * t / rt60), which on a dB
+         * axis is the straight line 1 - t/rt60 over a 60 dB range. Drawn
+         * linearly, both rows collapse into the left eighth of the frame and the
+         * whole comparison is lost in sub-pixel bars. Drawn in dB — the unit
+         * RT60 is actually defined in — each row is a ramp that reaches the floor
+         * exactly at its own RT60, which is the entire point of the beat.
+         */
+        const draw = (host, rt60) => {
+          for (let i = 0; i < bars; i++) {
+            const t = (i / (bars - 1)) * CAVE_SECONDS;
+            const dbDown = (60 * t) / rt60; // 60 dB is one RT60 by definition
+            const h = Math.max(0, 1 - dbDown / 60);
+            const bar = document.createElement("i");
+            bar.style.setProperty("--h", h.toFixed(4));
+            bar.style.setProperty("--i", String(i));
+            /* Kept so the relationship to the code's actual envelope is not
+               lost: this is the linear amplitude the same instant would have. */
+            bar.dataset.amp = Math.exp((-LN1000 * t) / rt60).toExponential(2);
+            host.appendChild(bar);
+          }
+        };
+
+        draw(document.getElementById("bandLow"), CAVE_RT60_LOW);
+        draw(document.getElementById("bandHigh"), CAVE_RT60_HIGH);
+
+        /* Time axis, linear across the 5.5 s tail. */
+        const axis = document.getElementById("tailAxis");
+        for (const s of [0, 1, 2, 3, 4, 5]) {
+          const tick = document.createElement("i");
+          tick.textContent = s + " s";
+          tick.style.setProperty("--x", ((s / CAVE_SECONDS) * 100).toFixed(2) + "%");
+          axis.appendChild(tick);
+        }
+
+        /* One guide per band, at the moment that band has fallen 60 dB. Placed
+           from the same constants that drew the bars, so the line always lands on
+           the point where its row reaches the floor. */
+        const tailHost = document.getElementById("tail");
+        for (const [rt60, cls, label] of [
+          [CAVE_RT60_HIGH, "treble", "treble is gone"],
+          [CAVE_RT60_LOW, "bass", "bass still going"],
+        ]) {
+          const at = rt60 / CAVE_SECONDS;
+          const mark = document.createElement("div");
+          mark.className = `rr-mark ${cls}`;
+          mark.style.setProperty("--x", (at * 100).toFixed(2) + "%");
+          mark.style.setProperty("--at", at.toFixed(4));
+          mark.innerHTML = `<em>${rt60.toFixed(1)} s · ${label}</em>`;
+          tailHost.appendChild(mark);
+        }
+      }
+
+      buildSpectrum();
+      buildTail();
+      layoutRays();
+
+      /* Percentage positions mean the geometry moves with the window, so the
+         lines have to be remeasured. Debounced, because this is layout work. */
+      let resizeTimer = null;
+      addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(layoutRays, 120);
+      });
+
+      /* ======================================================================
+         THE LOOP
+         ----------------------------------------------------------------------
+         One requestAnimationFrame. Per frame it writes --beat-t and nothing
+         else. Per beat change it writes data-beat, the caption and the ticker.
+         Per lap it bumps data-lap, which is what restarts the CSS animations.
+         ====================================================================== */
+
+      const TOTAL = BEATS.reduce((sum, beat) => sum + beat.ms, 0) + LOOP_GAP_MS;
+
+      let origin = null;
+      let currentIndex = -1;
+      let currentLap = -1;
+
+      /* Exposed so the verification script can read the observed sequence and
+         the derived figures without scraping pixels. */
+      const observed = [];
+      window.__rrBeats = observed;
+      window.__rrDerived = {
+        occ: WALL.occ,
+        cutoffHz: WALL.cutoffHz,
+        db: WALL.db,
+        octaves: WALL.octaves,
+        gain: WALL.gain,
+      };
+      window.__rrStoryboard = BEATS.map((b) => b.name);
+
+      function applyBeat(index, lap) {
+        const beat = BEATS[index];
+        stage.dataset.beat = beat.name;
+        stage.dataset.lap = String(lap);
+        beatNameOut.textContent = beat.name;
+        lapOut.textContent = String(lap);
+        captionOut.textContent = beat.caption;
+
+        /* The occlusion readout only means anything on the beats where a wall is
+           actually in the way, so it is written there rather than animated
+           continuously. Both figures come from the derivation above. */
+        if (beat.name === "wall" || beat.name === "spectrum") {
+          thickOut.textContent = WALL_METRES.toFixed(2) + " m";
+          occOut.textContent = (WALL.occ * 100).toFixed(0) + " %";
+        } else {
+          thickOut.textContent = "0.00 m";
+          occOut.textContent = "0 %";
+        }
+
+        observed.push(beat.name);
+        if (observed.length > 200) observed.shift();
+      }
+
+      function tick(now) {
+        if (origin === null) origin = now;
+
+        const since = now - origin;
+        const lap = Math.floor(since / TOTAL);
+        const elapsed = since % TOTAL;
+
+        /* Walk the beats to find where we are and how far through. */
+        let cursor = 0;
+        let index = BEATS.length - 1;
+        let progress = 1;
+        for (let i = 0; i < BEATS.length; i++) {
+          const end = cursor + BEATS[i].ms;
+          if (elapsed < end) {
+            index = i;
+            progress = (elapsed - cursor) / BEATS[i].ms;
+            break;
+          }
+          cursor = end;
+        }
+
+        /* Every frame, written straight onto the node. No re-render, no layout. */
+        stage.style.setProperty("--beat-t", progress.toFixed(4));
+
+        if (index !== currentIndex || lap !== currentLap) {
+          currentIndex = index;
+          currentLap = lap;
+          applyBeat(index, lap);
+          /* The plan is only measurable once it has been laid out at full size,
+             so the lines are remeasured on the beats that open it. */
+          const name = BEATS[index].name;
+          if (name === "open" || name === "crowd") requestAnimationFrame(layoutRays);
+        }
+
+        requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+    </script>
+  </body>
+</html>

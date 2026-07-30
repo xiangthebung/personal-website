@@ -41,6 +41,7 @@
  */
 
 import { useRef } from "react";
+import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useOnScreen } from "../use-on-screen";
 import { NightFrame } from "./frame";
@@ -73,12 +74,39 @@ const BEATS: readonly Beat<BeatName>[] = [
   { name: "hold", ms: 800 },
 ];
 
-/** The line of dialogue nobody can hear, and the thing that follows it. */
+/**
+ * The line of dialogue nobody can hear.
+ *
+ * This was "…we should not be here.", and it was asked about — which is the whole
+ * problem with it. Dropped into a portfolio with nothing around it to say "this is a
+ * subtitle of the shot above", an ominous sentence fragment just reads as a stray
+ * string, and a visitor spends their attention wondering what it means instead of
+ * noticing that they cannot hear it.
+ *
+ * Two changes. The line is now plainly mundane film dialogue — nobody wonders what a
+ * missed phone call is a metaphor for — and it is set with a speaker dash beside a
+ * level meter that shows *why* it is a subtitle: the sound is at the bottom of its
+ * range. The explosion then pins the same meter. The volume war stops being something
+ * the caption claims and becomes something on screen.
+ */
 const SUBTITLE: Partial<Record<BeatName, string>> = {
-  whisper: "…we should not be here.",
-  blast: "",
-  boom: "",
+  whisper: "— I said I'd call you when we landed.",
 };
+
+/**
+ * What is making noise, and how much of it.
+ *
+ * `level` drives the meter beside the subtitle. The pair is the argument in miniature:
+ * dialogue mixed so low you would reach for the volume, and then an explosion on the
+ * same setting.
+ */
+const SOUND: Partial<Record<BeatName, { level: "low" | "peak"; what: string }>> = {
+  whisper: { level: "low", what: "dialogue" },
+  blast: { level: "peak", what: "explosion" },
+  boom: { level: "peak", what: "explosion" },
+};
+
+const VOL_BARS = 7;
 
 /** Level meter. Segment count is the design; the top three are the ones that hurt. */
 const SEGMENTS = 14;
@@ -109,6 +137,9 @@ export function NightNeutralizerDemo() {
     // The still that carries the argument: one panel blown out, one panel intact.
     stillBeat: "boom",
   });
+
+  // The room, bloom and audio trace behind the demo share this exact state.
+  useSectionBeat(stageRef, beat, BEATS);
 
   return (
     <div
@@ -178,9 +209,14 @@ export function NightNeutralizerDemo() {
       </svg>
 
       <div className="nn-split">
+        {/* "Before" and "After", not "As shipped" and "Night Neutralizer".
+            The old pair was accurate and made the reader work: "as shipped" is
+            industry shorthand, and putting the product's name on the right half
+            meant the two labels were not even the same kind of thing, so nothing
+            told you at a glance which one you were supposed to prefer. */}
         <section className="nn-panel">
           <p className="nn-label">
-            <span>As shipped</span>
+            <span>Before</span>
             <small data-alarm>peaks at 0 dB</small>
           </p>
           <div className="nn-panel-body">
@@ -192,7 +228,7 @@ export function NightNeutralizerDemo() {
 
         <section className="nn-panel">
           <p className="nn-label">
-            <span>Night Neutralizer</span>
+            <span>After</span>
             <small>strength {STRENGTH}</small>
           </p>
           <div className="nn-panel-body">
@@ -205,19 +241,38 @@ export function NightNeutralizerDemo() {
         </section>
       </div>
 
-      {/* Subtitles, so the quiet beat has something to be too quiet to hear. */}
-      <p className="nn-sub" data-showing={Boolean(SUBTITLE[beat])} aria-hidden="true">
-        {SUBTITLE[beat] ?? ""}
-      </p>
+      {/* The subtitle row: what is being said, and how loud it is.
+          The meter is what makes the line legible as a subtitle rather than as a
+          sentence the page decided to print. */}
+      <div
+        className="nn-subrow"
+        data-showing={Boolean(SUBTITLE[beat] || SOUND[beat])}
+        aria-hidden="true"
+      >
+        <span className="nn-vol" data-level={SOUND[beat]?.level ?? "low"}>
+          <span className="nn-vol-bars">
+            {Array.from({ length: VOL_BARS }, (_, index) => (
+              <i key={index} style={{ "--vol": index } as React.CSSProperties} />
+            ))}
+          </span>
+          <small>{SOUND[beat]?.what ?? ""}</small>
+        </span>
+
+        <p className="nn-sub" data-showing={Boolean(SUBTITLE[beat])}>
+          {SUBTITLE[beat] ?? ""}
+        </p>
+      </div>
 
       <p className="nn-caption" aria-hidden="true">
         {beat === "blast" || beat === "boom" ? (
           <>
-            <strong>Same explosion.</strong> One of them woke the house.
+            <strong>Same explosion.</strong> Untreated reaches 0 dB; treatment stays
+            below the limiter ceiling.
           </>
         ) : (
           <>
-            <strong>Same shot.</strong> One of them you can actually see.
+            <strong>Same low-light frame.</strong> The transfer curve separates
+            shadow detail before it rolls off the highlights.
           </>
         )}
       </p>

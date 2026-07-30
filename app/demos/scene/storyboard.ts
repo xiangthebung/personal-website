@@ -25,10 +25,16 @@
  * A six-scene page that re-rendered every scene every frame would be a page that
  * makes a laptop fan audible.
  *
- * It respects `prefers-reduced-motion` by holding one frame — the beat the demo
- * nominates as the one that carries the argument — instead of looping. That is a
- * deliberate choice over freezing at the first beat, which for most of these is the
- * "before" picture, i.e. exactly the wrong still to leave up.
+ * It used to read `prefers-reduced-motion` and hold a single frame instead of
+ * looping. It no longer does, deliberately — see the "Motion" note in
+ * `globals.css`. A visitor whose machine reports `reduce` got seven captioned
+ * stills describing motion that never arrived, and on Windows that setting is
+ * turned on by performance options, battery savers and remote sessions rather than
+ * by anyone choosing it.
+ *
+ * `stillBeat` survives the removal and is still declared by every scene, because it
+ * is the seam a real on-page control would use: each scene has already nominated
+ * the one frame that carries its argument. Nothing reads it at the moment.
  */
 
 import { useEffect, useRef, useState, type RefObject } from "react";
@@ -47,7 +53,14 @@ export interface SceneState<Name extends string = string> {
   readonly index: number;
   /** How many times the scene has played, for use as a React key to restart CSS. */
   readonly run: number;
-  /** True when a single frame has been placed and nothing will move. */
+  /**
+   * True when a single frame has been placed and nothing will move.
+   *
+   * Always false now that the reduced-motion path is gone. Kept because the scenes
+   * gate their phantom cursor on it — a cursor reaching for a button in a frozen
+   * frame is a cursor stranded mid-air — and that is exactly the behaviour an
+   * on-page motion control would need back.
+   */
   readonly still: boolean;
 }
 
@@ -57,8 +70,12 @@ export interface StoryboardOptions<Name extends string> {
   /** Written to as `--beat-t`, every frame, without re-rendering. */
   readonly stage?: RefObject<HTMLElement | null>;
   /**
-   * The beat to hold for someone who asked for reduced motion. Should be the beat
-   * that makes the project's point, not the first one.
+   * The one frame that carries this scene's argument.
+   *
+   * Nothing reads it at the moment — it drove the reduced-motion still, which has
+   * been removed. It stays declared, and stays declared by every scene, because
+   * choosing that frame is the hard part and the choices are worth keeping: an
+   * on-page motion control, a poster frame or an OG image would all want them.
    */
   readonly stillBeat?: Name;
   /** Pause between the last beat and starting over. */
@@ -72,6 +89,7 @@ export function sceneDuration(beats: readonly Beat[]): number {
 
 export function useStoryboard<Name extends string>(
   beats: readonly Beat<Name>[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- see `stillBeat`.
   { running, stage, stillBeat, loopGapMs = 1100 }: StoryboardOptions<Name>,
 ): SceneState<Name> {
   const [state, setState] = useState<SceneState<Name>>(() => ({
@@ -81,31 +99,12 @@ export function useStoryboard<Name extends string>(
     still: false,
   }));
 
-  /* Read once on mount rather than subscribed to. Someone flipping the setting
-     mid-scroll is not worth a listener, and the next mount picks it up. */
-  const reduced = useRef(false);
-  useEffect(() => {
-    reduced.current =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }, []);
-
   /* The scene's origin in animation-frame time. Held in a ref so the cleanup can
      clear it, which is what makes re-entry restart the story from the top. */
   const startRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!running) return;
-
-    if (reduced.current) {
-      const found = beats.findIndex((beat) => beat.name === stillBeat);
-      const index = found >= 0 ? found : beats.length - 1;
-      stage?.current?.style.setProperty("--beat-t", "1");
-      /* One frame, then nothing moves again. Deliberately after mount: reading the
-         media query during render would make the server and the client disagree. */
-      setState({ beat: beats[index].name, index, run: 0, still: true });
-      return;
-    }
 
     const total = sceneDuration(beats) + loopGapMs;
     let frame = requestAnimationFrame(function tick(now) {
@@ -143,7 +142,7 @@ export function useStoryboard<Name extends string>(
       cancelAnimationFrame(frame);
       startRef.current = null;
     };
-  }, [running, beats, stage, stillBeat, loopGapMs]);
+  }, [running, beats, stage, loopGapMs]);
 
   return state;
 }

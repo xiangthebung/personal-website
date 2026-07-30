@@ -85,6 +85,32 @@ or enforce explicit server-side membership or allowlist checks.
 Use SIWC for account pages, user-specific dashboards, saved records, and write
 actions tied to the current ChatGPT user. Leave public content anonymous.
 
+## Motion
+
+**This site does not honour `prefers-reduced-motion`, on purpose.**
+
+The seven scenes are the content, not decoration wrapped around it. The page's
+whole claim is that each project is running on it, so a visitor who cannot see
+the scenes move is left reading captions about motion that never arrives — a
+worse page than the one the media query exists to protect them from.
+
+The setting also fires for the wrong people here. Windows turns `reduce` on from
+places nobody associates with animation: the performance options, battery savers,
+and remote desktop sessions. Most machines reporting it never asked for it.
+
+What was removed, if it ever needs to come back:
+
+- four `@media (prefers-reduced-motion: reduce)` blocks in `app/globals.css`,
+  including a blanket one that flattened every animation and transition on the
+  page
+- the still-frame branch in `useStoryboard` (`app/demos/scene/storyboard.ts`),
+  which held one nominated beat instead of looping
+
+The seam survives. Every scene still declares `stillBeat` — the single frame that
+carries its argument — and `SceneState.still` is still threaded through to the
+phantom cursor. Bringing motion control back should mean a control on the page a
+visitor can find and press, not an ambient setting read behind their back.
+
 ## Useful Commands
 
 - `npm run dev`: start local development

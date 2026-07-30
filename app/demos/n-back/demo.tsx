@@ -27,6 +27,7 @@
  */
 
 import { useRef } from "react";
+import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useOnScreen } from "../use-on-screen";
 
@@ -118,6 +119,9 @@ export function NBackDemo() {
     stillBeat: "match-square",
   });
 
+  // Earlier cues remain projected behind the board after the board has moved on.
+  useSectionBeat(stageRef, beat, BEATS);
+
   const arrived = ARRIVED[beat];
   const answering = ANSWERING[beat];
   const current = arrived > 0 ? CUES[arrived - 1] : undefined;
@@ -153,7 +157,9 @@ export function NBackDemo() {
           {/* The spoken letter. The real game says it out loud; a page that starts
               talking because you scrolled to it is a page you close. */}
           <span className="nb-voice" data-on={Boolean(current)}>
-            <span className="nb-wave" aria-hidden="true">
+            {/* Remounted per beat so this gesture finishes instead of keeping
+                three compositor animations alive for the whole scene. */}
+            <span className="nb-wave" key={`${run}-${beat}`} aria-hidden="true">
               <i />
               <i />
               <i />

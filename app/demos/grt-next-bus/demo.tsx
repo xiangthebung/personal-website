@@ -44,7 +44,9 @@
 import { useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useStoryboard, type Beat } from "../scene/storyboard";
+import { ViewportLayer } from "../scene/viewport-layer";
 import { useOnScreen } from "../use-on-screen";
+import { useSectionFocused } from "../use-section-focus";
 import {
   formatBadge,
   formatClock,
@@ -284,6 +286,9 @@ function Bus({ route }: { route: string }) {
 export function GrtNextBusDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
+  /* The notification is only allowed onto the visitor's screen while this is the
+     section they are actually in. See `useSectionFocused`. */
+  const focused = useSectionFocused(stageRef);
   const { beat, index, run, still } = useStoryboard(BEATS, {
     running: onScreen,
     stage: stageRef,
@@ -390,6 +395,32 @@ export function GrtNextBusDemo() {
               >
                 {badgeText}
               </b>
+            </span>
+
+            {/* The browser's own notification bell, which is where an alert lands
+                before anyone looks at it. It rings on the beat the notification
+                fires and keeps a dot until the popup is opened — so the banner has
+                somewhere to have come from, and the moment before you notice it is
+                on screen too. */}
+            <span
+              className="gx-bell"
+              data-ringing={alerting}
+              data-unread={alerting}
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 24 24">
+                <g
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 4.2a4.8 4.8 0 0 0-4.8 4.8v3.3L5.6 15.6h12.8l-1.6-3.3V9A4.8 4.8 0 0 0 12 4.2Z" />
+                  <path d="M10.3 18a1.8 1.8 0 0 0 3.4 0" />
+                </g>
+              </svg>
+              <i className="gx-bell-dot" />
             </span>
           </span>
         </div>
@@ -546,38 +577,61 @@ export function GrtNextBusDemo() {
         </div>
       </div>
 
-      {/* The notification, arriving from outside the frame because that is where a
-          system notification comes from. Its text is the payload verbatim. */}
-      <div className="gx-alert" data-in={alerting} aria-hidden="true">
-        <span className="gx-alert-icon">
-          <svg viewBox="0 0 24 24">
-            <rect x="4" y="4" width="16" height="13" rx="3" fill="currentColor" />
-            <rect x="6.5" y="6.5" width="11" height="5" rx="1.6" fill="#fff" opacity="0.9" />
-            <circle cx="8" cy="19" r="1.7" fill="currentColor" />
-            <circle cx="16" cy="19" r="1.7" fill="currentColor" />
-          </svg>
-        </span>
-        <div className="gx-alert-copy">
-          <p className="gx-alert-title">
-            {closest.route} in {ALERT_LEAD_MINUTES} min
-          </p>
-          <p className="gx-alert-body">
-            {closest.name} → {closest.headsign}
-          </p>
-          <p className="gx-alert-context">Live prediction</p>
-        </div>
-        <span className="gx-alert-close">
-          <svg viewBox="0 0 24 24">
-            <path
-              d="M7 7l10 10M17 7L7 17"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
-      </div>
+      {/* The notification, on the visitor's own screen.
+          This used to arrive at the top-right of the demo's own box, which made it a
+          drawing of a notification — the one thing a notification cannot be. The
+          extension's entire pitch is that it reaches you when you are not looking, so
+          it now arrives in the top-right corner of the actual window, portalled out of
+          this section, at the size the operating system would draw it.
+
+          Gated on `onScreen` as well as on the beat. The storyboard freezes rather
+          than advancing when it goes off screen, so without that a visitor who
+          scrolled away mid-alert would carry a bus notification with them for the rest
+          of the page. */}
+      <ViewportLayer className="vlayer--alert">
+        {alerting && focused && (
+          <div className="gx-os-alert">
+            <span className="gx-alert-icon">
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="4" width="16" height="13" rx="3" fill="currentColor" />
+                <rect x="6.5" y="6.5" width="11" height="5" rx="1.6" fill="#fff" opacity="0.9" />
+                <circle cx="8" cy="19" r="1.7" fill="currentColor" />
+                <circle cx="16" cy="19" r="1.7" fill="currentColor" />
+              </svg>
+            </span>
+            <div className="gx-alert-copy">
+              <p className="gx-alert-source">
+                <span>GRT Next Bus</span>
+                <small>now</small>
+              </p>
+              <p className="gx-alert-title">
+                {closest.route} in {ALERT_LEAD_MINUTES} min
+              </p>
+              <p className="gx-alert-body">
+                {closest.name} → {closest.headsign}
+              </p>
+              <p className="gx-alert-context">Live prediction</p>
+            </div>
+            <span className="gx-alert-close">
+              <svg viewBox="0 0 24 24">
+                <path
+                  d="M7 7l10 10M17 7L7 17"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </div>
+        )}
+      </ViewportLayer>
+
+      {/* There was a second copy of that card here, drawn at the top-right of the
+          demo's own box. Photographing the two together settled it: an identical
+          notification in two places at once does not read as emphasis, it reads as a
+          bug. The bell in the toolbar above is what gives the real one an origin, so
+          the drawing is not needed. */}
 
       {/* The route, running out past both edges of the section. The bus on it is the
           same bus the countdown is counting, and the stops drawn behind it are the
@@ -586,8 +640,16 @@ export function GrtNextBusDemo() {
         <span className="gx-road">
           <span className="gx-dashes" />
         </span>
+        {/* Ticks the bus has already gone by are drawn spent, so the "five stops
+            away" note has something to count against. The card says the number and
+            the road shows it; neither has to be believed on its own. */}
         {LINE_STOPS.map((left) => (
-          <span className="gx-stop-tick" key={left} style={{ left: `${left}%` }} />
+          <span
+            className="gx-stop-tick"
+            key={left}
+            data-passed={left < busLeft}
+            style={{ left: `${left}%` }}
+          />
         ))}
         <span className="gx-pole" style={{ left: `${YOUR_STOP}%` }} data-hit={arrived}>
           <span className="gx-pole-mast" />
@@ -598,6 +660,10 @@ export function GrtNextBusDemo() {
           </span>
         </span>
         <span className="gx-bus-slot" style={{ left: `${busLeft}%` }} data-stopped={arrived}>
+          {/* A wash of warm light thrown ahead of it. Faint on purpose: this is a
+              bright mint afternoon, not a night scene, and the job is to give the
+              bus a direction of travel rather than to light anything. */}
+          <span className="gx-beam" aria-hidden="true" />
           <Bus route={closest.route} />
         </span>
       </div>

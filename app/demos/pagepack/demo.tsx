@@ -29,6 +29,7 @@
 
 import { useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useOnScreen } from "../use-on-screen";
 import { captureProgressMessage, formatBytes, type CapturePhase } from "./progress";
@@ -101,23 +102,19 @@ const TOTAL_BYTES = CAPTURED.reduce((sum, page) => sum + page.bytes, 0);
  * Where each card comes to rest, in viewport units, measured from the Save button
  * it left.
  *
- * Authored rather than randomised. Random scatter looked better in three runs out
- * of four and in the fourth it stacked two cards on top of the project title,
- * which is not a trade worth taking for a page that plays this loop every time
- * somebody scrolls past. Viewport units rather than pixels so the spread stays
- * proportional: the same seven positions have to work across a 1600px section and
- * a 380px phone.
- *
- * Nothing lands near the middle. The middle is where the browser is.
+ * Authored rather than randomised. The landings stay inside the demo/stage band:
+ * they still clear the browser and reach both outer edges, but none can travel up
+ * into the title, facts or links. Viewport units keep that safe spread proportional
+ * across a 1600px section and a 380px phone.
  */
 const SCATTER = [
-  { x: "-31vw", y: "-13vh", rot: "-11deg" },
-  { x: "30vw", y: "-15vh", rot: "9deg" },
-  { x: "-25vw", y: "15vh", rot: "7deg" },
-  { x: "26vw", y: "14vh", rot: "-6deg" },
-  { x: "-39vw", y: "1vh", rot: "13deg" },
+  { x: "-31vw", y: "-4vh", rot: "-11deg" },
+  { x: "30vw", y: "-5vh", rot: "9deg" },
+  { x: "-25vw", y: "8vh", rot: "7deg" },
+  { x: "26vw", y: "7vh", rot: "-6deg" },
+  { x: "-39vw", y: "2vh", rot: "13deg" },
   { x: "38vw", y: "3vh", rot: "-9deg" },
-  { x: "1vw", y: "-21vh", rot: "4deg" },
+  { x: "8vw", y: "-7vh", rot: "4deg" },
 ] as const;
 
 /** The real label for a beat, through the extension's own formatter. */
@@ -143,6 +140,9 @@ export function PagePackDemo() {
     // The still that carries the argument: a dead browser and a live library.
     stillBeat: "read-offline",
   });
+
+  // The cable, section outage and reading field follow the save film beat for beat.
+  useSectionBeat(stageRef, beat, BEATS);
 
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
 
@@ -369,13 +369,40 @@ export function PagePackDemo() {
         {/* One of them comes back and opens — out here, not in the frame. The
             browser is dead; the reading is not. */}
         <div className="pp-reader" data-open={reading}>
-          <p className="pp-reader-head">
-            <span>The Byzantine Generals Problem</span>
-            <small>saved copy</small>
-          </p>
-          {[100, 94, 88, 97, 72].map((width, line) => (
-            <span className="pp-line" key={line} style={{ width: `${width}%` }} />
-          ))}
+          <header className="pp-reader-head">
+            <span>
+              <small>saved copy · no network request</small>
+              The Byzantine Generals Problem
+            </span>
+            <b>offline</b>
+          </header>
+          <div className="pp-reader-layout">
+            <article className="pp-reader-document">
+              <p className="pp-reader-byline">
+                Leslie Lamport · Robert Shostak · Marshall Pease
+              </p>
+              <h4>Reaching agreement in the presence of faults</h4>
+              {[100, 94, 88, 97, 72, 91, 84].map((width, line) => (
+                <span className="pp-line" key={line} style={{ width: `${width}%` }} />
+              ))}
+              <p className="pp-reader-callout">
+                The saved HTML, styles, figures and linked pages are served from the
+                pack after the connection is gone.
+              </p>
+              {[96, 78, 89].map((width, line) => (
+                <span className="pp-line" key={`tail-${line}`} style={{ width: `${width}%` }} />
+              ))}
+            </article>
+            <aside className="pp-reader-index">
+              <small>pack contents</small>
+              {CAPTURED.slice(0, 5).map((page, order) => (
+                <span key={page.title} data-current={order === 0}>
+                  <i>{String(order + 1).padStart(2, "0")}</i>
+                  {page.title}
+                </span>
+              ))}
+            </aside>
+          </div>
         </div>
       </div>
 

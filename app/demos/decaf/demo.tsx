@@ -33,14 +33,17 @@
  * depicted with its numbers altered, and the copy in the notice is Decaf's own.
  */
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
+import { ViewportLayer } from "../scene/viewport-layer";
 import { useOnScreen } from "../use-on-screen";
+import { useSectionFocused } from "../use-section-focus";
 
 type BeatName =
   | "raw"
+  | "pull"
   | "reach"
   | "press"
   | "drain"
@@ -53,7 +56,11 @@ type BeatName =
 
 const BEATS: readonly Beat<BeatName>[] = [
   // Long enough to feel got at.
-  { name: "raw", ms: 1900 },
+  { name: "raw", ms: 1600 },
+  /* The feed pulling. One beat is not enough room for "faster and faster" to be
+     felt — the reel needs about four seconds of runway before the switch, and this
+     is the middle of it, where the acceleration becomes obvious. */
+  { name: "pull", ms: 1500 },
   { name: "reach", ms: 650 },
   { name: "press", ms: 240 },
   { name: "drain", ms: 1100 },
@@ -73,17 +80,114 @@ const CURSOR: Partial<Record<BeatName, string>> = {
   hold: "hold",
 };
 
-/** Posts in the feed. Numbers are the shapes sites actually write. */
+/**
+ * Posts in the feed. Numbers are the shapes sites actually write.
+ *
+ * Six rather than two, because the feed scrolls itself now. Two posts sitting still
+ * is a picture of a feed; a reel that will not stop arriving is what the extension
+ * is actually about, and you cannot show something being endless with two of it.
+ * Only the first two are ever fully in frame — the rest are the runway.
+ */
 const POSTS = [
   { who: "someone you follow", likes: "48.2K", views: "1.2M views", tint: "a" },
   { who: "a page you liked once", likes: "9,417", views: "310K views", tint: "b" },
+  { who: "recommended for you", likes: "212K", views: "4.8M views", tint: "c" },
+  { who: "trending in your area", likes: "1.1M", views: "22M views", tint: "d" },
+  { who: "because you watched", likes: "63.5K", views: "890K views", tint: "a" },
+  { who: "people you may know", likes: "7,208", views: "154K views", tint: "b" },
 ];
+
+/**
+ * How long the reel takes to run its length, and the curve it runs on.
+ *
+ * The curve is the argument. A linear scroll is a carousel; an ease-in that starts
+ * at a crawl and is still gaining speed when it is cut off is what being held by a
+ * feed feels like. The duration covers `raw` through `press` — 1600 + 1500 + 650 +
+ * 240 — so the switch lands while it is at its fastest.
+ */
+const REEL_MS = 3990;
+
+/**
+ * A burst of rewards leaving one point on the screen.
+ *
+ * The first version of this rained down the whole window from fixed `vw` positions
+ * along the top edge, and it was the wrong picture: it looked like weather. Nothing on
+ * screen produced it, so it read as decoration laid over the section rather than as
+ * something the feed was doing.
+ *
+ * These come out of the counters instead — the hearts out of the like count, the
+ * bubbles out of the comment count — measured live from the real elements and fired
+ * from their actual coordinates. A visitor watches the number and sees what the number
+ * is for.
+ *
+ * Directions are stepped rather than random. `(index * 47) % 141` walks the fan in
+ * coprime strides, so no two neighbours in the sequence leave on a similar heading and
+ * no seed ever produces the clump that random scatter reliably does. Distances are in
+ * viewport units so the spray crosses the same proportion of a laptop and a 4K monitor.
+ */
+function burst(count: number, spec: { spread: number; from: number; glyphs: readonly string[] }) {
+  return Array.from({ length: count }, (_, index) => {
+    const degrees = spec.from + ((index * 47) % spec.spread);
+    const radians = (degrees * Math.PI) / 180;
+    const reach = 42 + ((index * 29) % 52);
+    return {
+      glyph: spec.glyphs[index % spec.glyphs.length],
+      // Cosine across the width, sine up the height, so the fan is wide and tall.
+      dx: `${(Math.cos(radians) * reach * 0.62).toFixed(2)}vw`,
+      dy: `${(Math.sin(radians) * reach).toFixed(2)}vh`,
+      size: 20 + ((index * 13) % 34),
+      delay: (index * 137) % 2600,
+      spin: ((index * 53) % 90) - 45,
+    };
+  });
+}
+
+/**
+ * Hearts and stars out of the like counter, in every direction.
+ *
+ * The first version fanned them upward only, which looked right in isolation and wrong on
+ * the page: the counter sits low in the section, so an upward fan threw every heart over
+ * the top edge and across whichever project happened to be above. A full circle keeps the
+ * burst around the thing that produced it and reads as an explosion out of a button rather
+ * than as a fountain aimed at the neighbours.
+ */
+const LIKE_BITS = burst(26, {
+  from: 0,
+  spread: 360,
+  glyphs: ["♥", "♥", "★", "♥", "▲", "♥", "★"],
+});
+
+/** Comment bubbles out of the comment counter. Fewer, and they do not travel as far. */
+const COMMENT_BITS = burst(14, {
+  from: 18,
+  spread: 360,
+  glyphs: ["💬"],
+});
+
+/** The other half of being got at: other people, looking at you. */
+const SPAM = [
+  { title: "12 people liked your post", body: "and 4 others you follow" },
+  { title: "3 new followers", body: "someone you may know" },
+  { title: "Live now", body: "a page you liked once is streaming" },
+  { title: "You have 8 unread", body: "tap to catch up" },
+] as const;
 
 const SUGGESTIONS = ["an account like yours", "trending near you", "because you watched"];
 
 export function DecafDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
+  /* Two different questions, and they are not interchangeable. `onScreen` decides
+     whether the scene inside the box runs. `focused` decides whether it is allowed to
+     take over the visitor's whole screen — which it may only do when this is
+     unambiguously the section they are looking at. */
+  const focused = useSectionFocused(stageRef);
+
+  /* The two counters the bursts come out of, and the portalled layer they are written
+     onto. */
+  const likeRef = useRef<HTMLSpanElement | null>(null);
+  const commentRef = useRef<HTMLSpanElement | null>(null);
+  const delugeRef = useRef<HTMLDivElement | null>(null);
   const { beat, index, run, still } = useStoryboard(BEATS, {
     running: onScreen,
     stage: stageRef,
@@ -107,6 +211,79 @@ export function DecafDemo() {
 
   /** Reward counts become a dash — in the text and in the accessible label. */
   const count = (value: string) => (dashed ? "—" : value);
+
+  /**
+   * Keeps the bursts pinned to the counters they come out of.
+   *
+   * The layer is portalled to `document.body` and positioned against the viewport, while
+   * the counters live inside a reel scrolling upward inside a section the visitor is also
+   * scrolling past. The origin therefore moves for two independent reasons, and writing it
+   * once on mount would leave the hearts pouring out of a point the numbers left seconds
+   * ago.
+   *
+   * One `requestAnimationFrame` loop, two `getBoundingClientRect` reads, four custom
+   * properties written straight onto the layer element. Nothing re-renders — the same
+   * approach the pointer light in `MediaRail` uses, and for the same reason: this must not
+   * cost a React pass per frame.
+   *
+   * Stops once the extension is on, because there is nothing left to emit and no point
+   * tracking a position nobody is reading.
+   */
+  useEffect(() => {
+    if (!focused || on) return;
+
+    const section = stageRef.current?.closest("[data-project-section]");
+
+    let frame = 0;
+    const write = () => {
+      const layer = delugeRef.current;
+      if (layer) {
+        const like = likeRef.current?.getBoundingClientRect();
+        const comment = commentRef.current?.getBoundingClientRect();
+        if (like) {
+          layer.style.setProperty("--like-x", `${Math.round(like.left + like.width / 2)}px`);
+          layer.style.setProperty("--like-y", `${Math.round(like.top + like.height / 2)}px`);
+        }
+        if (comment) {
+          layer.style.setProperty(
+            "--comment-x",
+            `${Math.round(comment.left + comment.width / 2)}px`,
+          );
+          layer.style.setProperty(
+            "--comment-y",
+            `${Math.round(comment.top + comment.height / 2)}px`,
+          );
+        }
+
+        /* Clipped to this section's share of the window.
+           The layer covers the whole viewport, which is the point — a burst that stops at
+           the edge of a panel is not a burst. But the viewport usually also contains the
+           end of the project above, and hearts drawn over Choir Practice look like they
+           belong to Choir Practice. That was reported, from a screenshot, and no threshold
+           fixes it: at any ordinary reading position some of the neighbour is visible.
+           So the boundary is enforced as a boundary. `inset()` in pixels off the section's
+           own rect, rewritten every frame with the origin, cuts every heart off exactly
+           where the section ends. Inside its own band the effect is still full width and
+           full bleed. */
+        if (section) {
+          const box = section.getBoundingClientRect();
+          const top = Math.max(0, Math.round(box.top));
+          const bottom = Math.max(0, Math.round(window.innerHeight - box.bottom));
+          layer.style.clipPath = `inset(${top}px 0px ${bottom}px 0px)`;
+          /* The top of the band, for anything that wants to sit against it rather than
+             against the window. The notification stack does: pinned to the viewport
+             corner it was landing inside the section above and getting clipped away
+             with it, so the flood arrived without the notifications that are half the
+             point. */
+          layer.style.setProperty("--band-top", `${top}px`);
+        }
+      }
+      frame = window.requestAnimationFrame(write);
+    };
+
+    frame = window.requestAnimationFrame(write);
+    return () => window.cancelAnimationFrame(frame);
+  }, [focused, on]);
 
   return (
     <div
@@ -210,26 +387,45 @@ export function DecafDemo() {
                   </p>
                 </div>
               ) : (
-                POSTS.map((post) => (
-                  <article className="dc-post" key={post.who}>
-                    <p className="dc-post-head">
-                      <span className="dc-post-avatar" />
-                      {post.who}
-                    </p>
-                    <span className={`dc-media dc-media--${post.tint}`}>
-                      <i className="dc-play" />
-                    </span>
-                    <p className="dc-post-meta">
-                      <span className="dc-count">
-                        <b>♥</b> {count(post.likes)}
+                /* The reel. Keyed by `run` so each replay starts from the top, and
+                   paused rather than stopped once the extension is on — a feed that
+                   fades out has been switched off politely, and a feed that stops
+                   dead mid-scroll is what actually happens. */
+                <div
+                  className="dc-reel"
+                  key={`reel-${run}`}
+                  data-running={!on}
+                  style={{ "--reel-ms": `${REEL_MS}ms` } as React.CSSProperties}
+                >
+                  {POSTS.map((post, index) => (
+                    <article className="dc-post" key={post.who}>
+                      <p className="dc-post-head">
+                        <span className="dc-post-avatar" />
+                        {post.who}
+                      </p>
+                      <span className={`dc-media dc-media--${post.tint}`}>
+                        <i className="dc-play" />
                       </span>
-                      <span className="dc-count">{count(post.views)}</span>
-                      <span className="dc-comments" data-gone={paused}>
-                        {dashed ? "—" : "2,904"} comments
-                      </span>
-                    </p>
-                  </article>
-                ))
+                      {/* The first post's counters are the two emitters. Only the
+                          first: it is the one reliably in frame, and thirty-eight
+                          things leaving six different points at once is noise rather
+                          than emphasis. */}
+                      <p className="dc-post-meta">
+                        <span className="dc-count" ref={index === 0 ? likeRef : undefined}>
+                          <b>♥</b> {count(post.likes)}
+                        </span>
+                        <span className="dc-count">{count(post.views)}</span>
+                        <span
+                          className="dc-comments"
+                          data-gone={paused}
+                          ref={index === 0 ? commentRef : undefined}
+                        >
+                          {dashed ? "—" : "2,904"} comments
+                        </span>
+                      </p>
+                    </article>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -246,6 +442,73 @@ export function DecafDemo() {
           </aside>
         </div>
       </div>
+
+      {/* The reward, all over the visitor's screen.
+          The first version of this was seven small glyphs inside the demo's own box,
+          which is a tidy illustration of a thing whose defining quality is that it is
+          not tidy. A feed does not politely indicate that it wants your attention. So
+          this is thirty of them, big, pouring across the whole window, with follower
+          and like notifications stacking up in the corner on top — and all of it
+          portalled out of the section so it happens to the page the visitor is
+          actually looking at.
+
+          Then the extension goes on and every one of them stops dead where it is,
+          loses its colour and drains away. Freezing rather than clearing is the
+          argument: nothing was taken from you, it just stopped being worth anything.
+
+          Gated on `onScreen` as well as the beat, because a frozen storyboard would
+          otherwise leave the deluge on screen for the rest of the page. */}
+      <ViewportLayer className="vlayer--deluge">
+        {focused && (
+          <div
+            className="dc-deluge"
+            ref={delugeRef}
+            data-running={!on}
+            data-spent={on}
+            key={`deluge-${run}`}
+          >
+            {[
+              { bits: LIKE_BITS, from: "like" as const },
+              { bits: COMMENT_BITS, from: "comment" as const },
+            ].map(({ bits, from }) =>
+              bits.map((bit, order) => (
+                <span
+                  className="dc-drop"
+                  data-from={from}
+                  key={`${from}-${order}`}
+                  style={
+                    {
+                      "--dx": bit.dx,
+                      "--dy": bit.dy,
+                      "--size": `${bit.size}px`,
+                      "--delay": `${bit.delay}ms`,
+                      "--spin": `${bit.spin}deg`,
+                    } as React.CSSProperties
+                  }
+                >
+                  {bit.glyph}
+                </span>
+              )),
+            )}
+
+            {/* The other half of being got at: things telling you that other people
+                are looking at you. Stacked in the corner where they really land. */}
+            <div className="dc-spam">
+              {SPAM.map((line, order) => (
+                <span
+                  className="dc-spam-card"
+                  key={line.title}
+                  style={{ "--card": order } as React.CSSProperties}
+                >
+                  <i className="dc-spam-dot" />
+                  <b>{line.title}</b>
+                  <small>{line.body}</small>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </ViewportLayer>
 
       {!still && (
         <PhantomCursor

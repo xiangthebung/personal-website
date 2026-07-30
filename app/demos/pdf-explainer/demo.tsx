@@ -25,6 +25,7 @@
 
 import { useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useOnScreen } from "../use-on-screen";
 
@@ -176,6 +177,9 @@ export function PdfExplainerDemo() {
     // The still that carries the argument: notes awake, slide still visible.
     stillBeat: "awake",
   });
+
+  // Notes, tutor, quiz and matching fragments reorganise around the whole section.
+  useSectionBeat(stageRef, beat, BEATS);
 
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
   const act = ACT[beat];
