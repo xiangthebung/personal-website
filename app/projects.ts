@@ -98,7 +98,10 @@ const projectData: Project[] = [
     live: "https://satb-practice.xiangli3625.workers.dev/",
     demo: "choir-practice",
     well: "dark",
-    invitation: "The real app, open on a score. Sound is one press away.",
+    /* "Sound is one press away" was true when the press was the app's own Play button,
+       two clicks in. Clicking the score starts it now, and the section listens to what
+       comes out — so the line says what to do and what happens. */
+    invitation: "The real app, on a real score. Click it and all four parts sing.",
     notes: [
       "Turn your part up and the other three down, or the reverse",
       "It sings all four parts itself, so you never need a recording",

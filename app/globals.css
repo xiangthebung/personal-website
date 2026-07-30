@@ -10797,6 +10797,65 @@ svg.bd-vehicle {
   transition-delay: calc(var(--part) * 100ms);
 }
 
+/* --- the four rows, driven by the four voices -----------------------------
+   `--v-soprano` through `--v-bass` are written onto `.choir` by `tapVoices` in the pod,
+   from an analyser tapped onto the embedded app's master gain. They are a reading of the
+   real mix: press play and the row for whichever part is carrying the line brightens and
+   leans in, in time with the singing.
+
+   Each row picks up its own band as `--v`, so everything below is written once against a
+   generic variable. The fallback of 0 is what makes this inert when nothing is playing
+   and when the analyser could not be reached at all — which is the same rendering the
+   section had before any of this existed.
+
+   Transitions are deliberately absent. The values already arrive smoothed, with a fast
+   attack and a slow release, and a CSS transition on top would be a second filter
+   fighting the first — the attacks are the part worth seeing and a transition is exactly
+   what rounds them off. */
+.choir[data-playing="true"] .choir-part-cues li:nth-child(1) {
+  --v: var(--v-soprano, 0);
+}
+.choir[data-playing="true"] .choir-part-cues li:nth-child(2) {
+  --v: var(--v-alto, 0);
+}
+.choir[data-playing="true"] .choir-part-cues li:nth-child(3) {
+  --v: var(--v-tenor, 0);
+}
+.choir[data-playing="true"] .choir-part-cues li:nth-child(4) {
+  --v: var(--v-bass, 0);
+}
+
+/* Brighter, and standing slightly proud of the page. `--part` is the row's index and
+   already sets the side each row sits on, so the lean has to be signed per row; rows 2
+   and 4 are on the right and lean the other way. */
+#choir-practice[data-scene-beat="singing"] .choir-part-cues li {
+  opacity: calc(0.7 + var(--v, 0) * 0.3);
+}
+#choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(odd) {
+  transform: translateX(calc(var(--v, 0) * 0.7rem));
+}
+#choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(even) {
+  transform: translateX(calc(var(--v, 0) * -0.7rem));
+}
+
+/* The lozenge is the loudest signal, so it carries the most of it: it fills with the
+   section's accent as its voice comes up, and grows a halo at the top of the range. */
+#choir-practice[data-scene-beat="singing"] .choir-part-cues b {
+  border-color: rgba(39, 89, 74, calc(0.3 + var(--v, 0) * 0.6));
+  background: rgb(
+    from rgba(236, 249, 240, 0.74) r g b / calc(0.74 + var(--v, 0) * 0.26)
+  );
+  box-shadow: 0 0 calc(var(--v, 0) * 26px) rgba(52, 122, 100, calc(var(--v, 0) * 0.6));
+  transform: scale(calc(1 + var(--v, 0) * 0.22));
+}
+
+/* And the rule beside each name becomes a level meter, which is the cheapest possible
+   way to show four numbers and the most legible. */
+#choir-practice[data-scene-beat="singing"] .choir-part-cues i {
+  background-size: calc(18% + var(--v, 0) * 82%) 2px;
+  opacity: calc(0.35 + var(--v, 0) * 0.65);
+}
+
 .choir-part-cues b {
   display: grid;
   width: 1.8rem;
@@ -10858,6 +10917,21 @@ svg.bd-vehicle {
     opacity: 0.38;
     transform: scale(1.025);
   }
+}
+
+/* The room, swelling with the singing.
+   `--v-all` is the loudest of the four bands. The arcs are already breathing on a 5.8s
+   loop of their own, which stands in for a room when nothing is happening; while the
+   choir is actually singing the stroke follows the mix instead, so the arcs read as
+   sound leaving the stand rather than as decoration that happens to move.
+
+   `stroke-width` and `stroke-opacity` rather than `transform` or `opacity`: the
+   keyframe animation already owns both of those on this element, and two things
+   animating one property is how you get an effect that silently does nothing. */
+#choir-practice[data-scene-beat="singing"] .choir-acoustics path {
+  stroke: rgba(36, 101, 81, calc(0.2 + var(--v-all, 0) * 0.5));
+  stroke-width: calc(1.5px + var(--v-all, 0) * 2.5px);
+  stroke-dasharray: 5 calc(12px - var(--v-all, 0) * 5px);
 }
 
 #choir-practice[data-scene-reached~="score"] .choir-acoustics {

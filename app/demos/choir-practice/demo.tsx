@@ -90,7 +90,29 @@ const HOOKS = {
   idleLabel: "Play",
 };
 
-const CHOIR_BEATS = [{ name: "loading" }, { name: "score" }] as const;
+const CHOIR_BEATS = [{ name: "loading" }, { name: "score" }, { name: "singing" }] as const;
+
+/**
+ * The four voices, as frequency bands.
+ *
+ * Deliberately narrower and non-overlapping than the real ranges, which overlap
+ * heavily — a soprano's bottom octave is an alto's middle. Using the true ranges made
+ * all four readouts move together and the display said nothing. These four windows sit
+ * in the middle of each part's tessitura, so a passage where the basses carry the line
+ * lights the bass row and not the others.
+ *
+ * This is a reading of the mix, not a transcription of it. A soprano singing low will
+ * show up on the alto row, and that is honest about what a spectrum can tell you.
+ */
+const VOICES = [
+  { name: "soprano", lo: 560, hi: 1150 },
+  { name: "alto", lo: 350, hi: 560 },
+  { name: "tenor", lo: 200, hi: 350 },
+  { name: "bass", lo: 80, hi: 200 },
+  /* The whole ensemble, for the room to swell with. Runs through the same normaliser as
+     the four parts, so it is one code path rather than a special case. */
+  { name: "all", lo: 80, hi: 1150 },
+] as const;
 const SCORE_GLYPHS = ["♩", "♪", "♫", "♭", "♯", "♬"] as const;
 
 function ScoreLeaf({ side, part }: { side: "left" | "right"; part: string }) {
@@ -243,6 +265,172 @@ function startPlayback(frame: HTMLIFrameElement | null): boolean {
   }
 }
 
+/**
+ * Reports whether the app is playing, by watching the control that says so.
+ *
+ * A `MutationObserver` on one attribute rather than a poll. The transport rewrites
+ * `#play-btn`'s `aria-label` on every state change — that is the same contract
+ * `startPlayback` reads — so the state is already published; polling it would be asking
+ * a question four times a second that the app volunteers the answer to.
+ *
+ * Returns a teardown, or null if the app is not reachable, which the caller treats as
+ * "no reactive section, just an embedded app". Everything here is best-effort.
+ */
+function watchPlayback(
+  frame: HTMLIFrameElement | null,
+  onChange: (playing: boolean) => void,
+): (() => void) | null {
+  const doc = frame?.contentDocument;
+  if (!doc) return null;
+  try {
+    const button = doc.querySelector(HOOKS.transport);
+    if (!button) return null;
+
+    const read = () => onChange(button.getAttribute("aria-label") !== HOOKS.idleLabel);
+    read();
+
+    /* This page's `MutationObserver`, watching a node in the frame's document. Observing
+       across a same-origin document boundary is allowed, and it avoids reaching for the
+       frame realm's own constructor — which is not on the `Window` type and would need a
+       cast to say something the platform already guarantees. */
+    const observer = new MutationObserver(read);
+    observer.observe(button, { attributes: true, attributeFilter: ["aria-label"] });
+    return () => observer.disconnect();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Drives the section from the actual four-part harmony.
+ *
+ * The app's audio graph ends `… → ceiling → master → destination`, and `master` is
+ * reachable from here because the copy is served from this origin. Connecting an
+ * analyser to it adds a second output from that node; the existing connection to
+ * `destination` is untouched, so this is a tap rather than an insertion and it cannot
+ * affect what a visitor hears. Analysers are sinks, so it does not need connecting
+ * onward.
+ *
+ * Writes one custom property per voice onto the pod's root element, which the stylesheet
+ * uses to light the S/A/T/B rows and swell the room's acoustics. Nothing re-renders —
+ * this must not cost a React pass per frame.
+ *
+ * Two economies worth keeping. Levels are only written when they move by more than a
+ * hundredth, because writing a custom property invalidates style for the subtree below
+ * it and most frames do not change a band meaningfully. And the loop only exists while
+ * the music is playing: it is started by `watchPlayback` reporting true and torn down
+ * the moment it reports false.
+ *
+ * Attack is fast and release is slow, which is what a level meter does. Symmetric
+ * smoothing either jitters or lags, and a choir's attacks are the part worth seeing.
+ */
+function tapVoices(frame: HTMLIFrameElement | null, root: HTMLElement | null): () => void {
+  const win = frame?.contentWindow;
+  if (!win || !root) return () => {};
+
+  let analyser: AnalyserNode | null = null;
+  let master: AudioNode | null = null;
+  let raf = 0;
+
+  try {
+    /* eslint-disable @typescript-eslint/no-explicit-any -- reaching into a vendored app. */
+    const engine = (win as any).choirPracticeApp?.audioEngine;
+    const ctx: AudioContext | undefined = engine?.audioContext;
+    master = engine?.live?.bus?.master ?? null;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    if (!ctx || !master) return () => {};
+
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.72;
+    /**
+     * The window the bytes are mapped from, and it has to be set.
+     *
+     * `getByteFrequencyData` scales between `minDecibels` and `maxDecibels`, which
+     * default to −100 and −30. Four voices through a limiter sit comfortably above −30
+     * in the mid bands, so every one of the four readouts pinned at 255 and the section
+     * showed four full meters that never moved — measured: soprano, alto and tenor all
+     * flat at 1.000 for two seconds while the piece was audibly changing. It looked like
+     * the tap had failed and it was working perfectly; the range was just too narrow to
+     * express anything.
+     *
+     * −90 to −12 covers a real mix with headroom at both ends.
+     */
+    analyser.minDecibels = -90;
+    analyser.maxDecibels = -12;
+    master.connect(analyser);
+
+    const bins = new Uint8Array(analyser.frequencyBinCount);
+    const binHz = ctx.sampleRate / analyser.fftSize;
+    const ranges = VOICES.map((voice) => ({
+      name: voice.name,
+      from: Math.max(1, Math.round(voice.lo / binHz)),
+      to: Math.min(bins.length - 1, Math.round(voice.hi / binHz)),
+    }));
+    const levels = ranges.map(() => 0);
+    const written = ranges.map(() => -1);
+    /* Each band's own working range, tracked rather than assumed. See below. */
+    const peaks = ranges.map(() => 0);
+    const troughs = ranges.map(() => 1);
+
+    const tick = () => {
+      analyser!.getByteFrequencyData(bins);
+
+      ranges.forEach((range, index) => {
+        let total = 0;
+        for (let bin = range.from; bin <= range.to; bin += 1) total += bins[bin];
+        const mean = total / Math.max(1, range.to - range.from + 1) / 255;
+
+        /**
+         * Each band normalised against its own range, which it discovers as it goes.
+         *
+         * A single fixed mapping cannot serve four bands, and the measurements are
+         * unambiguous about why: the alto window (350–560 Hz) is where most of a choir's
+         * energy lives, so a scale that gave the basses room left the altos pinned at
+         * 1.000 with a working range of 0.03. Calibrating four constants by hand would
+         * fix this score and break the next one, since the answer depends on the voicing
+         * of whatever is being sung.
+         *
+         * So each band keeps a fast-attack, slow-release peak and the mirror-image
+         * trough, and reports where it currently sits between them. Every band therefore
+         * uses the full range whatever its absolute energy, and the display becomes about
+         * dynamics — which part is pushing right now — rather than about which frequency
+         * band happens to carry the most power. The 0.04 floor on the span stops a silent
+         * band, where peak and trough converge, amplifying its own noise into a
+         * flickering full-scale meter.
+         */
+        peaks[index] += (mean - peaks[index]) * (mean > peaks[index] ? 0.35 : 0.004);
+        troughs[index] += (mean - troughs[index]) * (mean < troughs[index] ? 0.35 : 0.004);
+        const span = Math.max(0.04, peaks[index] - troughs[index]);
+        const target = Math.max(0, Math.min(1, (mean - troughs[index]) / span));
+
+        levels[index] += (target - levels[index]) * (target > levels[index] ? 0.5 : 0.12);
+
+        if (Math.abs(levels[index] - written[index]) > 0.01) {
+          written[index] = levels[index];
+          root.style.setProperty(`--v-${range.name}`, levels[index].toFixed(3));
+        }
+      });
+
+      raf = win.requestAnimationFrame(tick);
+    };
+    raf = win.requestAnimationFrame(tick);
+  } catch {
+    /* A renamed graph, or a browser without an analyser. The app still sings. */
+  }
+
+  return () => {
+    if (raf) win.cancelAnimationFrame(raf);
+    try {
+      // Named, so the master keeps its connection to the destination.
+      if (master && analyser) master.disconnect(analyser);
+    } catch {
+      /* already torn down */
+    }
+    for (const voice of VOICES) root.style.removeProperty(`--v-${voice.name}`);
+  };
+}
+
 function askForMicrophone(frame: HTMLIFrameElement | null): boolean {
   const doc = frame?.contentDocument;
   if (!doc) return false;
@@ -269,9 +457,12 @@ export function ChoirPracticeDemo() {
   const [opened, setOpened] = useState(false);
   /** Whether the visitor has asked for the app, which is when it gets the wheel. */
   const [engaged, setEngaged] = useState(false);
+  /** Whether the app is actually making sound, read off its own transport. */
+  const [playing, setPlaying] = useState(false);
 
-  // The surrounding score waits for the real app to finish engraving.
-  useSectionBeat(rootRef, opened ? "score" : "loading", CHOIR_BEATS);
+  /* The surrounding score waits for the real app to finish engraving, and the whole
+     section reacts once it starts singing. */
+  useSectionBeat(rootRef, playing ? "singing" : opened ? "score" : "loading", CHOIR_BEATS);
 
   useEffect(() => {
     if (onScreen && !mounted) {
@@ -316,6 +507,25 @@ export function ChoirPracticeDemo() {
     return chainScroll(frameRef.current);
   }, [opened]);
 
+  /* Watch the transport. Attached once the score is up, because `#play-btn` does not
+     exist before then. */
+  useEffect(() => {
+    if (!opened) return;
+    return watchPlayback(frameRef.current, setPlaying) ?? undefined;
+  }, [opened]);
+
+  /**
+   * Listen to the mix while it is playing, and only while it is playing.
+   *
+   * Also torn down when the section leaves the screen. An analyser reading a graph
+   * nobody is looking at is a `requestAnimationFrame` loop and an FFT per frame spent on
+   * an effect that is three sections up.
+   */
+  useEffect(() => {
+    if (!playing || !onScreen) return;
+    return tapVoices(frameRef.current, rootRef.current);
+  }, [playing, onScreen]);
+
   /** Opens a score and reveals the mixer. Gives up quietly at any step. */
   const drive = useCallback(async () => {
     const doc = frameRef.current?.contentDocument;
@@ -344,7 +554,8 @@ export function ChoirPracticeDemo() {
       className="choir"
       ref={rootRef}
       data-opened={opened}
-      data-beat={opened ? "score" : "loading"}
+      data-playing={playing}
+      data-beat={playing ? "singing" : opened ? "score" : "loading"}
       data-lap="0"
     >
       <div className="choir-rehearsal">
