@@ -1166,17 +1166,16 @@ a:hover .external-arrow {
    gallery's rail and card rules while every test stayed green.
    =========================================================================== */
 
-/* A pinboard, on the same paper as everything else.
-   It used to be a near-black band with unframed photos bleeding into it at
-   different vertical offsets, no heading and no caption — which on a site made of
-   warm paper and a Georgia serif read as a different website spliced onto the end.
-   The rail stays, because a draggable rail of unrelated pictures is the point of
-   the section. What changed is that it now belongs to the page. */
+/* A row of photographs on the same paper as everything else, and nothing around
+   them. There was a heading, a caption, a paper mount with a pin through it, and a
+   crop that flattened every landscape into the same 4:3 box. All of that was
+   framing; the pictures are the section. What is left is the motion — tilts, a
+   hover lift, and a rail you can throw — because that is what makes it worth
+   dragging. */
 .fun-section {
   --fun-ink: var(--ink);
   --fun-muted: var(--muted);
   --fun-line: rgba(22, 25, 23, 0.16);
-  --fun-mount: #fbfaf6;
   position: relative;
   overflow: hidden;
   padding: clamp(3.5rem, 7vw, 6.5rem) 0 clamp(3rem, 5vw, 5rem);
@@ -1207,46 +1206,6 @@ a:hover .external-arrow {
     );
   content: "";
   pointer-events: none;
-}
-
-.fun-head {
-  position: relative;
-  z-index: 1;
-  max-width: 46rem;
-  margin: 0 auto clamp(1.8rem, 3.5vw, 3rem);
-  padding: 0 max(1rem, 3vw);
-}
-.fun-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.7rem;
-  color: var(--fun-muted);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-.fun-eyebrow span {
-  font-size: 0.8rem;
-}
-.fun-head h2 {
-  margin: 0;
-  /* The same serif as the project titles and the hero, at the same weight. This
-     is the whole reason the section now reads as part of the site. */
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.9rem, 4.4vw, 3.1rem);
-  font-weight: 400;
-  letter-spacing: -0.03em;
-  line-height: 1.03;
-}
-.fun-lede {
-  max-width: 34rem;
-  margin: 0.8rem 0 0;
-  color: var(--fun-muted);
-  font-size: clamp(0.86rem, 1.1vw, 1rem);
-  line-height: 1.55;
 }
 
 .media-rail-window {
@@ -1292,17 +1251,18 @@ a:hover .external-arrow {
   /* Room above and below for the tilts and the shadows; without it the rotated
      corners are clipped by the scroller. */
   gap: clamp(1.4rem, 2.6vw, 2.8rem);
-  padding: 2.2rem max(1rem, 3vw) 2.6rem;
+  padding: 2.6rem max(1rem, 3vw) 3rem;
 }
 
 .fun-card {
   position: relative;
-  /* No width. The print sets its own, from a shared height — see `.fun-media img`.
-     A fixed card width turned a 9:16 phone clip into a 760px-tall print that
-     overflowed the section. */
+  /* No width, at any breakpoint. The picture sets its own, from a shared height
+     and its own aspect ratio — see `.fun-media img`. A fixed card width is what
+     turned a 9:16 phone clip into a 760px-tall print that overflowed the section,
+     and the mobile breakpoint's `width: min(78vw, 430px)` was the same mistake
+     surviving in one media query. */
   flex: 0 0 auto;
   margin: 0;
-  scroll-snap-align: center;
   transition:
     transform 380ms var(--ease-out-back),
     filter 380ms ease;
@@ -1322,72 +1282,54 @@ a:hover .external-arrow {
   transform: rotate(-0.8deg) translateY(0.9rem);
 }
 /* Straightens and lifts under the pointer — the one bit of interaction in the
-   section, and it needs no explaining because everyone has picked a photo off a
-   board. */
+   section, and it needs no explaining because everyone has picked a photo up off
+   a table. */
 .fun-card:hover {
-  transform: rotate(0deg) translateY(-0.5rem) scale(1.02);
+  transform: rotate(0deg) translateY(-0.6rem) scale(1.03);
   z-index: 2;
-}
-
-/* The mount: a paper border around the print, with the image inset in it. */
-.fun-mount {
-  position: relative;
-  display: block;
-  padding: 0.7rem 0.7rem 0.7rem;
-  border-radius: 3px;
-  background: var(--fun-mount);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 2px 4px rgba(22, 25, 23, 0.1),
-    0 18px 40px -18px rgba(22, 25, 23, 0.4);
 }
 
 .fun-media {
   position: relative;
-  display: flex;
-  width: 100%;
-  height: auto;
+  display: block;
   overflow: hidden;
-  align-items: stretch;
-  border-radius: 1px;
-  /* Each print sits on its own photo's average colour, so letterboxing reads as
-     part of the image rather than as one flat grey. */
+  border-radius: 4px;
+  /* Each picture sits on its own average colour, so any gap while it decodes
+     reads as part of the image rather than as one flat grey. */
   background: var(--media-tint, #252a26);
+  box-shadow:
+    0 2px 6px rgba(22, 25, 23, 0.13),
+    0 24px 50px -22px rgba(22, 25, 23, 0.45);
+  /* The image is the only child; without this the block keeps a line box under it
+     and every card carries a few pixels of tint along its bottom edge. */
+  line-height: 0;
 }
 
 .fun-media img,
 .fun-media video {
   display: block;
-  /* One height for every print in the rail; the width comes from the aspect ratio.
-     Portrait and landscape then sit together as one set instead of one item
-     towering over its neighbours. The max-width is a guard against a panorama
-     stretching the rail; nothing in the set currently reaches it. */
-  height: clamp(210px, 38svh, 390px);
+  /* One height for every picture in the rail, and the width is whatever that
+     picture's own aspect ratio makes it — 246px for the 0.47 phone screenshot,
+     693px for a 4:3 landscape at the same height.
+
+     There is deliberately no `max-width` and no `object-fit` here. Together they
+     were what made the rail look normalised: a 520px cap against a 390px height
+     is a 4:3 box, so `cover` cropped every landscape in the set to exactly that
+     shape and the whole row came out the same proportions. */
+  height: clamp(260px, 54svh, 560px);
   width: auto;
-  max-width: min(74vw, 520px);
-  object-fit: cover;
+  max-width: none;
 }
 
+/* Transparent, so the img inside reports its own width up to the card. */
 .fun-media picture {
   display: block;
+  width: auto;
+  height: auto;
 }
 
 .fun-media video {
   background: var(--media-tint, #252a26);
-}
-
-/* The pin. Purely decorative, and the reason the tilts read as pinned rather
-   than as a layout accident. */
-.fun-pin {
-  position: absolute;
-  top: -0.42rem;
-  left: 50%;
-  width: 0.78rem;
-  height: 0.78rem;
-  margin-left: -0.39rem;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #f5f4ef, #b9483c 62%, #7d2a21);
-  box-shadow: 0 2px 5px rgba(22, 25, 23, 0.45);
 }
 
 /* Play/pause for the self-starting clips. Always legible while paused, and it
@@ -1646,10 +1588,6 @@ a:hover .external-arrow {
     padding-right: 4rem;
   }
 
-  .fun-card {
-    width: min(78vw, 430px);
-  }
-
 }
 
 /* Rendering and motion performance pass. */
@@ -1753,8 +1691,11 @@ a:hover .external-arrow {
   left: 0 !important;
 }
 
-.scene-image picture,
-.fun-media picture {
+/* `.fun-media picture` used to be in this list, and being later in the file it
+   won: it stretched every gallery picture to fill its container, which is the
+   opposite of what the gallery now wants. The gallery's own rule sizes it to the
+   image. Do not re-add it here. */
+.scene-image picture {
   display: block;
   width: 100%;
   height: 100%;
@@ -7611,346 +7552,32 @@ svg.bd-vehicle {
   }
 }
 
-/* ===========================================================================
-   The receipts band, under the hero
-   ---------------------------------------------------------------------------
-   Four figures, set as an editorial rule rather than as cards. A visitor who
-   reads one screen and leaves should still know the scale of what is below.
 
-   The figures are large and the notes under them are small on purpose: the
-   number is the argument and the note is the footnote that makes it checkable.
-   =========================================================================== */
-
-.receipts {
-  position: relative;
-  padding: clamp(2.6rem, 4vw, 4rem) clamp(1.4rem, 4vw, 3.4rem) clamp(2.2rem, 3vw, 3rem);
-  border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(22, 25, 23, 0.035), transparent 70%);
-}
-
-.receipts-row {
-  display: grid;
-  /* Four across down to about a tablet, then two, then one. Not auto-fit: the
-     figures must line up in a row a reader can compare, and auto-fit will happily
-     leave three on one line and one orphaned on the next. */
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(1.2rem, 2.6vw, 2.6rem);
-  max-width: 1560px;
-  margin: 0 auto;
-  padding: 0;
-  list-style: none;
-}
-
-.receipts-row > li {
-  display: grid;
-  gap: 0.3rem;
-  align-content: start;
-  padding-top: 1.1rem;
-  border-top: 2px solid var(--ink);
-  opacity: 0;
-  transform: translateY(12px);
-}
-
-.receipts.is-seen .receipts-row > li {
-  animation: receipt-land 720ms var(--ease-out-soft) forwards;
-  animation-delay: calc(var(--order) * 110ms);
-}
-
-@keyframes receipt-land {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.receipts-figure {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: clamp(2.1rem, 3.4vw, 3.4rem);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-}
-
-.receipts-label {
-  font-size: clamp(0.95rem, 1.1vw, 1.08rem);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.receipts-note {
-  max-width: 26ch;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--muted);
-}
-
-.receipts-source {
-  max-width: 1560px;
-  margin: clamp(1.8rem, 2.6vw, 2.6rem) auto 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.receipts-source code {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.78rem;
-  color: var(--ink);
-}
-
-@media (max-width: 1080px) {
-  .receipts-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 560px) {
-  .receipts-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
 /* ===========================================================================
    The closing section
    ---------------------------------------------------------------------------
-   The page used to stop at the photo rail and a three-link footer, so the last
-   thing anyone saw was a picture of dinner. This is the last paragraph of the
-   argument: what the work has in common, what was hard about it, and the checks
-   that will not let the page make a claim it cannot keep.
+   An address, a profile, and the legal index.
+
+   It used to be an essay: a thesis in three paragraphs, five verification
+   scripts described one at a time, and a per-repository table of test counts,
+   source lines and commit hashes. Seven sections of running software had already
+   made that argument, so a wall of text at the end of them was the page making
+   it a second time in words. The checks it described still exist and still run.
    =========================================================================== */
 
 .closing {
   position: relative;
-  padding: clamp(4rem, 7vw, 7.5rem) clamp(1.4rem, 4vw, 3.4rem) clamp(3rem, 5vw, 5rem);
+  padding: clamp(3rem, 5vw, 5.5rem) clamp(1.4rem, 4vw, 3.4rem) clamp(2.4rem, 4vw, 4rem);
   border-top: 1px solid var(--line);
   background:
     radial-gradient(120% 80% at 50% 0%, rgba(22, 25, 23, 0.06), transparent 60%),
     var(--paper);
 }
 
-.closing-head,
-.closing-body,
-.closing-contact,
-.closing .tally {
+.closing-contact {
   max-width: 1560px;
   margin: 0 auto;
-}
-
-.closing-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.9rem;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.closing-head h2 {
-  max-width: 24ch;
-  margin: 0;
-  font-family: ui-serif, Georgia, "Times New Roman", serif;
-  font-size: clamp(2.1rem, 4.6vw, 4rem);
-  font-weight: 400;
-  line-height: 1.02;
-  letter-spacing: -0.025em;
-}
-
-.closing-body {
-  display: grid;
-  /* The thesis is capped at a reading measure, so giving it the wider track left
-     a column of empty paper beside it at 1440 and a lake of it at 2560. The
-     checks are the long list; they get the room. */
-  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
-  gap: clamp(2rem, 5vw, 5rem);
-  margin-top: clamp(2.4rem, 4vw, 4rem);
-  align-items: start;
-}
-
-.closing-thesis p {
-  max-width: 44ch;
-  margin: 0 0 1.25rem;
-  /* Larger than body copy elsewhere. It is the argument the page has been making
-     for seven sections, and it is also what fills the height the checks column
-     takes up beside it. */
-  font-size: clamp(1.06rem, 1.32vw, 1.28rem);
-  line-height: 1.58;
-}
-
-.closing-thesis p:last-child {
-  margin-bottom: 0;
-  color: var(--muted);
-}
-
-.closing-thesis code,
-.closing-checks code {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.88em;
-}
-
-.closing-checks h3 {
-  margin: 0 0 1.2rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 2px solid var(--ink);
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.closing-checks dl {
-  display: grid;
-  gap: 1rem;
-  margin: 0;
-}
-
-.closing-checks dl > div {
-  display: grid;
-  gap: 0.28rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--line);
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.closing-checks dl > div:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.closing.is-seen .closing-checks dl > div {
-  animation: receipt-land 640ms var(--ease-out-soft) forwards;
-  animation-delay: calc(180ms + var(--order) * 90ms);
-}
-
-.closing-checks dt code {
-  font-size: 0.8rem;
-  color: var(--ink);
-}
-
-.closing-checks dd {
-  margin: 0;
-  font-size: 0.86rem;
-  line-height: 1.55;
-  color: var(--muted);
-}
-
-/* --- the per-repository tally --------------------------------------------- */
-
-.tally {
-  margin-top: clamp(2.6rem, 5vw, 5rem);
-  overflow-x: auto;
-}
-
-.tally table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-}
-
-.tally caption {
-  margin-bottom: 1rem;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  text-align: left;
-  color: var(--muted);
-}
-
-.tally th,
-.tally td {
-  padding: 0.72rem 0.9rem;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: middle;
-}
-
-.tally thead th {
-  border-bottom: 2px solid var(--ink);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.tally tbody th {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.tally-number {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.tally-zero {
-  padding: 0.1rem 0.42rem;
-  border-radius: 999px;
-  background: rgba(22, 25, 23, 0.08);
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
-  color: var(--ink);
-}
-
-/* The bar and its figure share a cell: a separate column for the bar would let
-   the two drift apart when the table scrolls sideways on a phone. */
-.tally-bar-cell {
-  display: grid;
-  grid-template-columns: minmax(60px, 200px) auto;
-  align-items: center;
-  gap: 0.7rem;
-}
-
-.tally-bar {
-  position: relative;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(22, 25, 23, 0.09);
-}
-
-.tally-bar::after {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: var(--fill);
-  border-radius: 999px;
-  background: var(--ink);
-  content: "";
-  transform: scaleX(0);
-  transform-origin: left;
-}
-
-.closing.is-seen .tally-bar::after {
-  animation: tally-fill 900ms var(--ease-out-soft) forwards;
-  animation-delay: 260ms;
-}
-
-@keyframes tally-fill {
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.tally-self th,
-.tally-self td {
-  border-bottom: 0;
-  color: var(--muted);
-}
-
-.tally-self th {
-  font-style: italic;
-  font-weight: 500;
-}
-
-/* --- contact -------------------------------------------------------------- */
-
-.closing-contact {
-  margin-top: clamp(3rem, 6vw, 6rem);
-  padding-top: clamp(2rem, 3vw, 3rem);
-  border-top: 1px solid var(--line);
 }
 
 .closing-contact-lead {
@@ -8011,30 +7638,6 @@ svg.bd-vehicle {
 
 .closing-contact-links a:hover {
   text-decoration-color: currentColor;
-}
-
-@media (max-width: 900px) {
-  .closing-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .tally-bar-cell {
-    grid-template-columns: minmax(48px, 120px) auto;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .receipts-row > li,
-  .closing-checks dl > div {
-    opacity: 1;
-    transform: none;
-    animation: none;
-  }
-
-  .tally-bar::after {
-    animation: none;
-    transform: scaleX(1);
-  }
 }
 
 /* ===========================================================================

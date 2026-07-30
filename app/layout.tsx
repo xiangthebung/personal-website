@@ -1,22 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
-import { ledger } from "./ledger.generated";
 import "./globals.css";
 
 /**
- * One sentence, and the figure in it is generated rather than typed.
+ * One sentence, so a share of this link is not a title and a photograph with
+ * nothing about what the page is.
  *
- * There was no description at all, which meant every share of this link showed a
- * title and a photograph and nothing about what the page is. The test count comes
- * from `app/ledger.generated.ts` so a search result cannot end up quoting a number
- * the page itself stopped printing.
+ * It used to end with a generated test count read out of `app/ledger.generated.ts`.
+ * The page does not print counts any more, and a search result should not be the
+ * one place left that does — so it names the projects instead, which is what
+ * someone reading a search result wants to know.
  */
 const DESCRIPTION =
   `Seven side projects, each running on the page as a self-driving scene: ` +
   `a choir rehearsal app, four Chrome extensions, a PDF study workspace and an ` +
-  `n-back game. ${ledger.totals.tests} automated tests across ` +
-  `${ledger.totals.projects} repositories.`;
+  `n-back game.`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

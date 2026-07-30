@@ -64,6 +64,21 @@ export type Project = {
    * working software and is the wrong promise now that they are films.
    */
   invitation: string;
+  /**
+   * What the project does, four or five lines of it.
+   *
+   * Each line has to describe the software from outside: what it does for the
+   * person using it, and where a technical decision is the reason something is
+   * possible, that decision stated as the reason. Not internals for their own
+   * sake, and never a count of anything.
+   *
+   * This list used to hold lines like "Frames measured at 48x27, Rec.709 luma,
+   * 64-bin histogram" and one that counted the project's own test suite. Both
+   * were true and neither told a reader what the extension is for.
+   *
+   * A line still has to be checkable by reading the repository the section links
+   * to. If it cannot be found there, delete it rather than softening it.
+   */
   facts: string[];
 };
 
@@ -84,10 +99,11 @@ const projectData: Project[] = [
     invitation:
       "Not a scene — the actual application, running in this page with a score already open. Sound is one press away.",
     facts: [
-      "No notation library: every clef, stem and beam is drawn as a Canvas path",
-      "No samples either — each voice is a section of detuned singers through formant filters",
-      "YIN pitch detection, compensated back to where you actually sang it",
-      "281 unit tests, 70 browser tests, zero runtime dependencies",
+      "Open a MusicXML score and it engraves the whole thing — beams, ties, slurs, key changes",
+      "Four rehearsal mixes: mostly your part, only your part, everyone but you, everyone",
+      "Every voice is synthesised, so a score plays without waiting for a recording of it",
+      "Sing into the microphone and it shows where your pitch sat against the written note",
+      "Scores never leave the device, and the finished mix exports as a WAV",
     ],
   },
   {
@@ -130,10 +146,11 @@ const projectData: Project[] = [
     invitation:
       "Four parts of the workspace in turn: notes floating over the slide, a tutor that knows which slide you are on, a marked quiz, and the terms paired up.",
     facts: [
-      "Notes arrive in batches of 3–12 slides, sized by how dense the slides are",
-      "Review sets are planned around the model's rate limit, not the network's",
-      "Model output is treated as hostile: repaired where possible, dropped where not",
-      "Your API key, your device — session storage by default, never logged server-side",
+      "Explanations arrive a batch of slides at a time, so reading starts in seconds",
+      "A tutor you can ask about the slide you are on, given that slide's text and notes",
+      "Practice built from the same deck: quizzes, matched pairs and fill-in-the-blanks",
+      "Three layouts — notes beside the slide, floating over it, or out of the way",
+      "Your Gemini key stays on your device, and the server strips it from every log line",
     ],
   },
   {
@@ -151,10 +168,11 @@ const projectData: Project[] = [
     invitation:
       "One save, then the connection dies. Every label under the bar is the string the extension actually prints.",
     facts: [
-      "Streams the live DOM back in 4 MiB chunks, because Chrome caps message size",
-      "Re-parses stylesheets and inlines their @import and url() dependencies recursively",
-      "Saved scripts run in a sandbox with connect-src 'none' — nothing phones home",
-      "IndexedDB, up to 1,000 pages and 4 GiB in a single save",
+      "Saves the page as rendered, with its stylesheets, images and the fonts they ask for",
+      "Follow the links and a whole section of a site comes with it, up to 1,000 pages",
+      "Save as I browse collects the pages you visit, then you untick the ones you do not want",
+      "A library with folders, and search that reaches the text inside a saved page",
+      "With no connection, opening a saved address serves the saved copy instead",
     ],
   },
   {
@@ -172,10 +190,11 @@ const projectData: Project[] = [
     invitation:
       "Counting down on the toolbar with nothing open, and a notification five minutes before the bus reaches your stop.",
     facts: [
-      "Parses the full regional GTFS feed in the browser: 310k stop times into typed arrays",
-      "Live predictions merged over the timetable under six documented accuracy rules",
-      "Service-day maths survives times past midnight — the agency publishes 25:05:00",
-      "Location, when granted, is used on the device and never sent anywhere",
+      "Your saved stops, with the next departure counting down on the toolbar icon",
+      "Live predictions laid over the published timetable, so a late bus reads as late",
+      "An alert before the bus reaches your stop, and how many stops away it is now",
+      "Region of Waterloo open data, read straight from the source with no server in between",
+      "Location, when you grant it, is used on the device and never sent anywhere",
     ],
   },
   {
@@ -194,9 +213,10 @@ const projectData: Project[] = [
     invitation:
       "Two back means comparing what is on screen now with what was on screen two cues ago. Here is one match arriving.",
     facts: [
-      "Exactly 6 matches per stream in 20 scored trials, planned up front rather than rolled",
+      "Dual mode tracks a position and a spoken letter; triple mode adds a colour",
+      "One back to six back, a cue every 1.5 to 4 seconds, and it suggests where to go next",
       "Scored on balanced accuracy, so pressing everything does worse than pressing nothing",
-      "The app speaks the letter; this page prints it. C H K L Q R S T, picked for not rhyming",
+      "Colours differ in lightness as well as hue, so the third stream survives colour blindness",
       "Practice, not an assessment — the transfer research is contested and this makes no claim",
     ],
   },
@@ -215,11 +235,12 @@ const projectData: Project[] = [
     invitation:
       "The same shot twice: once as the film shipped it, once through the extension. Watch what the explosion does to the volume.",
     facts: [
-      "An SVG feComponentTransfer filter, 33-entry lookup table, rewritten every frame",
-      "Frames measured at 48×27, Rec.709 luma, 64-bin histogram",
-      "Dims in 0.3 s and recovers in 1.6 s — asymmetric on purpose",
-      "Paints over frames instead of reading them, so it also works on DRM video",
-      "217 unit tests, 60 end-to-end checks in real Chrome",
+      "Closes the gap between the explosions and the dialogue, and lifts the picture's shadows with it",
+      "Adapts to the scene: shadows open on a dark shot, highlights hold back on a bright one",
+      "A bright cut is dimmed on the next frame and let back up over about a second and a half",
+      "Paints a filter over the frames rather than reading them, so it works on DRM video too",
+      "Music is left alone — dynamic range is the point of a record and a nuisance in a film",
+      "Stands down until night: a light sensor decides where there is one, the clock otherwise",
     ],
   },
 ];

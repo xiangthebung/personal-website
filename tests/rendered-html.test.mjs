@@ -423,71 +423,82 @@ test("the index in the hero previews every project rather than listing it", asyn
   assert.match(html, /class="imark-slot" aria-hidden="true"|aria-hidden="true" class="imark-slot"/);
 });
 
-test("every figure the page prints comes from the generated ledger", async () => {
-  const response = await render();
-  const html = await response.text();
+test("the page counts nothing at the reader", async () => {
+  const [html, rawProjects] = await Promise.all([
+    render().then((response) => response.text()),
+    read("../app/projects.ts"),
+  ]);
   const text = html.replace(/<[^>]+>/g, " ");
 
-  const source = await read("../app/ledger.generated.ts");
-  const ledger = JSON.parse(
-    `{${source.slice(source.indexOf("{", source.indexOf("= {")) + 1, source.lastIndexOf("} as const"))}}`,
-  );
+  /* Comments stripped before matching. The doc comment on `facts` quotes the lines
+     this test exists to keep out, as the explanation of why — so checking the raw
+     source makes the warning against a phrase fail on the warning itself. */
+  const projectsSource = rawProjects
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
 
-  const groups = new Intl.NumberFormat("en-CA");
-
-  /* The point of the generated file is that no number on this page was typed by a
-     person. If the band and the file disagree, someone edited one of them. */
-  for (const figure of [
-    groups.format(ledger.totals.tests),
-    groups.format(ledger.totals.lines),
-    String(ledger.totals.files),
-    `${ledger.totals.zeroDependencyProjects} of ${ledger.totals.projects}`,
+  /*
+   * There used to be a band of four figures under the hero (960 automated tests,
+   * 104,401 lines of source, 4 of 7 shipping nothing at runtime, 4 extensions
+   * packaged), a per-repository table of test counts and commit hashes in the
+   * closing section, and test totals in the project descriptions. A generator,
+   * `scripts/ledger.mjs`, produced all of it by running every suite.
+   *
+   * It was asked for twice to be taken off, so this is the check that keeps it
+   * off: a portfolio counting its own tests at a reader is talking about itself
+   * rather than about the software.
+   */
+  for (const claim of [
+    /\bautomated tests\b/i,
+    /\blines of source\b/i,
+    /\bship nothing at runtime\b/i,
+    /\bruntime deps\b/i,
+    /\b\d+ unit tests\b/i,
+    /\b\d+ (?:end-to-end|browser|e2e) (?:tests|checks)\b/i,
+    /\bzero runtime dependencies\b/i,
   ]) {
-    assert.ok(text.includes(figure), `the page does not print ${figure} from the ledger`);
-  }
-
-  // The tally names every project, at the commit it was measured at.
-  for (const repo of ledger.repos) {
-    assert.ok(text.includes(repo.label), `the tally is missing ${repo.label}`);
-    assert.ok(text.includes(repo.head), `the tally is missing ${repo.slug} at ${repo.head}`);
-  }
-
-  /* Claimed in the band as "every one of them green". The generator throws rather
-     than record a failing suite, so a zero here would mean a suite vanished. */
-  for (const repo of ledger.repos) {
-    assert.ok(repo.tests > 0, `${repo.slug} records no tests`);
-    assert.equal(
-      repo.tests,
-      repo.suites.reduce((sum, suite) => sum + suite.passed, 0),
-      `${repo.slug}'s total does not match its suites`,
+    assert.doesNotMatch(text, claim, `the page is counting at the reader again: ${claim}`);
+    assert.doesNotMatch(
+      projectsSource,
+      claim,
+      `a project describes itself with a count again: ${claim}`,
     );
   }
 
-  // Every project on the page has a row, and every row is a project on the page.
-  const ids = [...(await read("../app/projects.ts")).matchAll(/^\s{4}id: "([^"]+)",$/gm)].map(
-    (match) => match[1],
-  );
-  assert.deepEqual(
-    ledger.repos.map((repo) => repo.projectId).sort(),
-    [...ids].sort(),
-    "the ledger and projects.ts disagree about which projects exist",
-  );
+  // The generator and its output are gone, so nothing can quietly reinstate them.
+  for (const path of ["../app/ledger.generated.ts", "../scripts/ledger.mjs", "../app/ledger.tsx"]) {
+    assert.equal(await exists(path), false, `${path} is back`);
+  }
 });
 
-test("the closing section names checks that exist", async () => {
-  const response = await render();
-  const html = await response.text();
+test("the gallery is pictures and nothing else", async () => {
+  const [html, css, pageSource] = await Promise.all([
+    render().then((response) => response.text()),
+    read("../app/globals.css"),
+    read("../app/page.tsx"),
+  ]);
 
-  /* The section's credibility rests entirely on these being real. A renamed or
-     deleted script must fail here rather than leave the page describing
-     machinery it no longer has. */
-  const named = [...(await read("../app/closing.tsx")).matchAll(/script:\s*"([^"]+)"/g)].map(
-    (match) => match[1],
-  );
-  assert.ok(named.length >= 4, "the closing section stopped naming its checks");
+  /* No heading and no caption, so the section has to be labelled some other way
+     or it is an unnamed region to a screen reader. */
+  assert.match(html, /<section class="fun-section" aria-label="[^"]+"/);
+  assert.doesNotMatch(pageSource, /fun-head|fun-lede|fun-eyebrow/, "the gallery heading is back");
 
-  for (const script of named) {
-    assert.ok(await exists(`../${script}`), `closing.tsx names ${script}, which does not exist`);
-    assert.ok(html.includes(script), `${script} is not rendered on the page`);
-  }
+  /* The crop is the thing to guard. `max-width` and `object-fit: cover` on the
+     same element meant the cap and the height together defined one box, and every
+     landscape in the set was cut to fit it — which is what "they all look like the
+     same aspect ratio" was. Width has to stay free so it can follow the picture. */
+  const block = css.match(/\.fun-media img,\s*\r?\n\.fun-media video \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(block, "the gallery no longer sizes its own media");
+
+  // Comments out, for the same reason as the test above: the rule explains itself
+  // by naming the two properties that must not be in it.
+  const media = block.replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(media, /max-width:\s*none/, "the gallery media is capped in width again");
+  assert.doesNotMatch(media, /object-fit/, "the gallery is cropping its media again");
+  assert.match(media, /width:\s*auto/, "the gallery media no longer takes its own width");
+
+  // The mount and the pin are gone, and the media is bigger than it was.
+  assert.doesNotMatch(css, /\.fun-mount|\.fun-pin/, "the paper mount is back");
+  const height = media.match(/height:\s*clamp\((\d+)px/);
+  assert.ok(height && Number(height[1]) >= 240, "the gallery media shrank again");
 });

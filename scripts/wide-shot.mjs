@@ -135,12 +135,14 @@ for (const id of ids) {
   );
 }
 
-/* The two sections that are not projects. They hold the page's numeric claims and
-   its closing argument, and both are wide multi-column layouts, so they belong
-   under the same width discipline as everything else — the measure below is the
-   one that catches a figure row stretching to 2392px over a 1180px page. */
+/* The two sections that are not projects. Both used to be wide multi-column
+   layouts holding the page's numeric claims, which is what the measure below was
+   for — it is the check that caught a figure row stretching to 2392px over a
+   1180px page. The band is gone and the closing section is an address now, but the
+   gallery took its place as a full-width section with its own sizing problem, so
+   the same discipline applies. */
 for (const [selector, label] of [
-  [".receipts", "receipts"],
+  [".fun-section", "gallery"],
   [".closing", "closing"],
 ]) {
   if (only.length > 0 && !only.includes(label)) continue;
@@ -157,17 +159,32 @@ for (const [selector, label] of [
   await node.screenshot({ path: path.join(outDir, `${width}-${label}.png`) });
 
   const measured = await node.evaluate((el) => {
-    const inner = el.querySelector(".receipts-row, .closing-body");
+    const inner = el.querySelector(".fun-rail, .closing-contact");
+    /* Every print in the gallery shares a height and takes its own width from its
+       own aspect ratio. So the check that the rail is not normalising anything is
+       that those widths differ: if the narrowest and the widest card are the same,
+       something is cropping again. */
+    const cards = Array.from(el.querySelectorAll(".fun-card")).map((card) => card.offsetWidth);
     return {
       section: el.offsetWidth,
       measure: inner?.offsetWidth ?? 0,
-      columns: inner ? getComputedStyle(inner).gridTemplateColumns.split(" ").length : 0,
+      cards: cards.length,
+      narrowest: cards.length ? Math.min(...cards) : 0,
+      widest: cards.length ? Math.max(...cards) : 0,
     };
   });
   console.log(
     `  ${label.padEnd(18)} section ${String(measured.section).padStart(4)}  ` +
-      `measure ${String(measured.measure).padStart(4)}  columns ${measured.columns}`,
+      `measure ${String(measured.measure).padStart(5)}` +
+      (measured.cards
+        ? `  cards ${measured.cards}  widths ${measured.narrowest}-${measured.widest}px`
+        : ""),
   );
+
+  if (measured.cards && measured.narrowest === measured.widest) {
+    console.error(`  ${label}: every card is ${measured.widest}px wide — media is being cropped`);
+    process.exitCode = 1;
+  }
 }
 
 const overflow = await page.evaluate(() => ({

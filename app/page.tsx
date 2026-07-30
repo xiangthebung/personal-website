@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Backdrop } from "./backdrops";
 import { Closing } from "./closing";
 import { IndexMark } from "./index-marks";
-import { ReceiptsBand } from "./ledger";
 import { MediaRail, ProjectFocusManager } from "./page-chrome";
 import { DemoMount } from "./demos/demo-mount";
 import { policiesFor } from "./legal/policies";
@@ -40,23 +39,29 @@ function ExternalArrow() {
   );
 }
 
-/** Widths the gallery actually paints media at. */
-const GALLERY_SIZES = "(max-width: 660px) 78vw, min(30vw, 520px)";
+/**
+ * How wide the browser should expect this print to land.
+ *
+ * Every print in the gallery shares a height and takes whatever width its own
+ * aspect ratio gives it, so one `sizes` string for the whole rail would be wrong
+ * for all but one shape: the set runs from a 0.47 phone screenshot to a 1.33
+ * landscape, which is 246px against 693px at the same height. The two numbers are
+ * the height clamp in `.fun-media img` — 300 for the small end, 560 for the large.
+ */
+function gallerySizes(src: string): string {
+  const asset = mediaAsset(src);
+  if (!asset?.width || !asset?.height) return "(max-width: 660px) 78vw, 560px";
+
+  const ratio = asset.width / asset.height;
+  return `(max-width: 660px) ${Math.round(ratio * 300)}px, ${Math.round(ratio * 560)}px`;
+}
 
 /**
  * Serves AVIF (5-20x smaller than the source PNG/JPEG) with the original as the
  * fallback, and carries the intrinsic size so nothing reflows while media
  * decodes. Both come from the generated manifest; see scripts/build-media.mjs.
  */
-function OptimizedImage({
-  src,
-  alt,
-  sizes = GALLERY_SIZES,
-}: {
-  src: string;
-  alt: string;
-  sizes?: string;
-}) {
+function OptimizedImage({ src, alt }: { src: string; alt: string }) {
   const asset = mediaAsset(src);
   const image = (
     <img
@@ -75,7 +80,7 @@ function OptimizedImage({
 
   return (
     <picture>
-      <source type="image/avif" srcSet={asset.avif} sizes={sizes} />
+      <source type="image/avif" srcSet={asset.avif} sizes={gallerySizes(src)} />
       {image}
     </picture>
   );
@@ -344,31 +349,19 @@ export default function Home() {
         </nav>
       </section>
 
-      <ReceiptsBand />
-
       <div id="projects">
         {projects.map((project, index) => (
           <ProjectSection project={project} index={index} key={project.id} />
         ))}
       </div>
 
-      {/* The gallery. It kept its horizontal rail, which is the point of it, and
-          lost the black band it used to sit in: on a site made of paper, a section
-          that switches to near-black with unframed photos bleeding into it reads as
-          a different website. It is a pinboard now — same paper, same serif, prints
-          on mounts, pinned at angles. */}
-      <section className="fun-section" aria-labelledby="fun-title">
-        <header className="fun-head">
-          <p className="fun-eyebrow">
-            <span aria-hidden="true">✳</span> Off the clock
-          </p>
-          <h2 id="fun-title">Other things I pointed a camera at</h2>
-          <p className="fun-lede">
-            Sunsets, dinner, a gym floor plan I annotated for no reason. Drag it, or
-            use the arrow keys.
-          </p>
-        </header>
-
+      {/* The gallery: a draggable row of photographs, each at its own proportions.
+          No heading and no caption — a row of pictures is self-evident, and the
+          paper mount and pin that used to frame each one were furniture around the
+          thing worth looking at. The section is labelled here rather than by a
+          visible title, and the rail inside carries its own instructions for
+          assistive tech; see MediaRail. */}
+      <section className="fun-section" aria-label="Photos and clips">
         <MediaRail itemCount={funMedia.length}>
           <div className="fun-rail">
             {funMedia.map((media, order) => (
@@ -380,14 +373,11 @@ export default function Home() {
                    often enough to look like a mistake. */
                 data-tilt={order % 4}
               >
-                <div className="fun-mount">
-                  {media.kind === "image" ? (
-                    <GalleryImage src={media.src} alt={media.alt} />
-                  ) : (
-                    <GalleryClip src={media.src} alt={media.alt} />
-                  )}
-                </div>
-                <span className="fun-pin" aria-hidden="true" />
+                {media.kind === "image" ? (
+                  <GalleryImage src={media.src} alt={media.alt} />
+                ) : (
+                  <GalleryClip src={media.src} alt={media.alt} />
+                )}
               </figure>
             ))}
           </div>

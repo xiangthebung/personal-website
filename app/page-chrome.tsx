@@ -636,9 +636,9 @@ export function ProjectFocusManager() {
     projects.forEach((project) => arrivals.observe(project));
 
     /* The same one-shot arrival for anything outside the project run that wants
-       it — the receipts band and the closing section. They are server components
-       several levels up from here, so they opt in with an attribute rather than by
-       becoming client components for one class name. */
+       it — currently just the closing section. It is a server component several
+       levels up from here, so it opts in with an attribute rather than by becoming
+       a client component for one class name. */
     document
       .querySelectorAll<HTMLElement>("[data-arrive]")
       .forEach((element) => arrivals.observe(element));
