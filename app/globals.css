@@ -9427,6 +9427,14 @@ svg.bd-vehicle {
   width: 100%;
   height: var(--pack-band-height);
   overflow: visible;
+  /* Ends exactly where the browser window begins.
+     `--pack-window-left` is measured and published by the pod; the fallback is the old
+     hard-coded 27.5%, which is right at 1440px and wrong everywhere else, so it only
+     applies for the frame before the measurement lands. The cut is what makes the cable
+     read as passing *behind* the window rather than stopping in mid-air: a hard vertical
+     end that coincides with an edge is an occlusion, and the same end three pixels away
+     from that edge is a mistake. */
+  clip-path: inset(0 calc(100% - var(--pack-window-left, 27.5%)) 0 0);
   /* In front of the scene, so it has to cast onto it — otherwise it reads as a line
      drawn on the glass rather than a cable lying across a desk. Lighter and tighter
      than it was: a 12px blur at 30% under a 9px line was most of why the thing looked
@@ -9497,6 +9505,45 @@ svg.bd-vehicle {
   align-items: center;
   justify-content: center;
   transform: translate(-50%, -50%);
+}
+
+/* --- where the coupler sits, once the window has been measured -------------
+   Anchored to the window's left edge rather than to a percentage of the viewport, and
+   for the same reason the cable's end is: the window is not a percentage of anything, so
+   a percentage cannot stay a fixed distance from it. At 18% the coupler was 99px clear of
+   the window at 1440 and 27px *inside* it at 1024 — the one part of this that exists to
+   be seen coming apart, hidden behind the article at most widths.
+
+   110px short of the edge puts its right-hand plug about 76px clear, which is a plug's
+   width and a bit. */
+#pagepack[data-pack-room="roomy"] .bd-pack-joint {
+  left: calc(var(--pack-window-left) - 110px);
+}
+
+/* And when there is no floor at all.
+   Below about 1200px the browser window starts within 200px of the section's left edge —
+   53px at 820 — so there is no desk beside it to lay a cable on. Rather than pick a
+   breakpoint and hope it matches the grid, the pod sets `data-pack-room` from the space it
+   actually measured, and the whole run drops to the bottom edge where the full width is
+   free. The cable is still pulled apart in full view; it is just doing it along the floor
+   instead of beside the desk. */
+/* Declared on the layer, not on the section.
+   `.bd--pagepack-front` sets `--pack-band-top` on itself, and a custom property set
+   directly on an element beats one inherited from an ancestor however specific the
+   ancestor's selector is. Putting this on `#pagepack[data-pack-room="tight"]` looked
+   correct, passed review in my head, and did nothing at all — the measured coupler stayed
+   exactly where the 66.4% band had put it, inside the window. */
+#pagepack[data-pack-room="tight"] .bd--pagepack-front {
+  /* Under the window's measured lower edge, not at a percentage of the section. 86% put
+     the coupler inside the window at 1024 and 1180: the section's height and the window's
+     height do not scale together, so there is no percentage that clears it everywhere. */
+  --pack-band-top: calc(var(--pack-window-bottom) + 14px);
+  --pack-band-height: 84px;
+  --pack-joint-left: 34%;
+}
+/* Nothing to run behind, so nothing to clip against. */
+#pagepack[data-pack-room="tight"] .bd-pack-cable {
+  clip-path: none;
 }
 
 .bd-pack-plug {
@@ -9613,8 +9660,9 @@ svg.bd-vehicle {
 .bd-pack-packet {
   fill: #287dd7;
   opacity: 0.72;
-  /* Follows the left wire's new path. Kept in step by hand because `offset-path` takes
-     a literal — if the path in the component changes, this changes with it. */
+  /* Follows the left wire's path. Kept in step by hand because `offset-path` takes a
+     literal — if the *left* path in the component changes, this changes with it. The
+     right path does not matter here: packets only travel the inbound half. */
   offset-path: path("M -40 384 C 110 384 196 348 250 340");
   offset-rotate: 0deg;
   animation: pack-packet 3.4s linear infinite;
@@ -11754,10 +11802,10 @@ svg.bd-vehicle {
 
   /* Narrow: the browser is taller relative to the section, so the floor the cable
      runs along is lower still. One variable, and the connectors follow it. */
-  .bd--pagepack-front {
-    --pack-band-top: 83%;
-    --pack-band-height: 17%;
-  }
+  /* The band's position at narrow widths is measured now, not guessed — see
+     `#pagepack[data-pack-room="tight"] .bd--pagepack-front`, which every width this media
+     query covers will be in. The 83% that used to be here was a second source of truth
+     for the same number. */
   .bd-pack-status {
     top: 46%;
   }

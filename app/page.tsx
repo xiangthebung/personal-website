@@ -252,9 +252,14 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 
         <div className="project-window">
           <div className="demo">
-            <div className="demo-chrome">
-              <p>{project.invitation}</p>
-            </div>
+            {/* Only where there is one. Four of the seven have none — see the note on
+                `invitation` in `projects.ts` — and an empty chrome row would leave the
+                reserved band above the scene doing nothing but taking up space. */}
+            {project.invitation && (
+              <div className="demo-chrome">
+                <p>{project.invitation}</p>
+              </div>
+            )}
 
             <div
               className={`demo-surface${project.well === "dark" ? " demo-surface--dark" : ""}`}

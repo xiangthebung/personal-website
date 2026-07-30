@@ -311,7 +311,12 @@ function PagePackForeground() {
    */
   const paths = {
     left: "M-40 384 C110 384 196 348 250 340",
-    right: "M326 340 C372 337 404 337 440 339",
+    /* Runs well past any window edge on purpose. What ends this cable is a `clip-path`
+       positioned from `--pack-window-left`, which the pod measures — see the effect in
+       `app/demos/pagepack/demo.tsx`. Drawing it to a fixed x and hoping that x is the
+       window's edge is what produced a cord across the article at every width except the
+       one it was measured at. */
+    right: "M326 340 C372 337 460 336 1700 336",
   };
 
   return (

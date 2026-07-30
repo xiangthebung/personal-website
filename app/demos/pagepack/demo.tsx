@@ -27,7 +27,7 @@
  * running in the page.
  */
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
@@ -241,8 +241,18 @@ function labelFor(beat: BeatName): string {
   });
 }
 
+/**
+ * How much bare floor the cable needs to the left of the browser window.
+ *
+ * The coupler is ~68px wide and has to be seen pulling apart, so it wants its own width
+ * again in clearance on either side. Below this the section has no desk to lay a cable
+ * on and the run moves to the bottom edge instead.
+ */
+const CABLE_FLOOR_PX = 210;
+
 export function PagePackDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const browserRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
   const { beat, index, run, still } = useStoryboard(BEATS, {
     running: onScreen,
@@ -253,6 +263,85 @@ export function PagePackDemo() {
 
   // The cable, section outage and reading field follow the save film beat for beat.
   useSectionBeat(stageRef, beat, BEATS);
+
+  /**
+   * Tells the section's cable where this browser window actually is.
+   *
+   * The cable is drawn in `.bd--pagepack-front` as an SVG with `viewBox="0 0 1600 720"`
+   * stretched to the full width with `preserveAspectRatio="none"`, so every x in its path
+   * is a percentage of the viewport. The window it is supposed to run behind is a
+   * max-width box inside a two-column grid, so its left edge is not a percentage of
+   * anything. Those two facts cannot be reconciled by choosing a better number, which is
+   * what the previous version tried: the path stopped at x=440 of 1600 — 27.5% — from a
+   * measurement taken at one width.
+   *
+   * Measured across the range, that single number was wrong nearly everywhere.
+   *
+   *     width   window left   cable ended   error
+   *     820     53            226           176px *across the article*
+   *     1024    72            282           210px across the article
+   *     1180    191           325           134px across the article
+   *     1440    392           396           4px — the width it was measured at
+   *     1600    472           440           32px short, ending in mid-air
+   *     2560    952           704           248px short
+   *
+   * So at 1440 it looked deliberate and at every other width it was either a cord thrown
+   * over the page — the thing that was reported in the first place — or a wire stopping
+   * in space. The coupler was worse: below about 1200px the window's left edge is inside
+   * it, so the one part of this that has to be *seen* coming apart was underneath the
+   * article.
+   *
+   * Publishing the measurement fixes both. `--pack-window-left` is where the window
+   * starts, in pixels from the section's left edge; the stylesheet clips the cable there
+   * and hangs the coupler a fixed distance short of it.
+   *
+   * `data-pack-room` is the honest admission that below a certain width there is no floor
+   * to lay a cable on at all — at 820px the window begins 53px in. Rather than pick a
+   * breakpoint and hope, the flag is set from the space actually available, and the
+   * stylesheet moves the run to the bottom edge when there is not enough.
+   *
+   * Resize and layout only. Nothing here needs to run while the scene plays, so it is not
+   * in the storyboard's frame loop; `ResizeObserver` on the section covers a window
+   * resize, a font swap and the section's own height changing as scenes mount.
+   */
+  useEffect(() => {
+    const stage = stageRef.current;
+    const section = stage?.closest<HTMLElement>("[data-project-section]");
+    if (!stage || !section) return;
+
+    let last = { left: -1, bottom: -1 };
+    const publish = () => {
+      const browser = browserRef.current;
+      if (!browser) return;
+      const left = Math.round(
+        browser.getBoundingClientRect().left - section.getBoundingClientRect().left,
+      );
+      const box = browser.getBoundingClientRect();
+      const sectionBox = section.getBoundingClientRect();
+      const bottom = Math.round(box.bottom - sectionBox.top);
+      if (left === last.left && bottom === last.bottom) return;
+      last = { left, bottom };
+      section.style.setProperty("--pack-window-left", `${left}px`);
+      /* Where the window's lower edge is, so the `tight` layout can hang the run under it
+         rather than at a percentage. 86% of the section put the coupler *inside* the
+         window at 1024 and 1180 — the section's height and the window's height do not
+         scale together, so no single percentage clears it. */
+      section.style.setProperty("--pack-window-bottom", `${bottom}px`);
+      section.dataset.packRoom = left >= CABLE_FLOOR_PX ? "roomy" : "tight";
+    };
+
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(section);
+    observer.observe(stage);
+
+    return () => {
+      observer.disconnect();
+      section.style.removeProperty("--pack-window-left");
+      section.style.removeProperty("--pack-window-bottom");
+      delete section.dataset.packRoom;
+    };
+  }, []);
 
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
 
@@ -290,7 +379,8 @@ export function PagePackDemo() {
       }
     >
       {/* ---------------------------------------------------------------- browser */}
-      <div className="pp-browser">
+      {/* Measured, so the section's cable knows where to stop. See the effect above. */}
+      <div className="pp-browser" ref={browserRef}>
         {/* The outage, as a wash rather than a filter on this element. See the
             stylesheet: a filter here would drain the popup with everything else,
             and the popup surviving is the shot. */}

@@ -63,7 +63,23 @@ export type Project = {
    * press and play, which was honest about demos built as working software and is
    * the wrong promise now that they are films.
    */
-  invitation: string;
+  /**
+   * Optional, and most projects no longer have one.
+   *
+   * This was the last layer of prose to be audited, and three of the seven were saying
+   * something already on the same screen. PDF Explainer's "Four parts of the workspace,
+   * in turn" sat directly above a rail naming all four and lighting the one playing.
+   * GRT's "Nothing open. Five minutes out, it tells you" was both of its own notes,
+   * shortened. N-Back's "Two back: now, against two cues ago" was the fourth statement of
+   * that rule on one screen, after the caption, the strip's own `2 BACK` badge and the
+   * register chips in the backdrop.
+   *
+   * What earns one: an instruction the visitor needs (Choir — the score has to be
+   * clicked), or a fact about the scene's *structure* that nothing in the frame states
+   * (Decaf and PagePack both run a before and an after; Night Neutralizer's two panels
+   * are the same shot, which two dark rectangles cannot say for themselves).
+   */
+  invitation?: string;
   /**
    * Three short notes about the project. Fragments, not sentences.
    *
@@ -152,7 +168,8 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/pdf-explainer",
     demo: "pdf-explainer",
     well: "light",
-    invitation: "Four parts of the workspace, in turn.",
+    // No invitation. The act rail across the top of the scene names the four parts and
+    // lights the one playing, which is what this line was doing less precisely.
     notes: [
       "Notes sit over the slide, faint until you move towards them",
       "Ask it questions about the slide you are looking at",
@@ -190,7 +207,8 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/grt-bus-time",
     demo: "grt-next-bus",
     well: "light",
-    invitation: "Nothing open. Five minutes out, it tells you.",
+    /* No invitation. It was "Nothing open. Five minutes out, it tells you", which is the
+       first and third notes below, shortened. */
     notes: [
       "The countdown sits on your toolbar with nothing open",
       "Real bus positions, so a late bus shows up as late",
@@ -209,7 +227,11 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/night-neutralizer",
     demo: "night-neutralizer",
     well: "dark",
-    invitation: "The same shot twice. Watch what the explosion does.",
+    /* Trimmed. "Watch what the explosion does" was telling the visitor to watch a thing
+       that is about to be the loudest event on the page. What the line is for is the
+       first half: two dark rectangles side by side could be two different shots, and the
+       entire comparison depends on them being one. */
+    invitation: "The same shot, twice.",
     notes: [
       "Explosions come down, whispers come up",
       "Dark scenes brighten without the bright ones blowing out",
@@ -233,7 +255,9 @@ const projectData: Project[] = [
     live: "https://n-back.ai.studio/",
     demo: "n-back",
     well: "dark",
-    invitation: "Two back: now, against two cues ago.",
+    /* No invitation. "Two back: now, against two cues ago" was the fourth statement of
+       that rule on one screen — the scene's caption teaches it with timing, the strip
+       carries a `2 BACK` badge, and the backdrop's register chips show the positions. */
     notes: [
       "Watch a square and hear a letter. Triple adds a colour.",
       "Pressing everything scores worse than pressing nothing",
