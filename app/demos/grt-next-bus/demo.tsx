@@ -49,7 +49,6 @@ import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
 import {
   formatBadge,
-  formatClock,
   formatDelay,
   formatDistance,
   formatFreshness,
@@ -369,43 +368,35 @@ export function GrtNextBusDemo() {
    */
   const caption: readonly [string, string] = ((): readonly [string, string] => {
     switch (beat) {
+      /* The badge already shows the number, so the caption does not repeat it. What the
+         frame cannot say is that this is the whole interaction: nothing is open, nothing
+         was asked. */
       case "street":
-        return [`${badgeMinutes} minutes to the next bus.`, "On the toolbar, with nothing open."];
+        return ["Nothing is open. The wait is just there.", ""];
       case "alert":
-        return [
-          `${ALERT_LEAD_MINUTES} minutes out, it tells you.`,
-          "A notification, whether or not you looked.",
-        ];
-      /* One line across both, and it has to be the identical string: these are 900ms and
-         600ms, and a caption that changes on either is a caption nobody read. The popup
-         growing out of its own button is the whole of what happens here. 1,500ms. See
-         `MIN_CAPTION_MS` in the storyboard hook. */
+        return ["It tells you without being asked.", ""];
+      /* Silent. A pointer reaching for a toolbar button and a popup growing out of it are
+         two things a picture says completely, and these beats are 900ms and 600ms — a
+         line nobody could read describing something nobody needed described. */
       case "reach":
       case "open":
-        return ["Reaching for the extension.", "The popup hangs off its own button."];
+        return ["", ""];
+      /* The order is a decision, and it is the only thing about this list that is not
+         legible from looking at it. */
       case "stops":
-        return [
-          "Three saved stops, closest first.",
-          "Live countdown, minutes late, stops away.",
-        ];
+        return ["Sorted by how close you are, not by when you saved them.", ""];
+      /* Shared with `near`, and the one line in the scene that stops the road being
+         decoration: it says the drawing below and the number above are the same bus. */
       case "tick":
-        return ["The countdown falls with the bus.", "The bus on the road below is that bus."];
-      case "near": {
-        const away = stopsAway(closestLeft);
-        return [
-          "Red now, and close.",
-          away === undefined ? "" : `${stopsAwayLabel(away)}, on the line below.`,
-        ];
-      }
+      case "near":
+        return ["The bus on the road below is that bus.", ""];
+      /* Late is not the same as due, and a countdown reaching zero cannot tell you the
+         difference. The figure is derived rather than typed, from the same clock the
+         board reads. */
       case "due":
-        return [
-          "Due, and it is at your stop.",
-          `The ${formatClock(ANCHOR + closestBoard.head * 1000)} run, ${formatDelay(
-            closest.delaySec,
-          )}.`,
-        ];
+        return [`It knows this run is ${formatDelay(closest.delaySec)}, not just due.`, ""];
       case "gone":
-        return ["That one has gone.", "The board and the badge move to the next run."];
+        return ["It rolls to the next run on its own.", ""];
     }
   })();
 

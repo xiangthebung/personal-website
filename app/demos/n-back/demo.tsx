@@ -129,16 +129,29 @@ const ANSWERING: Partial<Record<BeatName, "square" | "letter">> = {
  * the caption counts along with the strip, which is the thing a first-time visitor
  * needs help doing: knowing which slot they are supposed to be looking at.
  */
+/**
+ * The rule, and where to look. Not a count of what just arrived.
+ *
+ * This is the one scene on the page whose captions are load-bearing, because the task
+ * itself is a rule rather than a picture — a first-time visitor cannot deduce "two back"
+ * from watching squares light up. So the lines that teach stay.
+ *
+ * What went were the announcements. "Cue 1 arrives", "Cue 2.", "Cue 3." were reading the
+ * strip aloud to somebody already looking at it, and the counter above each slot says
+ * which cue it is. Each line now points at the comparison the visitor is meant to be
+ * making, which is the part the strip does not show.
+ */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
-  empty: ["Nothing has arrived yet.", "The rule: compare each cue against the one two back."],
-  "cue-1": ["Cue 1 arrives.", "A square on the grid, and a spoken letter."],
-  "cue-2": ["Cue 2.", "Holding two. Nothing to compare against yet."],
-  "cue-3": ["Cue 3.", "Two back from here is cue 1."],
+  empty: ["The rule: compare each cue against the one two back.", ""],
+  // That there are two independent streams is the thing to notice, not that one arrived.
+  "cue-1": ["Two streams at once — a square, and a spoken letter.", ""],
+  "cue-2": ["Nothing to compare against yet.", ""],
+  "cue-3": ["Two back from here is cue 1.", ""],
   "match-square": [
     "Cue 3 is cue 1's square.",
     "Different letter, so only one of the two answers is right.",
   ],
-  "cue-4": ["Cue 4.", "Two back from here is cue 2."],
+  "cue-4": ["Two back from here is cue 2.", ""],
   "match-letter": [
     "Cue 4 is cue 2's letter.",
     "Different square. The streams are scored separately.",

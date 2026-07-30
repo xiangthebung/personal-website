@@ -111,29 +111,47 @@ const BEATS: readonly Beat<BeatName>[] = [
 ];
 
 /**
- * What is happening in each frame, in the present tense.
+ * The things the picture cannot say.
  *
- * There were three lines for eleven beats, keyed off `on` and `paused` rather than off
- * the beat — so one of them covered the entire flood and another covered the entire
- * aftermath. A visitor watching the colour drain, the counts become dashes and the
- * badge lose its red was reading one sentence written about all three.
+ * Not a commentary track. Every beat used to carry a line, and most of those lines
+ * described what was already on screen — "And it speeds up" over a feed visibly speeding
+ * up, "Reaching for Decaf, and pressing it" over a cursor visibly reaching for Decaf and
+ * pressing it. A caption that repeats the picture costs the reader attention and returns
+ * nothing, and worse, it trains them to stop reading the ones that do carry something.
+ *
+ * So a line appears only where there is a claim a picture cannot make: that the layout
+ * does not move, that the dashes reach a screen reader too, that the badge keeps its
+ * number on purpose, that every other blocker collapses the page, that the feed is three
+ * seconds away rather than blocked. The flood needs no words, and neither does the click
+ * — it has a scrim, a lit toolbar, a halo and a slow pointer, which is four cues more
+ * than a sentence.
+ *
+ * Where nothing needs saying the line is empty, and the caption area simply goes quiet.
+ * `min-height` in the stylesheet holds the space, so nothing shifts. The silence through
+ * the three beats of the click is the page going quiet along with the feed, which is the
+ * argument.
+ *
+ * A line persists across consecutive beats by being the identical string — see
+ * `MIN_CAPTION_MS`. Fewer lines, each held longer, is the whole point.
  */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
-  arrive: ["An ordinary feed.", "Colour, view counts, a red badge, and it autoplays."],
-  raw: ["It starts arriving on its own.", "Nobody asked it to."],
-  pull: ["And it speeds up.", "Every number on screen is a reason to stay."],
-  notice: ["There is one thing here that is not the feed.", "Up in the toolbar."],
-  /* The travel and the press share a line. "Pressed." on its own was one word holding
-     the caption for 800ms, and splitting a reach from its click gives a reader two
-     sentences for one gesture. 2,400ms together. */
-  reach: ["Reaching for Decaf, and pressing it.", ""],
-  press: ["Reaching for Decaf, and pressing it.", ""],
-  drain: ["The colour goes first.", "The layout does not move a pixel."],
-  dashes: ["Then every count becomes a dash.", "In the text, and in what a screen reader says."],
-  calm: ["The badge keeps its number and loses the red.", "A real message still gets through."],
-  pause: ["The feed itself is gone.", "The header and sidebar are exactly where they were."],
-  /* Reaching back for the pass, and the pass itself. The notice card is on screen
-     through both, so the line is true from the first frame of the pair. 2,700ms. */
+  /* One frame of interpretation over the whole flood: it says why the flood is there,
+     which is the one thing watching it cannot tell you. */
+  arrive: ["Every number here is a reason to stay.", ""],
+  raw: ["Every number here is a reason to stay.", ""],
+  pull: ["Every number here is a reason to stay.", ""],
+
+  // Silent for the click. The frame is doing all of the pointing.
+  notice: ["", ""],
+  reach: ["", ""],
+  press: ["", ""],
+
+  // One claim per beat from here, and every one of them is invisible.
+  drain: ["Nothing moves but the colour.", ""],
+  dashes: ["The counts go too — for screen readers as well as eyes.", ""],
+  calm: ["The badge keeps its number, so a real message still gets through.", ""],
+  pause: ["Emptied where it sat. Every other blocker collapses the page.", ""],
+
   "aim-hold": ["Not blocked — three seconds away.", "Tomorrow's first pass is seven."],
   hold: ["Not blocked — three seconds away.", "Tomorrow's first pass is seven."],
   settle: ["Nothing was taken away.", "It just stopped being worth anything."],

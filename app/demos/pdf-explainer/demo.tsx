@@ -228,39 +228,42 @@ const CURSOR: Partial<Record<BeatName, string>> = {
  * rest of the sentence second, so the emphasis the stylesheet expects survives.
  */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
-  slide: ["Slide 2 of a lecture deck.", "Nothing on top of it yet."],
+  // Which deck and which slide. Not visible anywhere else at a glance.
+  slide: ["Slide 2 of a lecture deck.", ""],
 
-  /* The overlay arriving and the overlay resting are one statement, and the arrival was
-     600ms of it. Together: 2,100ms. */
-  arrive: ["A notes card arrives at a quarter opacity.", "The slide underneath stays readable."],
-  resting: ["A notes card arrives at a quarter opacity.", "The slide underneath stays readable."],
+  // The card prints its own 0.26; what it does not say is why it is faint.
+  arrive: ["The notes sit at a quarter opacity, so the slide stays readable.", ""],
+  resting: ["The notes sit at a quarter opacity, so the slide stays readable.", ""],
 
-  /* Reaching and waking, likewise — and this pairing is the signature interaction, so
-     it is the one that most needed a line that stays put while it happens. 2,700ms. */
-  reach: ["Move towards it and it wakes to full opacity.", "The slide is still there under it."],
-  awake: ["Move towards it and it wakes to full opacity.", "The slide is still there under it."],
+  /* The rule, not the movement. A pointer visibly travelling and a card visibly
+     brightening need no narration; that it responds to *proximity* rather than to a
+     click is the part you could watch all day and not know. */
+  reach: ["It wakes on approach. Nothing was clicked.", ""],
+  awake: ["It wakes on approach. Nothing was clicked.", ""],
 
-  /* The panel opening, the question being picked and the tutor thinking are three beats
-     of one event, and none of them is worth its own sentence. 2,500ms. */
-  split: ["A panel opens beside the slide.", "A question about this slide, asked."],
-  ask: ["A panel opens beside the slide.", "A question about this slide, asked."],
-  thinking: ["A panel opens beside the slide.", "A question about this slide, asked."],
+  /* Silent. A panel opening, a chip being picked and three dots pulsing are three
+     things a picture says perfectly well, and the claim worth making about the tutor
+     lands on the next beat with its answer. */
+  split: ["", ""],
+  ask: ["", ""],
+  thinking: ["", ""],
 
-  answer: ["It answers about slide 2.", "Nobody had to tell it which slide that is."],
+  answer: ["Nobody had to tell it which slide you are on.", ""],
 
-  // Switching tab and choosing an answer. 1,750ms.
-  "to-quiz": ["Switching to Practice, and choosing an answer.", ""],
-  pick: ["Switching to Practice, and choosing an answer.", ""],
+  // Silent: a tab being pressed and an option being chosen.
+  "to-quiz": ["", ""],
+  pick: ["", ""],
 
-  verdict: ["Marked, with the reasoning.", "The question came from the deck itself."],
+  // The tick and the reasoning are on screen. Where the question came from is not.
+  verdict: ["The question was written from the deck itself.", ""],
 
-  // The whole matching exercise, rather than one line per pair. 2,250ms.
-  "to-match": ["Next exercise: matching terms to definitions.", ""],
-  "pair-a": ["Next exercise: matching terms to definitions.", ""],
-  "pair-b": ["Next exercise: matching terms to definitions.", ""],
+  // Silent: two lists, and rows pairing up.
+  "to-match": ["", ""],
+  "pair-a": ["", ""],
+  "pair-b": ["", ""],
 
-  matched: ["All three matched.", "Cloze cards and worked examples are in here too."],
-  hold: ["Four parts of one study workspace.", "Notes, tutor, quiz, matching."],
+  matched: ["Cloze cards and worked examples are in here too.", ""],
+  hold: ["One window, four ways to work on the slide in front of you.", ""],
 };
 
 const LETTERS = ["A", "B", "C", "D"];

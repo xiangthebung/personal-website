@@ -169,16 +169,24 @@ const VOL_BARS = 7;
    the words already printed on the two panels — Before and After — is correct in both
    layouts and saves the reader working out which is which. */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
-  night: ["The same night shot, twice.", "One before the extension, one after it."],
+  /* Worth stating once: two dark rectangles side by side could be two different shots,
+     and the whole argument depends on them being the same one. The Before and After
+     labels are already on the panels, so the caption does not repeat them. */
+  night: ["The same night shot, twice.", ""],
   /* Names the reader's own action rather than describing the meter, which the meter is
      already doing. The point of this beat is not that the dialogue is quiet — it is
      that being unable to hear it is what makes you turn the volume up, which is the
      decision the explosion four seconds later punishes. */
   whisper: ["You cannot hear the line, so you read it.", "This is where you turn it up."],
-  // `blast` and `boom` share this. See the note on the `blast` beat.
-  blast: ["Then the explosion, at the volume you just set.", "Before blows out to white."],
-  boom: ["Then the explosion, at the volume you just set.", "Before blows out to white."],
-  settle: ["Back to the dark.", "After still has a room in it. Before has black."],
+  /* `blast` and `boom` share this. What the panels cannot say is that nothing about the
+     playback changed between the whisper and this — the caption used to add "Before
+     blows out to white", which is the one thing on screen impossible to miss. */
+  blast: ["The explosion, at the volume you just turned up.", ""],
+  boom: ["The explosion, at the volume you just turned up.", ""],
+  /* The insight rather than the observation. That one panel has shadows and the other
+     is black is visible; that the detail was in the signal the whole time and the
+     untreated display was throwing it away is the product. */
+  settle: ["The room was always there. One of them is showing it.", ""],
   hold: ["One film, one volume setting.", "One of them you can watch at midnight."],
 };
 

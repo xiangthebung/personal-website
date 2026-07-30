@@ -393,8 +393,16 @@ test("no caption goes by faster than it can be read", async () => {
     }
     groups.push({ from: runName, ms: runMs, text: runText });
 
+    let spoken = 0;
     for (const group of groups) {
-      const words = group.text.split(/\s+/).length;
+      /* Deliberate silence. Beats whose picture says everything carry `["", ""]` and the
+         caption area simply goes quiet — there is nothing to read, so there is no reading
+         time to check. Counted, because a scene that had gone *entirely* silent would
+         otherwise pass this test by saying nothing at all. */
+      const words = group.text.replace(/["'\s,]+/g, "") === "" ? 0 : group.text.split(/\s+/).length;
+      if (words === 0) continue;
+      spoken += 1;
+
       assert.ok(
         group.ms >= floor,
         `${scene}: the caption starting at "${group.from}" is on screen for ` +
@@ -404,9 +412,11 @@ test("no caption goes by faster than it can be read", async () => {
       );
       checked += 1;
     }
+
+    assert.ok(spoken >= 3, `${scene}: only ${spoken} caption(s) say anything at all`);
   }
 
-  assert.ok(checked >= 40, `only ${checked} caption groups were checked`);
+  assert.ok(checked >= 25, `only ${checked} caption groups were checked`);
 
   /* GRT's captions are a switch returning tuples, with figures interpolated from its
      clock. The only pairing it relies on is `reach` and `open` — 900ms and 600ms, which

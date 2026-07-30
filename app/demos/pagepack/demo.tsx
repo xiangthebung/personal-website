@@ -211,36 +211,44 @@ const SCATTER = [
  * `min-height: 2.6em`, which is two lines, and a caption that reflows between beats
  * moves the frame above it.
  */
+/**
+ * The claims, not the commentary.
+ *
+ * Every beat used to carry a line and most were describing the frame: "Reaching for the
+ * PagePack button" over a pointer reaching for the PagePack button, "Save page, pressed"
+ * over a button being pressed, "The signal cuts out" over a signal visibly cutting out.
+ * Those cost a reader attention and gave nothing back.
+ *
+ * What is left is the set of things this scene cannot show: that the save reaches the
+ * *linked* pages and why that matters, that it stores real assets rather than a list of
+ * URLs, that nothing was uploaded anywhere, and that the reading survives the tab. The
+ * press, the progress bar and the outage speak for themselves.
+ */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
-  settle: ["A page open in the browser.", "Online, for now."],
+  // Foreshadowing rather than description — the only thing worth saying about a page
+  // that is merely open.
+  settle: ["Online, for now.", ""],
 
-  /* Reaching, the popup opening and the pointer moving to its button are one event with
-     one thing worth saying about it. Three beats, 3,000ms, one line — where before this
-     was three lines of 900ms, 1,400ms and 700ms, two of them under the reading floor. */
-  reach: ["PagePack offers to save this page.", "And the pages it links to."],
-  open: ["PagePack offers to save this page.", "And the pages it links to."],
-  aim: ["PagePack offers to save this page.", "And the pages it links to."],
+  // The popup names this page. What it does not make obvious is the rest of the job.
+  reach: ["It takes the pages this one links to, as well.", ""],
+  open: ["It takes the pages this one links to, as well.", ""],
+  aim: ["It takes the pages this one links to, as well.", ""],
 
-  /* The press stays 320ms because a press is a press; its caption does not, because 320ms
-     was the shortest caption exposure on the page after Night Neutralizer's cut. It runs
-     on into `read`, which is the beat that says what the press started. 1,720ms. */
-  press: ["Pressed. It reads this page first.", "Text, styles, images and fonts."],
-  read: ["Pressed. It reads this page first.", "Text, styles, images and fonts."],
+  // What a "save" actually consists of, which no progress bar can tell you.
+  press: ["Text, styles, images and fonts — not a list of links.", ""],
+  read: ["Text, styles, images and fonts — not a list of links.", ""],
 
-  collect: ["Then every page it links to.", "Each saved page leaves the browser."],
-  // "Finishing up…" under the bar, and a 7 on the toolbar. The caption says both
-  // rather than declaring the save over a beat before the interface does.
-  finish: ["Seven pages, finishing up.", "The toolbar badge shows the count."],
+  // Why it bothers with the links at all.
+  collect: ["A saved page with dead links is half a page.", ""],
+  // Silent: a bar finishing and a count landing on a badge.
+  finish: ["", ""],
 
-  // The cut and its aftermath. 2,700ms.
-  cut: ["The signal cuts out.", "The tab can load nothing. The pack beside it is untouched."],
-  dead: ["The signal cuts out.", "The tab can load nothing. The pack beside it is untouched."],
+  // Silent for the cut itself, then the one thing the dead tab cannot say.
+  cut: ["", ""],
+  dead: ["Nothing left on this screen needs the network.", ""],
 
-  reveal: ["The library, with one pack in it.", "Seven pages, already on disk."],
-  "read-offline": [
-    "A saved page, reopened with no connection.",
-    "Figures and linked pages included.",
-  ],
+  reveal: ["Already on disk. Nothing was uploaded anywhere.", ""],
+  "read-offline": ["Figures and linked pages, with no connection.", ""],
   hold: ["The tab is dead. The reading is not.", ""],
 };
 
