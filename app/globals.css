@@ -1345,35 +1345,20 @@ html.has-project-focus body {
 
 /* --- facts, as a row rather than a list ---------------------------------- */
 
-.demo-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
-  gap: 0.5rem 1.6rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.demo-facts li {
-  position: relative;
-  padding-left: 0.95rem;
-  color: var(--project-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-.demo-facts li::before {
-  position: absolute;
-  top: 0.62em;
-  left: 0;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--project-accent);
-  content: "";
-}
-/* In the stacked variant the facts are margin notes, so they sit in one column
-   beside the heading instead of spanning the section. */
+/* The notes had two complete implementations stacked on top of each other, and what
+   rendered was a hybrid of both that neither intended.
+   This block was the older one — a grid, `position: relative` on each item, and a 4x4
+   absolutely positioned round dot for a bullet. A newer one further down the file
+   (search for "the notes beside a demo") is a flex row with a `·` glyph as a flex child,
+   and its own comment notes that it "wins on order". It wins on the properties it
+   declares. It does not declare `position`, so the bullet kept `position: absolute` from
+   here and never became a flex child at all — which left a 4x4 box with a background
+   colour *and* a `·` character in it, out of flow, with the text indented by a
+   `padding-left` the newer implementation knows nothing about.
+   One implementation now, downstream. This block is gone rather than corrected, because
+   two rules for one component is the bug. */
+/* In the stacked variant the notes sit tighter, as margin notes beside the heading. */
 .project[data-stage="stacked"] .demo-facts {
-  grid-template-columns: 1fr;
   gap: 0.45rem;
 }
 
@@ -2845,16 +2830,22 @@ html.shows-shortcuts .shortcut-sheet {
 }
 
 /* --- the notes beside a demo ----------------------------------------------
-   Three fragments, and only the things the scene beside them cannot say on its
-   own. This is the rule that applies — there is an earlier `.demo-facts` block
-   above, and this one wins on order — so the size lives here.
+   Three fragments, and only the things the scene beside them cannot say on its own. The
+   one implementation: there used to be a second, older one earlier in the file, and the
+   bullet was rendering as a hybrid of the two.
 
-   0.78rem was 12.48px, which is small for the only running text in the section
-   after the headline. */
+   0.78rem was 12.48px, which is small for the only running text in the section after the
+   headline.
+
+   A column, not a wrapping row. `flex-wrap: wrap` fits two items per line once the column
+   passes about 500px, and three items in two columns is two items and an orphan —
+   measured on PagePack, whose left column is ~750px at 1600px wide: a stray bullet on a
+   second row with an empty half beside it. A wrap rule is right for a list of unknown
+   length and wrong for one that is always exactly three. */
 .demo-facts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1.5rem;
+  flex-direction: column;
+  gap: 0.4rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2862,19 +2853,31 @@ html.shows-shortcuts .shortcut-sheet {
 
 .demo-facts li {
   display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
+  /* `flex-start`, not `baseline`, because the bullet below is a box rather than a glyph
+     and a box has no baseline worth aligning to. */
+  align-items: flex-start;
+  gap: 0.5rem;
   color: var(--project-muted);
   font-size: 0.875rem;
   line-height: 1.5;
 }
 
+/* A dot in the accent colour, and a real one.
+   The two layered implementations disagreed about what a bullet is: the older one drew a
+   4px round box in `--project-accent`, the newer one printed a `·` at 0.72rem. Because
+   only the older one set `position`, what actually rendered was the box — so removing it
+   left the glyph, which at 0.72rem of muted grey is barely a mark on the page.
+   This is the older one's dot, in flow as a flex child, which is what the newer layout
+   was written to expect. `margin-top` puts it on the first line's optical centre; a 4px
+   box cannot get there by alignment alone. */
 .demo-facts li::before {
+  width: 4px;
+  height: 4px;
   flex: none;
-  color: var(--project-accent);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.72rem;
-  content: "·";
+  margin-top: 0.56em;
+  border-radius: 50%;
+  background: var(--project-accent);
+  content: "";
 }
 
 /* Demos are interactive, so a drag inside one must never be read as a drag on
