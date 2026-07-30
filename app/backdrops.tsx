@@ -207,10 +207,17 @@ function NightBackdrop() {
         <NightRoom className="bd-night-room--treated" />
       </span>
 
+      {/* "before" and "after", matching the panel labels in the demo.
+          These said "as shipped" and "treated", which was asked about directly: "it's
+          much easier to understand if it was just before and after". Two problems in
+          four words. "As shipped" is industry shorthand for a thing the reader has no
+          reason to know, and having the backdrop name the halves one way while the
+          panels in front of it name them another gives a visitor two vocabularies for
+          one comparison and no hint that they are the same comparison. */}
       <span className="bd-night-seam">
-        <small>as shipped</small>
+        <small>before</small>
         <i />
-        <small>treated</small>
+        <small>after</small>
       </span>
 
       <span className="bd-night-waveform">

@@ -42,8 +42,10 @@ import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
 
 type BeatName =
+  | "arrive"
   | "raw"
   | "pull"
+  | "notice"
   | "reach"
   | "press"
   | "drain"
@@ -54,34 +56,95 @@ type BeatName =
   | "hold"
   | "settle";
 
+/**
+ * Thirteen beats, just under twenty seconds.
+ *
+ * The account of what was wrong with the old eleven is worth keeping, because it was
+ * a first-time visitor's account and it was not about any single beat being short:
+ * *"I come from Choir Practice, I am met with a bunch of likes and notifications, then
+ * immediately it is grey. I am confused, what just happened?"*
+ *
+ * Three separate failures in one sentence.
+ *
+ * It opened mid-flood. The first frame of the section was already the argument, so
+ * there was never a moment of "this is an ordinary feed" to compare the argument
+ * against — and arriving from another project, the flood read as the section's
+ * decoration rather than as its subject. Hence `arrive`: a still feed, in colour, with
+ * its counts and its red badge, and nothing happening to it yet.
+ *
+ * Nothing redirected the eye before the click. The pointer set off for a 24px button
+ * while thirty hearts were crossing the window, so the one thing worth watching was
+ * the least visible thing on screen. Hence `notice`: the flood drops back, the feed
+ * itself dims, and the button starts pulsing on its own — a beat whose entire job is
+ * to say *there is something here that is not the feed*, before anything moves toward
+ * it.
+ *
+ * And the payoff arrived faster than the eye could follow it. `drain`, `dashes` and
+ * `calm` are three distinct claims — the colour goes, the numbers go, the red goes but
+ * the number stays — and they were sharing 2,850ms between them, so they landed as one
+ * undifferentiated grey event. They now get 4,600ms and a caption each.
+ */
 const BEATS: readonly Beat<BeatName>[] = [
-  // Long enough to feel got at.
-  { name: "raw", ms: 1600 },
-  /* The feed pulling. One beat is not enough room for "faster and faster" to be
-     felt — the reel needs about four seconds of runway before the switch, and this
-     is the middle of it, where the acceleration becomes obvious. */
-  { name: "pull", ms: 1500 },
-  /* The click, and the two beats that make it legible.
-     This was 650ms of travel and a 240ms press, and a visitor could not tell what had
-     happened — the feed went grey and nothing on screen said why. Three things were
-     against it at once: the button is 24px, the pointer arrives while thirty hearts are
-     crossing the window, and 240ms is under the 460ms the click ring takes to play, so
-     the one cue that does exist was cut off partway through.
-     Nearly a second of travel with the button haloed, then half a second of press with
-     the ring completing — and the deluge stands down for both, so for that moment the
-     click is the only thing moving on the page. See `quiet` below. */
-  { name: "reach", ms: 1000 },
-  { name: "press", ms: 560 },
-  { name: "drain", ms: 1100 },
-  { name: "dashes", ms: 900 },
-  { name: "calm", ms: 850 },
-  { name: "pause", ms: 1500 },
-  { name: "aim-hold", ms: 600 },
+  // An ordinary feed, holding still. The baseline everything after this is measured
+  // against, and the beat whose absence caused the confusion.
+  { name: "arrive", ms: 2000 },
+  // It starts arriving on its own.
+  { name: "raw", ms: 1900 },
+  // Full flood. This is the complaint the extension answers, at its loudest.
+  { name: "pull", ms: 2000 },
+  // The turn. The flood stands down, the feed dims, the toolbar starts asking.
+  { name: "notice", ms: 1400 },
+  /* The travel. Slower than the cursor's default 620ms glide — see the Decaf override
+     in the stylesheet — because a pointer that crosses the frame in half a second is a
+     pointer nobody saw move. */
+  { name: "reach", ms: 1600 },
+  // The press, comfortably longer than the 520ms its own click ring takes to play.
+  { name: "press", ms: 800 },
+  // One claim per beat from here, each with its own line of caption.
+  { name: "drain", ms: 1700 },
+  { name: "dashes", ms: 1500 },
+  { name: "calm", ms: 1400 },
+  { name: "pause", ms: 1800 },
+  { name: "aim-hold", ms: 800 },
   { name: "hold", ms: 1900 },
-  { name: "settle", ms: 1300 },
+  { name: "settle", ms: 1500 },
 ];
 
+/**
+ * What is happening in each frame, in the present tense.
+ *
+ * There were three lines for eleven beats, keyed off `on` and `paused` rather than off
+ * the beat — so one of them covered the entire flood and another covered the entire
+ * aftermath. A visitor watching the colour drain, the counts become dashes and the
+ * badge lose its red was reading one sentence written about all three.
+ */
+const CAPTION: Record<BeatName, readonly [string, string]> = {
+  arrive: ["An ordinary feed.", "Colour, view counts, a red badge, and it autoplays."],
+  raw: ["It starts arriving on its own.", "Nobody asked it to."],
+  pull: ["And it speeds up.", "Every number on screen is a reason to stay."],
+  notice: ["There is one thing here that is not the feed.", "Up in the toolbar."],
+  reach: ["Reaching for Decaf.", ""],
+  press: ["Pressed.", ""],
+  drain: ["The colour goes first.", "The layout does not move a pixel."],
+  dashes: ["Then every count becomes a dash.", "In the text, and in what a screen reader says."],
+  calm: ["The badge keeps its number and loses the red.", "A real message still gets through."],
+  pause: ["The feed itself is gone.", "The header and sidebar are exactly where they were."],
+  "aim-hold": ["Going back for another look.", ""],
+  hold: ["Not blocked — three seconds away.", "Tomorrow's first pass is seven."],
+  settle: ["Nothing was taken away.", "It just stopped being worth anything."],
+};
+
+/**
+ * Where the pointer is.
+ *
+ * It enters on `notice` rather than on `reach`, which is the beat that fixed the
+ * complaint about the movement being missable. Arriving and travelling in the same beat
+ * meant the cursor faded up already halfway to the button; entering while it is still
+ * parked off to the side, and only setting off once the visitor has had a beat to see it
+ * there, is what makes the travel itself readable.
+ */
 const CURSOR: Partial<Record<BeatName, string>> = {
+  notice: "feed",
   reach: "toolbar",
   press: "toolbar",
   drain: "toolbar",
@@ -109,12 +172,16 @@ const POSTS = [
 /**
  * How long the reel takes to run its length, and the curve it runs on.
  *
- * The curve is the argument. A linear scroll is a carousel; an ease-in that starts
- * at a crawl and is still gaining speed when it is cut off is what being held by a
- * feed feels like. The duration covers `raw` through `press` — 1600 + 1500 + 650 +
- * 240 — so the switch lands while it is at its fastest.
+ * The curve is the argument. A linear scroll is a carousel; an ease-in that starts at a
+ * crawl and is still gaining speed when it is cut off is what being held by a feed
+ * feels like.
+ *
+ * The duration covers `raw` through `press` — 1900 + 2000 + 1400 + 1600 + 800 — so the
+ * switch lands while the reel is at its fastest. It deliberately does not cover
+ * `arrive`: the reel is held at its first frame through that beat, so the section opens
+ * on a feed sitting still. If a beat in that range changes, this changes with it.
  */
-const REEL_MS = 3990;
+const REEL_MS = 7700;
 
 /**
  * A burst of rewards leaving one point on the screen.
@@ -217,8 +284,24 @@ export function DecafDemo() {
   const calmed = index >= at("calm");
   const paused = index >= at("pause");
   const holding = beat === "hold";
-  /** The two beats where the click has to be the only thing happening. */
-  const quiet = beat === "reach" || beat === "press";
+
+  /**
+   * Whether the feed is actively working on you.
+   *
+   * Not simply `!on`. The scene now opens on a still feed for two seconds — see
+   * `arrive` — and both the reel and the burst have to hold at their first frame
+   * through it, or the section still starts mid-flood and the beat buys nothing.
+   */
+  const flooding = index >= at("raw") && !on;
+
+  /**
+   * The three beats where the click has to be the only thing moving.
+   *
+   * `notice` is included, and it is the one that matters: it is the beat that redirects
+   * the eye before anything travels, so it is the beat that most needs the flood out of
+   * the way.
+   */
+  const quiet = beat === "notice" || beat === "reach" || beat === "press";
 
   /** Reward counts become a dash — in the text and in the accessible label. */
   const count = (value: string) => (dashed ? "—" : value);
@@ -371,8 +454,12 @@ export function DecafDemo() {
               <span className="dc-avatar" />
             </header>
 
-            {/* The feed container. It does not change size, ever. */}
-            <div className="dc-feed">
+            {/* The feed container. It does not change size, ever.
+                It is also a cursor target: the pointer enters here, on the thing the
+                visitor is already looking at, and only then sets off for the toolbar.
+                Entering directly at the toolbar meant the pointer faded up at its
+                destination, so there was no journey to notice. */}
+            <div className="dc-feed" data-target="feed">
               {paused ? (
                 <div className="dc-notice">
                   <p className="dc-notice-head">Decaf paused this feed.</p>
@@ -405,7 +492,7 @@ export function DecafDemo() {
                 <div
                   className="dc-reel"
                   key={`reel-${run}`}
-                  data-running={!on}
+                  data-running={flooding}
                   style={{ "--reel-ms": `${REEL_MS}ms` } as React.CSSProperties}
                 >
                   {POSTS.map((post, index) => (
@@ -474,7 +561,7 @@ export function DecafDemo() {
           <div
             className="dc-deluge"
             ref={delugeRef}
-            data-running={!on}
+            data-running={flooding}
             data-spent={on}
             /* Stands down while the extension is being switched on. The whole point of
                those two beats is that a visitor sees a pointer press a button, and it
@@ -537,21 +624,8 @@ export function DecafDemo() {
       )}
 
       <p className="dc-caption" aria-hidden="true">
-        {!on ? (
-          <>
-            <strong>Everything here is asking for another minute.</strong>
-          </>
-        ) : paused ? (
-          <>
-            <strong>Not blocked — three seconds away.</strong> Tomorrow&apos;s first
-            pass is seven.
-          </>
-        ) : (
-          <>
-            <strong>No colour, no counts, no red.</strong> The message badge keeps its
-            number.
-          </>
-        )}
+        <strong>{CAPTION[beat][0]}</strong>
+        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
       </p>
     </div>
   );

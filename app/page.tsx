@@ -171,6 +171,12 @@ function ProjectSection({ project, index }: { project: Project; index: number })
         {project.number}
       </span>
 
+      {/* What makes the page one place rather than a stack of coloured panels: a wash
+          in the colour of whichever project you are currently standing in, at whatever
+          opacity this section has lost. Deliberately after the ambience and the number
+          so it covers both — see `.project > .project-tint`. */}
+      <div className="project-tint" aria-hidden="true" />
+
       {/* This theme's signature entrance. Its own element rather than a borrowed
           pseudo-element on `.project-ambience`, which already owns both of its own
           for the drifting background — see the stylesheet. */}

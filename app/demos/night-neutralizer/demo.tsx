@@ -9,10 +9,12 @@
  * playing the same shot can, because the argument is a comparison and a comparison
  * needs both halves on screen at once.
  *
- * Left is the shot as it shipped. Right is the shot through the extension. The
- * scene goes dark, someone says something quietly, and then something explodes:
- * the left panel blows out to white and its meter slams into the red, the right
- * panel keeps the shape of the blast and stays under a ceiling.
+ * One panel is the shot as it shipped, the other is the shot through the extension, and
+ * they are labelled Before and After — which is also how the captions refer to them,
+ * because the split stacks on a narrow screen and "left" stops being true. The scene
+ * goes dark, someone says something quietly, and then something explodes: Before blows
+ * out to flat white and its meter slams into the red, After keeps the shape of the blast
+ * and stays under a ceiling.
  *
  * WHAT IS REAL HERE
  *
@@ -144,17 +146,35 @@ const VOL_BARS = 7;
  * this is. One line each: the stylesheet reserves `min-height: 1.5em`, so a caption
  * that wraps shifts the panels above it.
  */
+/* Named by their labels rather than by their positions. These said "left" and "right",
+   which is true at a desktop width and false on a phone, where the split stacks and
+   "left blows out to white" points at a panel that is above rather than beside. Using
+   the words already printed on the two panels — Before and After — is correct in both
+   layouts and saves the reader working out which is which. */
 const CAPTION: Record<BeatName, readonly [string, string]> = {
-  night: ["The same night shot, twice.", "Left as the film shipped, right through the extension."],
+  night: ["The same night shot, twice.", "One before the extension, one after it."],
   whisper: ["Someone speaks, quietly.", "The meter beside the line barely moves."],
   blast: ["Then something explodes.", ""],
-  boom: ["Left blows out to white, and the meter pins.", "Right stays inside the picture."],
-  settle: ["Back to the dark.", "Right still has shadows in it. Left has black."],
+  boom: ["Before blows out to white and its meter pins.", "After holds the shape of it."],
+  settle: ["Back to the dark.", "After still has a room in it. Before has black."],
   hold: ["One film, one volume setting.", "One of them you can watch at midnight."],
 };
 
-/** Level meter. Segment count is the design; the top three are the ones that hurt. */
+/** Level meter. Fourteen segments, with a limiter ceiling above the ninth. */
 const SEGMENTS = 14;
+
+/**
+ * Where the ceiling sits, and therefore which segments are the problem.
+ *
+ * One constant rather than two, because the ceiling line and the red segments are the
+ * same statement. They were separate: the line was drawn at `9 / 14` and the red
+ * started at `SEGMENTS - 3`, i.e. 11 — so segments 9 and 10 were above the limiter's
+ * ceiling and coloured a reassuring green. The untreated meter therefore pinned at
+ * maximum showing three red segments out of fourteen, which is not what "peaks at
+ * maximum" looks like, and the treated meter's advantage was two segments narrower
+ * than it actually is.
+ */
+const CEILING = 9;
 
 function Meter({ treated }: { treated: boolean }) {
   return (
@@ -164,7 +184,7 @@ function Meter({ treated }: { treated: boolean }) {
           className="nn-seg"
           key={index}
           style={{ "--seg": index } as React.CSSProperties}
-          data-hot={index >= SEGMENTS - 3}
+          data-hot={index >= CEILING}
         />
       ))}
       {/* The ceiling the limiter holds. Only the treated side has one. */}
@@ -193,12 +213,16 @@ export function NightNeutralizerDemo() {
       data-beat={beat}
       data-lap={run}
       role="img"
+      /* Also free of "left" and "right", for the same reason the captions are, plus one
+         that only applies here: the two panels stack on a narrow screen, and a screen
+         reader user has no way of knowing which layout they are being described. */
       aria-label={
-        "The same night-time shot side by side. On the left, as the film shipped: " +
-        "the dark scene is unreadable and an explosion blows the picture to white " +
-        "and the sound into clipping. On the right, through Night Neutralizer: the " +
-        "shadows are open and the explosion stays inside the picture and under a " +
-        "volume ceiling."
+        "The same night-time shot twice, labelled before and after. Before: the room " +
+        "is too dark to make anything out, and an explosion outside the window blows " +
+        "the picture to flat white and drives the level meter into the red. After, " +
+        "through Night Neutralizer: the same room shows a bookcase, a clock, a plant " +
+        "and a rug, and the same explosion keeps the shape of its fireball and stays " +
+        "under a volume ceiling."
       }
     >
       {/* The extension's real transfer function, as the extension installs it.

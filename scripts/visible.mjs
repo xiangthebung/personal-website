@@ -135,17 +135,27 @@ const CHECKS = [
     beat: { section: "night-neutralizer", name: "whisper" },
     required: false,
   },
+  /* At `pull`, the peak of the flood, which is the only part of the loop these are
+     meant to be visible for. Naming no beat meant sampling whatever happened to be on
+     screen, and eight of Decaf's thirteen beats are after the extension goes on — where
+     `.dc-deluge[data-spent="true"]` is `opacity: 0` on purpose, because the flood
+     draining away is the payoff. So both of these reported "effective opacity 0 through
+     its ancestors", correctly, about a layer that was correctly invisible. Two standing
+     failures that are expected are worse than none: they train you to skim the output,
+     which is exactly when a real one gets through. */
   {
     label: "decaf deluge drop",
     section: "decaf",
     selector: ".dc-drop",
+    beat: { section: "decaf", name: "pull" },
     required: false,
-    note: "gated on focus now, so it should only exist while decaf is the active section",
+    note: "only exists while decaf is the active section, and only before the switch",
   },
   {
     label: "decaf notification",
     section: "decaf",
     selector: ".dc-spam-card",
+    beat: { section: "decaf", name: "pull" },
     required: false,
   },
   {

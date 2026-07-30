@@ -120,7 +120,13 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/Decaf",
     demo: "decaf",
     well: "light",
-    invitation: "The same feed, with all of it switched off.",
+    /* Describes the whole scene, not its last third. The previous line — "The same feed,
+       with all of it switched off" — was written when the scene opened already drained,
+       and it sat above two seconds of ordinary feed, ten seconds of flood and a pointer
+       reaching for a button, all of it flatly contradicting the caption directly above
+       it. This one is a before and an after, which is the shape the beats actually run
+       in. */
+    invitation: "A feed at full volume, then the same feed on Decaf.",
     /* These were written from the inside. "Empties the feed where it sits, without
        the page jumping" is a thing I was pleased with in the code and nothing a
        person wants; "Badges" meant notification badges and did not say so. Each line

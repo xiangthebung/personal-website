@@ -112,7 +112,8 @@ type BeatName =
  * a quiz explanation — that cannot be read in a second. The split is now sharper
  * rather than uniformly slower: the seven beats that are a pointer moving or a panel
  * swapping are close to where they were, and the six that ask you to *read something*
- * got most of the extra time. 19.9s.
+ * got most of the extra time. 20.0s, which makes this the longest scene on the page and
+ * the one the lap window in `scripts/drive-site.mjs` is sized against.
  */
 const BEATS: readonly Beat<BeatName>[] = [
   // I. the notes overlay

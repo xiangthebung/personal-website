@@ -595,14 +595,19 @@ export function ProjectFocusManager() {
       presenceFrame = window.requestAnimationFrame(writePresence);
     };
 
-    // Accents are fixed per theme, so they are read once instead of on every
-    // focus change. Each read forces a style recalculation.
+    /* Accents and backgrounds are fixed per theme, so they are read once rather than
+       on every focus change. Each read forces a style recalculation.
+
+       The background is what makes the page become one place. See `--ambient-bg`
+       below. */
     const accents = new Map<HTMLElement, string>();
+    const backgrounds = new Map<HTMLElement, string>();
     projects.forEach((project) => {
-      const accent = getComputedStyle(project)
-        .getPropertyValue("--project-accent")
-        .trim();
+      const style = getComputedStyle(project);
+      const accent = style.getPropertyValue("--project-accent").trim();
       if (accent) accents.set(project, accent);
+      const background = style.getPropertyValue("--project-bg").trim();
+      if (background) backgrounds.set(project, background);
     });
 
     /**
@@ -643,6 +648,27 @@ export function ProjectFocusManager() {
       // The trail borrows the colour of whichever project you are standing in.
       const accent = accents.get(active);
       if (accent && trail) trail.style.setProperty("--trail-accent", accent);
+
+      /**
+       * The colour the whole page drifts toward.
+       *
+       * Fading a neighbour's *contents* was not enough to make a project feel like the
+       * only thing there, and the reason is that every section kept its own paper. Stand
+       * in Night Neutralizer — a near-black room — and the strip of PagePack showing
+       * below it was still lavender, so the page read as a list of differently-coloured
+       * panels rather than as one place that had gone dark.
+       *
+       * So the active project's background becomes the ambient colour, and every other
+       * section mixes toward it by however much presence it has lost. At rest inside a
+       * project the entire viewport is that project's colour; start scrolling and the
+       * next one's own paper comes back up underneath it. See `.project`'s background in
+       * the stylesheet.
+       *
+       * Written on `:root` rather than per section: it is one value for the whole page,
+       * and it changes when focus changes rather than every frame.
+       */
+      const ambient = backgrounds.get(active);
+      if (ambient) root.style.setProperty("--ambient-bg", ambient);
     };
 
     const observer = new IntersectionObserver(
@@ -771,6 +797,7 @@ export function ProjectFocusManager() {
       document.removeEventListener("keydown", handleShortcut);
       if (progressFrame) window.cancelAnimationFrame(progressFrame);
       if (presenceFrame) window.cancelAnimationFrame(presenceFrame);
+      root.style.removeProperty("--ambient-bg");
       projects.forEach((project) => project.style.removeProperty("--presence"));
       trail?.style.removeProperty("transform");
       trail?.style.removeProperty("--trail-accent");

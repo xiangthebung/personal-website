@@ -317,7 +317,14 @@ async function main() {
        debugging aimed squarely at the wrong file. */
     const baseline = await stage.evaluate((el) => Number(el.dataset.lap ?? "0"));
     const seen = new Set([firstBeat]);
-    const until = Date.now() + 24_000;
+    /* Long enough for the slowest scene to finish a lap from a standing start.
+       PDF Explainer is the slowest at 20.0s of beats plus the 1.1s gap between laps,
+       and this check joins a lap at an arbitrary point — so the worst case is very
+       nearly a full 21.1s of waiting before `lap` ticks over. At 24s that left under
+       three seconds of margin, which is not margin, it is a scene-pacing change away
+       from a red build that has nothing to do with the change. Raise this whenever a
+       scene gets slower than about thirty seconds. */
+    const until = Date.now() + 40_000;
     let laps = baseline;
     while (Date.now() < until) {
       const state = await stage.evaluate((el) => ({
@@ -332,7 +339,7 @@ async function main() {
 
     if (seen.size < 3) bad(`${id}: scene did not advance (beats seen: ${[...seen].join(", ")})`);
     else if (laps <= baseline) {
-      bad(`${id}: scene never finished a loop in 24s (${seen.size} beats, still on lap ${laps})`);
+      bad(`${id}: scene never finished a loop in 40s (${seen.size} beats, still on lap ${laps})`);
     } else ok(`${id}: scene plays and loops (${seen.size} beats, lap ${laps})`);
 
     await shot(`0${PROJECTS.indexOf(id) + 1}-${id}`);

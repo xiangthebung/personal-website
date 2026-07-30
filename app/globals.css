@@ -255,6 +255,71 @@ a:hover .external-arrow {
   color: var(--project-ink);
 }
 
+/* --- the page becoming one place ------------------------------------------
+   A tint over each section's own paper, in the colour of whichever project you are
+   standing in, at whatever opacity that section has *lost*. Inside Night Neutralizer
+   the whole viewport is its near-black room; start scrolling and PagePack's lavender
+   comes back up underneath as it earns its presence.
+
+   This is a layer rather than a background, and that is the whole reason it works.
+   Mixing `--project-bg` toward the ambient colour was the obvious approach and it was
+   dead on arrival: six of the seven sections paint themselves with a gradient in an
+   id-level `background:` rule, so a `.project { background }` declaration never applied
+   to them. Measuring the rendered colour is what found it — five sections reporting
+   `rgb(0,0,0)` because a gradient leaves `background-color` transparent.
+
+   Placed after the ambience and the ghost number in the markup and sharing their
+   `z-index: 0`, so tree order puts it over both: a faded neighbour loses its backdrop
+   to the ambient colour too, which is most of what makes the effect read. The content
+   sits at `z-index: 1` and fades on its own.
+
+   `--ambient-bg` is written on `:root` by `ProjectFocusManager` when focus changes; see
+   the note there. Its fallback is the page's own paper, so with no script this layer is
+   invisible and the page behaves exactly as it did.
+
+   380ms rather than the content's 140ms: a room changing colour should lag slightly
+   behind whatever caused it, and matching the faster figure made the whole viewport
+   strobe on a quick scroll. */
+/* The class is doubled to win a specificity tie, and that is not a flourish.
+   `.project > :not(.sr-only)` sets `position: relative; z-index: 1` on every direct child
+   of a section at specificity (0,2,0). `.project > .project-tint` is also (0,2,0), and it
+   appears earlier in this file, so it lost: the tint became a relatively-positioned
+   element with no content, measured 0px tall, and painted nothing. It looked exactly like
+   the effect not being implemented.
+   `.project-tint.project-tint` is (0,3,0) and wins wherever it sits in the file, which
+   matters more than elegance here — this is the second time that rule has caught a layer
+   out. See the note on `.project-ghost-number` for the first. */
+.project > .project-tint.project-tint {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: var(--ambient-bg, var(--paper));
+  opacity: calc(1 - var(--presence));
+  pointer-events: none;
+  transition:
+    opacity 380ms linear,
+    background 380ms linear;
+}
+
+/* The seam between two sections. At full presence it is the section's own hairline;
+   faded, it goes with the paper rather than drawing a bright line across a dark page. */
+.project {
+  border-top-color: color-mix(
+    in srgb,
+    var(--project-line),
+    transparent calc((1 - var(--presence)) * 100%)
+  );
+}
+
+/* Everything the sections do not cover — the gaps a fast scroll can expose, and the
+   page behind the hero and the closing — goes with them. */
+body {
+  transition: background 380ms linear;
+}
+html.has-project-focus body {
+  background: var(--ambient-bg, var(--paper));
+}
+
 /* --- locked in ------------------------------------------------------------
    While you are in a project, it is the only one drawn. Its neighbours are still
    there, still laid out, still the right colour — but their contents are pulled
@@ -1142,15 +1207,39 @@ a:hover .external-arrow {
    Once `is-seen` the veil is a free full-section layer doing nothing, so the flash
    can simply be its background.
 
-   It sits behind the scene: the veil comes before `.project-body` in the document
-   and they share a stacking level, so the light washes the section around the
-   panels rather than over them. Warm rather than white, off-centre, never fully
-   opaque — light spilling out of a window, not a camera flash.
+   It has to sit *behind* the scene, and the first version of this did not. The claim
+   in this comment used to be that "the veil comes before `.project-body` in the
+   document and they share a stacking level", which was wrong in the one way that
+   mattered: `.project > .project-veil` is `z-index: 5` for its other job, and
+   `.project-body` is 2. So a 0.66-opacity warm sheet was painted over the entire
+   section including both panels, at exactly the beat the two panels are supposed to
+   stop looking alike.
+
+   Hit-testing the panel centres is what settled it, and it needed a scan of everything
+   painted over the point rather than `elementFromPoint`, which skips the veil because
+   the veil is `pointer-events: none`. Measured through the sheet, the untreated and
+   treated panels agreed to the byte in every region. That is the whole of the reported
+   complaint — "with the background blooming it's not very easy to see the difference" —
+   and it was one property.
+
+   So the blast drops to `z-index: 1` while it is running: above `.project-ambience` at
+   0, so the drawn room behind the demo still lights up, and below `.project-body` at 2,
+   so the film does not. Qualified on `.is-seen` because `z-index: 5` is load-bearing
+   for the veil's other role — the navy entrance curtain that covers the section before
+   it has been reached — and a curtain the body paints over is not a curtain.
+
+   Warm rather than white, off-centre, never fully opaque — light spilling out of a
+   window, not a camera flash.
 
    Scoped to the section rather than fixed to the viewport, deliberately. A
    `position: fixed` flash would fire across whatever the visitor happens to be
    reading if they scrolled past at the wrong moment, and an unrequested full-screen
    strobe is the one effect on this page that could actually hurt someone. */
+#night-neutralizer.is-seen[data-scene-beat="blast"] > .project-veil,
+#night-neutralizer.is-seen[data-scene-beat="boom"] > .project-veil,
+#night-neutralizer.is-seen[data-scene-beat="settle"] > .project-veil {
+  z-index: 1;
+}
 #night-neutralizer[data-scene-beat="blast"] > .project-veil,
 #night-neutralizer[data-scene-beat="boom"] > .project-veil,
 #night-neutralizer[data-scene-beat="settle"] > .project-veil {
@@ -2897,20 +2986,35 @@ html.shows-shortcuts .shortcut-sheet {
 .nn {
   --exposure: 1;
 }
-/* Modest, on purpose. The first attempt drove this to 11 and the shot stopped
-   being a shot: multiplying a near-black room by eleven pushes everything above
-   about 42/255 to pure white, so both panels became featureless rectangles and
-   the comparison had nothing left to compare. The room only needs to be lit
-   enough for the silhouettes to read; the thing that has to be too bright is the
-   fireball, and that is bright in the artwork rather than by multiplication. */
+/* Modest, on purpose, and much more modest than it was.
+   The first attempt drove this to 11 and the shot stopped being a shot: multiplying a
+   near-black room by eleven pushes everything above about 42/255 to pure white, so both
+   panels became featureless rectangles and the comparison had nothing left to compare.
+   2.6 and 2.1 were the correction and they were still too high, for a subtler reason
+   that only showed up in measurements of the two panels side by side.
+
+   Exposure is applied to *both* panels — that is what makes the comparison honest — so
+   every bit of it lifts the untreated shadows as well as the treated ones. At 2.1 the
+   near-black objects in the room were already visible on the untreated side before the
+   curve did anything, and the curve's shadow lift, which is half the product, had
+   almost nothing left to reveal. Measured at the wall: 31 against 57. At 1.3 the same
+   two samples read 7 against 23 — a smaller arithmetic gap that is far easier to see,
+   because it is the difference between black and visibly-not-black rather than between
+   two greys.
+
+   The room does not need multiplying to look lit anyway. `.nn-spill` pools real light
+   on the floor, and the thing that has to be too bright is the fireball, which is
+   already pure white in the artwork. A white pixel clips on the untreated panel at any
+   exposure at or above 1, and the curve rolls it to 0.87 on the treated one, so the
+   highlight half of the argument does not depend on this number at all. */
 .nn[data-beat="blast"] {
-  --exposure: 2.6;
+  --exposure: 1.45;
 }
 .nn[data-beat="boom"] {
-  --exposure: 2.1;
+  --exposure: 1.3;
 }
 .nn[data-beat="settle"] {
-  --exposure: 1.3;
+  --exposure: 1.1;
 }
 
 .nn-shot {
@@ -3058,7 +3162,7 @@ html.shows-shortcuts .shortcut-sheet {
 .nn-meter .nn-seg {
   background: #6fd3a8;
 }
-/* The top three are the ones that hurt, and only the untreated side reaches them.
+/* Everything above the limiter's ceiling, which only the untreated side reaches.
    Qualified by `.nn-meter` so it outranks the rule above rather than losing a
    specificity fight to it — as the first version did, silently, leaving a meter
    that pinned at maximum in reassuring green. */
@@ -3071,7 +3175,8 @@ html.shows-shortcuts .shortcut-sheet {
   position: absolute;
   right: -3px;
   left: -3px;
-  /* Above the ninth of fourteen segments: the limiter's working ceiling. */
+  /* Above the ninth of fourteen segments: the limiter's working ceiling, and the
+     point from which segments turn red. `CEILING` in the demo is the same number. */
   bottom: calc(9 / 14 * 100%);
   height: 1px;
   background: rgba(111, 211, 168, 0.8);
@@ -6576,6 +6681,11 @@ html.shows-shortcuts .shortcut-sheet {
   opacity: 0;
   pointer-events: none;
 }
+/* On `notice` as well as `reach`. `notice` is the beat whose entire job is to say
+   "there is something here that is not the feed" before anything travels, so it is the
+   beat that most needs the halo. Starting it only on `reach` meant the button lit up at
+   the same moment the pointer set off for it, which is too late to redirect anybody. */
+.dc[data-beat="notice"] .dc-toolbar::before,
 .dc[data-beat="reach"] .dc-toolbar::before {
   animation: dc-look 900ms ease-out infinite;
 }
@@ -6637,13 +6747,92 @@ html.shows-shortcuts .shortcut-sheet {
   background: var(--accent);
 }
 
+/* --- and a slower, larger pointer, in this scene only ---------------------
+   The shared cursor crosses its stage in 620ms, which is right for the scenes where it
+   moves a short distance inside a card and wrong here: this one travels the diagonal of
+   a whole browser window, and at 620ms it was reported twice as not obvious enough.
+   1100ms is slow enough to follow without being slow enough to read as broken, and it
+   fits inside `reach` (1600ms) with room to settle before the press.
+
+   Bigger, too. 22px is a real pointer's size, and a real pointer's size is exactly what
+   gets lost in a busy frame. */
+.dc .ghost-cursor {
+  width: 30px;
+  height: 30px;
+  transition:
+    left 1100ms cubic-bezier(0.4, 0, 0.2, 1),
+    top 1100ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 300ms ease,
+    transform 130ms ease;
+}
+.dc .ghost-cursor-ring {
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+}
+
 /* --- the app: three columns that never move ------------------------------- */
 
 .dc-app {
+  position: relative;
   display: grid;
   grid-template-columns: 132px minmax(0, 1fr) 168px;
   gap: 14px;
   padding: 14px;
+}
+
+/* --- the spotlight --------------------------------------------------------
+   A scrim over the app, and nothing over the tab strip.
+
+   The complaint this answers is about attention, not about contrast: the pointer set
+   off for a 24px button while the feed underneath it was the brightest, busiest,
+   fastest-moving thing in the frame. Halos on the button could not win that fight,
+   because they were competing with the entire rest of the picture.
+
+   So the rest of the picture stands down. The scrim covers `.dc-app` exactly — the
+   three columns and everything in them — and stops at the tab strip, which is where
+   the button is. The split is the browser's own chrome line, so it reads as "the page
+   went quiet and the browser did not" rather than as an effect.
+
+   Deliberately a neutral darkening and not a desaturation. `drain` is four beats away
+   and its whole claim is that the colour goes; taking the colour out here would spend
+   that beat early and leave the payoff looking like nothing happened. The feed keeps
+   every bit of its colour, it just goes dim.
+
+   It ends on `press`. From `drain` onward the real effect is running and the scene
+   wants the app fully visible again, so the scrim is only ever up for the two beats
+   where a pointer is travelling. */
+.dc-app::after {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  background: rgba(9, 10, 16, 0.55);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+.dc[data-beat="notice"] .dc-app::after,
+.dc[data-beat="reach"] .dc-app::after,
+.dc[data-beat="press"] .dc-app::after {
+  opacity: 1;
+}
+
+/* And the strip comes forward while that happens. `z-index` so its shadow lands on top
+   of the scrim rather than under it, which is the difference between the strip being
+   lit and the strip merely being unpainted. */
+.dc-tabs {
+  position: relative;
+  z-index: 6;
+  transition:
+    background 420ms ease,
+    box-shadow 420ms ease;
+}
+.dc[data-beat="notice"] .dc-tabs,
+.dc[data-beat="reach"] .dc-tabs,
+.dc[data-beat="press"] .dc-tabs {
+  background: #fdfdff;
+  box-shadow: 0 10px 26px -6px rgba(9, 10, 16, 0.5);
 }
 
 .dc-rail {
@@ -6920,8 +7109,13 @@ html.shows-shortcuts .shortcut-sheet {
    press is the only thing moving. It is not stopped — stopping it would read as the
    extension having already worked, a beat early. */
 .dc-deluge[data-quiet="true"] {
-  opacity: 0.18;
-  transition: opacity 260ms ease;
+  /* 0.18 was still legible. These glyphs are saturated pink on a near-white page and
+     the notification cards are opaque white on it, so a fifth of full strength left
+     four readable headlines in the corner of the window and a scatter of pink across
+     it — competing with a 24px button for the same three beats that exist to make that
+     button the only thing worth looking at. */
+  opacity: 0.07;
+  transition: opacity 300ms ease;
 }
 
 /* Each bit starts exactly on its counter and flies out from there.
@@ -7044,69 +7238,11 @@ html.shows-shortcuts .shortcut-sheet {
   }
 }
 
-/* --- the reward, thrown at the camera -------------------------------------
-   Hearts and arrows rising out of the feed and past the viewer while it is still
-   working on you, then frozen exactly where they are the moment the extension goes
-   on, and drained with everything else. Frozen rather than cleared: nothing was
-   taken away, it just stopped being worth anything.
+/* The in-frame burst that used to live here is gone. It was seven glyphs rising 180px
+   inside the demo's own box, and it was replaced by `.dc-deluge` — the same idea fired
+   out of the real counters and across the whole window, which is what the section is
+   actually arguing. Its rules were left behind for a while matching nothing. */
 
-   Pointer-events off and `aria-hidden` in the markup — this is the one part of the
-   scene that is pure sensation, and it has nothing to say to a screen reader that
-   the label on `.dc` does not already say. */
-.dc-burst {
-  position: absolute;
-  z-index: 6;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-.dc-burst-bit {
-  position: absolute;
-  bottom: 24%;
-  left: calc(28% + var(--bit) * 7.5%);
-  color: #f0546a;
-  font-size: 15px;
-  opacity: 0;
-  /* Staggered, and each one a little different, so they read as a scatter rather
-     than as a row of seven things leaving at once. */
-  animation: dc-burst-rise 2600ms cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
-  animation-delay: calc(var(--bit) * 330ms);
-  animation-play-state: paused;
-}
-.dc-burst-bit:nth-child(even) {
-  color: #e0509a;
-  font-size: 12px;
-}
-.dc-burst[data-running="true"] .dc-burst-bit {
-  animation-play-state: running;
-}
-@keyframes dc-burst-rise {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 30px, 0) scale(0.5);
-  }
-  18% {
-    opacity: 0.9;
-  }
-  70% {
-    opacity: 0.55;
-  }
-  100% {
-    opacity: 0;
-    /* Up and outward — the scale is what makes it read as coming past you rather
-       than merely floating up. */
-    transform: translate3d(calc(var(--bit) * 3px - 9px), -180px, 0) scale(2.1);
-  }
-}
-/* Greyed with the rest of the picture. `filter` on the layer rather than on each
-   bit: one composited pass instead of seven. */
-.dc[data-grey="true"] .dc-burst {
-  filter: grayscale(1) opacity(0.5);
-  transition: filter 900ms ease;
-}
 .dc[data-grey="true"] .dc-media,
 .dc[data-grey="true"] .dc-post-avatar {
   filter: grayscale(1);
@@ -9742,6 +9878,22 @@ svg.bd-vehicle {
 
 #decaf .dc {
   max-width: 980px;
+}
+
+/* The backdrop stands down for the click, along with everything else.
+   `.dc-app` gets a scrim and `.dc-deluge` drops to a fifth for the three beats where a
+   pointer is travelling to the toolbar and pressing it. Filming those beats showed the
+   one thing that had not been told to get out of the way: four opaque white cards
+   bobbing at full strength in the right-hand two thirds of the section, which left them
+   the brightest objects on screen at precisely the moment they should have been the
+   least. Everything that competes with the button now yields to it at the same time. */
+#decaf .bd--decaf {
+  transition: opacity 420ms ease;
+}
+#decaf[data-scene-beat="notice"] .bd--decaf,
+#decaf[data-scene-beat="reach"] .bd--decaf,
+#decaf[data-scene-beat="press"] .bd--decaf {
+  opacity: 0.16;
 }
 
 .bd-decaf-card {
