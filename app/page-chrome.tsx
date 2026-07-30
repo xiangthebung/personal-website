@@ -543,6 +543,58 @@ export function ProjectFocusManager() {
       progressFrame = window.requestAnimationFrame(writeProgress);
     };
 
+    /**
+     * How present each project is, as a number rather than a class.
+     *
+     * The page used to say only "this is the active one", which is a binary, and a
+     * binary cannot express being halfway between two projects. So while you were
+     * reading one, the next was already fully drawn underneath it, and the effect was
+     * of scrolling down a list rather than of arriving somewhere.
+     *
+     * `--presence` is the share of the *viewport* a section holds, curved. The section
+     * you are in is the only one at 1, everything else is faded back, and moving the
+     * wheel crossfades between them — which is what makes a project feel like the only
+     * thing on screen without anything being hidden outright.
+     *
+     * Viewport share, not `intersectionRatio`: the ratio is a fraction of the element,
+     * so a section taller than the window reports 0.5 while filling it completely,
+     * which is backwards for this.
+     *
+     * Smoothstepped between 0.3 and 0.85 for the "locked in" feel. Below 0.3 of the
+     * screen a section is a neighbour and recedes; past 0.85 it is the one you are
+     * looking at and is fully there. Linear interpolation instead put every section at
+     * a permanent half-presence, which just read as a page with the contrast turned
+     * down.
+     *
+     * Written straight onto each section, every frame, in one pass with one box read
+     * apiece. Nothing here invalidates a computed style beyond the seven nodes it
+     * touches — the reason this is not a variable on `:root`.
+     */
+    let presenceFrame = 0;
+    const writePresence = () => {
+      presenceFrame = 0;
+      const viewport = window.innerHeight;
+      if (viewport <= 0) return;
+
+      projects.forEach((project) => {
+        const rect = project.getBoundingClientRect();
+        const visible =
+          Math.max(0, Math.min(rect.bottom, viewport) - Math.max(rect.top, 0));
+        const coverage = visible / viewport;
+        /* 0.22 to 0.80. The top has to sit at or below the height a section can
+           actually reach — these are 84svh, so a ramp topping out at 0.85 left short
+           sections permanently a hair short of full presence. */
+        const ramp = Math.max(0, Math.min(1, (coverage - 0.22) / 0.58));
+        // Smoothstep, so neither end of the crossfade has a corner in it.
+        const presence = ramp * ramp * (3 - 2 * ramp);
+        project.style.setProperty("--presence", presence.toFixed(3));
+      });
+    };
+    const requestPresence = () => {
+      if (presenceFrame) return;
+      presenceFrame = window.requestAnimationFrame(writePresence);
+    };
+
     // Accents are fixed per theme, so they are read once instead of on every
     // focus change. Each read forces a style recalculation.
     const accents = new Map<HTMLElement, string>();
@@ -644,8 +696,13 @@ export function ProjectFocusManager() {
       .forEach((element) => arrivals.observe(element));
 
     writeProgress();
-    window.addEventListener("scroll", requestProgress, { passive: true });
-    window.addEventListener("resize", requestProgress);
+    writePresence();
+    const onScroll = () => {
+      requestProgress();
+      requestPresence();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
 
     // --- Keyboard navigation -------------------------------------------------
     const jumpTo = (element: Element | null | undefined) => {
@@ -709,10 +766,12 @@ export function ProjectFocusManager() {
       arrivals.disconnect();
       root.classList.remove("has-project-focus");
       root.classList.remove("shows-shortcuts");
-      window.removeEventListener("scroll", requestProgress);
-      window.removeEventListener("resize", requestProgress);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
       document.removeEventListener("keydown", handleShortcut);
       if (progressFrame) window.cancelAnimationFrame(progressFrame);
+      if (presenceFrame) window.cancelAnimationFrame(presenceFrame);
+      projects.forEach((project) => project.style.removeProperty("--presence"));
       trail?.style.removeProperty("transform");
       trail?.style.removeProperty("--trail-accent");
     };

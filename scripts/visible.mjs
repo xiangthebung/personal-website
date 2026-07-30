@@ -67,6 +67,27 @@ const CHECKS = [
     note: "the connection dying; only has to be visible while it happens",
   },
   {
+    /* Not a visibility question — a geometry one. The cable has to run below the
+       browser window and still be on screen when the section is centred, and those two
+       constraints are set by this element's box and the section's height. Printed so
+       the band can be chosen against real numbers instead of guessed at. */
+    label: "pagepack browser",
+    section: "pagepack",
+    selector: "#pagepack .pp-browser",
+    /* At `settle`, the opening frame, where the window is the subject. Without a beat
+       this sampled whatever was showing and failed on `read-offline` — where the reader
+       panel covers the browser on purpose, because a dead window behind living reading
+       is the shot the whole scene is built to produce. */
+    beat: { section: "pagepack", name: "settle" },
+    required: true,
+  },
+  {
+    label: "pagepack section",
+    section: "pagepack",
+    selector: "#pagepack .project-foreground",
+    required: false,
+  },
+  {
     label: "pagepack reader",
     section: "pagepack",
     selector: "#pagepack .pp-reader",
@@ -268,13 +289,30 @@ const PROBE = (selector) => {
      a layout container with no background that paints nothing at all. Chasing that
      would have meant redesigning a section to escape an element that was never
      visible. */
+  /**
+   * Effective opacity, accumulated up the ancestor chain.
+   *
+   * A node's own `opacity` is not the question. A panel parked at `opacity: 0` until its
+   * beat arrives has children that each compute to `opacity: 1`, and those children
+   * hit-test across the whole box — so checking only the node itself reported PagePack's
+   * browser window as covered by the header and index of a reader panel that was not on
+   * screen. This is the same mistake as trusting `elementFromPoint` on a
+   * `pointer-events: none` layer, one level up.
+   */
+  const effectiveOpacity = (node) => {
+    let value = 1;
+    for (let n = node; n && n !== document.documentElement; n = n.parentElement) {
+      const style = getComputedStyle(n);
+      if (style.visibility === "hidden" || style.display === "none") return 0;
+      value *= Number(style.opacity);
+      if (value < 0.02) return value;
+    }
+    return value;
+  };
+
   const paintsSomething = (node, x, y) => {
     const style = getComputedStyle(node);
-    /* Transparent and invisible things still hit-test. A panel held at `opacity: 0`
-       until its beat arrives occupies its box the whole time, so without this the
-       harness reported PagePack's toolbar as permanently hidden behind a reader panel
-       that had not appeared yet. */
-    if (Number(style.opacity) < 0.05) return false;
+    if (effectiveOpacity(node) < 0.05) return false;
     if (style.visibility === "hidden") return false;
     if (style.backgroundImage !== "none") return true;
     const bg = style.backgroundColor;

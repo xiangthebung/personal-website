@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Night Neutralizer, as the same eight seconds of film run twice.
+ * Night Neutralizer, as the same ten seconds of film run twice.
  *
  * The pitch is a complaint everyone recognises: at midnight the quiet scenes are
  * too dark to see and the loud ones are loud enough to wake the house, and turning
@@ -64,14 +64,35 @@ const [AUDIO_READING] = describeAudioEffect(STRENGTH, true);
 
 type BeatName = "night" | "whisper" | "blast" | "boom" | "settle" | "hold";
 
+/**
+ * Six beats, ten and a half seconds.
+ *
+ * Every beat in this scene asks for a *comparison* — two panels, and the difference
+ * between them is the whole product — and a comparison takes about twice as long to
+ * make as a change takes to notice. The eye has to go left, go right, and come back.
+ * At 1.7s `boom` was showing the most important frame on the page for less time than
+ * that round trip, and `settle` was shorter than the 1.5s fade the stylesheet runs
+ * across it, so the shot was still moving when the beat ended.
+ *
+ * The cut in the middle is the exception and stays a cut.
+ */
 const BEATS: readonly Beat<BeatName>[] = [
-  { name: "night", ms: 1900 },
-  { name: "whisper", ms: 1500 },
-  // A cut is a cut. Two hundred milliseconds, and it should feel like an assault.
-  { name: "blast", ms: 220 },
-  { name: "boom", ms: 1700 },
-  { name: "settle", ms: 1800 },
-  { name: "hold", ms: 800 },
+  // Two dark panels and four labels. Nothing is happening yet, on purpose: this is
+  // where a visitor works out that they are looking at the same shot twice.
+  { name: "night", ms: 2400 },
+  // The subtitle and the level meter beside it, which is a second comparison inside
+  // the first one.
+  { name: "whisper", ms: 2100 },
+  // A cut is a cut. It should feel like an assault — but the white flash it fires is
+  // a 190ms transition, so anything under about 300ms cut off its own punch.
+  { name: "blast", ms: 300 },
+  // The frame the whole section exists to produce: one panel blown to white with its
+  // meter pinned, one panel intact under a ceiling.
+  { name: "boom", ms: 2400 },
+  // Longer than the 1400–1500ms fades the stylesheet runs on the fire and the spill,
+  // so the room is actually back to dark before the beat is over.
+  { name: "settle", ms: 2300 },
+  { name: "hold", ms: 1200 },
 ];
 
 /**
@@ -107,6 +128,30 @@ const SOUND: Partial<Record<BeatName, { level: "low" | "peak"; what: string }>> 
 };
 
 const VOL_BARS = 7;
+
+/**
+ * The caption, one line per beat.
+ *
+ * There were two: one for the explosion, one for everything else. Both were written
+ * for somebody who already knows what a transfer curve and a limiter ceiling are —
+ * "the transfer curve separates shadow detail before it rolls off the highlights" is
+ * a sentence about the mechanism, and the panels underneath were already showing the
+ * mechanism. What they were not saying was the plain thing: these are the same shot,
+ * and one of them you can see.
+ *
+ * So the numbers stay where they belong, under each panel, where they are derived from
+ * the extension's own `describeVideoEffect`. The caption's job is to say which frame
+ * this is. One line each: the stylesheet reserves `min-height: 1.5em`, so a caption
+ * that wraps shifts the panels above it.
+ */
+const CAPTION: Record<BeatName, readonly [string, string]> = {
+  night: ["The same night shot, twice.", "Left as the film shipped, right through the extension."],
+  whisper: ["Someone speaks, quietly.", "The meter beside the line barely moves."],
+  blast: ["Then something explodes.", ""],
+  boom: ["Left blows out to white, and the meter pins.", "Right stays inside the picture."],
+  settle: ["Back to the dark.", "Right still has shadows in it. Left has black."],
+  hold: ["One film, one volume setting.", "One of them you can watch at midnight."],
+};
 
 /** Level meter. Segment count is the design; the top three are the ones that hurt. */
 const SEGMENTS = 14;
@@ -214,10 +259,17 @@ export function NightNeutralizerDemo() {
             industry shorthand, and putting the product's name on the right half
             meant the two labels were not even the same kind of thing, so nothing
             told you at a glance which one you were supposed to prefer. */}
+        {/* The small notes beside each label used to be "peaks at 0 dB" and
+            "strength 45" — a measurement in units a visitor may not read, paired with
+            a slider position for a slider that is not on screen. They are the same
+            kind of statement now, both about the thing the meters are doing, so the
+            pair can be compared without knowing what 0 dB is. The strength figure was
+            the only casualty and it was not carrying its space: nothing here lets you
+            change it. */}
         <section className="nn-panel">
           <p className="nn-label">
             <span>Before</span>
-            <small data-alarm>peaks at 0 dB</small>
+            <small data-alarm>peaks at maximum</small>
           </p>
           <div className="nn-panel-body">
             <NightFrame treated={false} />
@@ -229,7 +281,7 @@ export function NightNeutralizerDemo() {
         <section className="nn-panel">
           <p className="nn-label">
             <span>After</span>
-            <small>strength {STRENGTH}</small>
+            <small>held under a ceiling</small>
           </p>
           <div className="nn-panel-body">
             <NightFrame treated />
@@ -264,17 +316,8 @@ export function NightNeutralizerDemo() {
       </div>
 
       <p className="nn-caption" aria-hidden="true">
-        {beat === "blast" || beat === "boom" ? (
-          <>
-            <strong>Same explosion.</strong> Untreated reaches 0 dB; treatment stays
-            below the limiter ceiling.
-          </>
-        ) : (
-          <>
-            <strong>Same low-light frame.</strong> The transfer curve separates
-            shadow detail before it rolls off the highlights.
-          </>
-        )}
+        <strong>{CAPTION[beat][0]}</strong>
+        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
       </p>
     </div>
   );

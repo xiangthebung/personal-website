@@ -44,17 +44,35 @@ type BeatName =
   | "match-letter"
   | "hold";
 
+/**
+ * Eight beats, thirteen and a half seconds.
+ *
+ * This scene is a lesson rather than a demonstration, and a lesson has to give you
+ * time to do the comparison yourself. The four cue beats were around a second each,
+ * which is roughly the real game's pace — and the real game is a thing you have
+ * already learned the rules of. Somebody meeting the two-back rule for the first time
+ * has to look at the new cue, find the slot two places back, and hold both in mind
+ * before the bracket tells them the answer. A second is not enough for the first of
+ * those, let alone all three.
+ *
+ * So the cue beats are 1.5s, the two beats where the bracket and the verdict are on
+ * screen are 2.4s, and `empty` is long enough to read the strip's own heading — "what
+ * you are holding", "2 back" — before anything starts arriving into it. Up from 10s.
+ */
 const BEATS: readonly Beat<BeatName>[] = [
-  { name: "empty", ms: 1000 },
-  { name: "cue-1", ms: 1150 },
-  { name: "cue-2", ms: 1150 },
-  { name: "cue-3", ms: 1000 },
+  // Four empty slots and the rule, before there is anything to apply it to.
+  { name: "empty", ms: 1400 },
+  { name: "cue-1", ms: 1600 },
+  { name: "cue-2", ms: 1500 },
+  // The repeat has already happened here and nothing has pointed it out yet. That
+  // gap is the teaching, so it needs long enough for the visitor to spot it first.
+  { name: "cue-3", ms: 1500 },
   // Long enough to read the bracket and the verdict. This is the beat that
   // teaches, so it gets the most time on screen.
-  { name: "match-square", ms: 1900 },
-  { name: "cue-4", ms: 1000 },
-  { name: "match-letter", ms: 1900 },
-  { name: "hold", ms: 900 },
+  { name: "match-square", ms: 2400 },
+  { name: "cue-4", ms: 1500 },
+  { name: "match-letter", ms: 2400 },
+  { name: "hold", ms: 1200 },
 ];
 
 /**
@@ -93,6 +111,37 @@ const ARRIVED: Record<BeatName, number> = {
 const ANSWERING: Partial<Record<BeatName, "square" | "letter">> = {
   "match-square": "square",
   "match-letter": "letter",
+};
+
+/**
+ * The caption, one line per beat.
+ *
+ * It had three lines: one for each of the two match beats, and one shared by the four
+ * beats where cues are arriving. That shared line — "hold two, compare what arrives
+ * against what arrived two cues ago, then let the oldest one go" — is a statement of
+ * the rule, and it was on screen through `empty`, when nothing had arrived, and
+ * through `cue-1` and `cue-2`, when there was nothing two cues back to compare
+ * against. It described the scene in general and none of those frames in particular.
+ *
+ * The rule is still stated, but only where a frame is showing it. The rest of the time
+ * the caption counts along with the strip, which is the thing a first-time visitor
+ * needs help doing: knowing which slot they are supposed to be looking at.
+ */
+const CAPTION: Record<BeatName, readonly [string, string]> = {
+  empty: ["Nothing has arrived yet.", "The rule: compare each cue against the one two back."],
+  "cue-1": ["Cue 1 arrives.", "A square on the grid, and a spoken letter."],
+  "cue-2": ["Cue 2.", "Holding two. Nothing to compare against yet."],
+  "cue-3": ["Cue 3.", "Two back from here is cue 1."],
+  "match-square": [
+    "Cue 3 is cue 1's square.",
+    "Different letter, so only one of the two answers is right.",
+  ],
+  "cue-4": ["Cue 4.", "Two back from here is cue 2."],
+  "match-letter": [
+    "Cue 4 is cue 2's letter.",
+    "Different square. The streams are scored separately.",
+  ],
+  hold: ["Two streams, scored apart.", "One key for the square, one for the sound."],
 };
 
 const N = 2;
@@ -189,7 +238,16 @@ export function NBackDemo() {
                 key={`${run}-${index}`}
                 data-filled={Boolean(cue)}
                 data-current={isCurrent}
-                data-target={Boolean(answering) && isTarget}
+                /* Marked from the moment the cue lands, not from the moment the
+                   bracket is drawn. It used to be `answering && isTarget`, so on
+                   `cue-3` and `cue-4` a new cue appeared and the visitor was left to
+                   work out for themselves which of the four slots two-back meant —
+                   and then the bracket arrived a beat later and answered it for them,
+                   which is the wrong way round for a lesson. Now the slot being
+                   compared against lights up with the cue, and the beat after it says
+                   what the comparison found. Nothing new in the stylesheet: this is
+                   the same attribute and the same tint as before, one beat earlier. */
+                data-target={isTarget}
               >
                 <Board cell={cue?.cell ?? -1} small />
                 <span className="nb-slot-letter">{cue?.letter ?? ""}</span>
@@ -215,40 +273,30 @@ export function NBackDemo() {
       </div>
 
       {/* ------------------------------------------------------------- the answer */}
+      {/* The two keys. The verdict column read "Hit", which is the game's own scoring
+          word and means nothing to somebody who has not played it — "hit" what? It
+          says "Match" now: the same event, named after what is on the strip rather
+          than after how it would be scored. */}
       <div className="nb-answers">
         <span className="nb-answer" data-lit={answering === "letter"}>
           <kbd>A</kbd>
           <span className="nb-answer-name">Sound</span>
           <span className="nb-answer-verdict">
-            {answering === "letter" ? "Hit" : ""}
+            {answering === "letter" ? "Match" : ""}
           </span>
         </span>
         <span className="nb-answer" data-lit={answering === "square"}>
           <kbd>L</kbd>
           <span className="nb-answer-name">Square</span>
           <span className="nb-answer-verdict">
-            {answering === "square" ? "Hit" : ""}
+            {answering === "square" ? "Match" : ""}
           </span>
         </span>
       </div>
 
       <p className="nb-caption" aria-hidden="true">
-        {answering === "square" ? (
-          <>
-            <strong>Cue 3 is cue 1&apos;s square.</strong> Different letter, so only one
-            of the two answers is right.
-          </>
-        ) : answering === "letter" ? (
-          <>
-            <strong>Cue 4 is cue 2&apos;s letter.</strong> Different square. The streams
-            are scored separately.
-          </>
-        ) : (
-          <>
-            <strong>Hold two.</strong> Compare what arrives against what arrived two
-            cues ago, then let the oldest one go.
-          </>
-        )}
+        <strong>{CAPTION[beat][0]}</strong>
+        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
       </p>
     </div>
   );

@@ -105,28 +105,49 @@ type BeatName =
  * The overlay act is the shortest of the four despite being the signature one: it
  * lands in a second and a half and holding it longer only delays the reveal that
  * there is more here than a hover effect.
+ *
+ * That reasoning still holds against the other three acts and did not hold against a
+ * visitor who has never seen the app. Seventeen beats in sixteen seconds is a beat a
+ * second, and four of those beats carry a paragraph of real text — a tutor's answer,
+ * a quiz explanation — that cannot be read in a second. The split is now sharper
+ * rather than uniformly slower: the seven beats that are a pointer moving or a panel
+ * swapping are close to where they were, and the six that ask you to *read something*
+ * got most of the extra time. 19.9s.
  */
 const BEATS: readonly Beat<BeatName>[] = [
   // I. the notes overlay
-  { name: "slide", ms: 1200 },
+  // The slide alone, and the only chance to take in what the deck is about before
+  // something covers half of it.
+  { name: "slide", ms: 1800 },
   { name: "arrive", ms: 600 },
-  { name: "resting", ms: 900 },
+  // 0.26 opacity is the whole mechanism, and 900ms was not long enough for anyone to
+  // notice the card was faint before it stopped being faint.
+  { name: "resting", ms: 1500 },
   { name: "reach", ms: 600 },
-  { name: "awake", ms: 1400 },
+  { name: "awake", ms: 2100 },
   // II. the tutor
-  { name: "split", ms: 750 },
-  { name: "ask", ms: 800 },
-  { name: "thinking", ms: 800 },
-  { name: "answer", ms: 1800 },
+  { name: "split", ms: 700 },
+  { name: "ask", ms: 950 },
+  { name: "thinking", ms: 850 },
+  // Three lines of answer. At 1800ms it was gone before the last one was read.
+  { name: "answer", ms: 2300 },
   // III. the quiz
-  { name: "to-quiz", ms: 650 },
-  { name: "pick", ms: 650 },
-  { name: "verdict", ms: 1600 },
+  /* Not a bare cut, because this is the beat that presses the Practice tab, and
+     `.ghost-cursor` transitions its travel over 620ms. At 600ms the panel had already
+     swapped while the pointer was still crossing the frame — filming it showed the
+     cursor 45px under the tab it was supposed to be clicking, which is the "cursor
+     stranded mid-air" failure the storyboard's own notes warn about. 1000ms is the
+     620ms trip plus enough of the 460ms click ring to see it. */
+  { name: "to-quiz", ms: 1000 },
+  { name: "pick", ms: 750 },
+  // A question, four options and the reasoning underneath, all at once.
+  { name: "verdict", ms: 2100 },
   // IV. matching
-  { name: "to-match", ms: 650 },
-  { name: "pair-a", ms: 700 },
-  { name: "pair-b", ms: 700 },
-  { name: "matched", ms: 1400 },
+  { name: "to-match", ms: 600 },
+  { name: "pair-a", ms: 750 },
+  // Same 620ms travel, and this one carries a press too.
+  { name: "pair-b", ms: 900 },
+  { name: "matched", ms: 1700 },
   { name: "hold", ms: 800 },
 ];
 
@@ -153,23 +174,90 @@ const ACT: Record<BeatName, 0 | 1 | 2 | 3> = {
 
 const ACT_NAMES = ["Notes overlay", "Tutor", "Quiz", "Matching"] as const;
 
-/** Where the pointer is. Reaching for a thing is what makes it happen. */
+/**
+ * Where the pointer is. Reaching for a thing is what makes it happen.
+ *
+ * `to-quiz` used to send it to `figure`, which is a diagram on the slide that nothing
+ * in that beat has anything to do with. The panel swapped from a tutor conversation
+ * to a quiz card with the pointer parked on an unrelated drawing, so the one beat in
+ * the scene where the whole right-hand side changes had no cause on screen. It goes
+ * to the Practice tab instead, and presses it — which is what a person would have
+ * done, and the tab was already there lighting up on its own.
+ */
 const CURSOR: Partial<Record<BeatName, string>> = {
   reach: "notes",
   awake: "notes",
   ask: "chip",
   thinking: "chip",
-  "to-quiz": "figure",
+  "to-quiz": "practice-tab",
   pick: "option",
   verdict: "option",
+  /* Aimed at the first term one beat before it is paired, so the pointer is standing
+     on it when the tick appears rather than arriving at it afterwards. Its travel is a
+     fixed 620ms whatever the distance, so the only way to have it settled by the beat
+     that matters is to send it a beat early. */
+  "to-match": "concept",
   "pair-a": "concept",
   "pair-b": "definition",
+};
+
+/**
+ * What each frame is showing, in the present tense.
+ *
+ * The caption used to change once per act, so it was a summary of four acts rather
+ * than a description of seventeen frames — and two of the four were written as
+ * instructions ("Reach for the notes", "Ask about the slide you are on") to a visitor
+ * who cannot reach or ask, because nothing here responds to a real pointer. Filming
+ * the beats made the mismatch plain: the line under `split` was inviting you to ask a
+ * question, and the panel it was pointing at was still empty.
+ *
+ * Now every beat names what is on screen while it is on screen. Lead clause first,
+ * rest of the sentence second, so the emphasis the stylesheet expects survives.
+ */
+const CAPTION: Record<BeatName, readonly [string, string]> = {
+  slide: ["Slide 2 of a lecture deck.", "Nothing on top of it yet."],
+  arrive: ["A notes card arrives over the slide.", ""],
+  resting: ["The notes rest at a quarter opacity.", "The slide underneath stays readable."],
+  reach: ["The pointer moves toward the notes.", ""],
+  awake: ["The notes wake to full opacity.", "The slide is still there underneath."],
+  split: ["The workspace splits.", "A panel opens beside the slide."],
+  ask: ["A question about this slide, asked.", ""],
+  thinking: ["The tutor is working on it.", ""],
+  answer: ["It answers about slide 2.", "Nobody had to tell it which slide that is."],
+  "to-quiz": ["Switching to Practice.", ""],
+  pick: ["An answer, chosen.", ""],
+  verdict: ["Marked, with the reasoning.", "The question came from the deck itself."],
+  "to-match": ["Next exercise: matching.", ""],
+  "pair-a": ["Pairing a term with its definition.", ""],
+  "pair-b": ["And the next pair.", ""],
+  matched: ["All three matched.", "Cloze cards and worked examples are in here too."],
+  hold: ["Four parts of one study workspace.", "Notes, tutor, quiz, matching."],
 };
 
 const LETTERS = ["A", "B", "C", "D"];
 
 export function PdfExplainerDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * The box the cursor is *positioned inside*, which is not the box the scene is
+   * measured by.
+   *
+   * `PhantomCursor` converts its target's position into percentages of whatever
+   * element it is handed, and writes them as `left`/`top` — which the browser then
+   * resolves against the nearest positioned ancestor. Here the cursor is rendered
+   * inside `.pdfx-stage` while every other hook wants the root `.pdfx`, and the root
+   * is taller than the stage by an act rail and a caption. Handing it the root meant
+   * every percentage was computed against one box and applied to a shorter one, so
+   * the pointer landed progressively further below its target the nearer the target
+   * was to the top of the frame. It was tolerable while the highest thing it aimed at
+   * was the notes card, which sits near the middle; it became obvious the moment it
+   * was asked to press a tab in the panel's top row and landed 45px under it.
+   *
+   * Two refs, then. This one for the cursor's geometry, `stageRef` for everything
+   * else — `--beat-t`, the intersection observer and the section's beat attributes all
+   * belong to the root.
+   */
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
   const { beat, index, run, still } = useStoryboard(BEATS, {
     running: onScreen,
@@ -225,7 +313,7 @@ export function PdfExplainerDemo() {
         ))}
       </ol>
 
-      <div className="pdfx-stage" data-split={split}>
+      <div className="pdfx-stage" ref={frameRef} data-split={split}>
         {/* The slide never gives up a pixel to the overlay; it makes room only when
             the workspace splits for a panel, which is what the app does too. */}
         <div className="pdfx-slide">
@@ -297,7 +385,11 @@ export function PdfExplainerDemo() {
         <aside className="pdfx-panel" data-open={split} aria-hidden="true">
           <div className="pdfx-panel-tabs">
             <span data-on={act === 1}>Tutor</span>
-            <span data-on={act >= 2}>Practice</span>
+            {/* Named as a cursor target so the beat that swaps this panel's whole
+                contents has something visible causing it. See `CURSOR`. */}
+            <span data-on={act >= 2} data-target="practice-tab">
+              Practice
+            </span>
           </div>
 
           {act === 1 && (
@@ -412,43 +504,19 @@ export function PdfExplainerDemo() {
 
         {!still && (
           <PhantomCursor
-            stage={stageRef}
+            stage={frameRef}
             target={CURSOR[beat] ?? null}
-            pressing={beat === "ask" || beat === "pick" || beat === "pair-b"}
+            pressing={
+              beat === "ask" || beat === "to-quiz" || beat === "pick" || beat === "pair-b"
+            }
             token={`${run}-${beat}`}
           />
         )}
       </div>
 
       <p className="pdfx-caption" aria-hidden="true">
-        {act === 0 ? (
-          awake ? (
-            <>
-              <strong>Reach for the notes and they wake.</strong> The slide is still
-              there underneath.
-            </>
-          ) : (
-            <>
-              <strong>Notes on top of the slide, at a quarter opacity.</strong> Look
-              away and they get out of the way.
-            </>
-          )
-        ) : act === 1 ? (
-          <>
-            <strong>Ask about the slide you are on.</strong> The tutor already knows
-            which one that is.
-          </>
-        ) : act === 2 ? (
-          <>
-            <strong>Questions written from the deck.</strong> Marked, with the
-            reasoning, not just a tick.
-          </>
-        ) : (
-          <>
-            <strong>And the terms, paired up.</strong> Cloze cards and worked
-            examples are in there too.
-          </>
-        )}
+        <strong>{CAPTION[beat][0]}</strong>
+        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
       </p>
     </div>
   );

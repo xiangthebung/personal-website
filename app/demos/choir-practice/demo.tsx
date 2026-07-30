@@ -366,31 +366,45 @@ export function ChoirPracticeDemo() {
 
           {mounted && (
             <div className="choir-shield-controls" data-engaged={engaged}>
+              {/* Two messages, because there are two states and only one of them was
+                  ever named. Between the frame mounting and the score finishing
+                  engraving — 1.6 MB of scores and modules, then a parse and a canvas
+                  layout — the shield sat over a blank frame telling the visitor to
+                  click it, and clicking it at that point does nothing you can see.
+                  Nothing said anything was on its way. So the hint now says what the
+                  pod is doing while it is doing it, and only offers the frame once
+                  there is a frame worth having. The scroll glyph goes with the second
+                  message: an icon about the wheel over a still-blank frame is a
+                  question, not a cue. */}
               <div className="choir-shield-cluster">
                 <span className="choir-shield-hint">
-                  <span className="choir-shield-glyph" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path
-                        d="M7 4.5v11M7 15.5l-2.6-2.6M7 15.5l2.6-2.6"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <rect
-                        x="13"
-                        y="5"
-                        width="7"
-                        height="14"
-                        rx="3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                      />
-                    </svg>
-                  </span>
-                  Click to use it — scrolling moves the page
+                  {opened && (
+                    <span className="choir-shield-glyph" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path
+                          d="M7 4.5v11M7 15.5l-2.6-2.6M7 15.5l2.6-2.6"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <rect
+                          x="13"
+                          y="5"
+                          width="7"
+                          height="14"
+                          rx="3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                        />
+                      </svg>
+                    </span>
+                  )}
+                  {opened
+                    ? "Click to use it — scrolling moves the page"
+                    : "Opening a score…"}
                 </span>
 
                 <button
@@ -429,10 +443,22 @@ export function ChoirPracticeDemo() {
         <span className="choir-stand-base" aria-hidden="true" />
       </div>
 
+      {/* The footnote follows the same two states. It is the only line of prose under
+          this pod, so while the frame is still loading it is the only thing that can
+          explain why there is a dark rectangle where a score should be. */}
       <div className="choir-footnote">
         <p className="choir-note">
-          The real application, from <code>/demos/choir/</code>. Silent until you
-          press Play.
+          {opened ? (
+            <>
+              The real application, from <code>/demos/choir/</code>. Silent until you
+              press Play.
+            </>
+          ) : (
+            <>
+              Loading the real application from <code>/demos/choir/</code>, then
+              opening a four-part score in it.
+            </>
+          )}
         </p>
       </div>
     </div>

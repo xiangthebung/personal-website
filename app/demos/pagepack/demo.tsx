@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PagePack, as a thirteen-second film.
+ * PagePack, as an eighteen-second film.
  *
  * The pitch is one sentence — "your reading list is just a list of links once the
  * signal drops" — and a sentence is not something you can prove with a screenshot
@@ -56,22 +56,69 @@ type BeatName =
  * because a click is short; `dead` is long because the silence after the
  * connection drops is the beat doing the work, and cutting it short would waste
  * the only moment in the scene that is supposed to feel bad.
+ *
+ * It ran 11.9s and was the fastest thing on the page, which is the one thing this
+ * film could not afford to be: it has five acts and a reversal in it, and someone
+ * meeting it for the first time was being asked to read a new caption, find a new
+ * thing on screen and understand a cause every three quarters of a second. So every
+ * beat that introduces something now gets between 1.4 and 2.4 seconds — long enough
+ * to read the caption *and then* look at the frame, which is the order a first-time
+ * visitor actually does it in — and the beats that are only a move or a click stay
+ * where they were. 16.7s now.
+ *
+ * The four save beats are also load-bearing arithmetic: `press + read + collect +
+ * finish` is the window the cards fly in, and `FLYER_STAGGER` below re-derives the
+ * stagger from it. Changing one of the four without reading that note leaves the
+ * pages either landing early into a dead pause or still in the air when the
+ * connection dies.
  */
 const BEATS: readonly Beat<BeatName>[] = [
-  { name: "settle", ms: 900 },
-  { name: "reach", ms: 700 },
-  { name: "open", ms: 600 },
-  { name: "aim", ms: 550 },
-  { name: "press", ms: 260 },
-  { name: "read", ms: 850 },
-  { name: "collect", ms: 1500 },
-  { name: "finish", ms: 700 },
-  { name: "cut", ms: 700 },
-  { name: "dead", ms: 1400 },
-  { name: "reveal", ms: 900 },
-  { name: "read-offline", ms: 1900 },
-  { name: "hold", ms: 900 },
+  // The establishing shot: a browser, a page, a toolbar nobody has looked at yet.
+  // 900ms was not enough time to find the PagePack button before the cursor did.
+  { name: "settle", ms: 1500 },
+  { name: "reach", ms: 900 },
+  // The popup is a new object with a name, a target page and a button on it. It was
+  // on screen for 600ms, less time than it takes to read its own heading.
+  { name: "open", ms: 1400 },
+  { name: "aim", ms: 700 },
+  // A press is a press.
+  { name: "press", ms: 320 },
+  // "Reading this page…" — the first of three progress states, and the one that
+  // establishes that a save has phases at all.
+  { name: "read", ms: 1400 },
+  // The cards leaving the window. The longest beat of the save, because it is the
+  // one carrying the idea that a save takes the linked pages with it.
+  { name: "collect", ms: 2000 },
+  // The count landing on the toolbar badge: small, and the proof the save worked.
+  { name: "finish", ms: 1000 },
+  // A cut. Long enough for the signal arcs to drop outside-in and the slash to draw
+  // across them — 640ms of transition in the stylesheet — and no longer.
+  { name: "cut", ms: 800 },
+  { name: "dead", ms: 1900 },
+  // The Library tab, a pack, and a file list. Three new things in one frame.
+  { name: "reveal", ms: 1200 },
+  // The payoff, and the only frame with real prose in it.
+  { name: "read-offline", ms: 2400 },
+  { name: "hold", ms: 1200 },
 ];
+
+/**
+ * How far apart the cards leave the button, as a multiple of the stylesheet's own
+ * 235ms step.
+ *
+ * `.pp-flyer[data-flying="true"]` runs a 1900ms flight with
+ * `animation-delay: calc(var(--order) * 235ms)`, and the stylesheet's comment
+ * records why: seven cards have to settle exactly as `finish` ends, so the last one
+ * lands the instant before the connection dies. That was tuned against a 3310ms
+ * save; the save is 4720ms now, and leaving the stagger alone would have parked all
+ * seven cards a second and a half early with nothing happening after them.
+ *
+ * So the scene scales `--order` instead of the stylesheet scaling the step —
+ * 235 × 2 = 470ms apart, 1900 + 6 × 470 = 4720ms, which is `press + read + collect
+ * + finish` to the millisecond. Slower per card than it was, which is the point: at
+ * 235ms the pages left in a single spray and you could not follow one of them.
+ */
+const FLYER_STAGGER = 2;
 
 /** Where the cursor is on each beat. `null` means it has left the frame. */
 const CURSOR: Partial<Record<BeatName, string>> = {
@@ -106,6 +153,14 @@ const TOTAL_BYTES = CAPTURED.reduce((sum, page) => sum + page.bytes, 0);
  * they still clear the browser and reach both outer edges, but none can travel up
  * into the title, facts or links. Viewport units keep that safe spread proportional
  * across a 1600px section and a 380px phone.
+ *
+ * The last one used to land at `8vw, -7vh`, which put it flat on top of the popup.
+ * Photographing the beats caught it: through `dead`, `reveal` and `hold` — the three
+ * frames where the popup is the only lit thing in a dead section — a saved card was
+ * covering the Library tab, the pack's size and two of its four rows. A card resting
+ * over the dead browser is the shot; a card resting over the one surviving window is
+ * the shot with its subject hidden. Moved down and left, into the frame's empty lower
+ * quarter, where it still reads as a page that got out.
  */
 const SCATTER = [
   { x: "-31vw", y: "-4vh", rot: "-11deg" },
@@ -114,8 +169,45 @@ const SCATTER = [
   { x: "26vw", y: "7vh", rot: "-6deg" },
   { x: "-39vw", y: "2vh", rot: "13deg" },
   { x: "38vw", y: "3vh", rot: "-9deg" },
-  { x: "8vw", y: "-7vh", rot: "4deg" },
+  { x: "-9vw", y: "13vh", rot: "4deg" },
 ] as const;
+
+/**
+ * What is happening in each frame, in the present tense.
+ *
+ * There were two captions before — one for the save half, one for the outage half —
+ * so eleven of the thirteen beats were described by a sentence written about a
+ * different beat. Watching it, the caption under `open` was still talking about a
+ * press that had not happened, and the caption under `read-offline` was explaining a
+ * browser that had by then faded off the top of the frame. A visitor reading the line
+ * and then looking up at the picture found the two disagreeing, which is worse than
+ * no caption: it teaches them to stop reading it.
+ *
+ * Each entry is a lead clause and the rest of the sentence, so the markup can keep
+ * the emphasis it had. Kept to one line at the pod's width — the stylesheet reserves
+ * `min-height: 2.6em`, which is two lines, and a caption that reflows between beats
+ * moves the frame above it.
+ */
+const CAPTION: Record<BeatName, readonly [string, string]> = {
+  settle: ["A page open in the browser.", "Online, for now."],
+  reach: ["Reaching for the PagePack button.", ""],
+  open: ["PagePack offers to save this page.", "And the pages it links to."],
+  aim: ["Moving to Save page.", ""],
+  press: ["Save page, pressed.", ""],
+  read: ["Reading this page first.", "Its text, styles, images and fonts."],
+  collect: ["Then every page it links to.", "Each saved page leaves the browser."],
+  // "Finishing up…" under the bar, and a 7 on the toolbar. The caption says both
+  // rather than declaring the save over a beat before the interface does.
+  finish: ["Seven pages, finishing up.", "The toolbar badge shows the count."],
+  cut: ["The signal cuts out.", ""],
+  dead: ["The tab can load nothing.", "The pack beside it is untouched."],
+  reveal: ["The library, with one pack in it.", "Seven pages, already on disk."],
+  "read-offline": [
+    "A saved page, reopened with no connection.",
+    "Figures and linked pages included.",
+  ],
+  hold: ["The tab is dead. The reading is not.", ""],
+};
 
 /** The real label for a beat, through the extension's own formatter. */
 function labelFor(beat: BeatName): string {
@@ -307,8 +399,14 @@ export function PagePackDemo() {
                   <span className="pp-target-host">lamport.azurewebsites.net</span>
                 </p>
 
+                {/* Three labels, not two. It read "Saving…" and then went back to
+                    "Save page", so the frames where the connection dies showed a
+                    popup offering to do a job it had already finished — and a
+                    visitor who had not yet seen the Library had nothing on screen
+                    telling them the save succeeded. The badge says seven; this says
+                    it in words, in the panel the eye is already on. */}
                 <button className="pp-primary" type="button" data-target="save" tabIndex={-1}>
-                  {saving ? "Saving…" : "Save page"}
+                  {saving ? "Saving…" : index >= at("cut") ? "Saved" : "Save page"}
                 </button>
 
                 <p className="pp-options">One level of links · scripts on</p>
@@ -348,7 +446,10 @@ export function PagePackDemo() {
             data-kept={offline}
             style={
               {
-                "--order": order,
+                // Scaled, not the raw index. See `FLYER_STAGGER`: the stylesheet
+                // multiplies this by 235ms to get the card's launch delay, and the
+                // save it was timed against is 1410ms longer than it used to be.
+                "--order": order * FLYER_STAGGER,
                 "--to-x": SCATTER[order].x,
                 "--to-y": SCATTER[order].y,
                 "--rot": SCATTER[order].rot,
@@ -416,16 +517,8 @@ export function PagePackDemo() {
       )}
 
       <p className="pp-caption" aria-hidden="true">
-        {offline ? (
-          <>
-            <strong>Signal gone.</strong> The tab has nothing. The pack still opens.
-          </>
-        ) : (
-          <>
-            <strong>One press.</strong> The page, six pages of links, and every file
-            they need.
-          </>
-        )}
+        <strong>{CAPTION[beat][0]}</strong>
+        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
       </p>
     </div>
   );

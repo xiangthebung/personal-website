@@ -261,33 +261,92 @@ const PACK_SHEETS = [
  * nothing to look at — a 9px line across grey placeholder bars — and it is the cause of
  * everything else in the section.
  */
+/**
+ * The cable, in front of the scene.
+ *
+ * It was one stretched SVG and it looked like a child's drawing of a cable. The
+ * reason is worth keeping, because it is the sort of thing that survives review:
+ * `preserveAspectRatio="none"` on a 1600x720 viewBox laid into a box roughly
+ * 1440x365 scales x by 0.9 and y by 0.51, so nothing in it kept its proportions.
+ * A 46x54 connector with an 8px corner radius came out 41x27 with the radius
+ * squashed to an oval — the fat purple lozenge in the middle of the page — and a
+ * 9px stroke rendered at 8px across and 4.6px down, so the wire changed weight
+ * depending on which way it was going.
+ *
+ * Two fixes, and they are different fixes. The wire *should* stretch: it has to span
+ * the whole section at any width, and a long shallow curve does not care. It just
+ * needs `vector-effect="non-scaling-stroke"` so its weight is decided in screen
+ * pixels rather than by the transform. The connectors should not stretch at all, so
+ * they are plain HTML positioned over the joint, where a border radius is a border
+ * radius.
+ *
+ * The wire is also two paths per side rather than one: a dark casing with a lighter
+ * core drawn over it, which is what makes it read as a round rubber cable rather than
+ * as a stroked line.
+ */
 function PagePackForeground() {
+  const sides = ["left", "right"] as const;
+  /**
+   * The run, and why it is short.
+   *
+   * Three placements were tried and photographed. Across the middle of the section was
+   * the original and it was the complaint: a cord thrown over the article the browser is
+   * showing. Along the very bottom got it out of the way and put it three pixels below
+   * the fold, which the visibility harness caught. Squeezed into the gap between the
+   * window's bottom edge and the caption, it had about forty pixels to live in.
+   *
+   * So it does what a cable on a desk does instead: it comes in from the left, the two
+   * halves meet on the open floor beside the window, and the run continues right and
+   * disappears underneath it. `440` of 1600 is the browser's own left edge, measured —
+   * the path stops there, so the cable reads as going behind the window rather than
+   * being drawn across it. Nothing has to be clipped, and the connectors are on clear
+   * ground where they can be seen coming apart.
+   */
+  const paths = {
+    left: "M-40 384 C110 384 196 348 250 340",
+    right: "M326 340 C372 337 404 337 440 339",
+  };
+
   return (
     <div className="bd bd--pagepack-front">
       <svg className="bd-pack-cable" viewBox="0 0 1600 720" preserveAspectRatio="none">
-        <path className="bd-pack-wire bd-pack-wire--left" d="M-40 360 C270 360 390 260 690 330" />
-        <path className="bd-pack-wire bd-pack-wire--right" d="M910 330 C1190 250 1330 360 1640 360" />
-        <g transform="translate(674 303)">
-          <g className="bd-pack-plug bd-pack-plug--left">
-            <rect width="46" height="54" rx="8" />
-            <path d="M46 17h25M46 37h25" />
+        {sides.map((side) => (
+          <g key={side}>
+            {/* Casing, then core. Both non-scaling, so the cable is the same weight
+                at every viewport and along every part of the curve. */}
+            <path
+              className={`bd-pack-wire bd-pack-wire--case bd-pack-wire--${side}`}
+              d={paths[side]}
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              className={`bd-pack-wire bd-pack-wire--core bd-pack-wire--${side}`}
+              d={paths[side]}
+              vectorEffect="non-scaling-stroke"
+            />
           </g>
-        </g>
-        <g transform="translate(880 303)">
-          <g className="bd-pack-plug bd-pack-plug--right">
-            <rect width="46" height="54" rx="8" />
-            <path d="M-25 17H0M-25 37H0" />
-          </g>
-        </g>
+        ))}
         <circle className="bd-pack-packet bd-pack-packet--a" cx="0" cy="0" r="7" />
         <circle className="bd-pack-packet bd-pack-packet--b" cx="0" cy="0" r="5" />
-        {/* The spark, at the instant it parts. */}
-        <g className="bd-pack-spark" transform="translate(853 330)">
-          {[0, 60, 120, 180, 240, 300].map((angle) => (
-            <line key={angle} x1="0" y1="0" x2="34" y2="0" transform={`rotate(${angle})`} />
-          ))}
-        </g>
       </svg>
+
+      {/* The connectors, in HTML, so a rectangle is a rectangle. Joined at rest and
+          pulled apart on the cut. Their vertical position is derived in the stylesheet
+          from the same band the wire uses — see `.bd-pack-joint`. */}
+      <span className="bd-pack-joint">
+        <span className="bd-pack-plug bd-pack-plug--left">
+          <i className="bd-pack-collar" />
+          <i className="bd-pack-pin" />
+          <i className="bd-pack-pin" />
+        </span>
+        {/* One flash across the gap, on the beat the two part. */}
+        <span className="bd-pack-arc" />
+        <span className="bd-pack-plug bd-pack-plug--right">
+          <i className="bd-pack-collar" />
+          <i className="bd-pack-pin" />
+          <i className="bd-pack-pin" />
+        </span>
+      </span>
     </div>
   );
 }
@@ -384,9 +443,117 @@ function DecafBackdrop() {
 
 /* ---------------------------------------------------------- PDF Explainer --- */
 
+/**
+ * The four satellites the deck is about, drawn.
+ *
+ * Positions are in the sky SVG's own 1600x760 space. Spread wide and at different
+ * heights, because the whole point of the slide is that four ranges from four
+ * directions are what pin a position — four satellites in a neat row would be a
+ * picture of the wrong idea.
+ *
+ * `delay` staggers each one's range pulse so the sky is never all bright or all dark
+ * at once, and so the four rings read as four independent signals rather than as one
+ * effect applied four times.
+ */
+const PDF_SATS = [
+  { x: 196, y: 152, delay: "0ms", label: "SV 14" },
+  { x: 608, y: 98, delay: "1400ms", label: "SV 22" },
+  { x: 1032, y: 142, delay: "2800ms", label: "SV 07" },
+  { x: 1408, y: 216, delay: "4200ms", label: "SV 31" },
+] as const;
+
+/** Where the receiver sits — the point all four ranges are solving for. */
+const PDF_RECEIVER = { x: 800, y: 792 } as const;
+
+/**
+ * The sky's coordinate space, and why it is this shape.
+ *
+ * `preserveAspectRatio="xMidYMid slice"` scales to *cover* the section, so the closer
+ * the viewBox is to the section's own proportions the less of it is thrown away. At
+ * 1600x760 in a 1440x1009 section the scale came out 1.33 and the sides were cropped
+ * off: two of the four satellites were outside the frame, and the two that survived
+ * were a third larger than intended and sitting on top of the pod's captions.
+ *
+ * 1600x1010 is close enough to the section that the scale lands near 1 and the whole
+ * constellation is in shot. `slice` rather than `meet` because a backdrop that
+ * letterboxes has bands of nothing at the top and bottom, and rather than `none`
+ * because this drawing is full of circles and right angles that must not be stretched.
+ */
+const PDF_SKY = { w: 1600, h: 1010 } as const;
+
 function PdfBackdrop() {
   return (
     <div className="bd bd--pdf">
+      {/* --------------------------------------------------------------- the sky
+          The section used to be pale nothing behind a few floating captions, and the
+          deck in the pod is a lecture on measuring distance by time of flight. So the
+          background is that lecture's own diagram at wall size: four satellites, a
+          range line down from each, the rings of a signal leaving them, and the
+          receiver they are all solving for.
+
+          `xMidYMid slice` rather than `none`: this one is full of round things and
+          right angles, and stretching it to the section's aspect ratio would turn the
+          dishes into ovals and lean the solar panels over. The links layer below can
+          stretch because it is only smooth curves. */}
+      <svg
+        className="bd-pdf-sky"
+        viewBox={`0 0 ${PDF_SKY.w} ${PDF_SKY.h}`}
+        preserveAspectRatio="xMidYMid slice"
+      >
+        {/* The horizon, and the ground the receiver stands on. */}
+        <path className="bd-pdf-horizon" d="M-40 838 H1640" />
+
+        {PDF_SATS.map((sat) => (
+          <g className="bd-pdf-sat" key={sat.label} style={{ "--delay": sat.delay } as React.CSSProperties}>
+            {/* The range line down to the receiver: what the slide calls the
+                pseudorange, dashed because it is a measurement rather than a thing. */}
+            <path
+              className="bd-pdf-range"
+              d={`M${sat.x} ${sat.y} L${PDF_RECEIVER.x} ${PDF_RECEIVER.y}`}
+            />
+
+            {/* Two rings leaving the satellite, one behind the other. This is the
+                time-of-flight idea itself — the distance is how long the ring took. */}
+            <circle className="bd-pdf-ping bd-pdf-ping--a" cx={sat.x} cy={sat.y} r="26" />
+            <circle className="bd-pdf-ping bd-pdf-ping--b" cx={sat.x} cy={sat.y} r="26" />
+
+            <g className="bd-pdf-sat-body" transform={`translate(${sat.x} ${sat.y})`}>
+              {/* Solar panels, then the bus, then the dish pointed at the ground. */}
+              <rect className="bd-pdf-panel" x="-40" y="-7" width="26" height="14" rx="1.5" />
+              <rect className="bd-pdf-panel" x="14" y="-7" width="26" height="14" rx="1.5" />
+              <path className="bd-pdf-spar" d="M-14 0h28" />
+              <rect className="bd-pdf-bus" x="-11" y="-11" width="22" height="22" rx="3" />
+              <path className="bd-pdf-dish" d="M-7 11 A9 9 0 0 0 7 11 Z" />
+            </g>
+
+            <text className="bd-pdf-sat-label" x={sat.x} y={sat.y - 26}>
+              {sat.label}
+            </text>
+          </g>
+        ))}
+
+        {/* The trilateration triangle: three of the four, joined. The fourth is the
+            one that solves the clock, which is exactly the tutor's answer in the pod. */}
+        <path
+          className="bd-pdf-tri"
+          d={`M${PDF_SATS[0].x} ${PDF_SATS[0].y} L${PDF_SATS[1].x} ${PDF_SATS[1].y} L${PDF_SATS[2].x} ${PDF_SATS[2].y} Z`}
+        />
+
+        {/* The receiver, and the rings closing on it. */}
+        <g className="bd-pdf-rx" transform={`translate(${PDF_RECEIVER.x} ${PDF_RECEIVER.y})`}>
+          <circle className="bd-pdf-rx-halo" r="34" />
+          <circle className="bd-pdf-rx-halo bd-pdf-rx-halo--wide" r="34" />
+          <rect className="bd-pdf-rx-body" x="-13" y="-9" width="26" height="18" rx="3" />
+          <path className="bd-pdf-rx-mast" d="M0 -9 V-26" />
+          <circle className="bd-pdf-rx-tip" cy="-28" r="3" />
+        </g>
+
+        {/* There was a `d = c · Δt` set into the ground here, and it was the third copy
+            of that equation in one section: the slide's own figure draws it, the notes
+            card prints it, and this drew it again — landing on top of the matching
+            fragment while it did. The diagram says it without the algebra. */}
+      </svg>
+
       <svg className="bd-pdf-links" viewBox="0 0 1600 760" preserveAspectRatio="none">
         <path className="bd-pdf-link bd-pdf-link--notes" d="M80 190 C300 80 490 200 700 330" />
         <path className="bd-pdf-link bd-pdf-link--tutor" d="M620 120 C790 70 900 200 820 335" />
@@ -394,16 +561,11 @@ function PdfBackdrop() {
         <path className="bd-pdf-link bd-pdf-link--match" d="M520 635 C700 710 850 560 820 420" />
       </svg>
 
-      <span className="bd-pdf-fragment bd-pdf-fragment--notes">
-        <small>slide 2 note</small>
-        <b>dᵢ = c · Δt</b>
-        <i>1 μs → 300 m</i>
-      </span>
-      <span className="bd-pdf-fragment bd-pdf-fragment--tutor">
-        <small>tutor</small>
-        <b>Why four satellites?</b>
-        <i>The fourth solves the receiver clock error.</i>
-      </span>
+      {/* Two fragments used to sit up here: one reading `dᵢ = c · Δt`, one asking "Why
+          four satellites?". Both are now drawn rather than written — the equation is set
+          into the ground and the four satellites are overhead — so keeping the captions
+          meant the section said each thing twice, and a photograph showed a satellite
+          landing directly on top of the sentence about satellites. The drawing won. */}
       <span className="bd-pdf-fragment bd-pdf-fragment--quiz">
         <small>quiz</small>
         <b>A · 300 metres</b>

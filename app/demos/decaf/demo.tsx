@@ -61,8 +61,17 @@ const BEATS: readonly Beat<BeatName>[] = [
      felt — the reel needs about four seconds of runway before the switch, and this
      is the middle of it, where the acceleration becomes obvious. */
   { name: "pull", ms: 1500 },
-  { name: "reach", ms: 650 },
-  { name: "press", ms: 240 },
+  /* The click, and the two beats that make it legible.
+     This was 650ms of travel and a 240ms press, and a visitor could not tell what had
+     happened — the feed went grey and nothing on screen said why. Three things were
+     against it at once: the button is 24px, the pointer arrives while thirty hearts are
+     crossing the window, and 240ms is under the 460ms the click ring takes to play, so
+     the one cue that does exist was cut off partway through.
+     Nearly a second of travel with the button haloed, then half a second of press with
+     the ring completing — and the deluge stands down for both, so for that moment the
+     click is the only thing moving on the page. See `quiet` below. */
+  { name: "reach", ms: 1000 },
+  { name: "press", ms: 560 },
   { name: "drain", ms: 1100 },
   { name: "dashes", ms: 900 },
   { name: "calm", ms: 850 },
@@ -208,6 +217,8 @@ export function DecafDemo() {
   const calmed = index >= at("calm");
   const paused = index >= at("pause");
   const holding = beat === "hold";
+  /** The two beats where the click has to be the only thing happening. */
+  const quiet = beat === "reach" || beat === "press";
 
   /** Reward counts become a dash — in the text and in the accessible label. */
   const count = (value: string) => (dashed ? "—" : value);
@@ -465,6 +476,12 @@ export function DecafDemo() {
             ref={delugeRef}
             data-running={!on}
             data-spent={on}
+            /* Stands down while the extension is being switched on. The whole point of
+               those two beats is that a visitor sees a pointer press a button, and it
+               cannot compete with thirty hearts crossing the screen — the flood is the
+               problem being described, so it gets out of the way of the moment the
+               problem is solved. */
+            data-quiet={quiet}
             key={`deluge-${run}`}
           >
             {[

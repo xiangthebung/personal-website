@@ -70,17 +70,40 @@ type BeatName =
   | "due"
   | "gone";
 
+/**
+ * Nine beats over nineteen seconds.
+ *
+ * Two of them were doing work they could not finish in the time they had. `street`
+ * asks the visitor to find a 26px badge on a toolbar and notice that the number in it
+ * is going down — that is the project's entire lead feature, and it had 1.8s to land
+ * before a notification arrived and took the eye off it. `open` was 300ms, which is
+ * right for the click but meant the popup's arrival and the popup's contents were the
+ * same event; the three cards, three countdowns and the stops-away note all showed up
+ * at once and the first thing a visitor read was whichever one their eye happened to
+ * fall on.
+ *
+ * The route line is the other constraint. `.gx-bus-slot` transitions `left` over
+ * 1.5s, so any beat shorter than that shows a bus part-way through a move it never
+ * completes — which is why `due` and `gone`, the two beats where the bus is the
+ * subject, are both comfortably past it now.
+ */
 const BEATS: readonly Beat<BeatName>[] = [
   // Long enough to notice that the badge is counting down on its own.
-  { name: "street", ms: 1800 },
-  { name: "alert", ms: 2400 },
-  { name: "reach", ms: 700 },
-  { name: "open", ms: 300 },
-  { name: "stops", ms: 2200 },
-  { name: "tick", ms: 1700 },
-  { name: "near", ms: 1600 },
-  { name: "due", ms: 1900 },
-  { name: "gone", ms: 1700 },
+  { name: "street", ms: 2600 },
+  { name: "alert", ms: 2700 },
+  { name: "reach", ms: 900 },
+  // The click, and the popup growing out of its own button — a 260ms transition in
+  // the stylesheet. Still the shortest beat in the scene; reading the popup is the
+  // next beat's job, not this one's.
+  { name: "open", ms: 600 },
+  // Three saved stops, each with a countdown, a delay and a stops-away count. The
+  // most text in the scene by a distance.
+  { name: "stops", ms: 3100 },
+  { name: "tick", ms: 2100 },
+  // Two minutes: the countdown turns red and the bus is visibly close.
+  { name: "near", ms: 2100 },
+  { name: "due", ms: 2400 },
+  { name: "gone", ms: 2200 },
 ];
 
 /**
@@ -329,6 +352,59 @@ export function GrtNextBusDemo() {
      feed is depends on where in that cycle the beat lands rather than being a
      fixed string dressed up as a live one. */
   const freshness = formatFreshness(ANCHOR + (clock - (clock % 30)) * 1000, now);
+
+  /**
+   * The caption, one line per beat, describing the frame the visitor is looking at.
+   *
+   * There were four lines before, keyed off `open`, `arrived` and `alerting` rather
+   * than off the beat, and the widest of them covered five beats at once. So the line
+   * under `reach` claimed the wait "sits on the toolbar, counting down" while the
+   * frame showed a cursor travelling, and the line under `tick` and `near` — the two
+   * beats where the number is visibly falling — read as a description of the stop list
+   * that had already been on screen for three seconds.
+   *
+   * The numbers in it are derived, not typed. `CLOCK` decides what the badge and the
+   * countdown say, and a caption that repeats those figures from memory is a caption
+   * that goes wrong the first time a beat's clock position moves.
+   */
+  const caption: readonly [string, string] = ((): readonly [string, string] => {
+    switch (beat) {
+      case "street":
+        return [`${badgeMinutes} minutes to the next bus.`, "On the toolbar, with nothing open."];
+      case "alert":
+        return [
+          `${ALERT_LEAD_MINUTES} minutes out, it tells you.`,
+          "A notification, whether or not you looked.",
+        ];
+      case "reach":
+        return ["Reaching for the extension.", ""];
+      case "open":
+        return ["The popup, hanging off its own button.", ""];
+      case "stops":
+        return [
+          "Three saved stops, closest first.",
+          "Live countdown, minutes late, stops away.",
+        ];
+      case "tick":
+        return ["The countdown falls with the bus.", "The bus on the road below is that bus."];
+      case "near": {
+        const away = stopsAway(closestLeft);
+        return [
+          "Red now, and close.",
+          away === undefined ? "" : `${stopsAwayLabel(away)}, on the line below.`,
+        ];
+      }
+      case "due":
+        return [
+          "Due, and it is at your stop.",
+          `The ${formatClock(ANCHOR + closestBoard.head * 1000)} run, ${formatDelay(
+            closest.delaySec,
+          )}.`,
+        ];
+      case "gone":
+        return ["That one has gone.", "The board and the badge move to the next run."];
+    }
+  })();
 
   return (
     <div
@@ -678,34 +754,8 @@ export function GrtNextBusDemo() {
       )}
 
       <p className="gx-caption" aria-hidden="true">
-        {!open ? (
-          alerting ? (
-            <>
-              <strong>Five minutes out, it tells you.</strong> Live from the bus, not
-              from the timetable.
-            </>
-          ) : (
-            <>
-              <strong>The wait sits on the toolbar.</strong> Counting down with
-              nothing open.
-            </>
-          )
-        ) : beat === "gone" ? (
-          <>
-            <strong>That one is gone.</strong> The board and the badge move to the
-            next run.
-          </>
-        ) : arrived ? (
-          <>
-            <strong>Due, at your stop.</strong> The toolbar badge says the same
-            thing.
-          </>
-        ) : (
-          <>
-            <strong>Closest stop first, {formatClock(ANCHOR + closestBoard.head * 1000)}.</strong>{" "}
-            Later runs underneath, so you can miss one.
-          </>
-        )}
+        <strong>{caption[0]}</strong>
+        {caption[1] && ` ${caption[1]}`}
       </p>
     </div>
   );

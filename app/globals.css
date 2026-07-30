@@ -255,6 +255,64 @@ a:hover .external-arrow {
   color: var(--project-ink);
 }
 
+/* --- locked in ------------------------------------------------------------
+   While you are in a project, it is the only one drawn. Its neighbours are still
+   there, still laid out, still the right colour — but their contents are pulled
+   back almost to nothing, so a screenful holds one thing instead of the end of one
+   project and the start of the next.
+
+   `--presence` is written onto each section every frame by `ProjectFocusManager`:
+   the share of the viewport that section holds, smoothstepped so it sits at 1 for
+   whichever one you are reading and near 0 for the rest. See the comment there for
+   why it is a number and not a class.
+
+   A short transition, and it took a measurement to justify one. `--presence` is a
+   continuous function of scroll position, so in principle it needs no easing — but a
+   mouse wheel is not continuous. One notch is 190px, about a fifth of a 900px window,
+   and a fifth of the way through the crossfade is a step of about 0.5 in opacity.
+   Measured, that is a visible flick rather than a fade, and no curve fixes it: the
+   sections are 84svh, so the ramp cannot be widened past about 0.84 of the viewport
+   without a section never reaching full presence at all.
+   140ms is long enough to turn a notch into a movement and short enough that dragging
+   a scrollbar still feels directly connected to the page. */
+
+   What is faded is the section's *contents*, never its background. Fading the
+   section itself would open grey seams between projects, and the paper is what makes
+   the page continuous while you move through it.
+
+   The floor is deliberately not zero. A neighbour at 0.06 is a suggestion that
+   something is down there, which is what makes scrolling on feel like a choice
+   rather than like paging through slides. */
+.project {
+  /* No JS yet, or JS disabled: everything present. A page that needs a script to
+     become visible is a page that is sometimes blank. */
+  --presence: 1;
+}
+
+.project > .project-body {
+  opacity: calc(0.06 + 0.94 * var(--presence));
+  transition: opacity 140ms linear;
+}
+
+/* The ambience keeps a little more of itself than the content does. It is the thing
+   that tells you the next section is a different place, and it should be readable
+   from the edge of one. */
+.project > .project-ambience {
+  opacity: calc(0.16 + 0.84 * var(--presence));
+  transition: opacity 140ms linear;
+}
+
+/* The furniture goes further back than either. */
+.project > .project-ghost-number {
+  opacity: calc(0.1 + 0.9 * var(--presence));
+}
+
+/* Foregrounds are over the top of the software, so they leave with the content
+   rather than lingering above a faded scene. */
+.project > .project-foreground {
+  opacity: var(--presence);
+}
+
 /* Butted together, so one project ends exactly where the next begins.
    There was a `--section-gap` of up to 8rem here, from when these were cards on a
    shared paper background and needed air around them. Full-height sections do not:
@@ -6495,14 +6553,88 @@ html.shows-shortcuts .shortcut-sheet {
   width: 15px;
   height: 15px;
 }
-.dc[data-beat="reach"] .dc-toolbar,
-.dc[data-beat="press"] .dc-toolbar {
+/* --- making the click impossible to miss ----------------------------------
+   The reported problem was that a visitor could not tell what had happened: the feed
+   drained and nothing said why. The pointer was already travelling to this button and
+   already pinging its ring on the press, so the cue existed — it was just a 24px target
+   growing by a tenth while thirty hearts crossed the window.
+
+   Three additions, and the scene's own timing does the rest. `.dc-toolbar` needs
+   `position: relative` for the two pseudo-elements below. */
+.dc-toolbar {
+  position: relative;
+}
+
+/* A halo that pulses while the pointer is on its way, so the eye is already on the
+   button before anything is pressed. */
+.dc-toolbar::before {
+  position: absolute;
+  inset: -5px;
+  border: 2px solid var(--accent);
+  border-radius: 11px;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+.dc[data-beat="reach"] .dc-toolbar::before {
+  animation: dc-look 900ms ease-out infinite;
+}
+@keyframes dc-look {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+/* And a single ring off the button itself on the press, so the click has a source as
+   well as a cursor. */
+.dc-toolbar::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+}
+.dc[data-beat="press"] .dc-toolbar::after {
+  animation: dc-click 520ms cubic-bezier(0.16, 0.8, 0.2, 1) both;
+}
+@keyframes dc-click {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+.dc[data-beat="reach"] .dc-toolbar {
   color: var(--accent);
   background: rgba(74, 91, 214, 0.12);
   transform: scale(1.1);
 }
+/* Pressed *in*, not out. A button that grows while being clicked is a button nobody
+   believes was clicked. */
+.dc[data-beat="press"] .dc-toolbar {
+  color: #fff;
+  background: var(--accent);
+  transform: scale(0.92);
+}
+/* Switched on, and it stays on for the rest of the scene: solid rather than tinted, so
+   the toolbar reads as "this is doing something" at a glance from across the frame. */
 .dc[data-on="true"] .dc-toolbar {
-  color: var(--accent);
+  color: #fff;
+  background: var(--accent);
 }
 
 /* --- the app: three columns that never move ------------------------------- */
@@ -6782,6 +6914,14 @@ html.shows-shortcuts .shortcut-sheet {
 .dc-deluge[data-spent="true"] {
   filter: grayscale(1);
   opacity: 0;
+}
+/* Out of the way of the click. See `data-quiet` in the demo: for the two beats where a
+   pointer is reaching for the toolbar and pressing it, the flood drops back so the
+   press is the only thing moving. It is not stopped — stopping it would read as the
+   extension having already worked, a beat early. */
+.dc-deluge[data-quiet="true"] {
+  opacity: 0.18;
+  transition: opacity 260ms ease;
 }
 
 /* Each bit starts exactly on its counter and flies out from there.
@@ -8922,49 +9062,219 @@ svg.bd-vehicle {
   box-shadow: none;
 }
 
+/* ===========================================================================
+   PDF Explainer — the sky behind the workspace
+   ---------------------------------------------------------------------------
+   The pod runs a lecture on measuring distance by signal time of flight, and the
+   section behind it was pale nothing with four captions floating in it. So the
+   backdrop is that lecture's diagram, drawn at wall size: four satellites, the
+   pseudorange down from each, the rings of a signal leaving them, and the receiver
+   all four are solving for.
+
+   Everything here is faint on purpose. It is the wall of the room the software is
+   standing in, and a background that competes with a slide is a background that has
+   forgotten its job. The strokes sit between 0.05 and 0.16 alpha; the labels are
+   smaller than anything in the pod.
+   =========================================================================== */
+.bd-pdf-sky {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--project-ink);
+}
+
+.bd-pdf-horizon {
+  fill: none;
+  stroke: color-mix(in srgb, var(--project-ink) 14%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 9;
+}
+
+/* The measurement, from each satellite to the receiver. Dashed and slowly crawling,
+   because it is a signal in transit rather than a line between two objects. */
+.bd-pdf-range {
+  fill: none;
+  stroke: color-mix(in srgb, var(--project-accent) 26%, transparent);
+  stroke-width: 1.1;
+  stroke-dasharray: 5 12;
+  animation: pdf-transit 3.6s linear infinite;
+  animation-delay: var(--delay);
+}
+@keyframes pdf-transit {
+  to {
+    /* One dash cycle, so the crawl has no seam in it. */
+    stroke-dashoffset: -17;
+  }
+}
+
+/* The ring leaving a satellite. Two per satellite, half a cycle apart, so each one
+   is a train of pulses rather than a single expanding circle. */
+.bd-pdf-ping {
+  fill: none;
+  stroke: color-mix(in srgb, var(--project-accent) 34%, transparent);
+  stroke-width: 1.2;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: pdf-ping 3.6s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+  animation-delay: var(--delay);
+}
+.bd-pdf-ping--b {
+  /* Half a cycle behind its twin. */
+  animation-delay: calc(var(--delay) + 1800ms);
+}
+@keyframes pdf-ping {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.35);
+  }
+  70% {
+    opacity: 0.12;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(4.6);
+  }
+}
+
+.bd-pdf-panel {
+  fill: color-mix(in srgb, var(--project-accent) 16%, transparent);
+  stroke: color-mix(in srgb, var(--project-ink) 20%, transparent);
+  stroke-width: 0.9;
+}
+.bd-pdf-spar,
+.bd-pdf-rx-mast {
+  fill: none;
+  stroke: color-mix(in srgb, var(--project-ink) 22%, transparent);
+  stroke-width: 1.1;
+}
+.bd-pdf-bus {
+  fill: color-mix(in srgb, var(--project-ink) 9%, transparent);
+  stroke: color-mix(in srgb, var(--project-ink) 26%, transparent);
+  stroke-width: 1.1;
+}
+.bd-pdf-dish,
+.bd-pdf-rx-body,
+.bd-pdf-rx-tip {
+  fill: color-mix(in srgb, var(--project-accent) 22%, transparent);
+  stroke: color-mix(in srgb, var(--project-ink) 22%, transparent);
+  stroke-width: 0.9;
+}
+
+/* A slow drift, so the constellation is never quite still. Each satellite is offset
+   by its own delay, which keeps them from moving as one object. */
+.bd-pdf-sat-body {
+  animation: pdf-drift 14s ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+@keyframes pdf-drift {
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+.bd-pdf-sat-label,
+.bd-pdf-formula {
+  fill: color-mix(in srgb, var(--project-ink) 26%, transparent);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-anchor: middle;
+}
+.bd-pdf-formula {
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  fill: color-mix(in srgb, var(--project-ink) 15%, transparent);
+}
+
+/* Three of the four, joined. The fourth is the one that solves the clock — which is
+   the answer the tutor gives inside the pod. */
+.bd-pdf-tri {
+  fill: color-mix(in srgb, var(--project-accent) 4%, transparent);
+  stroke: color-mix(in srgb, var(--project-accent) 16%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 7;
+}
+
+.bd-pdf-rx-halo {
+  fill: none;
+  stroke: color-mix(in srgb, var(--project-accent) 30%, transparent);
+  stroke-width: 1.2;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  /* Closing inward rather than expanding: these are the four ranges arriving. */
+  animation: pdf-lock 3.6s ease-out infinite;
+}
+.bd-pdf-rx-halo--wide {
+  animation-delay: 1800ms;
+}
+@keyframes pdf-lock {
+  0% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+  60% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
 .bd--pagepack,
 .bd--pagepack-front {
   color: var(--project-accent);
 }
 
-.bd-pack-cable {
-  position: absolute;
-  top: 8%;
-  left: 0;
-  width: 100%;
-  height: 72%;
-  overflow: visible;
-  /* In front of the scene now, so it has to cast onto it — otherwise it reads as a
-     line drawn on the glass rather than a cable lying across a desk. */
-  filter: drop-shadow(0 7px 12px rgba(24, 20, 48, 0.3));
+/* --- where the cable runs --------------------------------------------------
+   One declaration, read by the wire and by the connectors, so the two cannot come
+   apart. It used to be set in three separate places with the joint's offset typed in
+   as a fourth.
+
+   Down at the bottom of the section, and that is the whole point. It ran at 38% —
+   straight through the middle of the browser window, across the article text — which
+   is why the section read as having a cord thrown over it. A cable belongs on the
+   floor behind the desk: below the window, below the caption, out of the way of
+   everything anyone is meant to read, and still unmissable when it is pulled apart
+   because it spans the entire width. */
+.bd--pagepack-front {
+  /* Measured, not guessed. `scripts/visible.mjs` reports the section 966px tall with the
+     browser window spanning x 392-1272 and its bottom edge at 84% of the section, and
+     the viewport cutting the section off at 91.5% when it is centred.
+
+     The path sits at `top + 0.4667 * height`, which puts it at 72% — level with the
+     lower part of the window, on the clear floor to its left. It runs in from the left
+     edge, meets itself at 18%, and stops at the window's edge. Below the window instead
+     was tried at 80.4% and left the cable three pixels under the fold. */
+  --pack-band-top: 66.4%;
+  --pack-band-height: 12%;
+  /* Well clear of the window's left edge at 27%, so the connectors have open ground. */
+  --pack-joint-left: 18%;
 }
 
-/* The spark, at the instant the plugs part. One flash, on the `cut` beat only. */
-.bd-pack-spark line {
-  stroke: #ffd76a;
-  stroke-width: 7;
-  stroke-linecap: round;
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: 0 50%;
+.bd-pack-cable {
+  position: absolute;
+  top: var(--pack-band-top);
+  left: 0;
+  width: 100%;
+  height: var(--pack-band-height);
+  overflow: visible;
+  /* In front of the scene, so it has to cast onto it — otherwise it reads as a line
+     drawn on the glass rather than a cable lying across a desk. Lighter and tighter
+     than it was: a 12px blur at 30% under a 9px line was most of why the thing looked
+     like a smear. */
+  filter: drop-shadow(0 4px 7px rgba(24, 20, 48, 0.22));
 }
-#pagepack[data-scene-beat="cut"] .bd-pack-spark line {
-  animation: pack-spark 340ms ease-out 1 both;
-}
-@keyframes pack-spark {
-  0% {
-    opacity: 0;
-    transform: rotate(var(--a, 0deg)) scaleX(0.1);
-  }
-  22% {
-    opacity: 1;
-    transform: scaleX(0.55);
-  }
-  100% {
-    opacity: 0;
-    transform: scaleX(1.25);
-  }
-}
+
+/* The spark used to be six rotated `<line>`s inside the stretched SVG, which is why it
+   never looked like a spark: `transform-box: fill-box` plus a non-uniform viewBox scale
+   meant each arm was rotated in one coordinate space and drawn in another, so the star
+   came out as a lopsided fan. It is a single radial flash on the connectors now — see
+   `.bd-pack-arc`. */
 
 /* The cable, at a weight you can actually see.
    It was a 3px stroke at 54% of the accent, drawn across pale lavender paper: the
@@ -8974,50 +9284,174 @@ svg.bd-vehicle {
 
    The viewBox is 1600x720 stretched with `preserveAspectRatio="none"`, so these
    stroke widths land at roughly the same number of pixels at desktop widths. */
+/* Two strokes make a cable.
+   One stroke makes a line, however thick it is — which is what the first version of
+   this was, and at 9px of saturated purple across the middle of a pale section it was
+   the loudest thing in the project. A dark casing with a lighter core laid over it
+   reads as something round and physical at half the weight, so it can be quieter and
+   still be unmissable.
+   `vector-effect: non-scaling-stroke` on both, because the viewBox is stretched with
+   `preserveAspectRatio="none"` and without it the weight changes with the direction of
+   travel: 8px across, 4.6px down, on the same path. */
 .bd-pack-wire {
   fill: none;
-  stroke: color-mix(in srgb, var(--project-accent) 92%, #262b3a);
-  stroke-width: 9;
   stroke-linecap: round;
   transition:
     opacity 520ms ease,
     stroke 720ms ease,
     stroke-width 520ms ease;
 }
+.bd-pack-wire--case {
+  stroke: color-mix(in srgb, var(--project-accent) 55%, #1b1f2e);
+  stroke-width: 7;
+}
+.bd-pack-wire--core {
+  /* Offset toward the top of the casing rather than centred, which is where the
+     highlight sits on a real cable. */
+  stroke: color-mix(in srgb, var(--project-accent) 78%, #ffffff);
+  stroke-width: 2.4;
+  transform: translateY(-1.2px);
+  opacity: 0.75;
+}
+
+/* --- the connectors -------------------------------------------------------
+   Plain HTML over the joint, because the SVG around them is deliberately stretched and
+   a connector is the one part of this that has to keep its proportions. See the note on
+   `PagePackForeground` for what the stretch was doing to them.
+
+   `--joint-top` is written by the component from the same numbers the wire paths use,
+   so the two cannot drift apart. */
+.bd-pack-joint {
+  position: absolute;
+  /* The wire's paths meet at y=336 of the 720-unit viewBox, so the joint sits that
+     same fraction — 0.4667 — down whatever band the cable is using. Derived rather
+     than typed, because the band moves at narrow widths and a hardcoded offset left
+     the connectors floating away from the cable they belong to. */
+  top: calc(var(--pack-band-top) + var(--pack-band-height) * 0.4667);
+  left: var(--pack-joint-left, 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+}
 
 .bd-pack-plug {
-  color: color-mix(in srgb, var(--project-accent) 88%, #202536);
-  fill: currentColor;
-  stroke: currentColor;
-  stroke-width: 10;
-  stroke-linecap: round;
-  transform-box: fill-box;
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 17px;
+  border-radius: 3px;
+  /* Lit from above, like everything else in this section. */
+  background: linear-gradient(
+    176deg,
+    color-mix(in srgb, var(--project-accent) 58%, #ffffff) 0%,
+    color-mix(in srgb, var(--project-accent) 82%, #14182a) 46%,
+    color-mix(in srgb, var(--project-accent) 62%, #0d1020) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 2px 5px rgba(20, 18, 44, 0.34);
   transition: transform 700ms cubic-bezier(0.22, 0.9, 0.24, 1);
 }
 
+/* The moulded collar where the cable enters the body. */
+.bd-pack-collar {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 12px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--project-accent) 48%, #171b2b);
+  transform: translateY(-50%);
+}
+.bd-pack-plug--left .bd-pack-collar {
+  left: -7px;
+}
+.bd-pack-plug--right .bd-pack-collar {
+  right: -7px;
+}
+
+/* Two pins on the facing edge — the detail that says these come apart. */
+.bd-pack-pin {
+  position: absolute;
+  width: 7px;
+  height: 2.5px;
+  border-radius: 1px;
+  background: linear-gradient(180deg, #f4f1e2, #b9ad82);
+}
+.bd-pack-pin:nth-of-type(2) {
+  top: 4px;
+}
+.bd-pack-pin:nth-of-type(3) {
+  bottom: 4px;
+}
+.bd-pack-plug--left .bd-pack-pin {
+  right: -6px;
+}
+.bd-pack-plug--right .bd-pack-pin {
+  left: -6px;
+}
+
+/* Together at rest, so the pins sit inside the other body — which is what being
+   plugged in looks like — and pulled clear when the connection goes. */
 .bd-pack-plug--left {
-  transform: translateX(78px);
+  transform: translateX(6px);
 }
-
 .bd-pack-plug--right {
-  transform: translateX(-78px);
+  transform: translateX(-6px);
 }
-
-#pagepack[data-scene-reached~="cut"] .bd-pack-plug--left,
+#pagepack[data-scene-reached~="cut"] .bd-pack-plug--left {
+  transform: translateX(-16px) rotate(-2.5deg);
+}
 #pagepack[data-scene-reached~="cut"] .bd-pack-plug--right {
-  transform: translateX(0);
+  transform: translateX(16px) rotate(2.5deg);
 }
 
-/* Dead cable: grey, and thinner, so it reads as slack rather than merely recoloured. */
-#pagepack[data-scene-reached~="dead"] .bd-pack-wire {
-  stroke: rgba(150, 158, 174, 0.5);
-  stroke-width: 6;
+/* One flash across the gap on the beat they part, and nothing after. */
+.bd-pack-arc {
+  position: absolute;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 233, 160, 0.95), rgba(255, 190, 90, 0) 68%);
+  opacity: 0;
+  transform: translateX(-50%) scale(0.3);
+}
+#pagepack[data-scene-beat="cut"] .bd-pack-arc {
+  animation: pack-arc 420ms ease-out 1 both;
+}
+@keyframes pack-arc {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.2);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.7);
+  }
+}
+
+/* Dead cable: grey and thinner, so it reads as slack rather than merely recoloured. */
+#pagepack[data-scene-reached~="dead"] .bd-pack-wire--case {
+  stroke: rgba(150, 158, 174, 0.42);
+  stroke-width: 5;
+}
+#pagepack[data-scene-reached~="dead"] .bd-pack-wire--core {
+  stroke: rgba(180, 188, 202, 0.3);
+  stroke-width: 1.6;
 }
 
 .bd-pack-packet {
   fill: #287dd7;
   opacity: 0.72;
-  offset-path: path("M -40 360 C 270 360 390 260 690 330");
+  /* Follows the left wire's new path. Kept in step by hand because `offset-path` takes
+     a literal — if the path in the component changes, this changes with it. */
+  offset-path: path("M -40 384 C 110 384 196 348 250 340");
   offset-rotate: 0deg;
   animation: pack-packet 3.4s linear infinite;
   transition: opacity 220ms ease;
@@ -10774,10 +11208,8 @@ svg.bd-vehicle {
 
 /* ---------------------------------------------------------------- pagepack --- */
 
-.bd-pack-cable {
-  top: 38%;
-  height: 48%;
-}
+/* The cable's band is declared once on `.bd--pagepack-front`; the override that used
+   to sit here fought it. */
 .bd-pack-status {
   top: 41%;
   right: max(0.8rem, 2.5vw);
@@ -11067,9 +11499,11 @@ svg.bd-vehicle {
     top: 43%;
   }
 
-  .bd-pack-cable {
-    top: 43%;
-    height: 42%;
+  /* Narrow: the browser is taller relative to the section, so the floor the cable
+     runs along is lower still. One variable, and the connectors follow it. */
+  .bd--pagepack-front {
+    --pack-band-top: 83%;
+    --pack-band-height: 17%;
   }
   .bd-pack-status {
     top: 46%;
