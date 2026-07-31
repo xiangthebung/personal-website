@@ -6289,7 +6289,13 @@ html.shows-shortcuts .shortcut-sheet {
      height that both fits the window and satisfies that. Given the choice, the app stays
      intact and the section runs a little long — a cut-off score is the fault that was
      reported, and a section you scroll is not. */
-  height: clamp(760px, calc(100svh - 246px), 880px);
+  /* 860px flat, which is what the application needs before its parts panel pushes out of
+     its own body. Not a function of the window: a shorter frame does not make the section
+     fit — the heading band above it costs ~290px either way — it only cuts the score off
+     inside a frame that is already too short. Given the choice between an intact app in a
+     section you scroll a little, and a cut-off app in a section that fits, the app wins;
+     the cut-off score is the fault that was reported. */
+  height: 860px;
   border: 0;
   border-radius: 12px;
   background: #000;
@@ -6323,14 +6329,9 @@ html.shows-shortcuts .shortcut-sheet {
   animation: demo-shimmer 1.5s ease-in-out infinite;
 }
 
-/* The footnote row: what this is. The controls moved onto the shield. */
-.choir-footnote {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem 1.4rem;
-}
+/* The footnote row is gone. It printed a build path — `/demos/choir/` — at a visitor,
+   followed by the same instruction the shield gives and the same claim the invitation
+   above the frame already makes. */
 
 /* --- the scroll shield ----------------------------------------------------
    Covers the frame until the visitor asks for it, so the wheel keeps belonging to the
@@ -6412,90 +6413,74 @@ html.shows-shortcuts .shortcut-sheet {
   height: 100%;
 }
 
-/* On the shield the button is over a dark scrim, so it goes back to light-on-dark —
-   the opposite of the themed treatment it needed when it sat on mint paper below. */
-.choir-shield-controls .choir-mic {
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #fff;
-  background: rgba(12, 18, 22, 0.66);
-  backdrop-filter: blur(6px);
-}
-.choir-shield-controls .choir-mic:hover,
-.choir-shield-controls .choir-mic:focus-visible {
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(12, 18, 22, 0.82);
-}
-.choir-shield-controls .choir-mic small {
-  color: rgba(245, 248, 250, 0.62);
-}
-.choir-shield-controls .choir-mic:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
+/* --- pointing at the pitch control ----------------------------------------
+   A label on a leader line, hung off the application's own microphone button.
 
-.choir-note {
-  margin: 0;
-  color: rgba(245, 245, 247, 0.62);
-  font-size: 0.82rem;
-  line-height: 1.55;
-  text-align: center;
-}
+   This replaces a second microphone button that the pod carried itself, reading "Sing
+   into it / your browser will ask for the microphone". Both halves were wrong. Warning
+   a visitor that a browser is about to ask for permission is a site apologising for
+   something every site does, and it draws attention to the prompt rather than to the
+   feature. And a duplicate control means somebody who later finds the real one in the
+   transport has no way of knowing they are the same thing — a label teaches where a
+   feature lives, a button hides it.
 
-/* --- "Sing into it" -------------------------------------------------------
-   The only button on this page that a visitor is asked to press, so it is allowed
-   to look like one. The second line is the whole reason it exists: a microphone
-   prompt from a portfolio is alarming, and a prompt you were warned about one
-   second earlier is not. See `askForMicrophone` for why this lives out here rather
-   than being left to the app's own toolbar control. */
-/* Themed off the section, not off the well.
-   The first version used near-white on a 6% white fill, which is right for the dark
-   recess the application sits in and wrong for where this actually lands: the
-   footnote row is outside `.demo-surface`, on pale mint paper, and the button
-   rendered as an invisible rectangle with invisible text in it. Reading the section's
-   own ink and line colours means it works on any of the seven palettes. */
-.choir-mic {
-  display: inline-flex;
+   `--cue-x` and `--cue-y` are the button's centre inside the frame, measured by
+   `findMicSpot` and given in the stand's coordinates. The label sits up and to the left
+   of it so it never covers the transport it is describing.
+
+   `pointer-events: none` throughout: the thing to click is underneath. */
+.choir-cue {
+  position: absolute;
+  z-index: 6;
+  top: var(--cue-y);
+  left: var(--cue-x);
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.9rem;
-  border: 1px solid color-mix(in srgb, var(--project-ink) 26%, transparent);
-  border-radius: 999px;
-  color: var(--project-ink);
-  background: color-mix(in srgb, var(--project-ink) 5%, transparent);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 650;
-  cursor: pointer;
-  transition:
-    background 200ms ease,
-    border-color 200ms ease;
+  pointer-events: none;
+  /* Sits to the left of the button, vertically centred on it. */
+  transform: translate(calc(-100% - 14px), -50%);
+  animation: choir-cue-in 520ms cubic-bezier(0.16, 0.86, 0.18, 1.06) both;
 }
-.choir-mic:hover,
-.choir-mic:focus-visible {
-  border-color: color-mix(in srgb, var(--project-ink) 48%, transparent);
-  background: color-mix(in srgb, var(--project-ink) 10%, transparent);
+
+.choir-cue b {
+  padding: 0.34rem 0.6rem;
+  border-radius: 8px;
+  color: #0d1a16;
+  background: rgba(232, 250, 240, 0.94);
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.8);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
-.choir-mic small {
-  color: var(--project-muted);
-  font-size: 0.72rem;
-  font-weight: 500;
+
+/* The leader. Ends in a dot on the button rather than an arrowhead — an arrow at this
+   size reads as a chevron, and a dot reads as "this one". */
+.choir-cue-line {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 2px;
+  order: 2;
+  background: linear-gradient(90deg, rgba(232, 250, 240, 0.9), rgba(232, 250, 240, 0.5));
 }
-.choir-mic-glyph {
-  display: inline-flex;
-  width: 17px;
-  height: 17px;
-  flex: none;
+.choir-cue-line::after {
+  position: absolute;
+  top: 50%;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(232, 250, 240, 0.95);
+  content: "";
+  transform: translateY(-50%);
 }
-.choir-mic-glyph svg {
-  width: 100%;
-  height: 100%;
-}
-.choir-note code {
-  padding: 0.06em 0.32em;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.94em;
+
+@keyframes choir-cue-in {
+  from {
+    opacity: 0;
+    transform: translate(calc(-100% - 2px), -50%);
+  }
 }
 
 /* The notes that used to live here moved into the backdrop (see the Backdrops
@@ -10557,15 +10542,6 @@ svg.bd-vehicle {
   width: 100%;
 }
 
-#choir-practice .choir-note {
-  color: #365d52;
-}
-
-#choir-practice .choir-note code {
-  background: rgba(31, 75, 62, 0.1);
-  color: #244c41;
-}
-
 .choir-rehearsal {
   position: relative;
   display: grid;
@@ -11328,13 +11304,13 @@ svg.bd-vehicle {
   inset: -0.35rem -0.55rem;
 }
 
-/* Only two of these are left. Five scenes lost their per-beat caption entirely — the
-   section around each of them already carries a headline, a reason, an invitation and
-   three notes, and the captions were paraphrasing the notes while the scene demonstrated
-   the same claim a third time. N-Back keeps one because its subject is a rule rather
-   than an interface, and Choir keeps its footnote because it names where the embedded
-   app comes from. */
-:is(#choir-practice .choir-note, #n-back .nb-caption) {
+/* One of these is left. Five scenes lost their per-beat caption entirely — the section
+   around each of them already carries a headline, a reason and three notes, and the
+   captions were paraphrasing the notes while the scene demonstrated the same claim a
+   third time. Choir's footnote went the same way: it printed a build path at a visitor
+   and then repeated the invitation. N-Back keeps its caption because its subject is a
+   rule rather than an interface. */
+#n-back .nb-caption {
   position: relative;
   z-index: 12;
   width: fit-content;

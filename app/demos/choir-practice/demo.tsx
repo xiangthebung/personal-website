@@ -157,28 +157,6 @@ function waitFor(
 }
 
 /**
- * Hands the app's own microphone control a deliberate press.
- *
- * The pitch guidance was reported as broken and it is not: driven with permission
- * already granted, the embedded copy reaches `listening` and pulls a live track
- * exactly like the standalone app does. What fails is the permission *prompt*.
- *
- * `#mic-btn` lives in the app's transport, four rows down inside an iframe on a
- * portfolio. Pressing it raises a microphone prompt attributed to this site — a page
- * about bus timetables and Chrome extensions — with nothing on screen to explain why
- * this site wants a microphone. That prompt gets dismissed, and a dismissed prompt is
- * remembered per origin: `getUserMedia` then rejects instantly, forever, and the app
- * can only report that access was blocked.
- *
- * So the pod asks for it out loud instead. The button below says what it is for, and
- * clicking it forwards the press into the frame, which means the browser's prompt
- * arrives immediately after a control labelled for exactly that. The frame is focused
- * first so the app's own headphones dialog opens where the visitor is looking.
- *
- * Fails silently and completely, like the rest of the automation here: a renamed
- * selector or a cross-origin surprise leaves the app perfectly usable by hand.
- */
-/**
  * Makes the wheel chain out of the frame once the app has finished with it.
  *
  * The shield stops the frame stealing the wheel before anyone asks for the app. It does
@@ -431,19 +409,42 @@ function tapVoices(frame: HTMLIFrameElement | null, root: HTMLElement | null): (
   };
 }
 
-function askForMicrophone(frame: HTMLIFrameElement | null): boolean {
+/**
+ * Where the application's microphone button is, in the pod's own coordinates.
+ *
+ * The pod used to carry its own microphone button, which forwarded a press into the
+ * frame. That was a workaround for a real problem — a permission prompt raised by a
+ * portfolio with nothing on screen explaining why it wants a microphone gets dismissed,
+ * and a dismissed prompt is remembered per origin, so `getUserMedia` then fails forever.
+ * The label was the context.
+ *
+ * A leader line pointing at the real control solves the same problem better: the prompt
+ * still arrives right after a labelled gesture, and the visitor learns where the feature
+ * actually lives instead of meeting a duplicate of it. So this measures `#mic-btn` inside
+ * the frame and returns its centre relative to the stand, for the annotation to hang off.
+ *
+ * Returns null on anything unexpected, and the caller renders nothing — a renamed
+ * selector costs a label, not a broken layout.
+ */
+function findMicSpot(
+  frame: HTMLIFrameElement | null,
+  stand: HTMLElement | null,
+): { x: number; y: number } | null {
   const doc = frame?.contentDocument;
-  if (!doc) return false;
+  if (!doc || !stand) return null;
   try {
     const button = doc.querySelector<HTMLElement>(HOOKS.mic);
-    if (!button) return false;
-    /* Focused before the click so the app's <dialog> takes focus inside the frame
-       rather than opening behind a page the visitor is still scrolled on. */
-    frame?.focus();
-    button.click();
-    return true;
+    if (!button) return null;
+    const box = button.getBoundingClientRect();
+    if (box.width === 0) return null;
+    const frameBox = frame.getBoundingClientRect();
+    const standBox = stand.getBoundingClientRect();
+    return {
+      x: Math.round(frameBox.left + box.left + box.width / 2 - standBox.left),
+      y: Math.round(frameBox.top + box.top + box.height / 2 - standBox.top),
+    };
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -459,6 +460,9 @@ export function ChoirPracticeDemo() {
   const [engaged, setEngaged] = useState(false);
   /** Whether the app is actually making sound, read off its own transport. */
   const [playing, setPlaying] = useState(false);
+  /** Where the app's microphone button is, for the leader line to point at. */
+  const [micSpot, setMicSpot] = useState<{ x: number; y: number } | null>(null);
+  const standRef = useRef<HTMLDivElement | null>(null);
 
   /* The surrounding score waits for the real app to finish engraving, and the whole
      section reacts once it starts singing. */
@@ -526,6 +530,26 @@ export function ChoirPracticeDemo() {
     return tapVoices(frameRef.current, rootRef.current);
   }, [playing, onScreen]);
 
+  /**
+   * Keeps the leader line on the microphone button.
+   *
+   * Re-measured on resize because the frame's height follows the window, which moves the
+   * transport the button sits in. Not per frame: the button does not move while the piece
+   * plays, and a `ResizeObserver` says so for free.
+   */
+  useEffect(() => {
+    if (!playing) return;
+
+    const measure = () => setMicSpot(findMicSpot(frameRef.current, standRef.current));
+    measure();
+
+    const stand = standRef.current;
+    if (!stand) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(stand);
+    return () => observer.disconnect();
+  }, [playing]);
+
   /** Opens a score and reveals the mixer. Gives up quietly at any step. */
   const drive = useCallback(async () => {
     const doc = frameRef.current?.contentDocument;
@@ -590,7 +614,11 @@ export function ChoirPracticeDemo() {
             it. A separate overlay cannot do this job: detecting a pointer leaving
             requires receiving pointer events, and anything receiving them here would be
             taking them from the application. */}
-        <div className="choir-stand" onPointerLeave={() => setEngaged(false)}>
+        <div
+          className="choir-stand"
+          ref={standRef}
+          onPointerLeave={() => setEngaged(false)}
+        >
           {mounted ? (
             <iframe
               ref={frameRef}
@@ -678,40 +706,39 @@ export function ChoirPracticeDemo() {
                       </svg>
                     </span>
                   )}
-                  {opened
-                    ? "Click to play — scrolling still moves the page"
-                    : "Opening a score…"}
+                  {/* "Click to play", and nothing about scrolling.
+                      It read "Click to play — scrolling still moves the page", which is
+                      an apology for a bug that no longer exists. Scrolling moving the
+                      page is what a visitor already expects; saying so out loud only
+                      raises the question of why it might not. */}
+                  {opened ? "Click to play" : "Opening a score…"}
                 </span>
-
-                <button
-                  className="choir-mic"
-                  type="button"
-                  onClick={(event) => {
-                    // Not a request to take the app over; just a request for the mic.
-                    event.stopPropagation();
-                    setEngaged(true);
-                    askForMicrophone(frameRef.current);
-                  }}
-                  disabled={!opened}
-                >
-                  <span className="choir-mic-glyph" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <g
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinecap="round"
-                      >
-                        <path d="M12 4.6a2.7 2.7 0 0 0-2.7 2.7v4.3a2.7 2.7 0 0 0 5.4 0V7.3A2.7 2.7 0 0 0 12 4.6Z" />
-                        <path d="M6.6 11.2a5.4 5.4 0 0 0 10.8 0M12 16.6V19.4M9.2 19.4h5.6" />
-                      </g>
-                    </svg>
-                  </span>
-                  Sing into it
-                  <small>your browser will ask for the microphone</small>
-                </button>
               </div>
             </div>
+          )}
+
+          {/* Points at the application's own microphone button rather than duplicating
+              it.
+              There was a second button here — "Sing into it / your browser will ask for
+              the microphone" — and both halves were wrong. The permission line was the
+              pod apologising in advance for something every site does, and a duplicate
+              control means a visitor who finds the real one in the transport has no idea
+              the two are the same thing. A label with a leader line teaches where the
+              feature lives; a button hides it.
+
+              Only once the piece is playing. Before that the frame's one instruction is
+              "Click to play", and two cues competing is how neither gets read. */}
+          {playing && micSpot && (
+            <span
+              className="choir-cue"
+              style={
+                { "--cue-x": `${micSpot.x}px`, "--cue-y": `${micSpot.y}px` } as React.CSSProperties
+              }
+              aria-hidden="true"
+            >
+              <i className="choir-cue-line" />
+              <b>Test your pitch</b>
+            </span>
           )}
 
           <span className="choir-stand-lip" aria-hidden="true" />
@@ -719,24 +746,11 @@ export function ChoirPracticeDemo() {
         <span className="choir-stand-base" aria-hidden="true" />
       </div>
 
-      {/* The footnote follows the same two states. It is the only line of prose under
-          this pod, so while the frame is still loading it is the only thing that can
-          explain why there is a dark rectangle where a score should be. */}
-      <div className="choir-footnote">
-        <p className="choir-note">
-          {opened ? (
-            <>
-              The real application, from <code>/demos/choir/</code>. Click the score and
-              it sings all four parts.
-            </>
-          ) : (
-            <>
-              Loading the real application from <code>/demos/choir/</code>, then
-              opening a four-part score in it.
-            </>
-          )}
-        </p>
-      </div>
+      {/* No footnote. It said "The real application, from /demos/choir/. Click the score
+          and it sings all four parts." — a build path printed at a visitor, followed by
+          the same instruction the shield gives and the same claim the invitation above the
+          frame already makes. Its loading state was covered by the shield's own "Opening a
+          score…" too. */}
     </div>
   );
 }

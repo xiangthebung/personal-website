@@ -108,12 +108,14 @@ const CHECKS = [
     required: true,
     note: "portalled to the body; must land over the real viewport",
   },
-  {
-    label: "choir mic button",
-    section: "choir-practice",
-    selector: "#choir-practice .choir-mic",
-    required: true,
-  },
+    /* The pod's own microphone button used to be checked here, and it is gone: it duplicated
+     the application's own control, and its "your browser will ask for the microphone" line
+     was the site apologising for a prompt every site raises. What replaced it is a leader
+     line pointing at the real control, which only exists once the piece is playing -- that
+     needs a click, and this harness deliberately does not click anything.
+     `work/choir-play.mjs` covers it, and checks the leader actually lands on the button
+     rather than merely existing. A check that can never pass here would print a failure on
+     every run, and a failure that is always there is one nobody reads. */
   {
     label: "choir scroll shield",
     section: "choir-practice",

@@ -112,13 +112,20 @@ const projectData: Project[] = [
      * overflows its own frame and the score gets cut off. Measured: 243px of overflow at
      * 609px tall, 392px at 460px tall.
      *
-     * `stacked` puts the heading in a band *above* the pod, which cost ~290px and made the
-     * section 1110px. No window tested could show that, which is exactly what "the score
-     * starts going offscreen" is — there is no scroll position that holds the whole thing,
-     * so moving the page always takes part of the score with it. Beside the pod, the
-     * heading costs nothing vertical and the section comes in under a normal window.
+     * It also needs at least 900px of *width*: the app's own stylesheet switches at
+     * `max-width: 899px` and turns that side column into a modal dialog that covers the
+     * score completely.
+     *
+     * `beside` was tried, because a heading in a column beside the pod costs nothing
+     * vertical and brought the section from 1110px to 972px. It also narrowed the frame to
+     * 801px, under the app's breakpoint, and the section rendered with a full-width Parts
+     * dialog over the music. Photographed, and unusable.
+     *
+     * So the heading stays in a band above and the pod keeps its full 980px. The height is
+     * bought back by giving the frame the height the app actually needs, and by deleting
+     * the footnote that used to sit under it.
      */
-    stage: "beside",
+    stage: "stacked",
     number: "01",
     name: "Choir Practice",
     platform: "Web app",
