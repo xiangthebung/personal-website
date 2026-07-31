@@ -1,108 +1,110 @@
-# vinext-starter
+# Xiang Li — portfolio
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Seven side projects, each running on the page as a self-driving scene.
 
-## Prerequisites
-
-- Node.js `>=22.13.0`
-
-## Quick Start
+Live at [personal-website.xiangli3625.workers.dev](https://personal-website.xiangli3625.workers.dev/).
 
 ```bash
 npm install
-npm run dev
+npm run dev      # http://localhost:3000
 npm run build
+npm test         # builds, then asserts what the page claims
 ```
 
-This starter does not use `wrangler.jsonc`.
+## The idea
 
-## Included Shape
+A portfolio of software should not be a list of screenshots. The old shape of this
+site was exactly that — an image per project, a caption, a pointer angle — and
+every picture went stale: four of the projects had been renamed, one had been
+rewritten from scratch, and one did not exist yet. Nothing failed, so nobody
+noticed.
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+So each project section mounts a **scene** instead: a short film of the software
+doing the thing it exists to do, driven by a storyboard of timed beats. Six are
+staged reconstructions. Choir Practice is the actual application, vendored into
+`public/demos/choir/` and driven by the pod that frames it.
 
-## Workspace Auth Headers
+**The scenes explain themselves.** Every project used to carry three written notes
+in a column beside its scene, and nobody reads prose next to something that is
+moving — the scene won that competition every time, and the list still took up the
+room. The claims now live inside the frames as labels pinned to their evidence:
+"Notifications less distracting" beside the badge at the moment it loses its red,
+"Real-time bus tracking" on the stop card, "And every page it links to" on the
+cards flying out of the toolbar. What is left in the reading column is a name, a
+platform, a headline and — where the headline does not already contain it — the
+problem, which is the one thing a demonstration of the solution cannot state.
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
+## Shape
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```
+app/
+  page.tsx            the whole page, as a server component
+  projects.ts         every project's copy, and what each section may claim
+  page-chrome.tsx     the photo rail, and the focus manager that decides
+                      which project you are "in"
+  backdrops.tsx       per-project scenery behind and in front of each scene
+  index-marks.tsx     a live miniature of every scene, for the hero index
+  globals.css         one stylesheet; all motion is CSS keyed off data-beat
+  demos/
+    demo-mount.tsx    lazy registry, one chunk per scene
+    scene/            the shared runtime: storyboard, phantom cursor,
+                      viewport layers, in-frame labels
+    <project>/        one directory per scene
+  legal/              privacy policies and terms, vendored from each project
+tests/                node:test against the built Cloudflare worker
+scripts/              screenshot and audit tooling (see below)
+worker/               the Cloudflare entry point
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+### How a scene works
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+`demos/scene/storyboard.ts` advances through a list of `{ name, ms }` beats and
+writes the current beat onto the stage as `data-beat`, plus the fraction through it
+as `--beat-t` — every frame, on the DOM node, without a React render. Continuous
+motion is CSS's job. React re-renders once per beat, not once per frame, which is
+what lets seven scenes share a page without making a laptop fan audible.
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+A scene never runs off screen, and restarts from the top rather than resuming: a
+vignette caught halfway makes no sense to somebody who just arrived.
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+### In-frame labels
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+`demos/scene/spec.tsx`. A label declares the beat it arrives on, a position as a
+percentage of its layer, and optionally the beat it leaves on — for the ones whose
+subject leaves. It stays put otherwise, so the last frame of a scene is a labelled
+diagram of itself.
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+Labels fly out of the control that was pressed, on a stagger, which reads as *this
+button did all of this*. Each has a drawn dot-and-lead to its subject rather than a
+dot and a gap, because six plates around one frame with no connectors is six things
+a reader has to pair up by proximity.
+
+The theming contract is shape, type, case, tracking and lead length as well as
+colour — four different pieces of software should not annotate themselves
+identically. Decaf gets square system chips, GRT dark-green uppercase transit
+signage, PagePack frosted pills, PDF Explainer a violet highlighter wash.
+
+Below 760px the layer stops being a layer and falls back into the scene's own
+column as a wrapped row of chips that still fills up beat by beat. The pointing is
+lost; the reading is not.
 
 ## Motion
 
 **This site does not honour `prefers-reduced-motion`, on purpose.**
 
 The seven scenes are the content, not decoration wrapped around it. The page's
-whole claim is that each project is running on it, so a visitor who cannot see
-the scenes move is left reading captions about motion that never arrives — a
-worse page than the one the media query exists to protect them from.
+whole claim is that each project is running on it, so a visitor who cannot see the
+scenes move is left reading captions about motion that never arrives — a worse page
+than the one the media query exists to protect them from.
 
 The setting also fires for the wrong people here. Windows turns `reduce` on from
-places nobody associates with animation: the performance options, battery savers,
-and remote desktop sessions. Most machines reporting it never asked for it.
+places nobody associates with animation: performance options, battery savers, and
+remote desktop sessions. Most machines reporting it never asked for it.
 
 What was removed, if it ever needs to come back:
 
 - four `@media (prefers-reduced-motion: reduce)` blocks in `app/globals.css`,
-  including a blanket one that flattened every animation and transition on the
-  page
+  including a blanket one that flattened every animation and transition
 - the still-frame branch in `useStoryboard` (`app/demos/scene/storyboard.ts`),
   which held one nominated beat instead of looping
 
@@ -111,14 +113,45 @@ carries its argument — and `SceneState.still` is still threaded through to the
 phantom cursor. Bringing motion control back should mean a control on the page a
 visitor can find and press, not an ambient setting read behind their back.
 
-## Useful Commands
+## Tests
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+`npm test` builds the site and then runs `node --test` against the built worker.
+Most of what it asserts is not "does it render" but **"is it still true"**, because
+the failure this site actually had was a page describing software that had moved
+on while every build passed.
 
-## Learn More
+So the suite checks that no project is described by a name it no longer has, that
+the demo registry covers every project, that the vendored Choir app still has the
+controls the pod reaches into, that the published policies still match the
+originals in each project's repository, and that the page counts nothing at the
+reader. It also holds the copy to its own rules: every caption clears a reading
+floor, every in-frame label clears that floor and a seven-word limit, the claims
+stay in the frames rather than returning to a column, and Choir's four voices are
+still inked in the colours the vendored app engraves them in.
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+## Scripts
+
+| Command | Does |
+| --- | --- |
+| `npm run dev` | Local development |
+| `npm run build` | Build the Cloudflare worker and client |
+| `npm test` | Build, then assert what the page claims |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm run media` | Rebuild the AVIF/poster manifest for the photo gallery |
+
+Review tooling, none of it part of CI:
+
+| Command | Does |
+| --- | --- |
+| `node scripts/drive-site.mjs` | Loads the built site in real Chromium, scrolls to every pod, checks each scene advances and loops, and fails on any console error. `--shots` writes screenshots. |
+| `node scripts/beat-shot.mjs <id> [width] [beat…]` | Photographs one section whole, at a chosen width, on chosen beats. The main tool for judging a scene. |
+| `node scripts/visible.mjs` | Checks that things which must be legible are not occluded. |
+| `node scripts/dead-css.mjs` | Class names in the stylesheet with no literal match in the source. |
+| `node scripts/dangling-selectors.mjs` | Selector lists the browser dropped. |
+
+## Deployment
+
+Cloudflare Workers, via `vinext` and `@cloudflare/vite-plugin`. `npm run build`
+produces `dist/server/index.js` — the worker the tests import directly — and the
+client bundle beside it.
