@@ -41,9 +41,19 @@
  * `AudioContext.resume()` succeeds on the forwarded press. This is the same mechanism
  * the microphone button has always used.
  *
- * It reads the transport's state before pressing, because `#play-btn` is a toggle and
- * the shield can be re-armed by scrolling away and back. Without the check, a second
- * visit to the section would have clicked *pause* on a rehearsal already in progress.
+ * The shield is shown once and then never again. It used to re-arm whenever the pointer
+ * left the stand, which meant a scrim and a "Click to play" dropping back over an
+ * engraved score every time a visitor moved the mouse off it — reported as exactly that.
+ * The re-arming had a reason: the shield's original job was to stop the frame eating the
+ * wheel, and handing the wheel over felt like something that should expire. But
+ * `chainScroll` below now does that job properly, from the moment the score is up and
+ * for as long as it is, so re-arming bought nothing and cost the one thing this pod is
+ * for — an unobstructed view of the application. `engaged` is a one-way latch, cleared
+ * only by the twenty-second teardown, because a reloaded frame is a new document and
+ * needs its own gesture before it can make sound.
+ *
+ * It still reads the transport's state before pressing, because `#play-btn` is a toggle
+ * and that teardown can put the shield back after a long absence.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -65,6 +75,14 @@ import { useSectionFocused } from "../use-section-focus";
  * This one is 104 bars, four parts named Soprano, Alto, Tenor and Bass, and every
  * staff has notes in bar one. It is also exactly the shape the pitch describes: one
  * part loud, the other three quiet.
+ *
+ * It is not the easiest score in the app any more — there is now a four-part "Happy
+ * Birthday to You", nine bars long, sitting first in the sample grid for singers who
+ * want somewhere to start. It is deliberately not what this pod opens. Nine bars at
+ * crotchet=104 is about sixteen seconds, and when it ends the transport stops, the
+ * analyser goes quiet and the four voice meters fall flat while the visitor is still
+ * looking at them. A section that plays for less time than someone spends reading it
+ * is a worse demonstration than an unfamiliar tune that keeps going.
  */
 const SCORE = "Quick! We have but a second.musicxml";
 
@@ -247,9 +265,9 @@ function chainScroll(frame: HTMLIFrameElement | null): () => void {
  * Starts the piece, if it is not already going.
  *
  * Called from the shield's click and nowhere else, so the music only ever begins on a
- * gesture that was a request for this application. The guard is what makes the shield
- * re-armable: scroll away, come back, click again, and this does nothing rather than
- * pausing what is already playing.
+ * gesture that was a request for this application. The guard covers the one case where
+ * the shield can appear twice — the twenty-second teardown remounts the frame — so a
+ * second click does nothing rather than pausing what is already playing.
  *
  * Silent on every failure, like the rest of the automation here. A renamed control
  * leaves a visitor with a working app and a Play button, which is the state this page
@@ -548,29 +566,21 @@ export function ChoirPracticeDemo() {
    * scroll past and back should not kill a rehearsal someone was in the middle of,
    * and leaving a suspended AudioContext and a score renderer alive three sections
    * up is exactly what makes a page feel heavy for no visible reason.
+   *
+   * This is also the one place `engaged` goes back to false, and it has to: the next
+   * mount is a fresh document with no user activation, so its `AudioContext` cannot
+   * start until somebody clicks. Nothing shorter-lived resets it — see the note at
+   * the top of this file on why the shield does not come back on pointer-leave.
    */
   useEffect(() => {
     if (!mounted || onScreen) return;
     const timer = window.setTimeout(() => {
       setMounted(false);
       setOpened(false);
+      setEngaged(false);
     }, 20_000);
     return () => window.clearTimeout(timer);
   }, [mounted, onScreen]);
-
-  /* Re-arm the shield the moment the section is left. Handing the wheel to the app is
-     something a visitor asks for while they are standing here, not a decision that
-     should still be in force when they scroll back past it half a page later — and if
-     it were, the scroll trap would be waiting for them again.
-
-     Scroll position is not React state, so there is nowhere to derive this from; the
-     observer reports it and this reacts. Same pattern, and same reason, as the mount
-     effect above. */
-  useEffect(() => {
-    if (onScreen || !engaged) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setEngaged(false);
-  }, [onScreen, engaged]);
 
   /**
    * Stop the music when this stops being the section you are looking at.
@@ -589,8 +599,9 @@ export function ChoirPracticeDemo() {
    * you are in, and it is the signal every other viewport-level effect already uses.
    *
    * Pausing rather than muting, so coming back finds the piece where it was rather than
-   * three minutes further on. The shield re-arms itself above, so returning and clicking
-   * starts it again from the same place.
+   * three minutes further on. Resuming is the application's own Play button, which is on
+   * screen, says "Play", and is the control a visitor who has already clicked into this
+   * frame is holding. The shield does not reappear to offer a second one.
    */
   useEffect(() => {
     if (!playing || focused) return;
@@ -709,18 +720,7 @@ export function ChoirPracticeDemo() {
           <path d="M315 515 Q600 275 885 515" />
         </svg>
 
-        {/* Leaving the stand re-arms the shield. Engaging is a request to use the thing
-            under the pointer, so it should expire when the pointer is no longer over
-            it — otherwise one click buys the frame the wheel for as long as the section
-            is on screen, which for the first project on the page is most of the top of
-            it. A separate overlay cannot do this job: detecting a pointer leaving
-            requires receiving pointer events, and anything receiving them here would be
-            taking them from the application. */}
-        <div
-          className="choir-stand"
-          ref={standRef}
-          onPointerLeave={() => setEngaged(false)}
-        >
+        <div className="choir-stand" ref={standRef}>
           {mounted ? (
             <iframe
               ref={frameRef}
@@ -746,8 +746,9 @@ export function ChoirPracticeDemo() {
 
               So the frame is inert until it is asked for. While the shield is up the
               wheel belongs to the page, because the shield is what is under the pointer
-              and it does not scroll. Clicking hands the app over. Scrolling away puts
-              the shield back, so the trap cannot outlive the visit to this section.
+              and it does not scroll. Clicking hands the app over, and that is permanent:
+              `chainScroll` keeps the page scrollable from then on, so there is nothing
+              left for a second shield to protect against.
 
               This is also where the microphone button lives now. It used to sit in the
               footnote under the stand, which hit-testing put at y=919 in a 900px
