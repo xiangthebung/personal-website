@@ -27,8 +27,11 @@
  */
 
 import { useRef } from "react";
+import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
+import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
+import { useSectionFocused } from "../use-section-focus";
 
 /** The project's letter set: eight consonants picked for not sounding alike. */
 const LETTERS = ["C", "H", "K", "L", "Q", "R", "S", "T"] as const;
@@ -43,17 +46,37 @@ type BeatName =
   | "match-letter"
   | "hold";
 
+/**
+ * Eight beats, thirteen and a half seconds.
+ *
+ * This scene is a lesson rather than a demonstration, and a lesson has to give you
+ * time to do the comparison yourself. The four cue beats were around a second each,
+ * which is roughly the real game's pace — and the real game is a thing you have
+ * already learned the rules of. Somebody meeting the two-back rule for the first time
+ * has to look at the new cue, find the slot two places back, and hold both in mind
+ * before the bracket tells them the answer. A second is not enough for the first of
+ * those, let alone all three.
+ *
+ * So the cue beats are 1.5s, the two beats where the bracket and the verdict are on
+ * screen are 2.4s, and `empty` is long enough to read the strip's own heading — "what
+ * you are holding", "2 back" — before anything starts arriving into it. Up from 10s.
+ */
 const BEATS: readonly Beat<BeatName>[] = [
-  { name: "empty", ms: 1000 },
-  { name: "cue-1", ms: 1150 },
-  { name: "cue-2", ms: 1150 },
-  { name: "cue-3", ms: 1000 },
+  // Four empty slots and the rule, before there is anything to apply it to.
+  { name: "empty", ms: 1400 },
+  { name: "cue-1", ms: 1600 },
+  { name: "cue-2", ms: 1500 },
+  // The repeat has already happened here and nothing has pointed it out yet. That
+  // gap is the teaching, so it needs long enough for the visitor to spot it first.
+  { name: "cue-3", ms: 1500 },
   // Long enough to read the bracket and the verdict. This is the beat that
   // teaches, so it gets the most time on screen.
-  { name: "match-square", ms: 1900 },
-  { name: "cue-4", ms: 1000 },
-  { name: "match-letter", ms: 1900 },
-  { name: "hold", ms: 900 },
+  { name: "match-square", ms: 2400 },
+  { name: "cue-4", ms: 1500 },
+  { name: "match-letter", ms: 2400 },
+  /* 1400 rather than 1200 so the closing line clears the caption floor on its own,
+     instead of borrowing the storyboard's 1100ms loop gap to get there. */
+  { name: "hold", ms: 1400 },
 ];
 
 /**
@@ -94,6 +117,68 @@ const ANSWERING: Partial<Record<BeatName, "square" | "letter">> = {
   "match-letter": "letter",
 };
 
+/**
+ * The caption, one line per beat.
+ *
+ * It had three lines: one for each of the two match beats, and one shared by the four
+ * beats where cues are arriving. That shared line — "hold two, compare what arrives
+ * against what arrived two cues ago, then let the oldest one go" — is a statement of
+ * the rule, and it was on screen through `empty`, when nothing had arrived, and
+ * through `cue-1` and `cue-2`, when there was nothing two cues back to compare
+ * against. It described the scene in general and none of those frames in particular.
+ *
+ * The rule is still stated, but only where a frame is showing it. The rest of the time
+ * the caption counts along with the strip, which is the thing a first-time visitor
+ * needs help doing: knowing which slot they are supposed to be looking at.
+ */
+/**
+ * The only scene on the page that still has a caption, and the only one that needs one.
+ *
+ * Every other scene lost its caption because the section around it already said the same
+ * thing three times over. This one is different in kind: n-back is a *rule*, not an
+ * interface, and no amount of watching squares light up will tell a first-time visitor
+ * that they are supposed to be comparing each cue against the one two before it. A
+ * static bullet cannot do it either, because the interesting part is *which slot* to look
+ * at *right now* — which changes every beat and is the whole difficulty of the task.
+ *
+ * So these lines point. What went were the announcements — "Cue 1 arrives", "Cue 2.",
+ * "Cue 3." — which read the strip aloud to somebody already looking at it, and the strip
+ * numbers its own slots.
+ */
+const CAPTION: Record<BeatName, readonly [string, string]> = {
+  empty: ["Compare each cue against the one two back.", ""],
+  "cue-1": ["", ""],
+  "cue-2": ["Nothing to compare against yet.", ""],
+  "cue-3": ["Two back from here is cue 1.", ""],
+  "match-square": [
+    "Same square as cue 1. Different letter.",
+    "So one of the two answers is right and the other is not.",
+  ],
+  "cue-4": ["Two back from here is cue 2.", ""],
+  "match-letter": ["Same letter as cue 2. Different square.", "The streams score apart."],
+  hold: ["One key for the square, one for the sound.", ""],
+};
+
+/**
+ * The streams, named.
+ *
+ * "Watch a square and hear a letter. Triple adds a colour." was a written note beside this
+ * scene, and two thirds of it were already on screen — the board and the spoken letter are
+ * the first thing the scene does. The third was not, and could not be: there is no colour
+ * stream in this demonstration, so nothing in the frame could ever hint that the game has
+ * one. Naming all three in a row of chips costs six words and puts the whole shape of the
+ * game on screen.
+ *
+ * `data-off` on the third is doing real work rather than styling: it says *this exists and
+ * is not what you are watching*, which is the only honest way to show a mode the scene is
+ * not running.
+ */
+const STREAMS = [
+  { name: "Square", on: true },
+  { name: "Sound", on: true },
+  { name: "Colour", on: false },
+] as const;
+
 const N = 2;
 
 /** A 3×3 board with one cell lit. `cell` of -1 lights nothing. */
@@ -110,13 +195,19 @@ function Board({ cell, small = false }: { cell: number; small?: boolean }) {
 export function NBackDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
+  /* Starts on focus. This scene teaches a rule in order — cue 1, cue 2, then the first
+     comparison — and joining it at cue 3 teaches nothing. */
+  const running = useSceneRun(useSectionFocused(stageRef), onScreen);
   const { beat, run } = useStoryboard(BEATS, {
-    running: onScreen,
+    running,
     stage: stageRef,
     // The still that carries the argument: the bracket drawn between a cue and the
     // cue two places behind it.
     stillBeat: "match-square",
   });
+
+  // Earlier cues remain projected behind the board after the board has moved on.
+  useSectionBeat(stageRef, beat, BEATS);
 
   const arrived = ARRIVED[beat];
   const answering = ANSWERING[beat];
@@ -153,7 +244,9 @@ export function NBackDemo() {
           {/* The spoken letter. The real game says it out loud; a page that starts
               talking because you scrolled to it is a page you close. */}
           <span className="nb-voice" data-on={Boolean(current)}>
-            <span className="nb-wave" aria-hidden="true">
+            {/* Remounted per beat so this gesture finishes instead of keeping
+                three compositor animations alive for the whole scene. */}
+            <span className="nb-wave" key={`${run}-${beat}`} aria-hidden="true">
               <i />
               <i />
               <i />
@@ -164,6 +257,17 @@ export function NBackDemo() {
 
         <p className="nb-now-label">
           {arrived === 0 ? "waiting" : `cue ${arrived}`}
+        </p>
+
+        {/* What a cue is made of, including the one this demonstration does not run.
+            See `STREAMS`. */}
+        <p className="nb-streams" aria-hidden="true">
+          {STREAMS.map((stream) => (
+            <span key={stream.name} data-off={!stream.on}>
+              {stream.name}
+            </span>
+          ))}
+          <small>dual, or triple</small>
         </p>
       </div>
 
@@ -183,7 +287,16 @@ export function NBackDemo() {
                 key={`${run}-${index}`}
                 data-filled={Boolean(cue)}
                 data-current={isCurrent}
-                data-target={Boolean(answering) && isTarget}
+                /* Marked from the moment the cue lands, not from the moment the
+                   bracket is drawn. It used to be `answering && isTarget`, so on
+                   `cue-3` and `cue-4` a new cue appeared and the visitor was left to
+                   work out for themselves which of the four slots two-back meant —
+                   and then the bracket arrived a beat later and answered it for them,
+                   which is the wrong way round for a lesson. Now the slot being
+                   compared against lights up with the cue, and the beat after it says
+                   what the comparison found. Nothing new in the stylesheet: this is
+                   the same attribute and the same tint as before, one beat earlier. */
+                data-target={isTarget}
               >
                 <Board cell={cue?.cell ?? -1} small />
                 <span className="nb-slot-letter">{cue?.letter ?? ""}</span>
@@ -209,40 +322,41 @@ export function NBackDemo() {
       </div>
 
       {/* ------------------------------------------------------------- the answer */}
+      {/* The two keys. The verdict column read "Hit", which is the game's own scoring
+          word and means nothing to somebody who has not played it — "hit" what? It
+          says "Match" now: the same event, named after what is on the strip rather
+          than after how it would be scored. */}
       <div className="nb-answers">
         <span className="nb-answer" data-lit={answering === "letter"}>
           <kbd>A</kbd>
           <span className="nb-answer-name">Sound</span>
           <span className="nb-answer-verdict">
-            {answering === "letter" ? "Hit" : ""}
+            {answering === "letter" ? "Match" : ""}
           </span>
         </span>
         <span className="nb-answer" data-lit={answering === "square"}>
           <kbd>L</kbd>
           <span className="nb-answer-name">Square</span>
           <span className="nb-answer-verdict">
-            {answering === "square" ? "Hit" : ""}
+            {answering === "square" ? "Match" : ""}
           </span>
         </span>
+
+        {/* The one rule of this game that a film of it cannot demonstrate.
+            Everything else the section used to claim in a column beside the scene is now
+            shown by the scene: the square and the letter arrive together, the strip numbers
+            its slots, the bracket names the comparison, and the two keys light separately.
+            The scoring is the exception, and it is an interesting exception — nobody is
+            pressing anything here, so every answer this scene can ever show is a correct
+            one. "Pressing everything scores worse than pressing nothing" is therefore
+            unshowable and has to be said, and the place to say it is beside the two keys it
+            is about rather than four inches to the left of the frame. */}
+        <span className="nb-answer-cost">A false press costs more than a miss</span>
       </div>
 
       <p className="nb-caption" aria-hidden="true">
-        {answering === "square" ? (
-          <>
-            <strong>Cue 3 is cue 1&apos;s square.</strong> Different letter, so only one
-            of the two answers is right.
-          </>
-        ) : answering === "letter" ? (
-          <>
-            <strong>Cue 4 is cue 2&apos;s letter.</strong> Different square. The streams
-            are scored separately.
-          </>
-        ) : (
-          <>
-            <strong>Hold two.</strong> Compare what arrives against what arrived two
-            cues ago, then let the oldest one go.
-          </>
-        )}
+        <strong>{CAPTION[beat][0]}</strong>
+        {CAPTION[beat][1] && ` ${CAPTION[beat][1]}`}
       </p>
     </div>
   );

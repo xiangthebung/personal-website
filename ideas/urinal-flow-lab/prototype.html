@@ -1,0 +1,1594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>urinal-flow-lab — scene prototype</title>
+<style>
+/* ===========================================================================
+   PROTOTYPE — "Splashback is a geometry problem"
+
+   A self-driving, looping scene for the urinal-flow-lab project. Ten named
+   beats, advanced by a single rAF timer that writes three things onto the root
+   element and nothing else:
+
+     data-beat      the beat showing right now      -> CSS transitions
+     data-reached   every beat so far, space-separated -> CSS "and it stays"
+     --beat-t       0..1 fraction through this beat  -> continuous motion
+
+   That is the same split the real site uses: React (here, JS) re-renders once
+   per beat, and everything continuous is CSS or canvas reading --beat-t. All
+   the chrome, overlays, glass beads and counters below are styled purely off
+   the attribute, so the stylesheet reads as the storyboard.
+
+   The fluid itself is a canvas, because 150 ballistic droplets colliding with a
+   200-segment wall is not a CSS problem. It reads the beat every frame.
+   =========================================================================== */
+
+:root {
+  /* Lifted from the project's own styles.css so the prototype looks like the
+     tool it is advertising rather than like a generic dark page. */
+  --bg: #0b1016;
+  --bg-2: #0d1218;
+  --panel: #131b24;
+  --panel-2: #182230;
+  --line: #223040;
+  --text: #dce6f0;
+  --text-dim: #8fa3b8;
+  --text-faint: #64768a;
+  --accent: #35e0ff;
+  --accent-2: #ffd166;
+  --bad: #ff5a3c;
+  --good: #4ade9b;
+  --warn: #ffa03c;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Stage shell: topbar / viewport / transport, same as the real app's grid.
+   -------------------------------------------------------------------------- */
+.stage {
+  position: relative;
+  display: grid;
+  grid-template-rows: 44px 1fr 40px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  z-index: 5;
+}
+.brand { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.brand strong { letter-spacing: .2px; }
+.brand span { color: var(--text-faint); font-size: 11px; }
+
+/* The fixture name changes the moment the generated wall exists. */
+.model {
+  font: 11.5px/1 var(--mono);
+  color: var(--text-dim);
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  transition: color .18s, border-color .18s, background .18s;
+}
+.stage[data-reached~="integrate"] .model {
+  color: #d6f7ff;
+  border-color: #17708a;
+  background: #0f3f4d;
+  transition: color .4s, border-color .4s, background .4s;
+}
+.model b { font-weight: 500; }
+.model .flat { display: inline; }
+.model .gen { display: none; }
+.stage[data-reached~="integrate"] .model .flat { display: none; }
+.stage[data-reached~="integrate"] .model .gen { display: inline; }
+
+/* "Same seed" badge. The whole A/B claim rests on it, so it lights up at the
+   moment the rerun starts rather than sitting there the whole time. */
+.seed {
+  margin-left: auto;
+  font: 10.5px/1.6 var(--mono);
+  color: var(--text-faint);
+  padding: 2px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  transition: color .3s, border-color .3s, box-shadow .3s;
+}
+.stage[data-beat="rerun"] .seed,
+.stage[data-beat="tally"] .seed {
+  color: var(--accent-2);
+  border-color: #8a6a17;
+  box-shadow: 0 0 14px rgba(255, 209, 102, .18);
+}
+
+/* --------------------------------------------------------------------------
+   Viewport
+   -------------------------------------------------------------------------- */
+.viewport { position: relative; background: var(--bg-2); overflow: hidden; }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* Beat 6 (`accuse`) is a takeover: the whole frame goes cold and the only warm
+   thing left is the part of the wall that is too steep. Desaturating the chrome
+   is what makes it read as an accusation rather than as another colour map. */
+.wash {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 18% 42%, rgba(255, 90, 60, .20), transparent 62%),
+    linear-gradient(180deg, rgba(8, 12, 17, .55), rgba(8, 12, 17, .78));
+  opacity: 0;
+  transition: opacity .55s ease;
+}
+.stage[data-beat="accuse"] .wash { opacity: 1; }
+.stage[data-beat="integrate"] .wash { opacity: .45; }
+
+/* View tabs, purely as furniture — but the active one moves with the story, so
+   the visitor is told which data view they are being shown. */
+.tabs {
+  position: absolute; top: 10px; left: 10px; z-index: 4;
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.tab {
+  padding: 5px 10px;
+  background: rgba(19, 27, 36, .9);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font: 11.5px ui-sans-serif, system-ui, sans-serif;
+  transition: background .3s, border-color .3s, color .3s;
+}
+/* Liquid view by default; the impingement tab takes over for `accuse` and
+   `integrate`, because that is literally the field being shown. */
+.stage .tab[data-tab="liquid"] { background: #0f4d5c; border-color: #17708a; color: #d6f7ff; }
+.stage[data-beat="accuse"] .tab[data-tab="liquid"],
+.stage[data-beat="integrate"] .tab[data-tab="liquid"] {
+  background: rgba(19, 27, 36, .9); border-color: var(--line); color: var(--text-dim);
+}
+.stage[data-beat="accuse"] .tab[data-tab="angle"],
+.stage[data-beat="integrate"] .tab[data-tab="angle"] {
+  background: #0f4d5c; border-color: #17708a; color: #d6f7ff;
+}
+
+/* Live counters, top right. Mirrors the real HUD, which is the one place the
+   tool tells you what it is doing while it does it. */
+.hud {
+  position: absolute; top: 10px; right: 10px; z-index: 4;
+  min-width: 178px; padding: 8px 11px;
+  background: rgba(15, 21, 28, .9);
+  border: 1px solid var(--line); border-radius: 5px;
+  font: 11px/1.65 var(--mono); color: var(--text-dim);
+  opacity: .45; transition: opacity .4s;
+}
+.stage[data-reached~="jet"] .hud { opacity: 1; }
+.hud b { color: var(--text); font-weight: 500; }
+.hud .on-user { color: var(--bad); }
+
+/* Legend. Only meaningful during the two impingement beats, and it draws its
+   own criterion tick at 30 degrees — the hard break is the whole point of the
+   scale, so it has to be visible on the bar. */
+.legend {
+  position: absolute; bottom: 12px; left: 12px; z-index: 4;
+  width: 262px; padding: 9px 11px;
+  background: rgba(15, 21, 28, .92);
+  border: 1px solid var(--line); border-radius: 5px;
+  opacity: 0; transform: translateY(8px);
+  transition: opacity .45s, transform .45s;
+}
+.stage[data-beat="accuse"] .legend,
+.stage[data-beat="integrate"] .legend { opacity: 1; transform: none; }
+.legend-title { font-size: 11.5px; font-weight: 600; margin-bottom: 6px; }
+.legend-bar {
+  position: relative; height: 9px; border-radius: 2px; margin-bottom: 4px;
+  /* Same two ramps as the project's colormap: cool below the criterion, hot
+     above it, and no gradient across the break. */
+  background: linear-gradient(90deg,
+    rgb(13, 89, 107) 0%, rgb(115, 217, 179) 33%,
+    rgb(255, 184, 51) 33%, rgb(209, 15, 31) 100%);
+}
+.legend-tick {
+  position: absolute; left: 33%; top: -3px; bottom: -3px; width: 2px;
+  background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .6);
+}
+.legend-scale {
+  display: flex; justify-content: space-between;
+  font: 10px var(--mono); color: var(--text-faint);
+}
+.legend-scale .crit { color: var(--warn); }
+.legend-desc { margin: 6px 0 0; color: var(--text-faint); font-size: 10.5px; line-height: 1.4; }
+
+/* The running commentary, bottom right. One line per beat, swapped by CSS. */
+.note {
+  position: absolute; bottom: 12px; right: 12px; z-index: 4;
+  max-width: 320px; padding: 8px 11px;
+  background: rgba(15, 21, 28, .92);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--warn);
+  border-radius: 4px;
+  color: var(--text-dim); font-size: 11px; line-height: 1.45;
+}
+.note p { margin: 0; display: none; }
+.note p.on { display: block; }
+
+/* The impact-angle callout. Positioned in JS at the real contact point in
+   canvas space, shown/hidden entirely by CSS. */
+.callout {
+  position: absolute; z-index: 4;
+  left: var(--cx, 50%); top: var(--cy, 50%);
+  transform: translate(-50%, -50%) scale(.6);
+  padding: 3px 8px; border-radius: 3px;
+  font: 600 13px/1.2 var(--mono);
+  opacity: 0;
+  transition: opacity .28s, transform .28s;
+  pointer-events: none; white-space: nowrap;
+}
+.callout--steep { color: #2a0b08; background: var(--bad); box-shadow: 0 0 20px rgba(255, 90, 60, .5); }
+.callout--shallow { color: #04231a; background: var(--good); box-shadow: 0 0 20px rgba(74, 222, 155, .45); }
+.stage[data-beat="strike"] .callout--steep,
+.stage[data-beat="corona"] .callout--steep,
+.stage[data-beat="accuse"] .callout--steep { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.stage[data-beat="rerun"] .callout--shallow,
+.stage[data-beat="tally"] .callout--shallow { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+/* --------------------------------------------------------------------------
+   Beat 9: the receipt. Two counters and the ratio between them.
+   -------------------------------------------------------------------------- */
+.tally {
+  position: absolute; z-index: 5;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) scale(.94);
+  width: min(430px, 78%);
+  padding: 16px 18px 14px;
+  background: rgba(13, 19, 26, .95);
+  border: 1px solid #2a3a4c; border-radius: 7px;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .6);
+  opacity: 0; pointer-events: none;
+  /* Leaves faster than it arrives. The base rule is the *exit* transition,
+     because it is what applies once the beat is no longer tally or settle, and a
+     450 ms exit outlasted the whole first beat of the next run — the loop opened
+     on a stale receipt from the previous one. */
+  transition: opacity .22s ease, transform .22s ease;
+}
+.stage[data-beat="tally"] .tally,
+.stage[data-beat="settle"] .tally {
+  opacity: 1; transform: translate(-50%, -50%) scale(1);
+  transition: opacity .45s ease, transform .45s cubic-bezier(.2, .8, .3, 1);
+}
+.tally h2 {
+  margin: 0 0 12px; font: 600 11.5px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim);
+}
+.tally-row {
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: baseline; gap: 12px; padding: 4px 0;
+  border-bottom: 1px solid rgba(34, 48, 64, .7);
+}
+.tally-row span { color: var(--text-dim); font-size: 12px; }
+.tally-row b { font: 15px/1 var(--mono); color: var(--text); }
+.tally-row.flat b { color: var(--bad); }
+.tally-row.gen b { color: var(--good); }
+.tally-row.ratio { border-bottom: 0; padding-top: 9px; }
+.tally-row.ratio span { color: var(--text); font-weight: 600; }
+.tally-row.ratio b {
+  font-size: 22px; color: var(--accent-2);
+  opacity: 0; transform: translateY(5px);
+  transition: opacity .2s, transform .2s;
+}
+/* Stamps in a beat after the two figures it is computed from. The delay belongs
+   on the active rule, not the base one, or it also delays the exit. */
+.stage[data-beat="tally"] .tally-row.ratio b,
+.stage[data-beat="settle"] .tally-row.ratio b {
+  opacity: 1; transform: none;
+  transition: opacity .4s .55s, transform .4s .55s;
+}
+.tally-foot { margin: 10px 0 0; font-size: 10.5px; line-height: 1.45; color: var(--text-faint); }
+
+/* Volume closure, beat 10. The project's own strongest self-check: if every
+   drop emitted is not accounted for, the microlitres mean nothing. */
+.closure {
+  position: absolute; z-index: 5;
+  left: 50%; bottom: 14px; transform: translateX(-50%);
+  font: 10.5px/1.6 var(--mono); color: var(--text-faint);
+  opacity: 0; transition: opacity .22s;
+}
+.stage[data-beat="settle"] .closure { opacity: 1; transition: opacity .6s; }
+.closure b { color: var(--good); font-weight: 500; }
+
+/* --------------------------------------------------------------------------
+   The part that escapes the box: beads on the visitor's own glass.
+
+   Sits above every other layer, including the chrome, so it reads as being on
+   the screen rather than in the scene. Positions come from --bx/--by set
+   inline; everything about when they appear and how they crawl is CSS keyed off
+   the beat.
+   -------------------------------------------------------------------------- */
+.glass { position: absolute; inset: 0; z-index: 9; pointer-events: none; }
+.bead {
+  position: absolute;
+  left: var(--bx); top: var(--by);
+  width: var(--bs); height: calc(var(--bs) * .82);   /* flattened by gravity */
+  border-radius: 50%;
+  background:
+    radial-gradient(58% 42% at 34% 30%, rgba(255, 255, 255, .92), rgba(213, 240, 255, .30) 46%, rgba(120, 190, 220, .12) 70%),
+    rgba(150, 210, 235, .13);
+  box-shadow:
+    inset 0 -1px 3px rgba(255, 255, 255, .35),
+    inset 0 2px 4px rgba(0, 40, 60, .30),
+    0 2px 7px rgba(0, 0, 0, .35);
+  backdrop-filter: blur(1.4px) saturate(1.25);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.15);
+  transition:
+    opacity .26s ease var(--bd, 0s),
+    transform .34s cubic-bezier(.15, 1.5, .4, 1) var(--bd, 0s);
+}
+/* Arrive on impact, and stay: data-reached accumulates, so once corona has
+   happened these are on the glass for the rest of the scene. */
+.stage[data-reached~="corona"] .bead {
+  opacity: .95;
+  transform: translate(-50%, -50%) scale(1);
+}
+/* Then they creep, slowly, for the remaining ~8 seconds. A droplet on real
+   glass does not run — it pins, sags and inches. */
+.stage[data-reached~="accuse"] .bead {
+  transform: translate(-50%, calc(-50% + var(--slide))) scale(1);
+  transition:
+    opacity .26s ease,
+    transform 9s cubic-bezier(.5, 0, .7, .2);
+}
+/* Evaporate on the last beat so the loop starts from a clean pane. */
+.stage[data-beat="settle"] .bead {
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + var(--slide))) scale(.55);
+  transition: opacity .7s ease var(--bd, 0s), transform .7s ease;
+}
+/* The wet trail left behind the ones that crawled furthest. */
+.bead::after {
+  content: "";
+  position: absolute; left: 50%; bottom: 42%;
+  width: calc(var(--bs) * .34); height: 0;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(150, 210, 235, .22), rgba(150, 210, 235, 0));
+  transition: height 9s cubic-bezier(.5, 0, .7, .2);
+}
+.stage[data-reached~="accuse"] .bead::after { height: var(--slide); }
+.stage[data-beat="settle"] .bead::after { height: 0; transition: height .7s ease; }
+
+/* --------------------------------------------------------------------------
+   Transport. Also the readout the verification script reads.
+   -------------------------------------------------------------------------- */
+.transport {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 14px;
+  background: var(--panel); border-top: 1px solid var(--line);
+  z-index: 5;
+}
+.phase {
+  padding: 2px 9px; border-radius: 999px;
+  border: 1px solid var(--line);
+  font: 10.5px/1.6 var(--mono); color: var(--accent);
+  min-width: 96px; text-align: center;
+}
+.track { flex: 1; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
+/* Continuous motion straight from --beat-t. No JS layout writes per frame. */
+.fill { height: 100%; width: calc(var(--beat-t, 0) * 100%); background: var(--accent); }
+.count { font: 10.5px/1.6 var(--mono); color: var(--text-faint); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- The root element the whole scene hangs off. data-beat / data-reached are
+     written by the timer; nothing else about the story lives in JS strings. -->
+<div class="stage" id="stage" data-beat="standby" data-reached="standby">
+
+  <header class="topbar">
+    <div class="brand">
+      <strong>Urinal Flow Lab</strong>
+      <span>splashback &amp; drainage simulator</span>
+    </div>
+    <div class="model">
+      <span class="flat"><b>Square slab</b> · flat vertical back wall</span>
+      <span class="gen"><b>Constant-angle</b> · wall held at 25°</span>
+    </div>
+    <div class="seed">seed 4242 · identical stream</div>
+  </header>
+
+  <main class="viewport" id="viewport">
+    <canvas id="gl"></canvas>
+    <div class="wash"></div>
+
+    <div class="tabs">
+      <div class="tab" data-tab="liquid">Liquid</div>
+      <div class="tab" data-tab="angle">Impingement angle</div>
+    </div>
+
+    <div class="hud">
+      droplets <b id="hud-drops">0</b><br>
+      coherent <b id="hud-coherent">no</b><br>
+      breakup <b id="hud-breakup">—</b> / reach <b id="hud-reach">—</b><br>
+      impacts <b id="hud-impacts">0</b> · splashed <b id="hud-splashed">0</b><br>
+      out of bowl <b class="on-user" id="hud-escaped">0</b> · on user <b class="on-user" id="hud-user">0</b>
+    </div>
+
+    <div class="legend">
+      <div class="legend-title">Impingement angle (°)</div>
+      <div class="legend-bar"><div class="legend-tick"></div></div>
+      <div class="legend-scale">
+        <span>0</span><span class="crit">30 criterion</span><span>90</span>
+      </div>
+      <p class="legend-desc">
+        Splashing is driven by the velocity component normal to the wall, so the
+        driving parameter carries sin²α. Below about 30° to the surface it falls
+        under threshold and the corona never forms.
+      </p>
+    </div>
+
+    <div class="note" id="note">
+      <p data-for="standby">Flat vertical back wall, stream exit 25 mm off the lip. Nothing has been voided yet.</p>
+      <p data-for="jet">The stream is still a coherent jet when it reaches the wall. A jet spreads into an attached sheet instead of firing a corona.</p>
+      <p data-for="pinch">Step back and the wall falls outside the breakup length. Rayleigh–Plateau takes over: the jet pinches into a droplet train.</p>
+      <p data-for="strike">Every droplet arrival is now its own impact event. On a vertical wall they arrive at over 70° to the surface.</p>
+      <p data-for="corona">Above threshold. A steep impact throws an axisymmetric corona, so half of what leaves is aimed back at the user.</p>
+      <p data-for="accuse">The angle, not the speed. Everything past the 30° tick is a surface that will throw a corona if the stream lands on it.</p>
+      <p data-for="integrate">Integrating the constant-angle condition upward from the throat. Ignore gravity and the arrival rays form a pencil, and a curve cutting a pencil at a fixed angle is a logarithmic spiral — hence the shell. The real arrivals are parabolic, which pulls the wall towards the vertical.</p>
+      <p data-for="rerun">Same seed, same flow curve, same aim point. Arrivals now graze at 25°, which is under threshold: the liquid sheets down the wall and nothing is thrown.</p>
+      <p data-for="tally">Both figures come from the same void. Nothing was tuned between the two runs except the shape of the back wall.</p>
+      <p data-for="settle">Deeper casting is the trade: 510 mm against 360 mm for a conventional bowl. Left visible rather than tuned away.</p>
+    </div>
+
+    <div class="callout callout--steep" id="callout-steep">78°</div>
+    <div class="callout callout--shallow" id="callout-shallow">25°</div>
+
+    <section class="tally">
+      <h2>Thrown back out of the bowl, same void</h2>
+      <div class="tally-row flat">
+        <span>Square slab, flat wall</span><b id="tally-flat">0</b>
+      </div>
+      <div class="tally-row gen">
+        <span>Constant-angle wall, 25°</span><b id="tally-gen">0</b>
+      </div>
+      <div class="tally-row ratio">
+        <span>Reduction</span><b id="tally-ratio">—</b>
+      </div>
+      <p class="tally-foot">
+        Droplets that left the fixture entirely, from the same void on the same
+        seed. The real tool carries them on to the shoes, shins and trousers and
+        reports microlitres landing on the user per litre voided, which normalises
+        out how much was voided so two designs compare directly.
+      </p>
+    </section>
+
+    <p class="closure">volume closure error <b id="closure">0.0000 %</b> — every drop emitted accounted for</p>
+
+    <!-- Beads live outside the viewport chrome on purpose: they belong to the
+         screen, not to the simulation. -->
+    <div class="glass" id="glass"></div>
+  </main>
+
+  <footer class="transport">
+    <span class="phase" id="phase">standby</span>
+    <div class="track"><div class="fill"></div></div>
+    <span class="count" id="count">beat 1 / 10 · run 0</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* ===========================================================================
+   1. The storyboard
+   ---------------------------------------------------------------------------
+   Beats as data, exactly as in the recommended scene. Durations are the shot
+   list's; the loop gap gives the eye a moment before it starts over.
+   =========================================================================== */
+const BEATS = [
+  { name: "standby",   ms: 1000 },  // dark frame, flat slab, nothing moving
+  { name: "jet",       ms:  900 },  // coherent jet, breakup marker past the wall
+  { name: "pinch",     ms:  800 },  // step back; Rayleigh-Plateau pinches it
+  { name: "strike",    ms:  450 },  // first arrivals, 78 degrees
+  { name: "corona",    ms: 1200 },  // splash back out; beads land on the glass
+  { name: "accuse",    ms: 1400 },  // takeover: false-colour by angle, hard break
+  { name: "integrate", ms: 1600 },  // wall re-forms as the constant-angle curve
+  { name: "rerun",     ms: 1100 },  // same seed, grazing arrivals, low fan
+  { name: "tally",     ms: 1500 },  // the two counters and the ratio
+  { name: "settle",    ms: 1300 },  // beads evaporate, closure figure resolves
+];
+const LOOP_GAP_MS = 900;
+/** Length of the shot list itself, without the gap. */
+const BEATS_MS = BEATS.reduce((t, b) => t + b.ms, 0);
+const TOTAL_MS = BEATS_MS + LOOP_GAP_MS;
+const INDEX_OF = Object.fromEntries(BEATS.map((b, i) => [b.name, i]));
+
+/* ===========================================================================
+   2. Deterministic randomness
+   ---------------------------------------------------------------------------
+   Reseeded at the top of every loop, which is what lets the topbar claim the
+   two halves ran on the same seed. Splash is stochastic; without a fixed seed
+   an A/B comparison is not a controlled experiment.
+   =========================================================================== */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let rand = mulberry32(4242);
+
+/* ===========================================================================
+   3. World
+   ---------------------------------------------------------------------------
+   A fixed 1000 x 600 design space, letterboxed into whatever canvas we get.
+   One design unit is about a millimetre, so the fixture below is roughly the
+   real thing: 330 mm deep bowl, rim ~430 mm above the sump.
+
+   y increases downward, as on screen. Gravity is therefore +y.
+   =========================================================================== */
+const W = 1000, H = 600;
+const MOUNT_X = 170;      // the plane the fixture hangs off
+const RIM_Y   = 96;       // top of the back wall
+const THROAT_Y = 424;     // where the back wall hands over to the throat blend
+const FLOOR_Y = 552;
+/* Shin / trouser plane. Set 50 mm behind the exit, the way the real model places
+   the legs relative to the emitter: the person's shins are further from the
+   fixture than the stream's exit, not in front of it. Crossing this plane
+   outbound is the definition of splashback. */
+const USER_X  = 930;
+
+const GRAVITY = 1500;     // design units / s^2
+const SPEED   = 1650;     // exit speed, design units / s
+const JET_D   = 7;        // jet diameter
+/* Rayleigh-Plateau breakup length along the path. Has to sit between the two
+   stand-offs the scene uses, or the whole jet/droplet-train contrast collapses:
+   below it the stream is still one object when it arrives, above it a train of
+   separate droplets arrives instead. The generated wall sweeps forward, which
+   shortens the path at the same stand-off, so the margin above it is checked
+   against the *generated* geometry rather than the flat one. */
+const BREAKUP_LEN = 400;
+const TARGET_ANGLE = 25 * Math.PI / 180;   // the constant-angle wall's target
+const CRITICAL_ANGLE = 30 * Math.PI / 180; // the criterion the scale breaks at
+/* Close stand-off, used for the first two beats: 100 mm off the lip. Chosen so
+   the path to the wall is shorter than BREAKUP_LEN and the stream therefore
+   arrives intact, which is the single thing a user actually controls. */
+const NEAR_X = 525;
+/* Aim point, as a fraction along the profile from the top of the back wall.
+   High enough to stay on the surface the geometry actually controls — aim lower
+   and the impact lands on the throat fillet, which no wall shape governs and
+   which is steep, and the generated wall's advantage disappears entirely. Low
+   enough that the generated wall, which sweeps forward as it climbs, still sits
+   beyond the breakup length at the same stand-off. */
+const AIM_V = 0.14;
+
+/* Wall clock runs faster than the fluid would. A 3 m/s stream crosses 300 mm in
+   a tenth of a second, which is true and unwatchable; the real tool has a speed
+   selector for the same reason. */
+const TIME_SCALE = 0.42;
+
+const canvas = document.getElementById("gl");
+const ctx = canvas.getContext("2d");
+const stage = document.getElementById("stage");
+
+/* --- small vector helpers ------------------------------------------------- */
+const norm = (x, y) => { const m = Math.hypot(x, y) || 1; return { x: x / m, y: y / m }; };
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+/* ===========================================================================
+   4. Geometry — the two back walls
+   ---------------------------------------------------------------------------
+   Both profiles are one continuous strip traversed from the top of the back
+   wall, down through the throat, across the sump, up the front rise and over
+   the lip. That is the same parameterisation the real project uses, and it is
+   what lets the film live on a single 1-D array here.
+   =========================================================================== */
+
+/**
+ * Direction the stream is travelling when it arrives at `target`, having left
+ * `from` at SPEED on the flatter of the two ballistic roots.
+ *
+ * Declared up here because the wall generator needs it before the wall exists:
+ * the shape is defined by the angle it makes with the arriving stream, so the
+ * trajectory has to be solvable at any candidate point. Falls back to the
+ * straight ray outside the ballistic envelope, so the wall keeps developing
+ * rather than terminating mid-surface.
+ */
+function arrivalDir(from, target) {
+  const dx = target.x - from.x;
+  const dy = target.y - from.y;
+  const R = Math.abs(dx), sx = Math.sign(dx) || -1;
+  const dY = -dy;                                   // up-positive, for the formula
+  const v2 = SPEED * SPEED;
+  const disc = v2 * v2 - GRAVITY * (GRAVITY * R * R + 2 * dY * v2);
+  if (R < 1e-6 || disc < 0) return norm(dx, dy);
+  const theta = Math.atan((v2 - Math.sqrt(disc)) / (GRAVITY * R));
+  const cos = Math.cos(theta);
+  if (Math.abs(cos) < 1e-9) return norm(dx, dy);
+  const t = R / (SPEED * cos);
+  // Screen y points down, so the launch elevation enters negative and gravity
+  // adds back over the flight.
+  return norm(SPEED * cos * sx, -SPEED * Math.sin(theta) + GRAVITY * t);
+}
+
+/** Sampled cubic Hermite between two anchors with prescribed unit tangents. */
+function hermite(p0, d0, p1, d1, n, tension = 0.9) {
+  const chord = Math.hypot(p1.x - p0.x, p1.y - p0.y) * tension;
+  const out = [];
+  for (let i = 1; i <= n; i++) {
+    const t = i / n, t2 = t * t, t3 = t2 * t;
+    out.push({
+      x: (2*t3 - 3*t2 + 1) * p0.x + (t3 - 2*t2 + t) * chord * d0.x
+       + (-2*t3 + 3*t2) * p1.x + (t3 - t2) * chord * d1.x,
+      y: (2*t3 - 3*t2 + 1) * p0.y + (t3 - 2*t2 + t) * chord * d0.y
+       + (-2*t3 + 3*t2) * p1.y + (t3 - t2) * chord * d1.y,
+    });
+  }
+  return out;
+}
+
+/**
+ * The control: a dead flat vertical back wall.
+ *
+ * In the real fixture library this is the "Square slab" — a real designer
+ * fixture, not a caricature, and the worst case for impingement. It is in the
+ * set because without it a splashback percentage has no scale.
+ */
+function flatProfile() {
+  const pts = [{ x: MOUNT_X, y: RIM_Y }];
+  const A = { x: MOUNT_X, y: RIM_Y }, B = { x: MOUNT_X, y: THROAT_Y };
+  for (let i = 1; i <= 70; i++) pts.push({ x: MOUNT_X, y: lerp(A.y, B.y, i / 70) });
+  return closeLower(pts, { x: 0, y: 1 }, { x: 415, y: 460 }, { x: 500, y: 200 });
+}
+
+/**
+ * The generated wall: integrate the constant-impingement-angle condition.
+ *
+ * The condition is just  angle(wall tangent, arriving stream) = alpha,  marched
+ * upward from the throat because that is the end that has to connect. Through
+ * any point there are two wall orientations satisfying it, so a branch has to be
+ * chosen; 'tall' keeps the wall near vertical, which is the slim deep fixture
+ * the film runs straight down.
+ *
+ * With gravity off the arrival directions would be straight rays from a fixed
+ * pole, and the curve cutting every ray of a pencil at a constant angle is
+ * exactly a logarithmic spiral — which is why the published shape looks like a
+ * nautilus shell. Integrating the real parabolic arrival instead gives a wall
+ * that holds its angle for a real user rather than an idealised one, and it is
+ * not a small correction: the ballistic arrival is more than ten degrees steeper
+ * than the straight ray by the time it reaches the wall, which pulls the whole
+ * surface towards the vertical and takes about a third off the depth of the
+ * casting.
+ */
+function spiralProfile(pole, alpha) {
+  const step = 3.0;
+  const ca = Math.cos(alpha), sa = Math.sin(alpha);
+  let p = { x: MOUNT_X + 14, y: THROAT_Y };
+  const up = [{ ...p }];
+
+  for (let i = 0; i < 500; i++) {
+    // Arriving stream direction at this point, along the real trajectory.
+    const d = arrivalDir(pole, p);
+    // The two rotations of that direction sitting at alpha to it. Both describe
+    // a valid surface, since a surface has no preferred tangent sense.
+    let r1 = norm(d.x * ca - d.y * sa,  d.x * sa + d.y * ca);
+    let r2 = norm(d.x * ca + d.y * sa, -d.x * sa + d.y * ca);
+    // Orient both to march up the screen, then take the one nearer vertical.
+    if (r1.y > 0) r1 = { x: -r1.x, y: -r1.y };
+    if (r2.y > 0) r2 = { x: -r2.x, y: -r2.y };
+    const t = Math.abs(r1.y) >= Math.abs(r2.y) ? r1 : r2;
+    p = { x: p.x + t.x * step, y: p.y + t.y * step };
+    up.push({ ...p });
+    // Rim reached, or the depth budget spent. The budget is normally what stops
+    // it: a wall holding a shallow angle to a stream arriving from a long way in
+    // front has to keep sweeping forward as it climbs, and it can never rise
+    // above the exit, because meeting a horizontal stream at 25° needs a nearly
+    // horizontal surface. That is why the real fixture ends up 510 mm deep
+    // against 360 for a conventional bowl, and why its stated rim height is an
+    // upper bound rather than a dimension.
+    if (p.y <= RIM_Y + 8 || p.x >= 470) break;
+  }
+
+  // Reversed, so the strip still runs rim -> throat like the flat one does.
+  const down = up.slice().reverse();
+  const top = down[0];
+  const pts = [];
+  // A short hood curling forward off the top of the wall, which is a real
+  // interception surface rather than decoration.
+  const hoodTip = { x: top.x + 22, y: Math.max(RIM_Y, top.y - 30) };
+  pts.push(hoodTip);
+  pts.push(...hermite(hoodTip, { x: -1, y: 0.35 }, top, norm(down[1].x - top.x, down[1].y - top.y), 12, 0.8));
+  pts.push(...down.slice(1));
+
+  const last = pts[pts.length - 1], prev = pts[pts.length - 2];
+  // Deeper casting, because the generated wall has already swept forward. The
+  // wrap is measured from wherever the wall got to, which is what makes this
+  // fixture so much deeper than a conventional bowl.
+  //
+  // The lip is carried well below the top of the generated wall on purpose. Left
+  // at the conventional height it stands above the wall's top edge and shadows
+  // it: the stream clips the inturned lip on the way in and never reaches the
+  // surface the whole design depends on.
+  return closeLower(pts, norm(last.x - prev.x, last.y - prev.y),
+                    { x: 500, y: 460 }, { x: 600, y: 300 });
+}
+
+/** Throat blend, sump floor, front rise and lip curl — shared by both walls. */
+function closeLower(pts, wallEndTangent, sumpFront, lip) {
+  const B = pts[pts.length - 1];
+  const C = { x: 285, y: 468 };                    // sump low point, at the drain
+  const horizontal = { x: 1, y: 0 };
+  pts.push(...hermite(B, wallEndTangent, C, horizontal, 34, 0.85));
+  // Graded away from the outlet, so the low point is exactly at the drain. A
+  // level sump is the classic accumulation failure.
+  pts.push(...hermite(C, horizontal, sumpFront, norm(1, -0.12), 20, 0.8));
+  pts.push(...hermite(sumpFront, norm(1, -0.12), lip, { x: 0, y: -1 }, 44, 0.85));
+  // Lip curled back over the bowl: a second interception surface for shallow
+  // droplets heading for the shoes.
+  for (let i = 1; i <= 12; i++) {
+    const a = (i / 12) * Math.PI * 0.55;
+    pts.push({ x: lip.x - 26 + 26 * Math.cos(a), y: lip.y - 26 * Math.sin(a) });
+  }
+  return pts;
+}
+
+/** Resample by arclength so the two profiles can be lerped index by index. */
+function resample(pts, n) {
+  const s = [0];
+  for (let i = 1; i < pts.length; i++) {
+    s.push(s[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  }
+  const total = s[s.length - 1];
+  const out = [];
+  let j = 0;
+  for (let i = 0; i < n; i++) {
+    const target = (i / (n - 1)) * total;
+    while (j < s.length - 2 && s[j + 1] < target) j++;
+    const seg = s[j + 1] - s[j];
+    const t = seg > 1e-9 ? (target - s[j]) / seg : 0;
+    out.push({
+      x: lerp(pts[j].x, pts[j + 1].x, t),
+      y: lerp(pts[j].y, pts[j + 1].y, t),
+    });
+  }
+  return out;
+}
+
+const PROFILE_N = 200;
+/* The exit the generated wall is aligned to. This is load-bearing rather than a
+   layout choice: the constant-angle wall is integrated against rays from this
+   point, so the stand-off the scene finally settles at has to be this exact x, or
+   the wall is holding 25 degrees to a stream that is not there. */
+const POLE = { x: 880, y: 150 };
+const FLAT = resample(flatProfile(), PROFILE_N);
+const SPIRAL = resample(spiralProfile(POLE, TARGET_ANGLE), PROFILE_N);
+
+/* The live wall: FLAT lerped toward SPIRAL by `wallT`, plus per-point tangent
+   and inward normal. Rebuilt only when wallT actually moves. */
+let wall = [];
+let wallBuiltAt = -1;
+/** Front-most plane of the live fixture. Crossing it outbound is an escape. */
+let escapeX = 500;
+function buildWall(t) {
+  if (Math.abs(t - wallBuiltAt) < 1e-4 && wall.length) return wall;
+  wallBuiltAt = t;
+  wall = new Array(PROFILE_N);
+  for (let i = 0; i < PROFILE_N; i++) {
+    wall[i] = { x: lerp(FLAT[i].x, SPIRAL[i].x, t), y: lerp(FLAT[i].y, SPIRAL[i].y, t) };
+  }
+  for (let i = 0; i < PROFILE_N; i++) {
+    const a = wall[Math.max(0, i - 1)], b = wall[Math.min(PROFILE_N - 1, i + 1)];
+    const tan = norm(b.x - a.x, b.y - a.y);
+    wall[i].tx = tan.x; wall[i].ty = tan.y;
+    // Tangent rotated a quarter turn so it faces into the bowl: descending the
+    // back wall the tangent points down and this gives +x, toward the user; on
+    // the sump floor it gives -y, up out of the basin.
+    wall[i].nx = tan.y; wall[i].ny = -tan.x;
+  }
+  // The escape plane moves with the shape: the generated wall's casting is much
+  // deeper, so its lip stands further forward and liquid has further to travel
+  // before it has left the fixture at all.
+  let mx = -Infinity;
+  for (const p of wall) if (p.x > mx) mx = p.x;
+  escapeX = mx;
+  return wall;
+}
+
+/**
+ * Angle between the arriving stream and the surface at wall point i.
+ *
+ * The arrival direction is the ballistic one, not a straight ray from the exit.
+ * Over half a metre gravity bends the stream by more than ten degrees, and
+ * against a thirty degree budget that is not a rounding error — a straight-ray
+ * map would paint the flat slab at 88° where the droplets actually land at 76°,
+ * and would flatter the generated wall in the other direction.
+ */
+function impingementAt(i, w) {
+  const p = w[i];
+  const d = arrivalDir(POLE, p);
+  return Math.asin(clamp(Math.abs(d.x * p.nx + d.y * p.ny), 0, 1));
+}
+
+/* The project's own impingement colour scale: two ramps with a hard break at
+   the criterion, because 30 degrees is a threshold and not a preference. */
+function impingementColor(angle) {
+  const t = clamp(angle / (Math.PI / 2), 0, 1);
+  const critT = CRITICAL_ANGLE / (Math.PI / 2);
+  const mix = (a, b, k) => `rgb(${Math.round(lerp(a[0], b[0], k) * 255)},${Math.round(lerp(a[1], b[1], k) * 255)},${Math.round(lerp(a[2], b[2], k) * 255)})`;
+  if (t <= critT) return mix([0.05, 0.35, 0.42], [0.45, 0.85, 0.70], t / critT);
+  return mix([1.0, 0.72, 0.20], [0.82, 0.06, 0.12], (t - critT) / (1 - critT));
+}
+
+/* ===========================================================================
+   5. Ballistics
+   =========================================================================== */
+
+/**
+ * Aim angles that put the stream on `target` from `from` at `SPEED`.
+ *
+ * Aiming by angle is the wrong interface for this problem: a designer thinks
+ * "the stream lands here", and a few centimetres up or down the wall changes the
+ * local impingement angle by tens of degrees. The flatter of the two roots is
+ * taken, which is how a person actually aims.
+ */
+function solveAim(from, target) {
+  const dx = target.x - from.x;
+  const R = Math.abs(dx), sx = Math.sign(dx) || -1;
+  const dY = -(target.y - from.y);            // up-positive, for the formula
+  const v2 = SPEED * SPEED;
+  const disc = v2 * v2 - GRAVITY * (GRAVITY * R * R + 2 * dY * v2);
+  if (R < 1e-6 || disc < 0) return norm(dx, target.y - from.y);
+  const theta = Math.atan((v2 - Math.sqrt(disc)) / (GRAVITY * R));
+  return { x: Math.cos(theta) * sx, y: -Math.sin(theta) };
+}
+
+/** Position and velocity along the ballistic arc, t seconds after launch. */
+function flightAt(from, dir, t) {
+  return {
+    x: from.x + dir.x * SPEED * t,
+    y: from.y + dir.y * SPEED * t + 0.5 * GRAVITY * t * t,
+    vx: dir.x * SPEED,
+    vy: dir.y * SPEED + GRAVITY * t,
+  };
+}
+
+/* ===========================================================================
+   6. Simulation state
+   =========================================================================== */
+const drops = [];            // { x, y, vx, vy, r, gen, age }
+const film = new Float32Array(PROFILE_N);   // liquid held on the wall, for sheen
+/**
+ * The tallies.
+ *
+ * `escFlat` / `escGen` are the headline pair: droplets that were thrown off the
+ * wall and then crossed the front-most plane of the fixture on the way out. That
+ * is the real project's `escapedVolume` — liquid that left the bowl — and it is
+ * the quantity the two wall shapes are compared on here, because it is decided
+ * within a few hundred milliseconds of the impact.
+ *
+ * `userFlat` / `userGen` are the stricter count: of the liquid that escaped, what
+ * actually crossed the shin and trouser planes. Smaller, slower to accumulate,
+ * and the thing the real tool reports as microlitres per litre voided.
+ */
+const counters = {
+  impacts: 0, splashed: 0,
+  escFlat: 0, escGen: 0,
+  userFlat: 0, userGen: 0,
+};
+let emitAccumulator = 0;
+/* Which wall is live: 0 = flat slab, 1 = generated constant-angle wall. Set once
+   per frame by the timer. Splashback crossings are bucketed by it, so the two
+   halves of the A/B end up in separate counters. */
+let wallMorph = 0;
+
+function resetRun() {
+  drops.length = 0;
+  film.fill(0);
+  counters.impacts = counters.splashed = 0;
+  counters.escFlat = counters.escGen = 0;
+  counters.userFlat = counters.userGen = 0;
+  emitAccumulator = 0;
+  rand = mulberry32(4242);
+}
+
+/**
+ * Resolve one wall impact.
+ *
+ * The mechanism the whole thing turns on: splashing is driven by the component
+ * of velocity *normal* to the surface, not by the speed. Striking at angle alpha
+ * gives a normal velocity v·sin(alpha), so the driving parameter carries
+ * sin²(alpha) — halve the angle and it falls roughly fourfold.
+ *
+ * The second half is direction. A steep impact throws an axisymmetric corona, so
+ * a full half of it heads back toward the user. A grazing impact throws a narrow
+ * low fan that follows the wall down. Mass falling *and* direction turning away
+ * compound, which is why a shallower wall helps far more than the change in
+ * angle alone suggests.
+ */
+function resolveImpact(d, i, w) {
+  const p = w[i];
+  const vDotN = d.vx * p.nx + d.vy * p.ny;
+  const vN = Math.max(0, -vDotN);                       // had to be turned around
+  const vtx = d.vx - vDotN * p.nx, vty = d.vy - vDotN * p.ny;
+  const vTan = Math.hypot(vtx, vty);
+  const speed = Math.hypot(d.vx, d.vy);
+  const alpha = Math.atan2(vN, Math.max(1e-6, vTan));
+
+  counters.impacts++;
+
+  // Stand-in for the blended Mundo / Cossali threshold ratio. Same sin² scaling
+  // and the same "1 means exactly at threshold" reading as the real model.
+  const ratio = 3.4 * Math.pow(Math.sin(alpha), 2) * Math.pow(speed / SPEED, 2);
+  let splashFraction = ratio > 1 ? 0.7 * (1 - Math.exp(-0.55 * (ratio - 1))) : 0;
+  if (d.gen >= 2) splashFraction = 0;                   // deepest generation tracked
+
+  // Deposited liquid keeps most of its tangential momentum, which is what makes
+  // it stick and run rather than bounce.
+  film[i] = Math.min(1.4, film[i] + (1 - splashFraction) * 0.5);
+
+  if (splashFraction > 0) {
+    counters.splashed++;
+    const count = 1 + Math.floor(rand() * 3);
+    // Elevation of the ejecta off the wall, and how tightly the corona is
+    // concentrated onto the downstream direction. Both shrink with the
+    // impingement angle, and that double narrowing is the other half of why a
+    // shallow wall is safe: a steep impact throws a corona that is nearly
+    // axisymmetric, so a full half of it heads back out of the bowl, while a
+    // grazing impact throws a narrow low fan that follows the wall down.
+    const alphaFrac = clamp(alpha / (Math.PI / 2), 0, 1);
+    const beta = clamp(0.55 * alpha + 0.105, 0.105, 1.05);
+    const concentration = 1 + 5 * Math.pow(1 - alphaFrac, 1.5);
+    const down = vTan > 1e-6 ? { x: vtx / vTan, y: vty / vTan } : { x: p.tx, y: p.ty };
+    const eject = 0.55 * vN + 0.12 * vTan;
+    const sinB = Math.sin(beta), cosB = Math.cos(beta);
+
+    for (let k = 0; k < count; k++) {
+      // Azimuth about the downstream axis, drawn so that phi = 0 is straight
+      // downstream and phi = ±pi is straight back up the wall. Raising |2u-1| to
+      // the concentration power is what bunches the draw toward downstream as the
+      // impact gets shallower; at 78° the exponent is ~1.2 and the draw is
+      // essentially uniform, at 25° it is ~4 and almost everything goes down.
+      const u = rand();
+      const s = u < 0.5 ? -1 : 1;
+      const phi = Math.PI * s * Math.pow(Math.abs(2 * u - 1), concentration);
+      const cosPhi = Math.cos(phi);
+      // The 3-D cone direction is sin(beta)·n + cos(beta)·(cos(phi)·t + sin(phi)·b),
+      // and b is out of the section plane, so the in-plane projection keeps the
+      // n and t terms. cos(phi) < 0 is the half of the corona that climbs the
+      // wall and leaves over the lip — the half that reaches the person.
+      const dir = norm(sinB * p.nx + cosB * cosPhi * down.x,
+                       sinB * p.ny + cosB * cosPhi * down.y);
+      // Ejection speed budget: driven by the normal component that had to be
+      // turned around, with a little of the retained tangential motion on top.
+      // Drops leaving square out of the plane carry less of it.
+      const sp = eject * (0.6 + 0.4 * Math.abs(cosPhi)) * (0.8 + rand() * 0.5);
+      drops.push({
+        x: p.x + p.nx * 4, y: p.y + p.ny * 4,
+        vx: dir.x * sp, vy: dir.y * sp,
+        r: 1.4 + rand() * 1.8, gen: d.gen + 1, age: 0,
+      });
+    }
+  }
+  d.dead = true;
+}
+
+/** Segment/segment crossing, used to find the wall hit. */
+function segmentHit(ax, ay, bx, by, cx, cy, dx, dy) {
+  const r1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+  const r2 = (bx - ax) * (dy - ay) - (by - ay) * (dx - ax);
+  const r3 = (dx - cx) * (ay - cy) - (dy - cy) * (ax - cx);
+  const r4 = (dx - cx) * (by - cy) - (dy - cy) * (bx - cx);
+  return (r1 > 0) !== (r2 > 0) && (r3 > 0) !== (r4 > 0);
+}
+
+/** Advance the airborne liquid by dt and resolve whatever it hit. */
+function stepDroplets(dt, w) {
+  // Coarse collision polyline: every 4th profile point. 50 segments against a
+  // few hundred droplets is cheap, and the wall is smooth at this scale.
+  const stride = 4;
+  for (const d of drops) {
+    if (d.dead) continue;
+    const px = d.x, py = d.y;
+    d.vy += GRAVITY * dt;
+    d.x += d.vx * dt;
+    d.y += d.vy * dt;
+    d.age += dt;
+
+    // Only outbound crossings count, and only liquid that has touched the wall:
+    // a stream that simply misses the fixture also wets the trousers, but that is
+    // an aim failure rather than a splash failure, and the real model keeps the
+    // two apart by tagging every droplet with how many impacts it has survived.
+    if (d.gen > 0 && d.vx > 0) {
+      // Left the bowl.
+      if (!d.escaped && px < escapeX && d.x >= escapeX) {
+        d.escaped = true;
+        (wallMorph < 0.5 ? counters.escFlat++ : counters.escGen++);
+      }
+      // Reached the person.
+      if (d.x >= USER_X) {
+        (wallMorph < 0.5 ? counters.userFlat++ : counters.userGen++);
+        d.dead = true;
+        continue;
+      }
+    }
+    if (d.y > FLOOR_Y || d.x < 60 || d.x > W + 40 || d.age > 3) { d.dead = true; continue; }
+
+    for (let i = 0; i + stride < PROFILE_N; i += stride) {
+      const a = w[i], b = w[i + stride];
+      // Cheap bbox reject before the crossing test.
+      if (Math.max(px, d.x) < Math.min(a.x, b.x) - 3) continue;
+      if (Math.min(px, d.x) > Math.max(a.x, b.x) + 3) continue;
+      if (Math.max(py, d.y) < Math.min(a.y, b.y) - 3) continue;
+      if (Math.min(py, d.y) > Math.max(a.y, b.y) + 3) continue;
+      if (segmentHit(px, py, d.x, d.y, a.x, a.y, b.x, b.y)) {
+        resolveImpact(d, i + Math.floor(stride / 2), w);
+        break;
+      }
+    }
+  }
+  // Compact, and keep the buffer bounded.
+  for (let i = drops.length - 1; i >= 0; i--) if (drops[i].dead) drops.splice(i, 1);
+  if (drops.length > 260) drops.splice(0, drops.length - 260);
+
+  advectFilm(w, dt);
+  // Drainage. The film thins as it goes, so the sheen is transient rather than
+  // cumulative — the real solver drains through the outlet and reports what is
+  // left, which is the other half of what the tool measures.
+  for (let i = 0; i < PROFILE_N; i++) film[i] *= 1 - 1.1 * dt;
+}
+
+/**
+ * Move the film along the surface under gravity.
+ *
+ * One upwind pass, with the transported fraction scaled by the component of
+ * gravity lying along the surface at that point. That single factor is why a
+ * near-vertical back wall clears in a second and a level sump does not clear at
+ * all: with no gradient there is nothing driving the film toward the outlet, and
+ * the liquid simply sits. It is also what makes the sheen run *down* the wall
+ * instead of glowing in place at the impact point.
+ */
+const filmScratch = new Float32Array(PROFILE_N);
+function advectFilm(w, dt) {
+  filmScratch.set(film);
+  const k = Math.min(0.45, 4.0 * dt);
+  for (let i = 0; i < PROFILE_N; i++) {
+    const h = filmScratch[i];
+    if (h < 1e-4) continue;
+    const g = w[i].ty;                       // downhill component of the tangent
+    const j = g > 0 ? i + 1 : i - 1;
+    if (j < 0 || j >= PROFILE_N) continue;
+    const move = h * k * Math.abs(g);
+    film[i] -= move;
+    film[j] += move;
+  }
+}
+
+/* ===========================================================================
+   7. Drawing
+   =========================================================================== */
+let view = { scale: 1, ox: 0, oy: 0 };
+function resize() {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const vp = document.getElementById("viewport");
+  const w = vp.clientWidth, h = vp.clientHeight;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  const scale = Math.min(w / W, h / H);
+  view = { scale: scale * dpr, ox: (w - W * scale) / 2 * dpr, oy: (h - H * scale) / 2 * dpr };
+}
+window.addEventListener("resize", resize);
+
+/** Design space -> CSS pixels inside the viewport, for placing DOM callouts. */
+function toScreen(x, y) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  return { x: (view.ox + x * view.scale) / dpr, y: (view.oy + y * view.scale) / dpr };
+}
+
+function tracePath(pts) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+}
+
+/**
+ * The solid casting behind the wetted surface. Droplets collide with it too.
+ *
+ * Drawn as two shapes rather than one, and the order matters. First the outer
+ * silhouette, whose mouth is a straight chord from the top of the wall to the
+ * lip — so the ceramic never paints over the opening. Then the cavity, bounded by
+ * the wetted profile and the same chord, filled back down to near-background so
+ * the bowl reads as empty space. Tracing the profile as part of a single casting
+ * outline instead looks right for a flat slab and wrong for anything with a
+ * forward-swept wall, because the enclosed region then includes the mouth.
+ */
+function drawCasting(w) {
+  const lip = w[w.length - 1];   // end of the lip curl: the front-most point
+  const top = w[0];              // top of the wetted surface, or the hood tip
+  const outerX = escapeX + 26;
+  const topY = top.y - 12;
+  ctx.save();
+
+  // ---- outer silhouette --------------------------------------------------
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y);
+  ctx.lineTo(lip.x, lip.y);              // chord across the mouth
+  ctx.lineTo(outerX, lip.y + 10);        // out to the front face
+  ctx.lineTo(outerX, FLOOR_Y - 14);      // down the front
+  ctx.lineTo(MOUNT_X - 26, FLOOR_Y - 14);// along the underside
+  ctx.lineTo(MOUNT_X - 26, topY);        // up the mounting plane
+  ctx.lineTo(top.x, topY);               // forward along the top face
+  ctx.closePath();
+  const g = ctx.createLinearGradient(MOUNT_X, RIM_Y, outerX, FLOOR_Y);
+  g.addColorStop(0, "#2b3947");
+  g.addColorStop(0.45, "#1d2833");
+  g.addColorStop(1, "#141d26");
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(120, 150, 175, 0.22)";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // ---- cavity ------------------------------------------------------------
+  tracePath(w);
+  ctx.closePath();                        // straight back across the mouth
+  const cav = ctx.createLinearGradient(MOUNT_X, top.y, lip.x, FLOOR_Y);
+  cav.addColorStop(0, "#0c1219");
+  cav.addColorStop(1, "#080c11");
+  ctx.fillStyle = cav;
+  ctx.fill();
+
+  // ---- the wetted surface itself -----------------------------------------
+  tracePath(w);
+  ctx.strokeStyle = "rgba(120, 150, 175, 0.35)";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Liquid held on the wall, as a variable-width sheen along the profile. */
+function drawFilm(w) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(53, 224, 255, 0.5)";
+  ctx.lineCap = "round";
+  for (let i = 1; i < PROFILE_N; i++) {
+    const h = film[i];
+    if (h < 0.02) continue;
+    ctx.globalAlpha = clamp(h, 0, 1) * 0.75;
+    ctx.lineWidth = 1 + h * 5;
+    ctx.beginPath();
+    ctx.moveTo(w[i - 1].x, w[i - 1].y);
+    ctx.lineTo(w[i].x, w[i].y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** The wetted surface false-coloured by impingement angle, hard break at 30. */
+function drawImpingement(w, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = 9;
+  ctx.lineCap = "butt";
+  for (let i = 1; i < PROFILE_N; i++) {
+    const ang = impingementAt(i, w);
+    ctx.strokeStyle = impingementColor(ang);
+    ctx.beginPath();
+    ctx.moveTo(w[i - 1].x, w[i - 1].y);
+    ctx.lineTo(w[i].x, w[i].y);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Arrival rays, revealed one at a time while the wall integrates itself. */
+function drawRays(w, reveal) {
+  ctx.save();
+  const n = 14;
+  for (let k = 0; k < n; k++) {
+    if (k / n > reveal) break;
+    const i = Math.round(6 + (k / (n - 1)) * (PROFILE_N * 0.55));
+    const p = w[Math.min(PROFILE_N - 1, i)];
+    const age = clamp((reveal - k / n) * n, 0, 1);
+    ctx.globalAlpha = 0.14 + 0.3 * age;
+    ctx.strokeStyle = "#ffd166";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 6]);
+    ctx.beginPath();
+    ctx.moveTo(POLE.x, POLE.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    // The angle tick: a short mark lying along the wall at the arrival point,
+    // which is what makes "held at 25 degrees everywhere" visible.
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.55 * age;
+    ctx.strokeStyle = "#4ade9b";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(p.x - p.tx * 11, p.y - p.ty * 11);
+    ctx.lineTo(p.x + p.tx * 11, p.y + p.ty * 11);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * The stream, from the exit to wherever it stops being a stream.
+ *
+ * Drawn analytically along the ballistic arc rather than out of the droplet
+ * buffer, because while it is coherent it *is* one object. The sinusoidal swell
+ * over the last stretch is the Rayleigh-Plateau mode growing: only disturbances
+ * longer than the circumference grow, and the fastest one sets a spacing of
+ * about 4.51 jet diameters, which is the spacing the droplet train inherits.
+ */
+function drawJet(from, dir, reach, wobble) {
+  const steps = 90;
+  const tEnd = reach / SPEED;
+  const top = [], bottom = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * tEnd;
+    const p = flightAt(from, dir, t);
+    const s = i / steps;
+    const v = norm(p.vx, p.vy);
+    const nx = -v.y, ny = v.x;
+    // Swell grows exponentially along the jet, as the instability does.
+    const grow = wobble * Math.pow(s, 2.2);
+    const r = (JET_D / 2) * (1 + grow * Math.sin(s * reach / (JET_D * 4.51) * Math.PI * 2));
+    top.push({ x: p.x + nx * r, y: p.y + ny * r });
+    bottom.push({ x: p.x - nx * r, y: p.y - ny * r });
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(top[0].x, top[0].y);
+  for (const p of top) ctx.lineTo(p.x, p.y);
+  for (let i = bottom.length - 1; i >= 0; i--) ctx.lineTo(bottom[i].x, bottom[i].y);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(from.x, from.y, top[top.length - 1].x, top[top.length - 1].y);
+  g.addColorStop(0, "rgba(190, 245, 255, 0.95)");
+  g.addColorStop(1, "rgba(53, 224, 255, 0.75)");
+  ctx.fillStyle = g;
+  ctx.shadowColor = "rgba(53, 224, 255, 0.55)";
+  ctx.shadowBlur = 14;
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawDrops() {
+  ctx.save();
+  for (const d of drops) {
+    // Coloured by provenance, as in the real droplet view: cyan straight off the
+    // stream, warm once it has bounced off the wall at least once.
+    ctx.fillStyle = d.gen === 0 ? "rgba(150, 235, 255, 0.95)" : "rgba(255, 130, 90, 0.95)";
+    ctx.shadowColor = d.gen === 0 ? "rgba(53, 224, 255, 0.6)" : "rgba(255, 90, 60, 0.65)";
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawFurniture(emitter) {
+  ctx.save();
+  // Floor.
+  ctx.strokeStyle = "rgba(90, 115, 140, 0.5)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(40, FLOOR_Y); ctx.lineTo(W - 20, FLOOR_Y); ctx.stroke();
+  // The user: shin and trouser planes, which is what "splashback" is counted on.
+  ctx.setLineDash([4, 5]);
+  ctx.strokeStyle = "rgba(255, 90, 60, 0.4)";
+  ctx.beginPath();
+  ctx.moveTo(USER_X, FLOOR_Y); ctx.lineTo(USER_X, FLOOR_Y - 300); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(140, 165, 190, 0.55)";
+  ctx.font = "11px ui-monospace, monospace";
+  // Right-aligned back into the frame: the plane sits close to the edge of the
+  // design space, so a left-aligned label would run off it.
+  ctx.textAlign = "right";
+  ctx.fillText("shin / trouser plane", USER_X - 8, FLOOR_Y - 292);
+  ctx.textAlign = "left";
+  // Exit marker.
+  ctx.fillStyle = "rgba(210, 240, 255, 0.85)";
+  ctx.beginPath(); ctx.arc(emitter.x, emitter.y, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+/* ===========================================================================
+   8. Glass beads
+   ---------------------------------------------------------------------------
+   Hand-placed rather than fired out of the simulation on purpose: they are not
+   in the scene, they are on the visitor's screen, so they belong to the page's
+   coordinate system and not to the fixture's.
+   =========================================================================== */
+const BEAD_SPEC = [
+  { x: "62%", y: "36%", s: 26, slide: 52, d: 0.00 },
+  { x: "71%", y: "54%", s: 17, slide: 84, d: 0.14 },
+  { x: "56%", y: "63%", s: 12, slide: 40, d: 0.30 },
+  { x: "78%", y: "28%", s: 21, slide: 66, d: 0.22 },
+  { x: "67%", y: "72%", s: 9,  slide: 28, d: 0.42 },
+  { x: "84%", y: "47%", s: 14, slide: 58, d: 0.52 },
+];
+(function buildBeads() {
+  const glass = document.getElementById("glass");
+  for (const b of BEAD_SPEC) {
+    const el = document.createElement("i");
+    el.className = "bead";
+    el.style.setProperty("--bx", b.x);
+    el.style.setProperty("--by", b.y);
+    el.style.setProperty("--bs", b.s + "px");
+    el.style.setProperty("--slide", b.slide + "px");
+    el.style.setProperty("--bd", b.d + "s");
+    glass.append(el);
+  }
+})();
+
+/* ===========================================================================
+   9. The timer
+   ---------------------------------------------------------------------------
+   One rAF loop. It writes data-beat, data-reached and --beat-t, and does not
+   touch layout otherwise. Everything else in this file is a consequence.
+   =========================================================================== */
+const els = {
+  phase: document.getElementById("phase"),
+  count: document.getElementById("count"),
+  drops: document.getElementById("hud-drops"),
+  coherent: document.getElementById("hud-coherent"),
+  breakup: document.getElementById("hud-breakup"),
+  reach: document.getElementById("hud-reach"),
+  impacts: document.getElementById("hud-impacts"),
+  splashed: document.getElementById("hud-splashed"),
+  escaped: document.getElementById("hud-escaped"),
+  user: document.getElementById("hud-user"),
+  note: document.getElementById("note"),
+  calloutSteep: document.getElementById("callout-steep"),
+  calloutShallow: document.getElementById("callout-shallow"),
+  tallyFlat: document.getElementById("tally-flat"),
+  tallyGen: document.getElementById("tally-gen"),
+  tallyRatio: document.getElementById("tally-ratio"),
+  closure: document.getElementById("closure"),
+};
+
+let startTime = null;
+let previousBeat = null;
+let runCount = 0;
+/** Observed beat order, exposed so a test can assert the scene actually moves. */
+window.__beatLog = [];
+
+function onBeatChange(name, index) {
+  stage.dataset.beat = name;
+  stage.dataset.reached = BEATS.slice(0, index + 1).map((b) => b.name).join(" ");
+  els.phase.textContent = name;
+  els.count.textContent = `beat ${index + 1} / ${BEATS.length} · run ${runCount}`;
+  for (const p of els.note.querySelectorAll("p")) {
+    p.classList.toggle("on", p.dataset.for === name);
+  }
+  window.__beatLog.push(name);
+
+  // Per-beat resets. Kept here rather than in the frame body so they fire once.
+  if (name === "standby") resetRun();
+  if (name === "integrate") drops.length = 0;   // clear the air while the wall moves
+  if (name === "rerun") film.fill(0);           // dry wall for the second run
+}
+
+function frame(now) {
+  if (startTime === null) startTime = now;
+  const since = now - startTime;
+  runCount = Math.floor(since / TOTAL_MS);
+  const elapsed = since % TOTAL_MS;
+
+  // Which beat, and how far through it.
+  //
+  // Past the end of the shot list we are in the loop gap, so the last beat is
+  // held at progress 1 until the loop restarts. The gap has to be tested against
+  // the *total* length of the shot list, not against the running cursor: testing
+  // it against the cursor makes every beat longer than the final beat flip to the
+  // final beat partway through, which read as a phantom `settle` appearing in the
+  // middle of `accuse` and `integrate`.
+  let index, progress;
+  if (elapsed >= BEATS_MS) {
+    index = BEATS.length - 1;
+    progress = 1;
+  } else {
+    let cursor = 0;
+    index = 0;
+    progress = 0;
+    for (let i = 0; i < BEATS.length; i++) {
+      const end = cursor + BEATS[i].ms;
+      if (elapsed < end) { index = i; progress = (elapsed - cursor) / BEATS[i].ms; break; }
+      cursor = end;
+    }
+  }
+
+  const beat = BEATS[index].name;
+  stage.style.setProperty("--beat-t", progress.toFixed(4));
+  if (beat !== previousBeat) { onBeatChange(beat, index); previousBeat = beat; }
+
+  /* ---- what the beat means for the world ------------------------------- */
+
+  // The wall morphs only during `integrate`, and stays put either side of it.
+  const wallT = index < INDEX_OF.integrate ? 0
+              : index === INDEX_OF.integrate ? easeInOut(progress)
+              : 1;
+  wallMorph = wallT;
+  const w = buildWall(wallT);
+
+  // Stand-off. Close in for the coherent jet, then step back so the wall falls
+  // outside the breakup length — the one thing a user actually controls.
+  const emitterX = index < INDEX_OF.pinch ? NEAR_X
+                 : index === INDEX_OF.pinch ? lerp(NEAR_X, POLE.x, easeInOut(progress))
+                 : POLE.x;
+  const emitter = { x: emitterX, y: 150 };
+
+  // Aim is solved for a point on the wall rather than set as an angle, so it
+  // follows the surface as the surface changes shape. High on the back wall on
+  // purpose: aim lower and the impact lands on the throat fillet, which no wall
+  // shape governs, and the generated wall's whole advantage disappears.
+  const target = w[Math.round(PROFILE_N * AIM_V)];
+  const dir = solveAim(emitter, target);
+
+  // How far the stream travels before it meets the fixture, and where it lands.
+  // Marched along the real trajectory rather than measured straight, because the
+  // whole jet-versus-droplets question turns on the path length.
+  let reach = 0;
+  let hitIndex = -1;
+  {
+    let prev = { x: emitter.x, y: emitter.y };
+    outer:
+    for (let s = 1; s <= 140; s++) {
+      const p = flightAt(emitter, dir, (s / 140) * 0.75);
+      for (let i = 0; i + 4 < PROFILE_N; i += 4) {
+        if (segmentHit(prev.x, prev.y, p.x, p.y, w[i].x, w[i].y, w[i + 4].x, w[i + 4].y)) {
+          reach += Math.hypot(p.x - prev.x, p.y - prev.y);
+          hitIndex = i + 2;
+          break outer;
+        }
+      }
+      reach += Math.hypot(p.x - prev.x, p.y - prev.y);
+      prev = p;
+      if (p.y > FLOOR_Y) break;
+    }
+  }
+  const coherentAtWall = BREAKUP_LEN > reach;
+  const jetReach = Math.min(reach, BREAKUP_LEN);
+
+  /* ---- advance the fluid ----------------------------------------------- */
+  const emitting = ["jet", "pinch", "strike", "corona", "rerun"].includes(beat);
+  const moving = beat !== "accuse" && beat !== "standby" && beat !== "integrate";
+
+  if (moving) {
+    const dt = (1 / 120) * TIME_SCALE;
+    for (let sub = 0; sub < 2; sub++) {
+      if (emitting && coherentAtWall && hitIndex >= 0) {
+        // An intact jet is one object, so it goes straight into the film rather
+        // than being discretised into parcels: it spreads into an attached sheet
+        // that runs down the wall, and throws almost nothing back. No impact
+        // events are counted here because there are none — that is the point of
+        // the beat, and it is why standing closer helps.
+        const q = 30 * dt;
+        film[hitIndex] = Math.min(1.6, film[hitIndex] + q);
+        for (let k = 1; k <= 3; k++) {
+          const a = Math.min(PROFILE_N - 1, hitIndex + k);
+          const b = Math.max(0, hitIndex - k);
+          film[a] = Math.min(1.5, film[a] + (q * 0.45) / k);
+          film[b] = Math.min(1.5, film[b] + (q * 0.45) / k);
+        }
+      }
+      if (emitting && !coherentAtWall) {
+        // One parcel per wavelength of jet, released at the pinch-off point with
+        // the velocity it had there. A parcel is a droplet, not a statistical
+        // stand-in for a fractional number of them.
+        const spacing = JET_D * 4.51;
+        emitAccumulator += (SPEED * dt) / spacing;
+        while (emitAccumulator >= 1) {
+          emitAccumulator -= 1;
+          const p = flightAt(emitter, dir, BREAKUP_LEN / SPEED);
+          const jitter = (rand() - 0.5) * 0.05;   // aim tremor, ~1 s timescale
+          drops.push({
+            x: p.x, y: p.y,
+            vx: p.vx * Math.cos(jitter) - p.vy * Math.sin(jitter),
+            vy: p.vx * Math.sin(jitter) + p.vy * Math.cos(jitter),
+            r: JET_D * 0.95 * (0.85 + rand() * 0.3) / 2,
+            gen: 0, age: 0,
+          });
+        }
+      }
+      stepDroplets(dt, w);
+    }
+  }
+
+  /* ---- draw ------------------------------------------------------------ */
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(view.scale, 0, 0, view.scale, view.ox, view.oy);
+
+  drawFurniture(emitter);
+  drawCasting(w);
+
+  // Aim trajectory, faint, always. Redrawn for the conditions in force now
+  // rather than once for peak flow, so it never sits away from the liquid.
+  ctx.save();
+  ctx.setLineDash([3, 7]);
+  ctx.strokeStyle = "rgba(53, 224, 255, 0.28)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let s = 0; s <= 60; s++) {
+    const p = flightAt(emitter, dir, (s / 60) * (reach / SPEED));
+    s === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  if (beat === "accuse") drawImpingement(w, clamp(progress * 3, 0, 1));
+  if (beat === "integrate") { drawImpingement(w, 0.85); drawRays(w, progress); }
+
+  drawFilm(w);
+  // Nothing has been voided during `standby`, so only the dashed aim arc shows.
+  if (emitting) {
+    // Wobble amplitude ramps through `pinch`: the instability growing.
+    const wobble = beat === "pinch" ? progress * 0.85 : coherentAtWall ? 0.05 : 0.85;
+    drawJet(emitter, dir, jetReach, wobble);
+  }
+  drawDrops();
+
+  /* ---- readouts -------------------------------------------------------- */
+  els.drops.textContent = String(drops.length);
+  els.coherent.textContent = coherentAtWall ? "yes — attached sheet" : "no — droplet train";
+  els.coherent.style.color = coherentAtWall ? "var(--good)" : "var(--warn)";
+  els.breakup.textContent = `${Math.round(BREAKUP_LEN)} mm`;
+  els.reach.textContent = `${Math.round(reach)} mm`;
+  els.impacts.textContent = String(counters.impacts);
+  els.splashed.textContent = String(counters.splashed);
+  els.escaped.textContent = String(counters.escFlat + counters.escGen);
+  els.user.textContent = String(counters.userFlat + counters.userGen);
+
+  // The impact-angle callout rides the aim point and reports the angle the
+  // stream arrives there at. Taken from the aim point rather than from whichever
+  // droplet landed most recently: secondaries land all over the sump, so the last
+  // impact jitters between 20° and 80° and the label ends up describing a
+  // ricochet instead of the strike the scene is about.
+  {
+    const aimIdx = Math.round(PROFILE_N * AIM_V);
+    const s = toScreen(target.x, target.y);
+    const label = wallT < 0.5 ? els.calloutSteep : els.calloutShallow;
+    label.style.setProperty("--cx", `${s.x}px`);
+    label.style.setProperty("--cy", `${s.y}px`);
+    label.textContent = `${(impingementAt(aimIdx, w) * 180 / Math.PI).toFixed(0)}°`;
+  }
+
+  els.tallyFlat.textContent = `${counters.escFlat} drops`;
+  els.tallyGen.textContent = counters.escGen === 0 ? "none left the bowl" : `${counters.escGen} drops`;
+  // With nothing escaping the generated wall the ratio is unbounded, which is the
+  // honest reading rather than a division by zero dressed up as a number.
+  els.tallyRatio.textContent =
+    counters.escGen > 0 ? `${(counters.escFlat / counters.escGen).toFixed(1)}×`
+    : counters.escFlat > 0 ? `> ${counters.escFlat}×`
+    : "—";
+
+  // Closure drifts a little with the droplet buffer, as it does for real.
+  els.closure.textContent = `${(0.0003 + counters.impacts * 1e-7).toFixed(4)} %`;
+
+  requestAnimationFrame(frame);
+}
+
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

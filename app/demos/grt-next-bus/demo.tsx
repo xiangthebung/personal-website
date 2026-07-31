@@ -43,11 +43,14 @@
 
 import { useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
+import { ViewportLayer } from "../scene/viewport-layer";
 import { useOnScreen } from "../use-on-screen";
+import { useSceneRun } from "../scene/use-scene-run";
+import { useSectionFocused } from "../use-section-focus";
 import {
   formatBadge,
-  formatClock,
   formatDelay,
   formatDistance,
   formatFreshness,
@@ -68,17 +71,40 @@ type BeatName =
   | "due"
   | "gone";
 
+/**
+ * Nine beats over 18.7 seconds.
+ *
+ * Two of them were doing work they could not finish in the time they had. `street`
+ * asks the visitor to find a 26px badge on a toolbar and notice that the number in it
+ * is going down — that is the project's entire lead feature, and it had 1.8s to land
+ * before a notification arrived and took the eye off it. `open` was 300ms, which is
+ * right for the click but meant the popup's arrival and the popup's contents were the
+ * same event; the three cards, three countdowns and the stops-away note all showed up
+ * at once and the first thing a visitor read was whichever one their eye happened to
+ * fall on.
+ *
+ * The route line is the other constraint. `.gx-bus-slot` transitions `left` over
+ * 1.5s, so any beat shorter than that shows a bus part-way through a move it never
+ * completes — which is why `due` and `gone`, the two beats where the bus is the
+ * subject, are both comfortably past it now.
+ */
 const BEATS: readonly Beat<BeatName>[] = [
   // Long enough to notice that the badge is counting down on its own.
-  { name: "street", ms: 1800 },
-  { name: "alert", ms: 2400 },
-  { name: "reach", ms: 700 },
-  { name: "open", ms: 300 },
-  { name: "stops", ms: 2200 },
-  { name: "tick", ms: 1700 },
-  { name: "near", ms: 1600 },
-  { name: "due", ms: 1900 },
-  { name: "gone", ms: 1700 },
+  { name: "street", ms: 2600 },
+  { name: "alert", ms: 2700 },
+  { name: "reach", ms: 900 },
+  // The click, and the popup growing out of its own button — a 260ms transition in
+  // the stylesheet. Still the shortest beat in the scene; reading the popup is the
+  // next beat's job, not this one's.
+  { name: "open", ms: 600 },
+  // Three saved stops, each with a countdown, a delay and a stops-away count. The
+  // most text in the scene by a distance.
+  { name: "stops", ms: 3100 },
+  { name: "tick", ms: 2100 },
+  // Two minutes: the countdown turns red and the bus is visibly close.
+  { name: "near", ms: 2100 },
+  { name: "due", ms: 2400 },
+  { name: "gone", ms: 2200 },
 ];
 
 /**
@@ -168,6 +194,59 @@ const STOPS: readonly StopCard[] = [
 
 /** The lead time an alert fires at, from the extension's own defaults. */
 const ALERT_LEAD_MINUTES = 5;
+
+/**
+ * The three things the extension does, on the three things doing them.
+ *
+ * This scene has always been full of numbers and short of a reason to care about any of
+ * them. A badge counting down, a notification and three stop rows are all *evidence*, and
+ * the claims they were evidence for were in a column beside the scene: the countdown is
+ * there with nothing open, the positions are real so a late bus reads as late, and it
+ * reaches you before you thought to look. Nobody read them, because a road with a bus on
+ * it was moving four inches to the right.
+ *
+ * So each claim is pinned to its evidence and arrives on the beat the evidence does.
+ *
+ * The first two leave when the popup opens. The popup hangs off the toolbar button and
+ * covers most of the window beneath it, so a label parked up there would be a label on
+ * top of the thing the next five beats are about. The badge keeps counting behind it
+ * either way, which is the point they were making.
+ */
+const SPECS: readonly SpecTag<BeatName>[] = [
+  /* On the toolbar button, then on the bell, and the first hands over to the second rather
+     than sitting beside it. Both belong on the same 40px strip of browser chrome, reading
+     leftward because there is nothing to the right of either, and two labels there at once
+     are two labels on top of each other. Handing over is also the better order: the badge
+     makes its claim, and then the thing that interrupts you makes the next one.
+
+     Both lines were rewritten because they were phrased as arguments rather than as
+     descriptions. "Counts down with nothing open" is answering an objection nobody has
+     raised yet; what a visitor wants told is *what the thing they are looking at is*, which
+     is a countdown that lives on the toolbar. And "It taps you five minutes out" was doing
+     two odd things at once — a metaphor for a notification, and "five minutes out" as a
+     bare adverbial that reads as jargon. */
+  { at: "street", text: "Countdown on your toolbar", x: 91.5, y: 4.5, side: "left", until: "alert" },
+  /* One row lower than the badge's label, and pointing up at the bell from just beneath it
+     rather than straight at it. On the same line it reached back across the extension's own
+     button — and the countdown in that badge is running for the whole scene, so covering it
+     for three and a half seconds costs something the frame is still using. */
+  { at: "alert", text: "Alerts you before the bus arrives", x: 96.5, y: 10, side: "left", until: "open" },
+  /* Anchored on the popup's own left edge and reading away from it, rather than on the
+     "2 min late" text it is about. Sitting on the row meant sitting on top of two lines of
+     it — the whole panel is 420px of dense type and there is no gap inside it big enough
+     for a label. Pointing at the edge of the card costs a little precision and covers
+     nothing. Stays to the end: the popup does not move again, and this is the claim worth
+     leaving up.
+
+     It read "Real positions, so late reads late", which is a sentence explaining its own
+     joke. What it was reaching for has an ordinary name that every transit app on a phone
+     already uses, and a visitor knows what it means without being walked through the
+     consequence. */
+  { at: "stops", text: "Real-time bus tracking", x: 54, y: 43, side: "left" },
+];
+
+/** The extension's toolbar button, in the pod's own percentages. */
+const SPEC_ORIGIN = { x: 91.5, y: 4.5 };
 
 /**
  * The afternoon behind the popup. It is set dressing with one job: the thing at
@@ -284,8 +363,12 @@ function Bus({ route }: { route: string }) {
 export function GrtNextBusDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
+  /* The notification is only allowed onto the visitor's screen while this is the
+     section they are actually in. See `useSectionFocused`. */
+  const focused = useSectionFocused(stageRef);
+  const running = useSceneRun(focused, onScreen);
   const { beat, index, run, still } = useStoryboard(BEATS, {
-    running: onScreen,
+    running,
     stage: stageRef,
     // The still that carries the argument: the board open with two minutes on it,
     // not the empty street it starts from.
@@ -306,24 +389,69 @@ export function GrtNextBusDemo() {
      picks: the badge follows where you are, not the top of the list. */
   const closest = STOPS[0];
   const closestBoard = board(closest, clock);
-  const closestLeft = closestBoard.head - clock;
   const badgeMinutes = minutesUntil(ANCHOR + closestBoard.head * 1000, now);
   const badgeText = formatBadge(ANCHOR + closestBoard.head * 1000, now);
 
-  /* The bus runs the same six minutes the countdown does. Past the arrival it is
-     driving away rather than starting over, so the position is taken from the beat
-     instead of from a departure that is now in the future. */
-  const ridden = beat === "gone" ? 1 : Math.min(1, Math.max(0, 1 - closestLeft / 360));
-  /* Still in shot on the way out. Sending it all the way off the edge left the last
-     beat of the loop looking at an empty road, which reads as the scene ending
-     rather than as a bus leaving. */
-  const busLeft = beat === "gone" ? 94 : -8 + ridden * (YOUR_STOP + 8);
+  /**
+   * Where the bus stands at the start of a given beat, as a percentage of the road.
+   *
+   * Both ends of the current move are published rather than one position, and that is the
+   * fix for a reported lag. The bus used to get a single `left` per beat and a 1.5s CSS
+   * transition to reach it — so on a 2,600ms beat it drove for a second and a half and then
+   * stood still for eleven hundred milliseconds. Nine lurches, each followed by a pause.
+   * Nothing was slow; it kept stopping.
+   *
+   * No transition can fix that, because the thing being animated only has a value at nine
+   * instants. So the stylesheet interpolates between these two with `--beat-t`, which the
+   * storyboard already writes onto the stage every frame without re-rendering anything. The
+   * bus becomes a continuous function of scene time, which is what it always should have
+   * been, for the cost of one custom property.
+   *
+   * `gone` is the one beat the countdown cannot place. Past the arrival the board has rolled
+   * on to the next run, so `board()` returns a departure twenty minutes out and the
+   * arithmetic puts the bus back at the start of the road. It is parked at the stop for that
+   * beat's start and drives off during it.
+   */
+  const busAt = (name: BeatName): number => {
+    if (name === "gone") return YOUR_STOP;
+    const at = CLOCK[name];
+    const left = board(closest, at).head - at;
+    const ridden = Math.min(1, Math.max(0, 1 - left / 360));
+    return -8 + ridden * (YOUR_STOP + 8);
+  };
+
+  const busFrom = busAt(beat);
+  /* Off the right-hand edge, so the last beat is a bus leaving rather than a bus parked
+     somewhere arbitrary. It used to stop dead at 94% and wait there. */
+  const busTo = beat === "gone" ? 104 : busAt(BEATS[(index + 1) % BEATS.length].name);
 
   const arrived = beat === "due";
   /* The worker refreshes predictions on a thirty-second alarm, so how stale the
      feed is depends on where in that cycle the beat lands rather than being a
      fixed string dressed up as a live one. */
   const freshness = formatFreshness(ANCHOR + (clock - (clock % 30)) * 1000, now);
+
+  /**
+   * The caption, one line per beat, describing the frame the visitor is looking at.
+   *
+   * There were four lines before, keyed off `open`, `arrived` and `alerting` rather
+   * than off the beat, and the widest of them covered five beats at once. So the line
+   * under `reach` claimed the wait "sits on the toolbar, counting down" while the
+   * frame showed a cursor travelling, and the line under `tick` and `near` — the two
+   * beats where the number is visibly falling — read as a description of the stop list
+   * that had already been on screen for three seconds.
+   *
+   * The numbers in it are derived, not typed. `CLOCK` decides what the badge and the
+   * countdown say, and a caption that repeats those figures from memory is a caption
+   * that goes wrong the first time a beat's clock position moves.
+   */
+  /* There is no caption under this scene.
+     Every figure it was reporting is printed on screen already: the badge counts down,
+     the notification says how many minutes out, and the three stop rows carry the
+     countdown, the delay and the stops-away note. A line saying "It knows this run is 2
+     min late" under a row that reads "2 min late" is a fifth layer of copy after the
+     headline, the reason, the invitation and the notes — all four of which are on the
+     same screen. */
 
   return (
     <div
@@ -390,6 +518,32 @@ export function GrtNextBusDemo() {
               >
                 {badgeText}
               </b>
+            </span>
+
+            {/* The browser's own notification bell, which is where an alert lands
+                before anyone looks at it. It rings on the beat the notification
+                fires and keeps a dot until the popup is opened — so the banner has
+                somewhere to have come from, and the moment before you notice it is
+                on screen too. */}
+            <span
+              className="gx-bell"
+              data-ringing={alerting}
+              data-unread={alerting}
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 24 24">
+                <g
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 4.2a4.8 4.8 0 0 0-4.8 4.8v3.3L5.6 15.6h12.8l-1.6-3.3V9A4.8 4.8 0 0 0 12 4.2Z" />
+                  <path d="M10.3 18a1.8 1.8 0 0 0 3.4 0" />
+                </g>
+              </svg>
+              <i className="gx-bell-dot" />
             </span>
           </span>
         </div>
@@ -546,38 +700,61 @@ export function GrtNextBusDemo() {
         </div>
       </div>
 
-      {/* The notification, arriving from outside the frame because that is where a
-          system notification comes from. Its text is the payload verbatim. */}
-      <div className="gx-alert" data-in={alerting} aria-hidden="true">
-        <span className="gx-alert-icon">
-          <svg viewBox="0 0 24 24">
-            <rect x="4" y="4" width="16" height="13" rx="3" fill="currentColor" />
-            <rect x="6.5" y="6.5" width="11" height="5" rx="1.6" fill="#fff" opacity="0.9" />
-            <circle cx="8" cy="19" r="1.7" fill="currentColor" />
-            <circle cx="16" cy="19" r="1.7" fill="currentColor" />
-          </svg>
-        </span>
-        <div className="gx-alert-copy">
-          <p className="gx-alert-title">
-            {closest.route} in {ALERT_LEAD_MINUTES} min
-          </p>
-          <p className="gx-alert-body">
-            {closest.name} → {closest.headsign}
-          </p>
-          <p className="gx-alert-context">Live prediction</p>
-        </div>
-        <span className="gx-alert-close">
-          <svg viewBox="0 0 24 24">
-            <path
-              d="M7 7l10 10M17 7L7 17"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
-        </span>
-      </div>
+      {/* The notification, on the visitor's own screen.
+          This used to arrive at the top-right of the demo's own box, which made it a
+          drawing of a notification — the one thing a notification cannot be. The
+          extension's entire pitch is that it reaches you when you are not looking, so
+          it now arrives in the top-right corner of the actual window, portalled out of
+          this section, at the size the operating system would draw it.
+
+          Gated on `onScreen` as well as on the beat. The storyboard freezes rather
+          than advancing when it goes off screen, so without that a visitor who
+          scrolled away mid-alert would carry a bus notification with them for the rest
+          of the page. */}
+      <ViewportLayer className="vlayer--alert">
+        {alerting && focused && (
+          <div className="gx-os-alert">
+            <span className="gx-alert-icon">
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="4" width="16" height="13" rx="3" fill="currentColor" />
+                <rect x="6.5" y="6.5" width="11" height="5" rx="1.6" fill="#fff" opacity="0.9" />
+                <circle cx="8" cy="19" r="1.7" fill="currentColor" />
+                <circle cx="16" cy="19" r="1.7" fill="currentColor" />
+              </svg>
+            </span>
+            <div className="gx-alert-copy">
+              <p className="gx-alert-source">
+                <span>GRT Next Bus</span>
+                <small>now</small>
+              </p>
+              <p className="gx-alert-title">
+                {closest.route} in {ALERT_LEAD_MINUTES} min
+              </p>
+              <p className="gx-alert-body">
+                {closest.name} → {closest.headsign}
+              </p>
+              <p className="gx-alert-context">Live prediction</p>
+            </div>
+            <span className="gx-alert-close">
+              <svg viewBox="0 0 24 24">
+                <path
+                  d="M7 7l10 10M17 7L7 17"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </div>
+        )}
+      </ViewportLayer>
+
+      {/* There was a second copy of that card here, drawn at the top-right of the
+          demo's own box. Photographing the two together settled it: an identical
+          notification in two places at once does not read as emphasis, it reads as a
+          bug. The bell in the toolbar above is what gives the real one an origin, so
+          the drawing is not needed. */}
 
       {/* The route, running out past both edges of the section. The bus on it is the
           same bus the countdown is counting, and the stops drawn behind it are the
@@ -586,8 +763,20 @@ export function GrtNextBusDemo() {
         <span className="gx-road">
           <span className="gx-dashes" />
         </span>
+        {/* Ticks the bus has already gone by are drawn spent, so the "five stops
+            away" note has something to count against. The card says the number and
+            the road shows it; neither has to be believed on its own. */}
         {LINE_STOPS.map((left) => (
-          <span className="gx-stop-tick" key={left} style={{ left: `${left}%` }} />
+          <span
+            className="gx-stop-tick"
+            key={left}
+            /* Against where the bus *is* at the start of the beat, not where it is heading.
+               Measured against the destination, every tick between here and there went spent
+               the moment the beat began — so the ticks the bus was still approaching were
+               already drawn as passed. */
+            data-passed={left < busFrom}
+            style={{ left: `${left}%` }}
+          />
         ))}
         <span className="gx-pole" style={{ left: `${YOUR_STOP}%` }} data-hit={arrived}>
           <span className="gx-pole-mast" />
@@ -597,7 +786,15 @@ export function GrtNextBusDemo() {
             <span>Stop {closest.code}</span>
           </span>
         </span>
-        <span className="gx-bus-slot" style={{ left: `${busLeft}%` }} data-stopped={arrived}>
+        <span
+          className="gx-bus-slot"
+          style={{ "--bus-from": busFrom, "--bus-to": busTo } as React.CSSProperties}
+          data-stopped={arrived}
+        >
+          {/* A wash of warm light thrown ahead of it. Faint on purpose: this is a
+              bright mint afternoon, not a night scene, and the job is to give the
+              bus a direction of travel rather than to light anything. */}
+          <span className="gx-beam" aria-hidden="true" />
           <Bus route={closest.route} />
         </span>
       </div>
@@ -611,36 +808,17 @@ export function GrtNextBusDemo() {
         />
       )}
 
-      <p className="gx-caption" aria-hidden="true">
-        {!open ? (
-          alerting ? (
-            <>
-              <strong>Five minutes out, it tells you.</strong> Live from the bus, not
-              from the timetable.
-            </>
-          ) : (
-            <>
-              <strong>The wait sits on the toolbar.</strong> Counting down with
-              nothing open.
-            </>
-          )
-        ) : beat === "gone" ? (
-          <>
-            <strong>That one is gone.</strong> The board and the badge move to the
-            next run.
-          </>
-        ) : arrived ? (
-          <>
-            <strong>Due, at your stop.</strong> The toolbar badge says the same
-            thing.
-          </>
-        ) : (
-          <>
-            <strong>Closest stop first, {formatClock(ANCHOR + closestBoard.head * 1000)}.</strong>{" "}
-            Later runs underneath, so you can miss one.
-          </>
-        )}
-      </p>
+      {/* Still no caption. The figures were never the problem — they are all printed on
+          the badge, the notification and the three stop rows. What was missing was any
+          statement of why a number on a toolbar is worth having, and that is now pinned to
+          the number. See `SPECS`. */}
+      <SpecTags
+        beats={BEATS}
+        beat={beat}
+        tags={SPECS}
+        origin={SPEC_ORIGIN}
+        className="gx-specs"
+      />
     </div>
   );
 }

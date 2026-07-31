@@ -1,10 +1,9 @@
 /* eslint-disable @next/next/no-img-element -- Local static assets are served directly by the Cloudflare/vinext build. */
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { Backdrop } from "./backdrops";
+import { Backdrop, BackdropFront } from "./backdrops";
 import { Closing } from "./closing";
 import { IndexMark } from "./index-marks";
-import { ReceiptsBand } from "./ledger";
 import { MediaRail, ProjectFocusManager } from "./page-chrome";
 import { DemoMount } from "./demos/demo-mount";
 import { policiesFor } from "./legal/policies";
@@ -40,23 +39,29 @@ function ExternalArrow() {
   );
 }
 
-/** Widths the gallery actually paints media at. */
-const GALLERY_SIZES = "(max-width: 660px) 78vw, min(30vw, 520px)";
+/**
+ * How wide the browser should expect this print to land.
+ *
+ * Every print in the gallery shares a height and takes whatever width its own
+ * aspect ratio gives it, so one `sizes` string for the whole rail would be wrong
+ * for all but one shape: the set runs from a 0.47 phone screenshot to a 1.33
+ * landscape, which is 246px against 693px at the same height. The two numbers are
+ * the height clamp in `.fun-media img` — 300 for the small end, 560 for the large.
+ */
+function gallerySizes(src: string): string {
+  const asset = mediaAsset(src);
+  if (!asset?.width || !asset?.height) return "(max-width: 660px) 78vw, 560px";
+
+  const ratio = asset.width / asset.height;
+  return `(max-width: 660px) ${Math.round(ratio * 300)}px, ${Math.round(ratio * 560)}px`;
+}
 
 /**
  * Serves AVIF (5-20x smaller than the source PNG/JPEG) with the original as the
  * fallback, and carries the intrinsic size so nothing reflows while media
  * decodes. Both come from the generated manifest; see scripts/build-media.mjs.
  */
-function OptimizedImage({
-  src,
-  alt,
-  sizes = GALLERY_SIZES,
-}: {
-  src: string;
-  alt: string;
-  sizes?: string;
-}) {
+function OptimizedImage({ src, alt }: { src: string; alt: string }) {
   const asset = mediaAsset(src);
   const image = (
     <img
@@ -75,7 +80,7 @@ function OptimizedImage({
 
   return (
     <picture>
-      <source type="image/avif" srcSet={asset.avif} sizes={sizes} />
+      <source type="image/avif" srcSet={asset.avif} sizes={gallerySizes(src)} />
       {image}
     </picture>
   );
@@ -166,6 +171,12 @@ function ProjectSection({ project, index }: { project: Project; index: number })
         {project.number}
       </span>
 
+      {/* What makes the page one place rather than a stack of coloured panels: a wash
+          in the colour of whichever project you are currently standing in, at whatever
+          opacity this section has lost. Deliberately after the ambience and the number
+          so it covers both — see `.project > .project-tint`. */}
+      <div className="project-tint" aria-hidden="true" />
+
       {/* This theme's signature entrance. Its own element rather than a borrowed
           pseudo-element on `.project-ambience`, which already owns both of its own
           for the drifting background — see the stylesheet. */}
@@ -196,7 +207,9 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 
           <div className="project-summary">
             <p>{project.headline}</p>
-            <small>{project.why}</small>
+            {/* Only where the headline does not already contain the reason. See the note on
+                `why` in projects.ts. */}
+            {project.why && <small>{project.why}</small>}
           </div>
 
           <div className="project-links">
@@ -226,24 +239,25 @@ function ProjectSection({ project, index }: { project: Project; index: number })
             ))}
           </div>
 
-          {project.facts.length > 0 && (
-            <ul className="demo-facts">
-              {project.facts.map((fact, order) => (
-                /* `--fact` drives the arrival stagger. An index is the right
-                   thing here rather than a key: the delay is positional. */
-                <li key={fact} style={{ "--fact": order } as CSSProperties}>
-                  {fact}
-                </li>
-              ))}
-            </ul>
-          )}
+          {/* There was a list of three notes here, per project, and it is gone.
+              A column of feature bullets beside a running scene is a column nobody reads —
+              the scene wins that competition every time, and the list still took up the
+              room. Every claim it carried is now a label inside the frame, on the thing
+              making the claim; see `demos/scene/spec.tsx` and each pod's `SPECS`. What
+              stays in this column is a name, a platform, a headline and the problem, which
+              is the one thing a demonstration of the solution cannot state. */}
         </div>
 
         <div className="project-window">
           <div className="demo">
-            <div className="demo-chrome">
-              <p>{project.invitation}</p>
-            </div>
+            {/* Only where there is one. Four of the seven have none — see the note on
+                `invitation` in `projects.ts` — and an empty chrome row would leave the
+                reserved band above the scene doing nothing but taking up space. */}
+            {project.invitation && (
+              <div className="demo-chrome">
+                <p>{project.invitation}</p>
+              </div>
+            )}
 
             <div
               className={`demo-surface${project.well === "dark" ? " demo-surface--dark" : ""}`}
@@ -252,6 +266,14 @@ function ProjectSection({ project, index }: { project: Project; index: number })
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Anything that belongs over the scene rather than behind it. Almost always
+          nothing — see `BackdropFront`. PagePack's cable is here because it has to be
+          seen being pulled apart, and behind the scene it was covered by the reader
+          panel and therefore did not exist. */}
+      <div className="project-foreground" aria-hidden="true">
+        <BackdropFront project={project.id} />
       </div>
     </section>
   );
@@ -307,7 +329,7 @@ export default function Home() {
             <span className="sr-only">Xiang Li</span>
             <HeroLetters text="Xiang Li" />
           </h1>
-          <p>Seven things I built with AI. All of them are running on this page.</p>
+
           <a className="hero-cue" href={`#${projects[0].id}`}>
             <span className="hero-cue-line" aria-hidden="true" />
             Start exploring
@@ -344,31 +366,19 @@ export default function Home() {
         </nav>
       </section>
 
-      <ReceiptsBand />
-
       <div id="projects">
         {projects.map((project, index) => (
           <ProjectSection project={project} index={index} key={project.id} />
         ))}
       </div>
 
-      {/* The gallery. It kept its horizontal rail, which is the point of it, and
-          lost the black band it used to sit in: on a site made of paper, a section
-          that switches to near-black with unframed photos bleeding into it reads as
-          a different website. It is a pinboard now — same paper, same serif, prints
-          on mounts, pinned at angles. */}
-      <section className="fun-section" aria-labelledby="fun-title">
-        <header className="fun-head">
-          <p className="fun-eyebrow">
-            <span aria-hidden="true">✳</span> Off the clock
-          </p>
-          <h2 id="fun-title">Other things I pointed a camera at</h2>
-          <p className="fun-lede">
-            Sunsets, dinner, a gym floor plan I annotated for no reason. Drag it, or
-            use the arrow keys.
-          </p>
-        </header>
-
+      {/* The gallery: a draggable row of photographs, each at its own proportions.
+          No heading and no caption — a row of pictures is self-evident, and the
+          paper mount and pin that used to frame each one were furniture around the
+          thing worth looking at. The section is labelled here rather than by a
+          visible title, and the rail inside carries its own instructions for
+          assistive tech; see MediaRail. */}
+      <section className="fun-section" aria-label="Photos and clips">
         <MediaRail itemCount={funMedia.length}>
           <div className="fun-rail">
             {funMedia.map((media, order) => (
@@ -380,14 +390,11 @@ export default function Home() {
                    often enough to look like a mistake. */
                 data-tilt={order % 4}
               >
-                <div className="fun-mount">
-                  {media.kind === "image" ? (
-                    <GalleryImage src={media.src} alt={media.alt} />
-                  ) : (
-                    <GalleryClip src={media.src} alt={media.alt} />
-                  )}
-                </div>
-                <span className="fun-pin" aria-hidden="true" />
+                {media.kind === "image" ? (
+                  <GalleryImage src={media.src} alt={media.alt} />
+                ) : (
+                  <GalleryClip src={media.src} alt={media.alt} />
+                )}
               </figure>
             ))}
           </div>

@@ -266,6 +266,489 @@ test("the vendored Choir Practice copy is complete and carries nothing it should
   assert.match(html, /src="js\/app\.js"/);
 });
 
+/**
+ * The pod reaches into the framed app and drives it: it opens a score, reveals the
+ * mixer, presses play on the visitor's click and forwards a microphone request. All of
+ * that is `querySelector` against a copy that gets refreshed from its own repository,
+ * so a rename over there silently turns the whole thing into a no-op — the app still
+ * works by hand, nothing throws, and the page just quietly stops arranging anything.
+ * That is the failure this test exists to make loud.
+ *
+ * `demo.tsx` claimed to be covered by this file before it actually was.
+ */
+test("the controls the Choir pod drives still exist in the vendored copy", async () => {
+  const html = await read("../public/demos/choir/index.html");
+  const transport = await read("../public/demos/choir/js/ui/transport.js");
+  const pod = await read("../app/demos/choir-practice/demo.tsx");
+
+  // The selectors the pod names, read out of the pod rather than duplicated here.
+  const hooks = pod.slice(pod.indexOf("const HOOKS = {"));
+  const score = pod.match(/const SCORE = "([^"]+)"/)?.[1];
+  assert.ok(score, "the pod no longer names a score to open");
+  assert.ok(
+    await exists(`../public/demos/choir/sample-pieces/${score}`),
+    `the pod opens "${score}", which is not in the vendored sample-pieces`,
+  );
+
+  for (const [label, id] of [
+    ["transport", "play-btn"],
+    ["parts", "parts-btn"],
+    ["mic", "mic-btn"],
+  ]) {
+    assert.ok(hooks.includes(`#${id}`), `the pod stopped naming #${id} as its ${label}`);
+    assert.match(html, new RegExp(`id="${id}"`), `#${id} is gone from the vendored app`);
+  }
+
+  // The sample buttons the pod finds a score by.
+  assert.match(html, /class="sample"|class="[^"]*\bsample\b/);
+  assert.match(html, /data-sample-path=/);
+
+  /* The play/pause contract. `startPlayback` reads this label to decide whether a press
+     would start or stop the music, which is what stops a re-armed shield pausing a
+     rehearsal already in progress. If the app switches to a class or a data attribute,
+     the guard silently starts returning false and clicking the score does nothing. */
+  const idle = pod.match(/idleLabel: "([^"]+)"/)?.[1];
+  assert.equal(idle, "Play", "startPlayback's idle label changed");
+  assert.match(
+    transport,
+    /setPlaying\(isPlaying\)\s*\{[\s\S]*?isPlaying \? 'Pause' : 'Play'[\s\S]*?setAttribute\('aria-label', label\)/,
+    "the transport no longer reports play state through #play-btn's aria-label",
+  );
+});
+
+/**
+ * Every line of caption has to be on screen long enough to read.
+ *
+ * This is the second time the page has been reported as moving text too fast, and both
+ * times the cause was the same structural mistake rather than a bad number: each scene
+ * wrote one caption per beat, so beats sized for a 320ms click or a 600ms cursor glide
+ * were handed a fresh sentence. Twenty-one captions across seven scenes were under 1.4
+ * seconds; the worst demanded about 771 words a minute against a comfortable 200–250.
+ *
+ * Scenes fix it by giving consecutive beats the *identical* caption string, which makes
+ * the reader's time the sum of those beats. This checks that the arithmetic actually
+ * works out, by reading the beat lists and caption maps back out of the source.
+ *
+ * Source parsing rather than importing, because these are `"use client"` modules that
+ * would drag React and the whole scene runtime into a node test to read two arrays —
+ * the same trade `policyRegistry` below makes for the same reason. The parser is strict
+ * about what it finds: if a scene stops matching, the test fails rather than silently
+ * checking nothing, which is the only way a test like this is worth having.
+ *
+ * The 1100ms loop gap is deliberately not counted. It only ever applies to the last
+ * beat, and letting it count would excuse whatever that beat happens to be.
+ */
+test("no caption goes by faster than it can be read", async () => {
+  const floor = Number(
+    (await read("../app/demos/scene/storyboard.ts")).match(
+      /MIN_CAPTION_MS = (\d+)/,
+    )?.[1],
+  );
+  assert.ok(floor > 0, "MIN_CAPTION_MS is no longer declared in the storyboard hook");
+
+  /* Whichever scenes still have one. Six of the seven now have no caption at all. They
+     lost them because the captions were paraphrasing the written notes beside them while
+     the scene demonstrated the same claim a third time -- and the notes have since gone
+     too, into the frames, as the pinned labels the test below checks. Discovered rather
+     than listed, so removing or restoring a caption map does not need this test edited to
+     keep meaning something. */
+  const all = ["choir-practice", "decaf", "grt-next-bus", "n-back", "night-neutralizer", "pagepack", "pdf-explainer"];
+  const scenes = [];
+  for (const scene of all) {
+    const source = await read(`../app/demos/${scene}/demo.tsx`);
+    if (/const CAPTION[^=]*=\s*\{/.test(source)) scenes.push(scene);
+  }
+  assert.ok(scenes.length >= 1, "no scene has a caption map at all any more");
+  let checked = 0;
+
+  for (const scene of scenes) {
+    const source = await read(`../app/demos/${scene}/demo.tsx`);
+
+    const beatsBlock = source.match(/const BEATS[^=]*=\s*\[([\s\S]*?)\n\];/);
+    assert.ok(beatsBlock, `${scene}: could not find its BEATS array`);
+    const beats = [...beatsBlock[1].matchAll(/\{\s*name:\s*"([^"]+)",\s*ms:\s*(\d+)\s*\}/g)].map(
+      ([, name, ms]) => ({ name, ms: Number(ms) }),
+    );
+    assert.ok(beats.length >= 5, `${scene}: parsed only ${beats.length} beats`);
+
+    const captionBlock = source.match(/const CAPTION[^=]*=\s*\{([\s\S]*?)\n\};/);
+    assert.ok(captionBlock, `${scene}: could not find its CAPTION map`);
+    const captions = new Map();
+    for (const entry of captionBlock[1].matchAll(
+      /^\s{2}(?:"([^"]+)"|([A-Za-z][\w-]*)):\s*\[([\s\S]*?)\],\s*$/gm,
+    )) {
+      const key = entry[1] ?? entry[2];
+      // Normalised so a line broken across two source lines matches its one-line twin.
+      captions.set(key, entry[3].replace(/\s+/g, " ").trim());
+    }
+
+    for (const beat of beats) {
+      assert.ok(captions.has(beat.name), `${scene}: beat "${beat.name}" has no caption`);
+    }
+
+    /* Walk the beats, accumulating runs of identical caption text. */
+    let runName = beats[0].name;
+    let runText = captions.get(beats[0].name);
+    let runMs = 0;
+    const groups = [];
+    for (const beat of beats) {
+      const text = captions.get(beat.name);
+      if (text !== runText) {
+        groups.push({ from: runName, ms: runMs, text: runText });
+        runName = beat.name;
+        runText = text;
+        runMs = 0;
+      }
+      runMs += beat.ms;
+    }
+    groups.push({ from: runName, ms: runMs, text: runText });
+
+    let spoken = 0;
+    for (const group of groups) {
+      /* Deliberate silence. Beats whose picture says everything carry `["", ""]` and the
+         caption area simply goes quiet — there is nothing to read, so there is no reading
+         time to check. Counted, because a scene that had gone *entirely* silent would
+         otherwise pass this test by saying nothing at all. */
+      const words = group.text.replace(/["'\s,]+/g, "") === "" ? 0 : group.text.split(/\s+/).length;
+      if (words === 0) continue;
+      spoken += 1;
+
+      assert.ok(
+        group.ms >= floor,
+        `${scene}: the caption starting at "${group.from}" is on screen for ` +
+          `${group.ms}ms, under the ${floor}ms floor — ${words} words at ` +
+          `${Math.round((words / group.ms) * 60_000)} words a minute. Either lengthen a ` +
+          `beat or give the neighbouring beat the identical caption text.`,
+      );
+      checked += 1;
+    }
+
+    assert.ok(spoken >= 2, `${scene}: only ${spoken} caption(s) say anything at all`);
+  }
+
+  assert.ok(checked >= 5, `only ${checked} caption groups were checked`);
+});
+
+/**
+ * The scenes that were meant to lose their captions still have none.
+ *
+ * Removing them was the point of the change, and the failure mode is not that they come
+ * back deliberately — it is that a caption gets reintroduced one beat at a time by
+ * someone solving a local "this frame is unclear" problem, which is exactly how there
+ * came to be five layers of prose per project in the first place. If a scene genuinely
+ * needs words again, delete its entry here and say why in the commit.
+ */
+test("the scenes without captions have not grown them back", async () => {
+  for (const scene of ["decaf", "grt-next-bus", "night-neutralizer", "pagepack", "pdf-explainer"]) {
+    const source = await read(`../app/demos/${scene}/demo.tsx`);
+    assert.doesNotMatch(
+      source,
+      /className="[a-z]+-caption"/,
+      `${scene} has a caption element again`,
+    );
+  }
+  /* Choir went the same way and by the same route, so it belongs in the same check: its
+     footnote printed a build path at a visitor and then repeated the invitation above the
+     frame. Its two remaining pieces of copy are leader lines onto the application's own
+     controls. */
+  assert.doesNotMatch(
+    await read("../app/demos/choir-practice/demo.tsx"),
+    /className="[a-z]+-caption"/,
+    "choir-practice has a caption element again",
+  );
+
+  /* Comments stripped first. The notes explaining *why* these are gone naturally name
+     them — the `.gx-caption` margin that used to reserve the road's band is worth
+     recording — and a check that cannot tell a rule from a sentence about a rule would
+     forbid documenting the removal. */
+  const css = (await read("../app/globals.css")).replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const gone of ["dc-caption", "pdfx-caption", "pp-caption", "gx-caption", "nn-caption", "nn-sub"]) {
+    /* Bounded, because `.nn-sub` is a prefix of `.nn-subrow` — which survives and holds
+       the level meter. A substring search reported the meter as the deleted subtitle. */
+    assert.doesNotMatch(
+      css,
+      new RegExp(`\\.${gone}(?![\\w-])`),
+      `.${gone} is still styled in globals.css`,
+    );
+  }
+});
+
+/**
+ * The feature lists beside the scenes are gone, and each scene carries its own copy.
+ *
+ * This is the second half of the same argument the caption tests make, and it came from a
+ * first-time reading of the page: *nobody reads the project description while the
+ * animation is running*. Every section had three written notes in a column beside a moving
+ * scene, the scene won that competition every time, and the list still took up the room.
+ *
+ * So the notes were deleted and their claims moved into the frames, pinned to the thing
+ * making each claim. The failure mode this guards is drift back: someone finds a scene
+ * unclear, adds a bullet in the reading column because that is the easy place to put one,
+ * and two releases later there are three of them again and the labels have gone stale.
+ * Either the frame says it or the page does not.
+ */
+test("the claims live in the frames, not in a column beside them", async () => {
+  const [projectsSource, pageSource, rawCss] = await Promise.all([
+    read("../app/projects.ts"),
+    read("../app/page.tsx"),
+    read("../app/globals.css"),
+  ]);
+
+  const projects = projectsSource.replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.doesNotMatch(
+    projects,
+    /^\s*notes:/m,
+    "a project carries a written feature list again; put the claim in its scene instead",
+  );
+  assert.doesNotMatch(pageSource, /demo-facts/, "the notes list is being rendered again");
+  assert.doesNotMatch(
+    rawCss.replace(/\/\*[\s\S]*?\*\//g, " "),
+    /\.demo-facts(?![\w-])/,
+    ".demo-facts is styled again",
+  );
+
+  /* One invitation, and it is Choir's. That line makes the only claim prose still has an
+     advantage at: what you are looking at is the real application rather than a
+     reconstruction of it, which is not a thing any amount of watching can settle. */
+  const invitations = [...projectsSource.matchAll(/^\s{4}invitation:/gm)];
+  assert.equal(
+    invitations.length,
+    1,
+    `${invitations.length} sections carry a line of framing above the scene; only Choir earns one`,
+  );
+
+  // And the shared component is wired up, so the claims went somewhere.
+  assert.match(await read("../app/demos/scene/spec.tsx"), /export function SpecTags/);
+  assert.match(rawCss, /\.spectag(?![\w-])/, "the in-frame label component has no styles");
+});
+
+/**
+ * Every pinned label stays up long enough to read, and is short enough to read at a glance.
+ *
+ * The captions are held to a floor by the test above, and moving the copy into the frames
+ * would be a cheap way of escaping it — a label that appears on a 320ms press beat and
+ * vanishes on the next one is exactly the failure that floor exists to catch, wearing a
+ * different class name. "It accumulates, so it must be fine" is an argument, not a
+ * measurement.
+ *
+ * A label is up from the beat it arrives on until the beat named by `until`, or to the end
+ * of the scene. That window has to clear `MIN_CAPTION_MS`.
+ *
+ * The word limit is the other half. These sit *on* the picture they describe, so a long one
+ * is worse than none: it becomes something covering the evidence. Six words is the longest
+ * in use; seven is the line.
+ *
+ * Source parsing rather than importing, for the same reason as the caption test — these are
+ * `"use client"` modules and this is a node test. The parser is strict: if a scene stops
+ * matching, the test fails rather than quietly checking nothing.
+ */
+test("every in-frame label stays up long enough to read", async () => {
+  const floor = Number(
+    (await read("../app/demos/scene/storyboard.ts")).match(/MIN_CAPTION_MS = (\d+)/)?.[1],
+  );
+  assert.ok(floor > 0, "MIN_CAPTION_MS is no longer declared in the storyboard hook");
+  const WORD_LIMIT = 7;
+
+  const all = [
+    "choir-practice",
+    "decaf",
+    "grt-next-bus",
+    "n-back",
+    "night-neutralizer",
+    "pagepack",
+    "pdf-explainer",
+  ];
+  let checked = 0;
+
+  for (const scene of all) {
+    const source = await read(`../app/demos/${scene}/demo.tsx`);
+    const block = source.match(/const SPECS[^=]*=\s*\[([\s\S]*?)\n\];/);
+    if (!block) continue;
+
+    const beatsBlock = source.match(/const BEATS[^=]*=\s*\[([\s\S]*?)\n\];/);
+    assert.ok(beatsBlock, `${scene}: declares SPECS but no BEATS to time them against`);
+    const beats = [...beatsBlock[1].matchAll(/\{\s*name:\s*"([^"]+)",\s*ms:\s*(\d+)\s*\}/g)].map(
+      ([, name, ms]) => ({ name, ms: Number(ms) }),
+    );
+    assert.ok(beats.length >= 5, `${scene}: parsed only ${beats.length} beats`);
+
+    const tags = [...block[1].matchAll(/\{\s*at:\s*"([^"]+)",\s*text:\s*"([^"]+)"[^}]*\}/g)].map(
+      (match) => ({
+        at: match[1],
+        text: match[2],
+        until: match[0].match(/until:\s*"([^"]+)"/)?.[1],
+      }),
+    );
+    assert.ok(tags.length >= 1, `${scene}: SPECS parsed to nothing`);
+
+    for (const tag of tags) {
+      const from = beats.findIndex((beat) => beat.name === tag.at);
+      assert.ok(from >= 0, `${scene}: "${tag.text}" arrives on "${tag.at}", which is not a beat`);
+
+      let to = beats.length;
+      if (tag.until !== undefined) {
+        to = beats.findIndex((beat) => beat.name === tag.until);
+        assert.ok(to >= 0, `${scene}: "${tag.text}" leaves on "${tag.until}", which is not a beat`);
+        assert.ok(
+          to > from,
+          `${scene}: "${tag.text}" leaves on "${tag.until}", which is not after "${tag.at}"`,
+        );
+      }
+
+      const dwell = beats.slice(from, to).reduce((total, beat) => total + beat.ms, 0);
+      assert.ok(
+        dwell >= floor,
+        `${scene}: the label "${tag.text}" is up for ${dwell}ms, under the ${floor}ms floor — ` +
+          `either move it to an earlier beat or let it stay longer.`,
+      );
+
+      const words = tag.text.split(/\s+/).length;
+      assert.ok(
+        words <= WORD_LIMIT,
+        `${scene}: the label "${tag.text}" is ${words} words. These sit on top of the ` +
+          `picture they describe; past about ${WORD_LIMIT} they cover the evidence.`,
+      );
+      checked += 1;
+    }
+  }
+
+  assert.ok(checked >= 8, `only ${checked} in-frame labels were checked`);
+
+  /* Night Neutralizer labels its two panels rather than pinning to coordinates — the
+     panels stack on a narrow screen, so a percentage would land in the wrong one — so its
+     copy is a `VERDICT` table of matched pairs instead of a `SPECS` list. Checked
+     separately because it is a different mechanism, not an exemption. */
+  const nn = await read("../app/demos/night-neutralizer/demo.tsx");
+  assert.match(nn, /const VERDICT:/, "night-neutralizer has no per-panel copy at all");
+  const pairs = [...nn.matchAll(/^\s{2}([a-z-]+): \["([^"]*)", "([^"]*)"\],$/gm)];
+  assert.ok(pairs.length >= 4, `night-neutralizer: parsed only ${pairs.length} verdicts`);
+  for (const [, beat, before, after] of pairs) {
+    for (const line of [before, after]) {
+      const words = line.split(/\s+/).filter(Boolean).length;
+      assert.ok(
+        words <= WORD_LIMIT,
+        `night-neutralizer: "${line}" on "${beat}" is ${words} words, over the ${WORD_LIMIT}-word limit`,
+      );
+    }
+  }
+});
+
+/**
+ * Night Neutralizer's audio half still shows something, on a page with no audio.
+ *
+ * This is the one claim on the site that cannot be demonstrated in the medium it is about,
+ * and the scene has now failed at it once: an earlier version reasoned that a printed line
+ * of dialogue reads the same whispered or shouted, concluded the audio half was unshowable,
+ * and deleted the line. It is showable — the size of the line is the channel — and this
+ * test exists because that is a subtle enough idea to be "simplified" away again by
+ * somebody tidying up a table of magic numbers.
+ *
+ * What it checks is the argument, not the implementation. Untreated, a whisper and an
+ * explosion must be wildly different sizes. Treated, they must be close. That gap closing
+ * is the compressor, and it is the only reason the numbers are what they are.
+ */
+test("the Night Neutralizer scene prints its soundtrack at the size it sounds", async () => {
+  const source = await read("../app/demos/night-neutralizer/demo.tsx");
+
+  const block = source.match(/const SOUND: Record<BeatName[^>]*>\s*=\s*\{([\s\S]*?)\n\};/);
+  assert.ok(block, "could not find the SOUND table");
+
+  /** `name: { say: "…", before: { db: "…", loud: n }, after: { db: "…", loud: n } },` */
+  const rows = new Map();
+  for (const row of block[1].matchAll(
+    /^\s{2}([a-z-]+): \{\s*say: "([^"]*)",\s*before: \{ db: "([^"]*)", loud: ([\d.]+) \},\s*after: \{ db: "([^"]*)", loud: ([\d.]+) \},?\s*\},$/gm,
+  )) {
+    rows.set(row[1], {
+      say: row[2],
+      before: { db: row[3], loud: Number(row[4]) },
+      after: { db: row[5], loud: Number(row[6]) },
+    });
+  }
+  assert.ok(rows.size >= 6, `parsed only ${rows.size} SOUND rows; the table shape changed`);
+
+  const whisper = rows.get("whisper");
+  const boom = rows.get("boom");
+  assert.ok(whisper?.say, "the whispered line is gone; the audio half has nothing to show");
+  assert.ok(boom?.say, "the explosion has no printed line");
+
+  /* Untreated, the two have to be far apart or there is no problem being described. The
+     printed size is `0.5rem + loud * 2rem`, so a 4x spread in `loud` is roughly a 4x spread
+     on screen. */
+  assert.ok(
+    boom.before.loud / whisper.before.loud >= 4,
+    `untreated, the explosion is only ${(boom.before.loud / whisper.before.loud).toFixed(1)}x ` +
+      `the whisper — not enough of a gap to read as a problem`,
+  );
+  /* Treated, they have to be close, because that is the product. */
+  assert.ok(
+    boom.after.loud / whisper.after.loud <= 2,
+    `treated, the explosion is still ${(boom.after.loud / whisper.after.loud).toFixed(1)}x the ` +
+      `whisper — the levelling is what this scene exists to show`,
+  );
+  // And the quiet part has to come up rather than the loud one merely coming down.
+  assert.ok(whisper.after.loud > whisper.before.loud, "the whisper is not lifted at all");
+  assert.ok(boom.after.loud < boom.before.loud, "the explosion is not brought down at all");
+
+  // Every reading is a real figure with a unit, not a bare number.
+  for (const [name, row] of rows) {
+    for (const side of ["before", "after"]) {
+      const { db } = row[side];
+      if (db !== "") {
+        assert.match(db, /^−?\d+ dB$/, `${name}.${side} reads "${db}", which is not a level`);
+      }
+    }
+  }
+
+  // The size channel has to actually be wired to the printed line.
+  const css = await read("../app/globals.css");
+  assert.match(
+    css.replace(/\/\*[\s\S]*?\*\//g, " "),
+    /\.nn-say\s*\{[\s\S]*?font-size:[^;]*var\(--loud/,
+    ".nn-say no longer sizes itself from --loud, so the loudness channel is gone",
+  );
+});
+
+/**
+ * The Choir pod's four voices are inked in the colours the application engraves them in.
+ *
+ * They were not. The four S/A/T/B markers around the frame were all one mint — the
+ * section's accent — while six inches away the app was drawing soprano in blue, alto in
+ * green, tenor in orange and bass in red on its own canvas. So the page was asking a
+ * visitor to match four things to four differently-coloured lines, with nothing to match
+ * on, which is the opposite of what a colour code is for.
+ *
+ * The palette is copied into the pod because the app is a vendored static bundle served to
+ * the browser rather than a module this build can import. A copy is only safe if something
+ * checks it: `public/demos/choir/` is refreshed from its own repository, and a palette
+ * change there would silently put the markers back out of step with the score.
+ */
+test("the Choir pod inks each voice the colour the app engraves it in", async () => {
+  const [pod, utils] = await Promise.all([
+    read("../app/demos/choir-practice/demo.tsx"),
+    read("../public/demos/choir/js/utils.js"),
+  ]);
+
+  const parts = [...pod.matchAll(/voice: "([a-z]+)",\s*color: "(#[0-9a-fA-F]{6})"/g)].map(
+    ([, voice, color]) => ({ voice, color: color.toLowerCase() }),
+  );
+  assert.equal(parts.length, 4, `the pod declares ${parts.length} coloured voices, wanted four`);
+  assert.deepEqual(
+    parts.map((part) => part.voice),
+    ["soprano", "alto", "tenor", "bass"],
+    "the pod's voices are no longer soprano, alto, tenor, bass in that order",
+  );
+
+  for (const { voice, color } of parts) {
+    const engraved = utils.match(new RegExp(`^\\s*${voice}: '(#[0-9a-fA-F]{6})'`, "m"))?.[1];
+    assert.ok(engraved, `${voice} is no longer in the vendored app's PART_COLORS`);
+    assert.equal(
+      color,
+      engraved.toLowerCase(),
+      `the pod inks ${voice} ${color} and the app engraves it ${engraved}; recopy the palette`,
+    );
+  }
+});
+
 /* ===========================================================================
    /legal
    ---------------------------------------------------------------------------
@@ -367,7 +850,10 @@ test("the home page links to the policies of the projects that have them", async
   // rail; the closing section replaced it and carries the same links.
   assert.match(html, /class="closing"/);
   assert.match(html, /href="\/legal"/);
-  assert.match(html, /mailto:xiangli3625@gmail\.com/);
+  /* There was a third assertion here, for a `mailto:` in the closing section. The
+     address was removed from the page on purpose, so the assertion went with it —
+     the GitHub profile and the policy index are the two things that still have to
+     survive down there. */
 });
 
 test("the published policies still match the originals in the project repos", async (t) => {
@@ -423,71 +909,82 @@ test("the index in the hero previews every project rather than listing it", asyn
   assert.match(html, /class="imark-slot" aria-hidden="true"|aria-hidden="true" class="imark-slot"/);
 });
 
-test("every figure the page prints comes from the generated ledger", async () => {
-  const response = await render();
-  const html = await response.text();
+test("the page counts nothing at the reader", async () => {
+  const [html, rawProjects] = await Promise.all([
+    render().then((response) => response.text()),
+    read("../app/projects.ts"),
+  ]);
   const text = html.replace(/<[^>]+>/g, " ");
 
-  const source = await read("../app/ledger.generated.ts");
-  const ledger = JSON.parse(
-    `{${source.slice(source.indexOf("{", source.indexOf("= {")) + 1, source.lastIndexOf("} as const"))}}`,
-  );
+  /* Comments stripped before matching. The doc comment on `facts` quotes the lines
+     this test exists to keep out, as the explanation of why — so checking the raw
+     source makes the warning against a phrase fail on the warning itself. */
+  const projectsSource = rawProjects
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
 
-  const groups = new Intl.NumberFormat("en-CA");
-
-  /* The point of the generated file is that no number on this page was typed by a
-     person. If the band and the file disagree, someone edited one of them. */
-  for (const figure of [
-    groups.format(ledger.totals.tests),
-    groups.format(ledger.totals.lines),
-    String(ledger.totals.files),
-    `${ledger.totals.zeroDependencyProjects} of ${ledger.totals.projects}`,
+  /*
+   * There used to be a band of four figures under the hero (960 automated tests,
+   * 104,401 lines of source, 4 of 7 shipping nothing at runtime, 4 extensions
+   * packaged), a per-repository table of test counts and commit hashes in the
+   * closing section, and test totals in the project descriptions. A generator,
+   * `scripts/ledger.mjs`, produced all of it by running every suite.
+   *
+   * It was asked for twice to be taken off, so this is the check that keeps it
+   * off: a portfolio counting its own tests at a reader is talking about itself
+   * rather than about the software.
+   */
+  for (const claim of [
+    /\bautomated tests\b/i,
+    /\blines of source\b/i,
+    /\bship nothing at runtime\b/i,
+    /\bruntime deps\b/i,
+    /\b\d+ unit tests\b/i,
+    /\b\d+ (?:end-to-end|browser|e2e) (?:tests|checks)\b/i,
+    /\bzero runtime dependencies\b/i,
   ]) {
-    assert.ok(text.includes(figure), `the page does not print ${figure} from the ledger`);
-  }
-
-  // The tally names every project, at the commit it was measured at.
-  for (const repo of ledger.repos) {
-    assert.ok(text.includes(repo.label), `the tally is missing ${repo.label}`);
-    assert.ok(text.includes(repo.head), `the tally is missing ${repo.slug} at ${repo.head}`);
-  }
-
-  /* Claimed in the band as "every one of them green". The generator throws rather
-     than record a failing suite, so a zero here would mean a suite vanished. */
-  for (const repo of ledger.repos) {
-    assert.ok(repo.tests > 0, `${repo.slug} records no tests`);
-    assert.equal(
-      repo.tests,
-      repo.suites.reduce((sum, suite) => sum + suite.passed, 0),
-      `${repo.slug}'s total does not match its suites`,
+    assert.doesNotMatch(text, claim, `the page is counting at the reader again: ${claim}`);
+    assert.doesNotMatch(
+      projectsSource,
+      claim,
+      `a project describes itself with a count again: ${claim}`,
     );
   }
 
-  // Every project on the page has a row, and every row is a project on the page.
-  const ids = [...(await read("../app/projects.ts")).matchAll(/^\s{4}id: "([^"]+)",$/gm)].map(
-    (match) => match[1],
-  );
-  assert.deepEqual(
-    ledger.repos.map((repo) => repo.projectId).sort(),
-    [...ids].sort(),
-    "the ledger and projects.ts disagree about which projects exist",
-  );
+  // The generator and its output are gone, so nothing can quietly reinstate them.
+  for (const path of ["../app/ledger.generated.ts", "../scripts/ledger.mjs", "../app/ledger.tsx"]) {
+    assert.equal(await exists(path), false, `${path} is back`);
+  }
 });
 
-test("the closing section names checks that exist", async () => {
-  const response = await render();
-  const html = await response.text();
+test("the gallery is pictures and nothing else", async () => {
+  const [html, css, pageSource] = await Promise.all([
+    render().then((response) => response.text()),
+    read("../app/globals.css"),
+    read("../app/page.tsx"),
+  ]);
 
-  /* The section's credibility rests entirely on these being real. A renamed or
-     deleted script must fail here rather than leave the page describing
-     machinery it no longer has. */
-  const named = [...(await read("../app/closing.tsx")).matchAll(/script:\s*"([^"]+)"/g)].map(
-    (match) => match[1],
-  );
-  assert.ok(named.length >= 4, "the closing section stopped naming its checks");
+  /* No heading and no caption, so the section has to be labelled some other way
+     or it is an unnamed region to a screen reader. */
+  assert.match(html, /<section class="fun-section" aria-label="[^"]+"/);
+  assert.doesNotMatch(pageSource, /fun-head|fun-lede|fun-eyebrow/, "the gallery heading is back");
 
-  for (const script of named) {
-    assert.ok(await exists(`../${script}`), `closing.tsx names ${script}, which does not exist`);
-    assert.ok(html.includes(script), `${script} is not rendered on the page`);
-  }
+  /* The crop is the thing to guard. `max-width` and `object-fit: cover` on the
+     same element meant the cap and the height together defined one box, and every
+     landscape in the set was cut to fit it — which is what "they all look like the
+     same aspect ratio" was. Width has to stay free so it can follow the picture. */
+  const block = css.match(/\.fun-media img,\s*\r?\n\.fun-media video \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(block, "the gallery no longer sizes its own media");
+
+  // Comments out, for the same reason as the test above: the rule explains itself
+  // by naming the two properties that must not be in it.
+  const media = block.replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(media, /max-width:\s*none/, "the gallery media is capped in width again");
+  assert.doesNotMatch(media, /object-fit/, "the gallery is cropping its media again");
+  assert.match(media, /width:\s*auto/, "the gallery media no longer takes its own width");
+
+  // The mount and the pin are gone, and the media is bigger than it was.
+  assert.doesNotMatch(css, /\.fun-mount|\.fun-pin/, "the paper mount is back");
+  const height = media.match(/height:\s*clamp\((\d+)px/);
+  assert.ok(height && Number(height[1]) >= 240, "the gallery media shrank again");
 });
