@@ -113,6 +113,31 @@ const VOICES = [
      the four parts, so it is one code path rather than a special case. */
   { name: "all", lo: 80, hi: 1150 },
 ] as const;
+
+/**
+ * The four parts, in the colours the application engraves them in.
+ *
+ * These are `PART_COLORS` from `public/demos/choir/js/utils.js`, which is what
+ * `notation-renderer.js` inks every notehead, stem and part label with on the canvas six
+ * inches away. They were not these colours. The pod's four S/A/T/B markers were all one
+ * mint — the section's accent — so the page showed a soprano line drawn in blue on the
+ * score and a soprano marker in green beside it, and a visitor matching one to the other
+ * had nothing to match on. That was reported as exactly what it was: the buttons are not
+ * the same colours as the parts in the music.
+ *
+ * Copied rather than imported, because the app is a vendored static bundle served to the
+ * browser and not a module this build can reach. `tests/rendered-html.test.mjs` reads both
+ * and fails if they stop agreeing, which is the only thing that makes a copy safe — the
+ * vendored app is refreshed from its own repository and a palette change over there would
+ * otherwise silently put the markers back out of step.
+ */
+const PARTS = [
+  { initial: "S", name: "Soprano", voice: "soprano", color: "#4a9eff" },
+  { initial: "A", name: "Alto", voice: "alto", color: "#4caf50" },
+  { initial: "T", name: "Tenor", voice: "tenor", color: "#ff9800" },
+  { initial: "B", name: "Bass", voice: "bass", color: "#f44336" },
+] as const;
+
 const SCORE_GLYPHS = ["♩", "♪", "♫", "♭", "♯", "♬"] as const;
 
 function ScoreLeaf({ side, part }: { side: "left" | "right"; part: string }) {
@@ -410,7 +435,7 @@ function tapVoices(frame: HTMLIFrameElement | null, root: HTMLElement | null): (
 }
 
 /**
- * Where the application's microphone button is, in the pod's own coordinates.
+ * Where one of the application's controls is, in the pod's own coordinates.
  *
  * The pod used to carry its own microphone button, which forwarded a press into the
  * frame. That was a workaround for a real problem — a permission prompt raised by a
@@ -420,20 +445,33 @@ function tapVoices(frame: HTMLIFrameElement | null, root: HTMLElement | null): (
  *
  * A leader line pointing at the real control solves the same problem better: the prompt
  * still arrives right after a labelled gesture, and the visitor learns where the feature
- * actually lives instead of meeting a duplicate of it. So this measures `#mic-btn` inside
+ * actually lives instead of meeting a duplicate of it. So this measures a control inside
  * the frame and returns its centre relative to the stand, for the annotation to hang off.
+ *
+ * Takes the selector from `HOOKS` rather than naming one, which is what a second cue was
+ * added for and then removed again. That cue was going to carry the deleted note "turn your
+ * part up and the other three down" on a leader line to `#parts-btn` — and `#parts-btn` is
+ * `display: none` at every width this pod runs at, measured 0x0. The application only has a
+ * trigger for that panel below 900px, where the panel is a modal; above it the panel is a
+ * permanent side column, which is why the pod's click on it is already a no-op there.
+ *
+ * Worth recording because the conclusion is not "find another anchor". The panel is open on
+ * screen, headed "Parts", listing Soprano at 100% and the other three at 35% over a control
+ * called "Balance". The claim is already in the frame, made by the application, better than
+ * a label would make it. The note went and nothing replaced it.
  *
  * Returns null on anything unexpected, and the caller renders nothing — a renamed
  * selector costs a label, not a broken layout.
  */
-function findMicSpot(
+function findSpot(
   frame: HTMLIFrameElement | null,
   stand: HTMLElement | null,
+  selector: string,
 ): { x: number; y: number } | null {
   const doc = frame?.contentDocument;
   if (!doc || !stand) return null;
   try {
-    const button = doc.querySelector<HTMLElement>(HOOKS.mic);
+    const button = doc.querySelector<HTMLElement>(selector);
     if (!button) return null;
     const box = button.getBoundingClientRect();
     if (box.width === 0) return null;
@@ -531,7 +569,7 @@ export function ChoirPracticeDemo() {
   }, [playing, onScreen]);
 
   /**
-   * Keeps the leader line on the microphone button.
+   * Keeps the leader line on the control it points at.
    *
    * Re-measured on resize because the frame's height follows the window, which moves the
    * transport the button sits in. Not per frame: the button does not move while the piece
@@ -540,7 +578,7 @@ export function ChoirPracticeDemo() {
   useEffect(() => {
     if (!playing) return;
 
-    const measure = () => setMicSpot(findMicSpot(frameRef.current, standRef.current));
+    const measure = () => setMicSpot(findSpot(frameRef.current, standRef.current, HOOKS.mic));
     measure();
 
     const stand = standRef.current;
@@ -586,16 +624,25 @@ export function ChoirPracticeDemo() {
         <ScoreLeaf side="left" part="Alto" />
         <ScoreLeaf side="right" part="Tenor" />
 
+        {/* The four voices, in the score's own colours, moving with the mix.
+            `--v` is declared here rather than by four `nth-child` rules in the stylesheet
+            so that a row carries its own band: the fallback of 0 is what makes the whole
+            rack inert before anything is playing and when the analyser could not be
+            reached at all. See `tapVoices`. */}
         <ol className="choir-part-cues" aria-hidden="true">
-          {[
-            ["S", "Soprano"],
-            ["A", "Alto"],
-            ["T", "Tenor"],
-            ["B", "Bass"],
-          ].map(([initial, part], order) => (
-            <li key={part} style={{ "--part": order } as React.CSSProperties}>
-              <b>{initial}</b>
-              <span>{part}</span>
+          {PARTS.map((part, order) => (
+            <li
+              key={part.name}
+              style={
+                {
+                  "--part": order,
+                  "--part-color": part.color,
+                  "--v": `var(--v-${part.voice}, 0)`,
+                } as React.CSSProperties
+              }
+            >
+              <b>{part.initial}</b>
+              <span>{part.name}</span>
               <i />
             </li>
           ))}
@@ -737,9 +784,19 @@ export function ChoirPracticeDemo() {
               aria-hidden="true"
             >
               <i className="choir-cue-line" />
-              <b>Test your pitch</b>
+              {/* "Test your pitch" was the name of a feature. This is what the feature
+                  does to you, which is the thing worth knowing and the thing the deleted
+                  note beside this scene used to say. Kept short because it reads leftward
+                  along the transport row and a long label there covers the other
+                  controls. */}
+              <b>Sing along: sharp or flat</b>
             </span>
           )}
+
+          {/* There is no second cue on the parts mixer, and the reason is in the note on
+              `findSpot`: the panel is already open on screen, headed "Parts", showing
+              Soprano at 100% against the other three at 35% under a control called
+              "Balance". The application labels that better than a leader line would. */}
 
           <span className="choir-stand-lip" aria-hidden="true" />
         </div>

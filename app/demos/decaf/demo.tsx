@@ -36,6 +36,7 @@
 import { useEffect, useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useSectionBeat } from "../scene/section-beat";
+import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { ViewportLayer } from "../scene/viewport-layer";
 import { useOnScreen } from "../use-on-screen";
@@ -251,6 +252,58 @@ const SPAM = [
 
 const SUGGESTIONS = ["an account like yours", "trending near you", "because you watched"];
 
+/**
+ * What the press did, printed on each thing it did it to.
+ *
+ * This is the change that made the section legible, and the report that prompted it was
+ * blunt: *nobody reads the project description while the animation is running*. Which was
+ * true, and was true of all seven sections, and was worst here — the three notes in
+ * the column beside this scene were the only place the page said what Decaf actually
+ * does, and they sat beside ten seconds of hearts crossing the screen.
+ *
+ * So the notes are gone and their content is here, pinned to its evidence. "Media
+ * greyscaled" is next to the image that just lost its colour. "Notifications muted" is
+ * next to the badge that just lost its red and kept its number. There is no gap between
+ * the claim and the proof for a visitor to fail to cross.
+ *
+ * They burst out of the toolbar button, on a stagger, which is the point of the layout
+ * as much as of the copy: one press, and six things fly out of it and land on six
+ * different parts of the page. That reads as *this switch did all of this* in a way six
+ * bullet points four inches away cannot.
+ *
+ * Coordinates are percentages of the pod, which is a fixed-geometry browser — `.dc-app`
+ * is a fixed three-column grid and `.dc-feed` is exactly 268px whatever is in it, for the
+ * reasons in the stylesheet — so a percentage lands on the same element at every width.
+ *
+ * The three labels over the feed carry `until: "pause"`, because the feed is what the
+ * notice card replaces. A label left pinned over the notice would be a label pointing at
+ * nothing, which is the one failure this whole idea cannot survive. The other three sit
+ * on furniture that never moves — the tab strip, the header, the suggestions column — so
+ * they stay to the end and the last frame is the whole argument at once.
+ */
+const SPECS: readonly SpecTag<BeatName>[] = [
+  /* "Media greyscaled" was the first wording and it was written from inside the code.
+     Greyscale is a filter name; a person watching this sees the colour go. */
+  { at: "drain", text: "Colour off", x: 21, y: 35, until: "pause" },
+  { at: "drain", text: "Autoplay stopped", x: 50, y: 42, until: "pause" },
+  { at: "dashes", text: "Likes and views hidden", x: 22, y: 59, until: "pause" },
+  /* Reads leftward, over the search field, and stops just short of the bell. Anything
+     anchored at the bell and reading rightward runs off the edge of the window it is
+     describing; anything anchored *on* it covers the badge that is the whole point.
+     "Notifications muted, count kept" was accurate and left the reader to work out which
+     half was the point. The count staying is the deliberate part — a real message still has
+     to get through — so the line names both halves in the order they matter. */
+  { at: "calm", text: "Keeps the count, loses the red", x: 72, y: 17.5, side: "left" },
+  /* Reads rightward along the tab strip, into the empty middle of it. Hanging below the
+     tab instead put a 155px plate across the sidebar, and the strip's own middle is the
+     one genuinely empty band in this whole frame. */
+  { at: "calm", text: "Tab title stops counting", x: 13, y: 5, side: "right" },
+  { at: "pause", text: "Suggestions gone", x: 89, y: 20, side: "below" },
+];
+
+/** The button they all come out of: the toolbar icon, in the pod's own percentages. */
+const SPEC_ORIGIN = { x: 97, y: 5 };
+
 export function DecafDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
@@ -429,6 +482,15 @@ export function DecafDemo() {
       }
     >
       <div className="dc-browser">
+        {/* The switch throwing a wash across the page it is switching off.
+            One soft radial glow scaling up out of the toolbar button, clipped by the
+            browser's own overflow so it reads as something crossing the window. It is
+            keyed to `data-on` rather than to the press beat because `press` is 800ms and
+            the wash is 1500 — hung on the beat it would be cut off by its own successor,
+            and hung on both beats it would restart halfway through. `data-on` turns true
+            once, at `drain`, which is also the frame the colour starts leaving. */}
+        <span className="dc-wave" aria-hidden="true" />
+
         {/* The tab strip exists for one detail: the (3) a site writes into its own
             title, and the fact that it stops being there. */}
         <div className="dc-tabs">
@@ -659,9 +721,16 @@ export function DecafDemo() {
         />
       )}
 
-      {/* No caption. See the note above `BEATS`: the reading column beside this scene
-          already lists every claim the caption was making, and the notice card inside the
-          browser says the rest. */}
+      {/* What the press did, on each thing it did it to. See `SPECS`.
+          Still no caption: a caption is a line of prose under a picture, which is the
+          arrangement that failed. These are labels on the picture. */}
+      <SpecTags
+        beats={BEATS}
+        beat={beat}
+        tags={SPECS}
+        origin={SPEC_ORIGIN}
+        className="dc-specs"
+      />
     </div>
   );
 }

@@ -346,11 +346,12 @@ test("no caption goes by faster than it can be read", async () => {
   );
   assert.ok(floor > 0, "MIN_CAPTION_MS is no longer declared in the storyboard hook");
 
-  /* Whichever scenes still have one. Five of the seven now have no caption at all --
-     their sections already carry a headline, a reason, an invitation and three notes, and
-     the captions were paraphrasing the notes while the scene demonstrated the same claim
-     a third time. Discovered rather than listed, so removing or restoring a caption map
-     does not need this test edited to keep meaning something. */
+  /* Whichever scenes still have one. Six of the seven now have no caption at all. They
+     lost them because the captions were paraphrasing the written notes beside them while
+     the scene demonstrated the same claim a third time -- and the notes have since gone
+     too, into the frames, as the pinned labels the test below checks. Discovered rather
+     than listed, so removing or restoring a caption map does not need this test edited to
+     keep meaning something. */
   const all = ["choir-practice", "decaf", "grt-next-bus", "n-back", "night-neutralizer", "pagepack", "pdf-explainer"];
   const scenes = [];
   for (const scene of all) {
@@ -446,6 +447,15 @@ test("the scenes without captions have not grown them back", async () => {
       `${scene} has a caption element again`,
     );
   }
+  /* Choir went the same way and by the same route, so it belongs in the same check: its
+     footnote printed a build path at a visitor and then repeated the invitation above the
+     frame. Its two remaining pieces of copy are leader lines onto the application's own
+     controls. */
+  assert.doesNotMatch(
+    await read("../app/demos/choir-practice/demo.tsx"),
+    /className="[a-z]+-caption"/,
+    "choir-practice has a caption element again",
+  );
 
   /* Comments stripped first. The notes explaining *why* these are gone naturally name
      them — the `.gx-caption` margin that used to reserve the road's band is worth
@@ -459,6 +469,282 @@ test("the scenes without captions have not grown them back", async () => {
       css,
       new RegExp(`\\.${gone}(?![\\w-])`),
       `.${gone} is still styled in globals.css`,
+    );
+  }
+});
+
+/**
+ * The feature lists beside the scenes are gone, and each scene carries its own copy.
+ *
+ * This is the second half of the same argument the caption tests make, and it came from a
+ * first-time reading of the page: *nobody reads the project description while the
+ * animation is running*. Every section had three written notes in a column beside a moving
+ * scene, the scene won that competition every time, and the list still took up the room.
+ *
+ * So the notes were deleted and their claims moved into the frames, pinned to the thing
+ * making each claim. The failure mode this guards is drift back: someone finds a scene
+ * unclear, adds a bullet in the reading column because that is the easy place to put one,
+ * and two releases later there are three of them again and the labels have gone stale.
+ * Either the frame says it or the page does not.
+ */
+test("the claims live in the frames, not in a column beside them", async () => {
+  const [projectsSource, pageSource, rawCss] = await Promise.all([
+    read("../app/projects.ts"),
+    read("../app/page.tsx"),
+    read("../app/globals.css"),
+  ]);
+
+  const projects = projectsSource.replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.doesNotMatch(
+    projects,
+    /^\s*notes:/m,
+    "a project carries a written feature list again; put the claim in its scene instead",
+  );
+  assert.doesNotMatch(pageSource, /demo-facts/, "the notes list is being rendered again");
+  assert.doesNotMatch(
+    rawCss.replace(/\/\*[\s\S]*?\*\//g, " "),
+    /\.demo-facts(?![\w-])/,
+    ".demo-facts is styled again",
+  );
+
+  /* One invitation, and it is Choir's. That line makes the only claim prose still has an
+     advantage at: what you are looking at is the real application rather than a
+     reconstruction of it, which is not a thing any amount of watching can settle. */
+  const invitations = [...projectsSource.matchAll(/^\s{4}invitation:/gm)];
+  assert.equal(
+    invitations.length,
+    1,
+    `${invitations.length} sections carry a line of framing above the scene; only Choir earns one`,
+  );
+
+  // And the shared component is wired up, so the claims went somewhere.
+  assert.match(await read("../app/demos/scene/spec.tsx"), /export function SpecTags/);
+  assert.match(rawCss, /\.spectag(?![\w-])/, "the in-frame label component has no styles");
+});
+
+/**
+ * Every pinned label stays up long enough to read, and is short enough to read at a glance.
+ *
+ * The captions are held to a floor by the test above, and moving the copy into the frames
+ * would be a cheap way of escaping it — a label that appears on a 320ms press beat and
+ * vanishes on the next one is exactly the failure that floor exists to catch, wearing a
+ * different class name. "It accumulates, so it must be fine" is an argument, not a
+ * measurement.
+ *
+ * A label is up from the beat it arrives on until the beat named by `until`, or to the end
+ * of the scene. That window has to clear `MIN_CAPTION_MS`.
+ *
+ * The word limit is the other half. These sit *on* the picture they describe, so a long one
+ * is worse than none: it becomes something covering the evidence. Six words is the longest
+ * in use; seven is the line.
+ *
+ * Source parsing rather than importing, for the same reason as the caption test — these are
+ * `"use client"` modules and this is a node test. The parser is strict: if a scene stops
+ * matching, the test fails rather than quietly checking nothing.
+ */
+test("every in-frame label stays up long enough to read", async () => {
+  const floor = Number(
+    (await read("../app/demos/scene/storyboard.ts")).match(/MIN_CAPTION_MS = (\d+)/)?.[1],
+  );
+  assert.ok(floor > 0, "MIN_CAPTION_MS is no longer declared in the storyboard hook");
+  const WORD_LIMIT = 7;
+
+  const all = [
+    "choir-practice",
+    "decaf",
+    "grt-next-bus",
+    "n-back",
+    "night-neutralizer",
+    "pagepack",
+    "pdf-explainer",
+  ];
+  let checked = 0;
+
+  for (const scene of all) {
+    const source = await read(`../app/demos/${scene}/demo.tsx`);
+    const block = source.match(/const SPECS[^=]*=\s*\[([\s\S]*?)\n\];/);
+    if (!block) continue;
+
+    const beatsBlock = source.match(/const BEATS[^=]*=\s*\[([\s\S]*?)\n\];/);
+    assert.ok(beatsBlock, `${scene}: declares SPECS but no BEATS to time them against`);
+    const beats = [...beatsBlock[1].matchAll(/\{\s*name:\s*"([^"]+)",\s*ms:\s*(\d+)\s*\}/g)].map(
+      ([, name, ms]) => ({ name, ms: Number(ms) }),
+    );
+    assert.ok(beats.length >= 5, `${scene}: parsed only ${beats.length} beats`);
+
+    const tags = [...block[1].matchAll(/\{\s*at:\s*"([^"]+)",\s*text:\s*"([^"]+)"[^}]*\}/g)].map(
+      (match) => ({
+        at: match[1],
+        text: match[2],
+        until: match[0].match(/until:\s*"([^"]+)"/)?.[1],
+      }),
+    );
+    assert.ok(tags.length >= 1, `${scene}: SPECS parsed to nothing`);
+
+    for (const tag of tags) {
+      const from = beats.findIndex((beat) => beat.name === tag.at);
+      assert.ok(from >= 0, `${scene}: "${tag.text}" arrives on "${tag.at}", which is not a beat`);
+
+      let to = beats.length;
+      if (tag.until !== undefined) {
+        to = beats.findIndex((beat) => beat.name === tag.until);
+        assert.ok(to >= 0, `${scene}: "${tag.text}" leaves on "${tag.until}", which is not a beat`);
+        assert.ok(
+          to > from,
+          `${scene}: "${tag.text}" leaves on "${tag.until}", which is not after "${tag.at}"`,
+        );
+      }
+
+      const dwell = beats.slice(from, to).reduce((total, beat) => total + beat.ms, 0);
+      assert.ok(
+        dwell >= floor,
+        `${scene}: the label "${tag.text}" is up for ${dwell}ms, under the ${floor}ms floor — ` +
+          `either move it to an earlier beat or let it stay longer.`,
+      );
+
+      const words = tag.text.split(/\s+/).length;
+      assert.ok(
+        words <= WORD_LIMIT,
+        `${scene}: the label "${tag.text}" is ${words} words. These sit on top of the ` +
+          `picture they describe; past about ${WORD_LIMIT} they cover the evidence.`,
+      );
+      checked += 1;
+    }
+  }
+
+  assert.ok(checked >= 8, `only ${checked} in-frame labels were checked`);
+
+  /* Night Neutralizer labels its two panels rather than pinning to coordinates — the
+     panels stack on a narrow screen, so a percentage would land in the wrong one — so its
+     copy is a `VERDICT` table of matched pairs instead of a `SPECS` list. Checked
+     separately because it is a different mechanism, not an exemption. */
+  const nn = await read("../app/demos/night-neutralizer/demo.tsx");
+  assert.match(nn, /const VERDICT:/, "night-neutralizer has no per-panel copy at all");
+  const pairs = [...nn.matchAll(/^\s{2}([a-z-]+): \["([^"]*)", "([^"]*)"\],$/gm)];
+  assert.ok(pairs.length >= 4, `night-neutralizer: parsed only ${pairs.length} verdicts`);
+  for (const [, beat, before, after] of pairs) {
+    for (const line of [before, after]) {
+      const words = line.split(/\s+/).filter(Boolean).length;
+      assert.ok(
+        words <= WORD_LIMIT,
+        `night-neutralizer: "${line}" on "${beat}" is ${words} words, over the ${WORD_LIMIT}-word limit`,
+      );
+    }
+  }
+});
+
+/**
+ * Night Neutralizer's audio half still shows something, on a page with no audio.
+ *
+ * This is the one claim on the site that cannot be demonstrated in the medium it is about,
+ * and the scene has now failed at it once: an earlier version reasoned that a printed line
+ * of dialogue reads the same whispered or shouted, concluded the audio half was unshowable,
+ * and deleted the line. It is showable — the size of the line is the channel — and this
+ * test exists because that is a subtle enough idea to be "simplified" away again by
+ * somebody tidying up a table of magic numbers.
+ *
+ * What it checks is the argument, not the implementation. Untreated, a whisper and an
+ * explosion must be wildly different sizes. Treated, they must be close. That gap closing
+ * is the compressor, and it is the only reason the numbers are what they are.
+ */
+test("the Night Neutralizer scene prints its soundtrack at the size it sounds", async () => {
+  const source = await read("../app/demos/night-neutralizer/demo.tsx");
+
+  const block = source.match(/const SOUND: Record<BeatName[^>]*>\s*=\s*\{([\s\S]*?)\n\};/);
+  assert.ok(block, "could not find the SOUND table");
+
+  /** `name: { say: "…", before: { db: "…", loud: n }, after: { db: "…", loud: n } },` */
+  const rows = new Map();
+  for (const row of block[1].matchAll(
+    /^\s{2}([a-z-]+): \{\s*say: "([^"]*)",\s*before: \{ db: "([^"]*)", loud: ([\d.]+) \},\s*after: \{ db: "([^"]*)", loud: ([\d.]+) \},?\s*\},$/gm,
+  )) {
+    rows.set(row[1], {
+      say: row[2],
+      before: { db: row[3], loud: Number(row[4]) },
+      after: { db: row[5], loud: Number(row[6]) },
+    });
+  }
+  assert.ok(rows.size >= 6, `parsed only ${rows.size} SOUND rows; the table shape changed`);
+
+  const whisper = rows.get("whisper");
+  const boom = rows.get("boom");
+  assert.ok(whisper?.say, "the whispered line is gone; the audio half has nothing to show");
+  assert.ok(boom?.say, "the explosion has no printed line");
+
+  /* Untreated, the two have to be far apart or there is no problem being described. The
+     printed size is `0.5rem + loud * 2rem`, so a 4x spread in `loud` is roughly a 4x spread
+     on screen. */
+  assert.ok(
+    boom.before.loud / whisper.before.loud >= 4,
+    `untreated, the explosion is only ${(boom.before.loud / whisper.before.loud).toFixed(1)}x ` +
+      `the whisper — not enough of a gap to read as a problem`,
+  );
+  /* Treated, they have to be close, because that is the product. */
+  assert.ok(
+    boom.after.loud / whisper.after.loud <= 2,
+    `treated, the explosion is still ${(boom.after.loud / whisper.after.loud).toFixed(1)}x the ` +
+      `whisper — the levelling is what this scene exists to show`,
+  );
+  // And the quiet part has to come up rather than the loud one merely coming down.
+  assert.ok(whisper.after.loud > whisper.before.loud, "the whisper is not lifted at all");
+  assert.ok(boom.after.loud < boom.before.loud, "the explosion is not brought down at all");
+
+  // Every reading is a real figure with a unit, not a bare number.
+  for (const [name, row] of rows) {
+    for (const side of ["before", "after"]) {
+      const { db } = row[side];
+      if (db !== "") {
+        assert.match(db, /^−?\d+ dB$/, `${name}.${side} reads "${db}", which is not a level`);
+      }
+    }
+  }
+
+  // The size channel has to actually be wired to the printed line.
+  const css = await read("../app/globals.css");
+  assert.match(
+    css.replace(/\/\*[\s\S]*?\*\//g, " "),
+    /\.nn-say\s*\{[\s\S]*?font-size:[^;]*var\(--loud/,
+    ".nn-say no longer sizes itself from --loud, so the loudness channel is gone",
+  );
+});
+
+/**
+ * The Choir pod's four voices are inked in the colours the application engraves them in.
+ *
+ * They were not. The four S/A/T/B markers around the frame were all one mint — the
+ * section's accent — while six inches away the app was drawing soprano in blue, alto in
+ * green, tenor in orange and bass in red on its own canvas. So the page was asking a
+ * visitor to match four things to four differently-coloured lines, with nothing to match
+ * on, which is the opposite of what a colour code is for.
+ *
+ * The palette is copied into the pod because the app is a vendored static bundle served to
+ * the browser rather than a module this build can import. A copy is only safe if something
+ * checks it: `public/demos/choir/` is refreshed from its own repository, and a palette
+ * change there would silently put the markers back out of step with the score.
+ */
+test("the Choir pod inks each voice the colour the app engraves it in", async () => {
+  const [pod, utils] = await Promise.all([
+    read("../app/demos/choir-practice/demo.tsx"),
+    read("../public/demos/choir/js/utils.js"),
+  ]);
+
+  const parts = [...pod.matchAll(/voice: "([a-z]+)",\s*color: "(#[0-9a-fA-F]{6})"/g)].map(
+    ([, voice, color]) => ({ voice, color: color.toLowerCase() }),
+  );
+  assert.equal(parts.length, 4, `the pod declares ${parts.length} coloured voices, wanted four`);
+  assert.deepEqual(
+    parts.map((part) => part.voice),
+    ["soprano", "alto", "tenor", "bass"],
+    "the pod's voices are no longer soprano, alto, tenor, bass in that order",
+  );
+
+  for (const { voice, color } of parts) {
+    const engraved = utils.match(new RegExp(`^\\s*${voice}: '(#[0-9a-fA-F]{6})'`, "m"))?.[1];
+    assert.ok(engraved, `${voice} is no longer in the vendored app's PART_COLORS`);
+    assert.equal(
+      color,
+      engraved.toLowerCase(),
+      `the pod inks ${voice} ${color} and the app engraves it ${engraved}; recopy the palette`,
     );
   }
 });

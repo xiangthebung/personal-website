@@ -30,6 +30,7 @@
 import { useEffect, useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useSectionBeat } from "../scene/section-beat";
+import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
@@ -228,6 +229,36 @@ const SCATTER = [
  * and the invitation above the frame says "One save, then the connection dies". Between
  * them there is nothing left for a caption to add.
  */
+
+/**
+ * The two things this scene does that it cannot show.
+ *
+ * Only two, and that is the point of counting them. This scene is unusually good at
+ * narrating itself already — the popup prints "Reading this page…" and a page count, the
+ * badge lands on seven, the library head says "7 pages · 1.6 MB", the crash screen says
+ * `ERR_INTERNET_DISCONNECTED` and the reader is stamped "saved copy · no network request".
+ * Three of those were being restated by the written notes beside it, which is how the
+ * section came to have five layers of prose about one save.
+ *
+ * What genuinely is not on screen: *what* got saved, and that the save followed the
+ * links. A progress bar reading "Saving assets…" does not say "text, styles, images and
+ * fonts", and seven cards flying out of a button does not say they are the pages this one
+ * links to rather than seven copies of it.
+ *
+ * Both leave at the cut. The browser they are pinned to fades to a quarter opacity two
+ * beats later — see `#pagepack .pp[data-beat="read-offline"] .pp-browser` — and a label
+ * hanging over a ghost is a label about nothing.
+ */
+const SPECS: readonly SpecTag<BeatName>[] = [
+  /* "Text, styles, images, fonts" was a list of the four things the code captures, which is
+     an answer to a question nobody asked. The question a visitor has is whether this is a
+     bookmark or a copy. */
+  { at: "read", text: "The whole page, images and all", x: 70, y: 40, side: "left", until: "cut" },
+  { at: "collect", text: "And every page it links to", x: 46, y: 74, until: "cut" },
+];
+
+/** The Save button they come out of, in the pod's own percentages. */
+const SPEC_ORIGIN = { x: 82, y: 38 };
 
 /** The real label for a beat, through the extension's own formatter. */
 function labelFor(beat: BeatName): string {
@@ -629,8 +660,16 @@ export function PagePackDemo() {
         />
       )}
 
-      {/* No caption. The popup narrates its own save — "Reading this page…", the page
-          count, the badge — and the reading column beside it makes the claims. */}
+      {/* The two claims the frame cannot make for itself. See `SPECS`: everything else
+          this section used to say in prose is printed by the popup, the badge, the crash
+          screen or the reader. */}
+      <SpecTags
+        beats={BEATS}
+        beat={beat}
+        tags={SPECS}
+        origin={SPEC_ORIGIN}
+        className="pp-specs"
+      />
     </div>
   );
 }

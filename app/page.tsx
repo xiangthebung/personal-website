@@ -237,17 +237,13 @@ function ProjectSection({ project, index }: { project: Project; index: number })
             ))}
           </div>
 
-          {project.notes.length > 0 && (
-            <ul className="demo-facts">
-              {project.notes.map((note, order) => (
-                /* `--fact` drives the arrival stagger. An index is the right
-                   thing here rather than a key: the delay is positional. */
-                <li key={note} style={{ "--fact": order } as CSSProperties}>
-                  {note}
-                </li>
-              ))}
-            </ul>
-          )}
+          {/* There was a list of three notes here, per project, and it is gone.
+              A column of feature bullets beside a running scene is a column nobody reads —
+              the scene wins that competition every time, and the list still took up the
+              room. Every claim it carried is now a label inside the frame, on the thing
+              making the claim; see `demos/scene/spec.tsx` and each pod's `SPECS`. What
+              stays in this column is a name, a platform, a headline and the problem, which
+              is the one thing a demonstration of the solution cannot state. */}
         </div>
 
         <div className="project-window">

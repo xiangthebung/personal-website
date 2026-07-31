@@ -159,6 +159,26 @@ const CAPTION: Record<BeatName, readonly [string, string]> = {
   hold: ["One key for the square, one for the sound.", ""],
 };
 
+/**
+ * The streams, named.
+ *
+ * "Watch a square and hear a letter. Triple adds a colour." was a written note beside this
+ * scene, and two thirds of it were already on screen — the board and the spoken letter are
+ * the first thing the scene does. The third was not, and could not be: there is no colour
+ * stream in this demonstration, so nothing in the frame could ever hint that the game has
+ * one. Naming all three in a row of chips costs six words and puts the whole shape of the
+ * game on screen.
+ *
+ * `data-off` on the third is doing real work rather than styling: it says *this exists and
+ * is not what you are watching*, which is the only honest way to show a mode the scene is
+ * not running.
+ */
+const STREAMS = [
+  { name: "Square", on: true },
+  { name: "Sound", on: true },
+  { name: "Colour", on: false },
+] as const;
+
 const N = 2;
 
 /** A 3×3 board with one cell lit. `cell` of -1 lights nothing. */
@@ -238,6 +258,17 @@ export function NBackDemo() {
         <p className="nb-now-label">
           {arrived === 0 ? "waiting" : `cue ${arrived}`}
         </p>
+
+        {/* What a cue is made of, including the one this demonstration does not run.
+            See `STREAMS`. */}
+        <p className="nb-streams" aria-hidden="true">
+          {STREAMS.map((stream) => (
+            <span key={stream.name} data-off={!stream.on}>
+              {stream.name}
+            </span>
+          ))}
+          <small>dual, or triple</small>
+        </p>
       </div>
 
       {/* -------------------------------------------------------- the memory strip */}
@@ -310,6 +341,17 @@ export function NBackDemo() {
             {answering === "square" ? "Match" : ""}
           </span>
         </span>
+
+        {/* The one rule of this game that a film of it cannot demonstrate.
+            Everything else the section used to claim in a column beside the scene is now
+            shown by the scene: the square and the letter arrive together, the strip numbers
+            its slots, the bracket names the comparison, and the two keys light separately.
+            The scoring is the exception, and it is an interesting exception — nobody is
+            pressing anything here, so every answer this scene can ever show is a correct
+            one. "Pressing everything scores worse than pressing nothing" is therefore
+            unshowable and has to be said, and the place to say it is beside the two keys it
+            is about rather than four inches to the left of the frame. */}
+        <span className="nb-answer-cost">A false press costs more than a miss</span>
       </div>
 
       <p className="nb-caption" aria-hidden="true">

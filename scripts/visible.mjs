@@ -166,10 +166,19 @@ const CHECKS = [
     note: "if a heading is occluded the layout is broken",
   },
   {
-    label: "project notes",
+    label: "project summary",
     section: "grt-next-bus",
-    selector: "#grt-next-bus .demo-facts li",
+    selector: "#grt-next-bus .project-summary p",
     required: true,
+    note: "the notes list this used to check is gone; the claims are labels in the frames now",
+  },
+  {
+    label: "in-frame label",
+    section: "grt-next-bus",
+    selector: "#grt-next-bus .spectag[data-shown='true'] .spectag-text",
+    beat: { section: "grt-next-bus", name: "stops" },
+    required: true,
+    note: "the scenes carry their own feature copy now, so an occluded label loses real information",
   },
 ];
 

@@ -1005,8 +1005,8 @@ html.has-project-focus body {
 }
 
 /* --- variant: stacked, editorial -----------------------------------------
-   A large heading with the scene below it at a narrower measure, and the facts
-   set as margin notes down the side. For the projects whose *idea* needs stating
+   A large heading with the scene below it at a narrower measure, and the summary
+   set as a margin note down the side. For the projects whose *idea* needs stating
    before the scene makes sense. */
 .project[data-stage="stacked"] .project-body {
   /* Narrower than the others, and deliberately the same 1180px the demo stops at:
@@ -1036,18 +1036,16 @@ html.has-project-focus body {
 .project[data-stage="stacked"] .project-identity {
   grid-area: 1 / 1;
 }
-/* Directly under the title, not bottom-aligned against the facts. Row two is as tall
-   as the facts list, so `end` here put the links 136px below the thing they belong
-   to — the same floating row the explicit placement was added to fix. */
+/* Directly under the title. Row two used to be as tall as the notes list in the other
+   column, and `end` here put the links 136px below the thing they belong to — the same
+   floating row the explicit placement was added to fix. The list is gone; the placement
+   stays, because the summary column can still be the taller of the two. */
 .project[data-stage="stacked"] .project-links {
   grid-area: 2 / 1;
   align-self: start;
 }
 .project[data-stage="stacked"] .project-summary {
   grid-area: 1 / 2;
-}
-.project[data-stage="stacked"] .demo-facts {
-  grid-area: 2 / 2;
 }
 .project[data-stage="stacked"] .project-identity h2 {
   font-size: clamp(2.4rem, 6vw, 4.6rem);
@@ -1112,12 +1110,14 @@ html.has-project-focus body {
 
 /* --- arrival --------------------------------------------------------------
    `is-seen` is set once by the focus manager and never removed, so each of
-   these runs exactly one time. The stagger is small: 60ms between the heading,
-   the well and the facts is enough to read as a sequence and not as a queue. */
+   these runs exactly one time. The stagger is small: 90ms between the heading
+   and the well is enough to read as a sequence and not as a queue.
+
+   There was a third thing arriving here, staggered per item: the list of notes beside
+   each scene. The list is gone — see `page.tsx` — and so is its stagger. */
 
 .project-heading,
-.project-window,
-.project .demo-facts li {
+.project-window {
   transition:
     opacity 620ms var(--ease-out-soft),
     transform 760ms var(--ease-out-soft);
@@ -1135,15 +1135,8 @@ html.has-project-focus body {
   opacity: 0;
   transform: translate3d(0, 2.2rem, 0) scale(0.985);
 }
-.project:not(.is-seen) .demo-facts li {
-  opacity: 0;
-  transform: translate3d(0, 0.9rem, 0);
-}
 .project .project-window {
   transition-delay: 90ms;
-}
-.project .demo-facts li {
-  transition-delay: calc(180ms + var(--fact) * 70ms);
 }
 
 /* The ghost number arrives last and from further away, because it is the one
@@ -1343,24 +1336,11 @@ html.has-project-focus body {
   transform: scaleX(0);
 }
 
-/* --- facts, as a row rather than a list ---------------------------------- */
-
-/* The notes had two complete implementations stacked on top of each other, and what
-   rendered was a hybrid of both that neither intended.
-   This block was the older one — a grid, `position: relative` on each item, and a 4x4
-   absolutely positioned round dot for a bullet. A newer one further down the file
-   (search for "the notes beside a demo") is a flex row with a `·` glyph as a flex child,
-   and its own comment notes that it "wins on order". It wins on the properties it
-   declares. It does not declare `position`, so the bullet kept `position: absolute` from
-   here and never became a flex child at all — which left a 4x4 box with a background
-   colour *and* a `·` character in it, out of flow, with the text indented by a
-   `padding-left` the newer implementation knows nothing about.
-   One implementation now, downstream. This block is gone rather than corrected, because
-   two rules for one component is the bug. */
-/* In the stacked variant the notes sit tighter, as margin notes beside the heading. */
-.project[data-stage="stacked"] .demo-facts {
-  gap: 0.45rem;
-}
+/* The two implementations of the notes list that used to fight over this spot are both
+   gone, along with the list. Their history is worth one line, because it was the same
+   failure twice: a component with two rule blocks in one stylesheet is a component whose
+   appearance is decided by the cascade rather than by anybody. The claims those notes made
+   are labels inside the frames now — see `.speclayer`. */
 
 @media (max-width: 900px) {
   /* Every variant collapses to the same single column. The compositions exist to
@@ -2829,55 +2809,303 @@ html.shows-shortcuts .shortcut-sheet {
   }
 }
 
-/* --- the notes beside a demo ----------------------------------------------
-   Three fragments, and only the things the scene beside them cannot say on its own. The
-   one implementation: there used to be a second, older one earlier in the file, and the
-   bullet was rendering as a hybrid of the two.
+/* --- in-frame labels ------------------------------------------------------
+   The claims, pinned to the thing that is doing them. See `demos/scene/spec.tsx`
+   for what this replaced and why: three written notes per project, set in a column
+   beside a scene that was performing the same three things in colour. Nobody reads
+   prose next to something that is moving, so the page was explaining itself in the
+   one place a visitor was guaranteed not to be looking.
 
-   0.78rem was 12.48px, which is small for the only running text in the section after the
-   headline.
+   Everything here is driven from two custom properties per label — `--spec-x` and
+   `--spec-y`, percentages of the layer — and tinted by six more that each scene
+   overrides. There is one component and one set of rules; a scene contributes a
+   palette and a list of coordinates.
 
-   A column, not a wrapping row. `flex-wrap: wrap` fits two items per line once the column
-   passes about 500px, and three items in two columns is two items and an orphan —
-   measured on PagePack, whose left column is ~750px at 1600px wide: a stray bullet on a
-   second row with an empty half beside it. A wrap rule is right for a list of unknown
-   length and wrong for one that is always exactly three. */
-.demo-facts {
+   Two elements per label, and that is not one too many. The outer one travels from
+   the control that was pressed to the label's resting point; the inner one pops and
+   carries the anchor offset. Both are transforms of a sort and one element cannot do
+   both, which is the same trap the Decaf deluge documents at `.dc-drop`. The travel
+   is a transition on `left`/`top` between two percentages *of the layer*, because a
+   percentage `translate` is relative to the element's own size and so cannot express
+   "from over there to here".
+   =========================================================================== */
+
+.speclayer {
+  /* --- what a scene may change -------------------------------------------
+     Colour was the whole contract at first, and four projects came out looking like one
+     component wearing four dot colours. A label is furniture belonging to a piece of
+     software, and the four pieces of software here do not share a visual language: a
+     transit extension and a study workspace should not annotate themselves the same way.
+     So shape, type, case, tracking, padding and lead length are all a scene's own
+     business, and the defaults below are only what a pale pod would want. */
+  --spec-ink: #101820;
+  --spec-paper: rgba(255, 255, 255, 0.97);
+  --spec-edge: rgba(16, 24, 32, 0.14);
+  --spec-dot: #4a5bd6;
+  --spec-shadow: rgba(12, 18, 28, 0.34);
+  /* A hairline of light along the top edge. Reads as a raised plate rather than a
+     rectangle, and is what stops these looking like part of the picture. */
+  --spec-gloss: rgba(255, 255, 255, 0.6);
+  --spec-radius: 7px;
+  --spec-pad: 0.26rem 0.55rem;
+  --spec-font: var(--font-geist-sans), system-ui, sans-serif;
+  --spec-size: clamp(10px, 1.15vw, 12px);
+  --spec-weight: 640;
+  --spec-tracking: 0;
+  --spec-case: none;
+  /* How far the plate stands off the point it is pinned to. */
+  --spec-lead: 15px;
+  --spec-step: 130ms;
+
+  position: absolute;
+  /* Above every panel and scrim any scene raises, and below the phantom cursor at 20.
+     A label under the thing it describes is not a label; a label over the pointer is a
+     label hiding the actor. 9 was not enough — GRT's popup is inside a `.gx-browser`
+     that sets its own `z-index: 2`, and a nested layer in a lower stacking context can
+     still land on top once the browser establishes one, which is how "Real positions"
+     ended up half underneath the panel it was pointing at. */
+  z-index: 15;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* A point on the layer, and nothing else. The label hangs off it. */
+.spectag {
+  position: absolute;
+  /* Where it comes *from*. With no origin declared this resolves to the resting
+     position, so the label simply pops in — which is right for the scenes that have
+     no button for it to have burst out of. */
+  left: var(--spec-from-x, var(--spec-x));
+  top: var(--spec-from-y, var(--spec-y));
+  display: block;
+  width: 0;
+  height: 0;
+  transition:
+    left 660ms cubic-bezier(0.2, 0.86, 0.24, 1),
+    top 660ms cubic-bezier(0.2, 0.86, 0.24, 1);
+  transition-delay: calc(var(--spec-order, 0) * var(--spec-step));
+}
+.spectag[data-shown="true"] {
+  left: var(--spec-x);
+  top: var(--spec-y);
+}
+
+.spectag-body {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
+  align-items: center;
+  /* Zero, because the pin below draws the space rather than leaving it. */
+  gap: 0;
+  opacity: 0;
+  /* Overshoots slightly. These arrive several at a time out of one press, and a
+     linear fade-up reads as annotation added afterwards rather than as something the
+     press caused. */
+  transform: translate(var(--spec-tx), var(--spec-ty)) scale(0.5);
+  transform-origin: var(--spec-origin);
+  transition:
+    opacity 200ms ease,
+    transform 540ms cubic-bezier(0.18, 1.32, 0.36, 1);
+  transition-delay: calc(var(--spec-order, 0) * var(--spec-step));
+}
+.spectag[data-shown="true"] .spectag-body {
+  opacity: 1;
+  transform: translate(var(--spec-tx), var(--spec-ty)) scale(1);
+}
+
+/* Which end of the label the pin belongs on. The offsets in `spec.tsx` put the plate on
+   the correct side of the point; this puts the pin back on the point. */
+.spectag[data-side="left"] .spectag-body {
+  flex-direction: row-reverse;
+}
+.spectag[data-side="above"] .spectag-body {
+  flex-direction: column-reverse;
+}
+.spectag[data-side="below"] .spectag-body {
   flex-direction: column;
-  gap: 0.4rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
-.demo-facts li {
-  display: flex;
-  /* `flex-start`, not `baseline`, because the bullet below is a box rather than a glyph
-     and a box has no baseline worth aligning to. */
-  align-items: flex-start;
-  gap: 0.5rem;
-  color: var(--project-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
+.spectag-text {
+  padding: var(--spec-pad);
+  border: 1px solid var(--spec-edge);
+  border-radius: var(--spec-radius);
+  background: var(--spec-paper);
+  color: var(--spec-ink);
+  box-shadow:
+    inset 0 1px 0 var(--spec-gloss),
+    0 1px 2px -1px var(--spec-shadow),
+    0 12px 26px -16px var(--spec-shadow);
+  font-family: var(--spec-font);
+  /* Small, because it is sitting on the picture it is describing, and never smaller
+     than 10px. */
+  font-size: var(--spec-size);
+  font-weight: var(--spec-weight);
+  letter-spacing: var(--spec-tracking);
+  line-height: 1.32;
+  text-transform: var(--spec-case);
+  white-space: nowrap;
 }
 
-/* A dot in the accent colour, and a real one.
-   The two layered implementations disagreed about what a bullet is: the older one drew a
-   4px round box in `--project-accent`, the newer one printed a `·` at 0.72rem. Because
-   only the older one set `position`, what actually rendered was the box — so removing it
-   left the glyph, which at 0.72rem of muted grey is barely a mark on the page.
-   This is the older one's dot, in flow as a flex child, which is what the newer layout
-   was written to expect. `margin-top` puts it on the first line's optical centre; a 4px
-   box cannot get there by alignment alone. */
-.demo-facts li::before {
-  width: 4px;
-  height: 4px;
+/* --- the pin: a dot on the evidence and a line to the plate ---------------
+   One element for both, so the plate can sit flush against it and the whole assembly is
+   `dot + lead + plate` at any orientation. `--spec-lead` is the line's length, which is
+   also how far the plate stands off — a scene that wants its labels tight against their
+   subject only has to change one number.
+
+   The line is what this component was missing. Six plates around one frame with a dot
+   and a gap each is six things a reader has to pair up by proximity; drawn connectors
+   are read without effort. */
+.spectag-pin {
+  position: relative;
+  width: calc(var(--spec-lead) + 7px);
+  height: 7px;
   flex: none;
-  margin-top: 0.56em;
+}
+/* the dot, sitting on the point */
+.spectag-pin::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--project-accent);
+  background: var(--spec-dot);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--spec-dot) 20%, transparent);
   content: "";
+}
+/* the lead, from the dot to the plate */
+.spectag-pin::after {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  left: 6px;
+  height: 1px;
+  background: var(--spec-dot);
+  content: "";
+  opacity: 0.55;
+}
+
+/* Mirrored, so the dot stays on the point when the plate reads the other way. */
+.spectag[data-side="left"] .spectag-pin::before {
+  right: 0;
+  left: auto;
+}
+.spectag[data-side="left"] .spectag-pin::after {
+  right: 6px;
+  left: 0;
+}
+
+/* Upright, for the two vertical orientations. */
+.spectag[data-side="above"] .spectag-pin,
+.spectag[data-side="below"] .spectag-pin {
+  width: 7px;
+  height: calc(var(--spec-lead) + 7px);
+}
+.spectag[data-side="above"] .spectag-pin::before,
+.spectag[data-side="below"] .spectag-pin::before {
+  top: auto;
+  bottom: 0;
+}
+.spectag[data-side="below"] .spectag-pin::before {
+  top: 0;
+  bottom: auto;
+}
+.spectag[data-side="above"] .spectag-pin::after,
+.spectag[data-side="below"] .spectag-pin::after {
+  top: 0;
+  right: auto;
+  bottom: 6px;
+  left: 3px;
+  width: 1px;
+  height: auto;
+}
+.spectag[data-side="below"] .spectag-pin::after {
+  top: 6px;
+  bottom: 0;
+}
+
+/* One ring off the dot as it lands, so the label reads as arriving at the thing rather
+   than as having always been there.
+
+   Deliberately no `animation-fill-mode`. The dot's resting state is the 2px tint declared
+   above, and any fill would strand it on the keyframe instead — `both` left every dot
+   wearing a 9px transparent ring and no tint at all. Without a fill the rule simply stops
+   applying and the base declaration comes back. */
+.spectag[data-shown="true"] .spectag-pin::before {
+  animation: spec-land 900ms ease-out;
+  animation-delay: calc(var(--spec-order, 0) * var(--spec-step) + 340ms);
+}
+@keyframes spec-land {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--spec-dot) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--spec-dot) 0%, transparent);
+  }
+}
+
+/* Narrow screens: the same labels, in the order they arrived, under the scene.
+   Pinning six of these to a 380px-wide frame stacks them on top of each other and on
+   top of the evidence, which loses both. Dropping them would take the whole
+   explanation with it — they are the explanation now. So the layer stops being a
+   layer: it falls back into the scene's own column as a wrapped row of chips that
+   still fills up beat by beat. The pointing is what is lost, not the reading. */
+@media (max-width: 760px) {
+  .speclayer {
+    position: static;
+    z-index: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  /* `position` as well as `display`, and that omission is worth recording: with only the
+     layer switched to `static` the labels kept `position: absolute` and simply resolved
+     their percentages against the next positioned ancestor instead — which is the pod. So
+     the fallback rendered exactly the overlapping pile it exists to prevent, at 420px,
+     with two labels hanging off the right edge. */
+  .spectag {
+    position: static;
+    display: none;
+    width: auto;
+    height: auto;
+    transition: none;
+  }
+  .spectag[data-shown="true"] {
+    display: block;
+  }
+  .spectag-body,
+  /* All four sides collapse to one. The direction rules exist to put the pin back on the
+     point the label is aimed at, and there is no point any more — so `left` left a dot
+     trailing after its text and `below` stacked one above it, which is three different chip
+     shapes in one row. */
+  .spectag[data-side] .spectag-body {
+    position: static;
+    flex-direction: row;
+    gap: 0.32rem;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  /* The lead goes with the pointing. A line to nothing is just a dash before the text. */
+  .spectag-pin,
+  .spectag[data-side] .spectag-pin {
+    width: 7px;
+    height: 7px;
+  }
+  .spectag-pin::before,
+  .spectag[data-side] .spectag-pin::before {
+    top: 0;
+    right: auto;
+    bottom: auto;
+    left: 0;
+  }
+  .spectag-pin::after,
+  .spectag[data-side] .spectag-pin::after {
+    display: none;
+  }
 }
 
 /* Demos are interactive, so a drag inside one must never be read as a drag on
@@ -2919,6 +3147,100 @@ html.shows-shortcuts .shortcut-sheet {
   height: 0;
 }
 
+/* --- the rig: what is fixed about the comparison --------------------------
+   Three statements true of every frame, so they sit outside the film rather than
+   changing inside it: one shot shown twice, a stream of the kind that defeats other
+   extensions, and a display brightness that does not move.
+
+   The dial is doing real argumentative work. The natural objection to a side-by-side
+   like this is that the right panel has simply been turned up — and the answer is
+   structural (both panels share `--exposure`; the only asymmetry in the document is
+   one `url(#nn-tone-curve)` in a filter chain) which is exactly the kind of answer a
+   picture cannot give. A number that visibly sits still while the panels visibly stop
+   matching gives it. */
+.nn-rig {
+  display: flex;
+  flex-wrap: wrap;
+  /* Centred, not spread. Pushed to the two ends of a 1080px row the dials sat squarely
+     above the treated panel and read as that panel's settings — which is the exact
+     opposite of what they are for. In the middle they belong to neither. */
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem 0.9rem;
+  color: rgba(232, 237, 243, 0.62);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nn-rig-chip,
+.nn-dials {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.26rem 0.6rem;
+  border: 1px solid rgba(224, 234, 247, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  white-space: nowrap;
+}
+
+/* The instruments carry two readouts and a label, so they need more air inside than the
+   chip beside them. */
+.nn-dials {
+  gap: 0.85rem;
+}
+
+.nn-rig-glyph {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: rgba(232, 237, 243, 0.5);
+}
+
+.nn-dial {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nn-dial-name {
+  color: rgba(232, 237, 243, 0.5);
+  font-weight: 550;
+}
+
+.nn-dial-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.nn-dial-track i {
+  width: 4px;
+  height: 9px;
+  border-radius: 1px;
+  background: rgba(232, 237, 243, 0.14);
+}
+.nn-dial-track i[data-on="true"] {
+  background: rgba(232, 237, 243, 0.62);
+}
+
+.nn-dial b {
+  color: #e8edf3;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.64rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+/* The whole reason the dials are on screen. Deliberately not styled as an aside. */
+.nn-dials small {
+  color: rgba(232, 237, 243, 0.44);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
 .nn-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2943,21 +3265,31 @@ html.shows-shortcuts .shortcut-sheet {
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
-.nn-label small {
+/* The live level, in the slot two static phrases used to occupy.
+   They were "peaks at maximum" and "held under a ceiling": one an alarm, one a mechanism,
+   neither of them changing, so neither said anything about the frame underneath. A number
+   that moves with the soundtrack does. */
+.nn-db {
   flex: 0 0 auto;
-  color: rgba(232, 237, 243, 0.45);
+  min-width: 4.2em;
+  color: rgba(232, 237, 243, 0.82);
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.62rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: right;
   text-transform: none;
+  opacity: 0;
+  transition:
+    opacity 260ms ease,
+    color 240ms ease;
 }
-.nn-label small[data-alarm] {
-  transition: color 240ms ease;
+.nn-db[data-showing="true"] {
+  opacity: 1;
 }
-/* The clipping warning only means anything at the moment it clips. */
-.nn[data-beat="blast"] .nn-label small[data-alarm],
-.nn[data-beat="boom"] .nn-label small[data-alarm] {
+/* The top of the scale is the one reading that is a problem rather than a measurement. */
+.nn-db[data-hot="true"] {
   color: #ff6b5f;
 }
 
@@ -2986,8 +3318,35 @@ html.shows-shortcuts .shortcut-sheet {
    over-exposed frame and what it does with the top end is the highlight knee doing
    its actual job. A white overlay alone was the first attempt and could not blow
    anything out: 40% white over a near-black room is just grey. */
+/**
+ * The dark beats run *under* full exposure, and that number is the whole comparison.
+ *
+ * It was 1, and measuring the two panels is what showed why that could not work. At
+ * exposure 1 the untreated room samples at luma 8 for the wall, 15 for the clock, 12 for a
+ * book spine — genuinely the values the artwork specifies, and genuinely visible, because a
+ * PNG at luma 15 on a laptop at full brightness is a thing you can see. So the section was
+ * claiming "you cannot make anything out" over a panel in which you could make everything
+ * out, and the honest report of that is the one that came back: *I can't really see the
+ * difference*.
+ *
+ * The premise was the problem rather than the filter. Nobody watches a film at midnight
+ * with the screen at full brightness — the pod's own dial says 38%, which is the setting
+ * this product exists because of — and the extension's job is to make a *dimmed* display
+ * still show shadow detail. So both panels are shown through that dimming, which is what
+ * the situation actually is, and only the treated one then gets the curve.
+ *
+ * Measured at 0.6, wall against clock: 5 → 9 untreated, 40 → 50 treated. The untreated
+ * pair is four levels apart at the bottom of the range, which is the definition of
+ * crushed; the treated pair is ten levels apart in the mid-shadows, which is a room with
+ * things in it. Both panels get the identical multiplier — that is what keeps the
+ * comparison honest — and the only asymmetry in the document is still one
+ * `url(#nn-tone-curve)` in a filter chain.
+ *
+ * The blast beats override this upward and must keep doing so: the highlight half of the
+ * argument needs a frame that is genuinely over-exposed.
+ */
 .nn {
-  --exposure: 1;
+  --exposure: 0.6;
 }
 /* Modest, on purpose, and much more modest than it was.
    The first attempt drove this to 11 and the shot stopped being a shot: multiplying a
@@ -3038,6 +3397,82 @@ html.shows-shortcuts .shortcut-sheet {
 .nn-shot > span {
   position: absolute;
   display: block;
+}
+
+/* --- the soundtrack, printed at its own volume ----------------------------
+   The trick this scene turns on, and the answer to a problem an earlier version gave up
+   on. This page has no audio, so a printed line of dialogue is identical whispered or
+   shouted — from which the previous version concluded that the audio half of the product
+   could not be shown, deleted the line, and left a bar meter to carry it alone.
+
+   The conclusion assumed the words were the only channel. They are not: `--loud` is the
+   level from 0 to 1, and it sets the size. A whisper at 0.08 renders around 10px; an
+   explosion at 1 renders around 40px. Loudness becomes something a reader sees, with
+   nothing to learn first.
+
+   And it demonstrates the compressor better than any meter. Untreated the two lines are
+   10px and 40px; treated they are 23px and 28px. A four-fold difference collapsing to a
+   slight one *is* the product, at a scale nobody can miss.
+
+   Opacity rides along, so a quiet line is also faint — two channels saying one thing,
+   which is what makes it read instantly rather than after a moment's thought.
+
+   Outside `.nn-shot`, therefore outside the filter chain: inside it this would blow to
+   white with the explosion on one panel and be tone-mapped on the other, so the element
+   whose entire message is its size would also have been two different colours.
+
+   Set like a burnt-in subtitle, low and centred, because that is the one convention a
+   viewer already reads as "this is the sound". */
+.nn-say {
+  position: absolute;
+  right: 6%;
+  bottom: 8%;
+  left: 6%;
+  color: #f4f8ff;
+  font-size: calc(0.5rem + var(--loud, 0) * 2rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.9),
+    0 0 18px rgba(0, 0, 0, 0.75);
+  text-wrap: balance;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    font-size 260ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.nn-say[data-showing="true"] {
+  opacity: calc(0.55 + var(--loud, 0) * 0.45);
+}
+
+/* --- one line about what you are looking at -------------------------------
+   Under each panel, three or four words, always a matched pair with the other panel so a
+   visitor reads across rather than down. See `VERDICT` in the demo: between them the four
+   pairs are the whole product, in the plainest words available.
+
+   `min-height` rather than a hidden element, because the pair appears and disappears
+   between beats and a row that collapses would move both panels every time. */
+.nn-verdict {
+  margin: 0;
+  min-height: 1.5em;
+  color: #e8edf3;
+  font-size: 0.78rem;
+  font-weight: 620;
+  letter-spacing: 0.005em;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.nn-verdict[data-showing="true"] {
+  opacity: 1;
+}
+/* The untreated panel's line is always the complaint, so it is toned as one. */
+.nn-panel:first-child .nn-verdict {
+  color: rgba(255, 173, 165, 0.92);
+}
+.nn-panel:last-child .nn-verdict {
+  color: rgba(150, 226, 190, 0.96);
 }
 
 /* --- the scene, and the two things the beats change ----------------------
@@ -3123,44 +3558,27 @@ html.shows-shortcuts .shortcut-sheet {
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.05);
 }
+/* One block, because two rule blocks for one component is how a component's appearance
+   stops being anybody's decision — there is a long note about that at the notes list this
+   page used to carry.
+
+   `--lit` is how many of the fourteen are on, written on each meter by the pod and derived
+   from the same `loud` figure that sets the size of the printed line. It used to be two
+   custom properties declared per beat here, `--lit-raw` and `--lit-treated`: the same set
+   of numbers maintained in a second place, which is how a meter ends up disagreeing with
+   the thing next to it.
+
+   `@container`-free trick: each segment compares its own index against the count using a
+   stepped opacity. `calc()` cannot branch, but a very steep clamp can — (lit - index)
+   clamped to 0..1 is 1 for lit segments and 0 for the rest. */
 .nn-seg {
   flex: 1 1 0;
   border-radius: 1.5px;
   background: rgba(255, 255, 255, 0.09);
+  opacity: clamp(0, calc((var(--lit, 0) - var(--seg)) * 100), 1);
   transition:
     background 120ms linear,
     opacity 120ms linear;
-}
-
-/* Lit segments per beat. `--lit` is how many of the fourteen are on; a segment
-   lights when its index is below it. Expressed as one custom property so a beat
-   changes one number instead of fourteen rules. */
-.nn {
-  --lit-raw: 2;
-  --lit-treated: 5;
-}
-.nn[data-beat="whisper"] {
-  --lit-raw: 2;
-  --lit-treated: 7;
-}
-.nn[data-beat="blast"],
-.nn[data-beat="boom"] {
-  --lit-raw: 14;
-  --lit-treated: 9;
-}
-.nn[data-beat="settle"] {
-  --lit-raw: 3;
-  --lit-treated: 6;
-}
-
-/* `@container`-free trick: each segment compares its own index against the beat's
-   count using a stepped opacity. `calc()` cannot branch, but a very steep clamp
-   can: (lit - index) clamped to 0..1 is 1 for lit segments and 0 for the rest. */
-.nn-meter[data-treated="false"] .nn-seg {
-  opacity: clamp(0, calc((var(--lit-raw) - var(--seg)) * 100), 1);
-}
-.nn-meter[data-treated="true"] .nn-seg {
-  opacity: clamp(0, calc((var(--lit-treated) - var(--seg)) * 100), 1);
 }
 .nn-meter .nn-seg {
   background: #6fd3a8;
@@ -3186,86 +3604,28 @@ html.shows-shortcuts .shortcut-sheet {
   box-shadow: 0 0 6px rgba(111, 211, 168, 0.6);
 }
 
-.nn-reading {
+/* --- the extension's own figures ------------------------------------------
+   One muted line under both panels, from `describeVideoEffect` and `describeAudioEffect`
+   in the vendored core. It describes the *setting*, not either frame, which is why it read
+   oddly when it sat under the treated panel as though it were that panel's caption — and
+   why there were two of them, the untreated one hand-written to keep the rows aligned.
+
+   Kept because it is the only place the effect is quantified. The four verdicts above say
+   what changed; a reader who wants to know by how much should not have to open the
+   repository.
+
+   `.nn-caption` and the volume row that used to be here are both gone. The row held a
+   seven-bar meter and a label reading "explosion · same volume", which is now two dials in
+   the rig that visibly never move and a decibel figure on each panel. */
+.nn-spec {
   margin: 0;
-  min-height: 2.4em;
-  color: rgba(232, 237, 243, 0.5);
-  font-size: 0.68rem;
-  line-height: 1.45;
-}
-
-/* --- subtitle and caption ------------------------------------------------- */
-
-/* --- the subtitle row ------------------------------------------------------
-   A level meter, and nothing else now. It used to sit beside a line of film dialogue set
-   like a burnt-in subtitle; see the note on `SOUND` in the demo for why that went. The
-   meter is how you show a soundtrack on a page with no sound: dialogue at two bars of
-   seven, then an explosion at all seven with the top three hot, and a label saying the
-   volume setting did not change in between. */
-.nn-subrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(0.7rem, 1.6vw, 1.4rem);
-  min-height: 2.6em;
-  opacity: 0;
-  transition: opacity 320ms ease;
-}
-.nn-subrow[data-showing="true"] {
-  opacity: 1;
-}
-
-.nn-vol {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 0.5rem;
-}
-.nn-vol-bars {
-  display: inline-flex;
-  align-items: flex-end;
-  height: 15px;
-  gap: 2px;
-}
-.nn-vol-bars i {
-  width: 3px;
-  /* Stepped, so the meter reads as a meter rather than as a row of dashes. */
-  height: calc(35% + var(--vol) * 11%);
-  border-radius: 1px;
-  background: rgba(232, 237, 243, 0.16);
-  transition:
-    background 220ms ease,
-    box-shadow 220ms ease;
-}
-/* Dialogue: two bars lit out of seven. The point is how little of it there is. */
-.nn-vol[data-level="low"] .nn-vol-bars i:nth-child(-n + 2) {
-  background: rgba(232, 237, 243, 0.72);
-}
-/* The explosion, on the same setting. Everything lit and the top three hot. */
-.nn-vol[data-level="peak"] .nn-vol-bars i {
-  background: rgba(255, 236, 210, 0.9);
-}
-.nn-vol[data-level="peak"] .nn-vol-bars i:nth-child(n + 5) {
-  background: #ff6a4d;
-  box-shadow: 0 0 9px rgba(255, 106, 77, 0.7);
-}
-.nn-vol small {
-  color: rgba(232, 237, 243, 0.5);
+  min-height: 1.4em;
+  color: rgba(232, 237, 243, 0.4);
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.66rem;
-  font-weight: 650;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  text-align: center;
 }
-
-/* The cinema-set subtitle that used to live here is gone, along with the line of
-   dialogue it carried. See the note on `SOUND` in the demo: a subtitle exists because you
-   cannot hear something, and this page has no sound at all, so a quiet line and a loud
-   one looked identical and the beat argued nothing. The level meter does that job in the
-   medium the page actually has.
-
-   `.nn-caption` went with it. The panels are labelled Before and After and print the
-   extension's own readings underneath. */
 
 @media (max-width: 700px) {
   .nn-split {
@@ -3273,6 +3633,13 @@ html.shows-shortcuts .shortcut-sheet {
   }
   .nn-label {
     font-size: 0.62rem;
+  }
+  /* The two dials plus their label are wider than a phone, so the label drops under them
+     rather than forcing the whole plate to scroll. */
+  .nn-dials {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem 0.7rem;
   }
 }
 
@@ -3404,6 +3771,45 @@ html.shows-shortcuts .shortcut-sheet {
   font-size: 0.66rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+/* What a cue is made of, including the stream this demonstration does not run.
+   "Watch a square and hear a letter. Triple adds a colour." was a written note beside
+   the scene, and two thirds of it were already the first thing the scene does. The third
+   could never be shown here — there is no colour stream in this film — so nothing in the
+   frame could hint that the game has one. Three chips, one of them explicitly off, put
+   the whole shape of the game on screen for six words. */
+.nb-streams {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.56rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.nb-streams span {
+  padding: 0.16rem 0.4rem;
+  border: 1px solid var(--nb-accent-dim);
+  border-radius: 999px;
+  background: var(--nb-accent-dim);
+  color: var(--nb-accent);
+}
+/* Present, and not what you are watching. A dashed edge says "available" where a solid
+   one would claim the scene is running it. */
+.nb-streams span[data-off="true"] {
+  border-style: dashed;
+  border-color: var(--nb-line);
+  background: none;
+  color: var(--nb-faint);
+}
+.nb-streams small {
+  color: var(--nb-faint);
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
 }
 
 /* --- the memory strip ---------------------------------------------------- */
@@ -3551,6 +3957,22 @@ html.shows-shortcuts .shortcut-sheet {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
+}
+
+/* The one rule of the game a film of it cannot demonstrate.
+   Nobody presses anything here, so every answer this scene can show is a correct one, and
+   "pressing everything scores worse than pressing nothing" is unshowable. It was a written
+   note in the column beside the scene; it belongs beside the two keys it is about, which
+   is here. Spanning both columns so it reads as a statement about the pair. */
+.nb-answer-cost {
+  grid-column: 1 / -1;
+  color: var(--nb-faint);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
 }
 .nb-answer {
   display: flex;
@@ -4593,6 +5015,28 @@ html.shows-shortcuts .shortcut-sheet {
 
 /* The light thrown in front of it. Wide, soft and low-contrast: enough to say
    which way the bus is going, not enough to look like night. */
+/* The in-frame labels, as transit signage.
+   This is the one section about a physical network with its own graphic language, so its
+   labels borrow it: a filled dark-green plate, white uppercase mono, wide tracking, almost
+   no corner radius. The same treatment as the destination sign on the front of a bus, and
+   as the route badges the popup is already full of. See `.speclayer` for the component. */
+.gx-specs {
+  --spec-ink: #f2fbf6;
+  --spec-paper: #145c40;
+  --spec-edge: rgba(255, 255, 255, 0.16);
+  --spec-gloss: rgba(255, 255, 255, 0.14);
+  --spec-dot: #145c40;
+  --spec-shadow: rgba(10, 34, 28, 0.5);
+  --spec-radius: 3px;
+  --spec-pad: 0.28rem 0.52rem;
+  --spec-font: var(--font-geist-mono), ui-monospace, monospace;
+  --spec-size: clamp(9px, 1vw, 10.5px);
+  --spec-weight: 700;
+  --spec-tracking: 0.09em;
+  --spec-case: uppercase;
+  --spec-lead: 16px;
+}
+
 .gx-beam {
   position: absolute;
   right: -6px;
@@ -5104,6 +5548,29 @@ html.shows-shortcuts .shortcut-sheet {
      Save button rather than the middle of a rectangle. */
   --emit-right: 130px;
   --emit-top: 150px;
+}
+
+/* The in-frame labels, in the same idiom as the extension.
+   PagePack's whole design is unashamedly Apple-flavoured — see the token set at the top of
+   this section — so its labels are fully rounded frosted pills with a hairline edge, the
+   shape that platform puts every transient status in. See `.speclayer` for the component
+   and `SPECS` in the pod for the two claims it carries and why there are only two. */
+.pp-specs {
+  --spec-ink: var(--ink);
+  --spec-paper: rgba(255, 255, 255, 0.82);
+  --spec-edge: rgba(0, 0, 0, 0.1);
+  --spec-gloss: rgba(255, 255, 255, 0.85);
+  --spec-dot: var(--accent);
+  --spec-shadow: rgba(0, 0, 0, 0.34);
+  --spec-radius: 999px;
+  --spec-pad: 0.28rem 0.68rem;
+  --spec-weight: 590;
+  --spec-lead: 18px;
+}
+/* The one place a blur is worth its cost: a translucent pill needs something behind it to
+   be translucent *against*, and both of these sit over a page of body text. */
+.pp-specs .spectag-text {
+  backdrop-filter: blur(8px) saturate(1.4);
 }
 .pp-flyer {
   position: absolute;
@@ -5851,6 +6318,28 @@ html.shows-shortcuts .shortcut-sheet {
    down. Not navigation, and not clickable: it exists so that "this project has
    four parts" is legible in the first second, rather than being something a
    visitor discovers by watching a loop twice. */
+/* The in-frame labels, as marks made on a document.
+   This is a section about studying, so its labels are the thing a person does to a page
+   they are studying: a violet highlighter wash with violet ink, and no white plate. Read as
+   annotation rather than as interface, which is what the rest of this pod already looks
+   like — the notes overlay, the chips and the practice cards are all tinted washes.
+
+   They live inside `.pdfx-stage` rather than the pod, so their percentages are the same
+   coordinate space the phantom cursor uses; there is a long note in the pod about what went
+   wrong the one time something here was measured against the other box. */
+.pdfx-specs {
+  --spec-ink: #4c1d95;
+  --spec-paper: rgba(237, 228, 254, 0.95);
+  --spec-edge: rgba(109, 40, 217, 0.22);
+  --spec-gloss: rgba(255, 255, 255, 0.5);
+  --spec-dot: var(--violet);
+  --spec-shadow: rgba(76, 29, 149, 0.3);
+  --spec-radius: 4px;
+  --spec-pad: 0.24rem 0.52rem;
+  --spec-weight: 640;
+  --spec-lead: 16px;
+}
+
 .pdfx-acts {
   display: flex;
   flex-wrap: wrap;
@@ -6483,6 +6972,13 @@ html.shows-shortcuts .shortcut-sheet {
   }
 }
 
+/* There was going to be a second one of these on the parts mixer, carrying the deleted
+   note about turning your own part up. It is not here because `#parts-btn` is
+   `display: none` at every width this pod runs at — the application only has a trigger for
+   that panel below 900px, where the panel is a modal — and because the panel it would have
+   pointed at is already open on screen, headed "Parts", showing one voice at 100% against
+   three at 35%. See the note on `findSpot` in the pod. */
+
 /* The notes that used to live here moved into the backdrop (see the Backdrops
    section). In this layer they sat in front of the application and converged on a
    point, which put them across the engraved score — litter on top of the one thing
@@ -6969,6 +7465,71 @@ html.shows-shortcuts .shortcut-sheet {
 }
 .dc-media--d {
   background: linear-gradient(122deg, #0fb5a5, #4aa0d6 48%, #7b6cf0);
+}
+
+/* --- the wash off the switch ----------------------------------------------
+   One soft glow leaving the toolbar button and crossing the window, so the press has a
+   consequence you can see travelling rather than six separate things quietly becoming
+   true. Clipped by `.dc-browser`'s own overflow, which is what makes it read as
+   something moving across a page instead of a circle on top of one.
+
+   A soft radial with no hard edge, scaled rather than grown. A ring would have to be
+   drawn as a border or a banded gradient, and `transform: scale` multiplies band
+   thickness along with everything else: a 2px ring at scale 30 is a 60px stripe. There
+   is nothing to thicken here.
+
+   Sized to arrive. 40px at scale 30 is a 1200px circle, which clears the 900px window
+   from a corner. */
+.dc-wave {
+  position: absolute;
+  z-index: 7;
+  top: 19px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  margin: -20px -20px 0 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 52%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.2);
+}
+.dc[data-on="true"] .dc-wave {
+  animation: dc-wash 1500ms cubic-bezier(0.15, 0.85, 0.2, 1) both;
+}
+@keyframes dc-wash {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(30);
+  }
+}
+
+/* --- the labels -----------------------------------------------------------
+   Small square-cornered chips in the extension's indigo — the same colour the toolbar
+   button turns when it is on, which is where they come out of.
+
+   Decaf's character is a *switch panel*: six settings, each of them off. So the chips are
+   tight, squared and uniform, and read as a row of states rather than as annotation. The
+   lead is short because every one of them is pinned to a thing a few pixels away inside a
+   dense browser window. */
+.dc-specs {
+  --spec-ink: var(--ink);
+  --spec-paper: rgba(255, 255, 255, 0.97);
+  --spec-edge: rgba(74, 91, 214, 0.3);
+  --spec-dot: var(--accent);
+  --spec-shadow: rgba(12, 18, 44, 0.42);
+  --spec-radius: 5px;
+  --spec-pad: 0.24rem 0.5rem;
+  --spec-weight: 620;
+  --spec-lead: 12px;
 }
 
 /* ===========================================================================
@@ -9216,8 +9777,7 @@ svg.bd-vehicle {
 #pagepack .project-heading,
 #pagepack .project-summary,
 #pagepack .project-links,
-#pagepack .demo-chrome p,
-#pagepack .demo-facts li {
+#pagepack .demo-chrome p {
   transition:
     color 720ms ease,
     border-color 720ms ease,
@@ -10712,12 +11272,20 @@ svg.bd-vehicle {
   pointer-events: none;
 }
 
+/* Each row is inked in its own voice's colour, which is the colour the application
+   engraves that part in on the canvas six inches away. `--part-color` is declared per row
+   in the markup from `PARTS`, which is a copy of the app's `PART_COLORS` — see the note
+   there, and the test that keeps the two in step.
+
+   These were all one mint: the section's accent, applied to four things the section is
+   asking you to tell apart from four differently-coloured lines in a score. Which is the
+   opposite of what a colour code is for. */
 .choir-part-cues li {
   position: absolute;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  color: #31594d;
+  gap: 0.55rem;
+  color: var(--part-color, #31594d);
   opacity: 0;
   transition:
     opacity 480ms ease,
@@ -10762,33 +11330,23 @@ svg.bd-vehicle {
    real mix: press play and the row for whichever part is carrying the line brightens and
    leans in, in time with the singing.
 
-   Each row picks up its own band as `--v`, so everything below is written once against a
-   generic variable. The fallback of 0 is what makes this inert when nothing is playing
-   and when the analyser could not be reached at all — which is the same rendering the
-   section had before any of this existed.
+   Each row picks up its own band as `--v` in the markup, so everything below is written
+   once against a generic variable. The fallback of 0 is what makes this inert when nothing
+   is playing and when the analyser could not be reached at all — which is the same
+   rendering the section had before any of this existed. Four `nth-child` rules used to do
+   that mapping here; declaring it where the row is built keeps the row's colour and its
+   band in one place, since both come from the same entry in `PARTS`.
 
    Transitions are deliberately absent. The values already arrive smoothed, with a fast
    attack and a slow release, and a CSS transition on top would be a second filter
    fighting the first — the attacks are the part worth seeing and a transition is exactly
    what rounds them off. */
-.choir[data-playing="true"] .choir-part-cues li:nth-child(1) {
-  --v: var(--v-soprano, 0);
-}
-.choir[data-playing="true"] .choir-part-cues li:nth-child(2) {
-  --v: var(--v-alto, 0);
-}
-.choir[data-playing="true"] .choir-part-cues li:nth-child(3) {
-  --v: var(--v-tenor, 0);
-}
-.choir[data-playing="true"] .choir-part-cues li:nth-child(4) {
-  --v: var(--v-bass, 0);
-}
 
 /* Brighter, and standing slightly proud of the page. `--part` is the row's index and
    already sets the side each row sits on, so the lean has to be signed per row; rows 2
    and 4 are on the right and lean the other way. */
 #choir-practice[data-scene-beat="singing"] .choir-part-cues li {
-  opacity: calc(0.7 + var(--v, 0) * 0.3);
+  opacity: calc(0.72 + var(--v, 0) * 0.28);
 }
 #choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(odd) {
   transform: translateX(calc(var(--v, 0) * 0.7rem));
@@ -10797,49 +11355,109 @@ svg.bd-vehicle {
   transform: translateX(calc(var(--v, 0) * -0.7rem));
 }
 
-/* The lozenge is the loudest signal, so it carries the most of it: it fills with the
-   section's accent as its voice comes up, and grows a halo at the top of the range. */
+/* The disc is the loudest signal, so it carries the most of it: it swells and throws a
+   halo *in its own colour* at the top of its range. Relative colour syntax rather than
+   `color-mix` with a calculated percentage, because the alpha is the thing being driven
+   and `rgb(from …)` takes a plain `calc()` there. */
 #choir-practice[data-scene-beat="singing"] .choir-part-cues b {
-  border-color: rgba(39, 89, 74, calc(0.3 + var(--v, 0) * 0.6));
-  background: rgb(
-    from rgba(236, 249, 240, 0.74) r g b / calc(0.74 + var(--v, 0) * 0.26)
-  );
-  box-shadow: 0 0 calc(var(--v, 0) * 26px) rgba(52, 122, 100, calc(var(--v, 0) * 0.6));
-  transform: scale(calc(1 + var(--v, 0) * 0.22));
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.62),
+    0 4px 14px -6px rgb(from var(--part-color) r g b / 0.55),
+    0 0 calc(8px + var(--v, 0) * 34px) rgb(from var(--part-color) r g b / calc(var(--v, 0) * 0.8));
+  transform: scale(calc(1 + var(--v, 0) * 0.18));
 }
 
-/* And the rule beside each name becomes a level meter, which is the cheapest possible
-   way to show four numbers and the most legible. */
-#choir-practice[data-scene-beat="singing"] .choir-part-cues i {
-  background-size: calc(18% + var(--v, 0) * 82%) 2px;
-  opacity: calc(0.35 + var(--v, 0) * 0.65);
-}
+/* --- the disc ------------------------------------------------------------
+   1.8rem of pale mint with a hairline border, containing a letter at 0.8rem. Four of
+   them, all the same colour, at the edges of a 980px application. They were furniture.
 
+   They are the one thing in this section that says "there are four voices here and you
+   can hear them apart", so they are now the size and the colour of a thing that means
+   something: filled discs at 2.5rem in the part's own ink, white letters, and a level
+   ring around each one. */
 .choir-part-cues b {
+  position: relative;
   display: grid;
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 2.5rem;
+  height: 2.5rem;
   place-items: center;
-  border: 1px solid rgba(39, 89, 74, 0.3);
   border-radius: 50%;
-  background: rgba(236, 249, 240, 0.74);
+  background: var(--part-color, #31594d);
+  color: #fff;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.62),
+    0 4px 14px -6px rgb(from var(--part-color) r g b / 0.55);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 0.8rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(10, 30, 24, 0.35);
+}
+
+/* A ring around the disc that fills with that voice's level. The most information a
+   circle can carry without becoming a chart, and it is the part that makes the rack
+   entertaining rather than merely legible: four dials, moving apart, in four colours, in
+   time with four voices.
+
+   A conic gradient with the middle punched out. `mask` is what makes it a ring rather
+   than a pie — without it the fill sweeps across the disc and hides the letter. */
+.choir-part-cues b::before {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--part-color, #31594d) calc(var(--v, 0) * 360deg),
+    rgba(255, 255, 255, 0.42) 0
+  );
+  content: "";
+  -webkit-mask: radial-gradient(circle, transparent 0 66%, #000 67%);
+  mask: radial-gradient(circle, transparent 0 66%, #000 67%);
+  opacity: 0.9;
 }
 
 .choir-part-cues span {
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.52rem;
-  letter-spacing: 0.11em;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
+  /* Mixed toward the section's ink so that four hues chosen for a dark canvas stay
+     readable on pale mint paper. Tenor's #ff9800 is the one that needs it. */
+  color: color-mix(in srgb, var(--part-color, #31594d) 64%, #0d1f1a);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
+/* --- the level rule ------------------------------------------------------
+   A track with a fill, rather than a hairline with an animated `background-size`. The
+   old version could only be a meter while the scene was in its `singing` beat, because
+   the size was set by a rule qualified on it; a track whose fill is a function of `--v`
+   is a meter always, and reads as a resting level rather than as a line when nothing is
+   playing. */
 .choir-part-cues i {
+  position: relative;
   display: block;
   width: clamp(2rem, 7vw, 7rem);
-  height: 1px;
-  background: linear-gradient(currentColor, currentColor) left center / 100% 1px no-repeat;
-  opacity: 0.5;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(20, 50, 42, 0.14);
+}
+.choir-part-cues i::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(16% + var(--v, 0) * 84%);
+  border-radius: 2px;
+  background: var(--part-color, #31594d);
+  box-shadow: 0 0 8px rgb(from var(--part-color) r g b / 0.55);
+  content: "";
+}
+/* Rows two and four sit against the right edge and run their contents backwards, so the
+   fill has to grow the other way or it points off the frame. */
+.choir-part-cues li:nth-child(even) i::after {
+  right: 0;
+  left: auto;
 }
 
 .choir-acoustics {
@@ -11304,12 +11922,13 @@ svg.bd-vehicle {
   inset: -0.35rem -0.55rem;
 }
 
-/* One of these is left. Five scenes lost their per-beat caption entirely — the section
-   around each of them already carries a headline, a reason and three notes, and the
-   captions were paraphrasing the notes while the scene demonstrated the same claim a
-   third time. Choir's footnote went the same way: it printed a build path at a visitor
-   and then repeated the invitation. N-Back keeps its caption because its subject is a
-   rule rather than an interface. */
+/* One of these is left. Five scenes lost their per-beat caption because the captions were
+   paraphrasing the written notes beside them while the scene demonstrated the same claim a
+   third time — and the notes have since gone too, into the frames themselves. Choir's
+   footnote went the same way: it printed a build path at a visitor and then repeated the
+   invitation. N-Back keeps its caption because its subject is a rule rather than an
+   interface: what a visitor needs help with is which slot to look at *right now*, which
+   changes every beat and is the one thing a pinned label cannot say. */
 #n-back .nb-caption {
   position: relative;
   z-index: 12;

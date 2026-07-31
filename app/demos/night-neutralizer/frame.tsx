@@ -68,7 +68,49 @@ const BOOKS = [
   { x: 24, h: 32, fill: "rgb(14,13,11)" },
 ];
 
-export function NightFrame({ treated }: { treated: boolean }) {
+/**
+ * There were three dashed rings drawn over this room, one around the bookcase, one around
+ * the clock and one around the cat, with labels naming them and a "0 of 3 / 3 of 3" count
+ * in the corner.
+ *
+ * They went because they confused the thing they were meant to clarify. A visitor arriving
+ * at two dark rectangles wrapped in dotted boxes has to work out what the boxes *are* before
+ * they can use them — are those part of the film, is this a detection demo, is the extension
+ * drawing them? — and the answer is "they are a reading aid a designer added", which is a
+ * thing you should never have to deduce. Reported plainly: *the boxing of things in the scene
+ * would just confuse the user.*
+ *
+ * The comparison did not need scaffolding. It needed the exposure to be honest — both panels
+ * now run at the dimmed setting the pod's own dial claims, so the untreated room is genuinely
+ * crushed rather than merely darker — and it needed one plain line under each panel saying
+ * what you are looking at. Two panels and two sentences.
+ */
+
+export function NightFrame({
+  treated,
+  /**
+   * The soundtrack, as a line of subtitle whose size is its loudness.
+   *
+   * This page has no audio, and an earlier version of this scene concluded from that
+   * that the audio half of the product could not be shown at all: a printed line of
+   * dialogue is identical whether it is whispered or shouted, so the line was deleted
+   * and a bar meter was left to carry it alone.
+   *
+   * That conclusion was wrong, and the way out is the one every silent medium uses. Set
+   * the whisper at ten pixels and the explosion at forty and the page has a loudness
+   * channel — one a reader interprets instantly and without being taught. Which also
+   * makes the product visible in a way no meter does: on the untreated side the two go
+   * from 10px to 40px, and on the treated side they sit at 23px and 28px. That gap
+   * closing *is* the compressor, drawn at a size you cannot miss.
+   */
+  say,
+  /** 0 to 1. Drives the size, the weight and the opacity of the line above. */
+  loud,
+}: {
+  treated: boolean;
+  say: string;
+  loud: number;
+}) {
   return (
     <div className="nn-frame" data-treated={treated}>
       {/* The filter chain is in the stylesheet: both panels share an exposure the
@@ -221,6 +263,22 @@ export function NightFrame({ treated }: { treated: boolean }) {
         {/* One shock frame across the whole picture, for the cut itself. */}
         <span className="nn-flash" />
       </div>
+
+      {/* The soundtrack, printed at its own volume.
+          Outside `.nn-shot` on purpose. Everything in that element goes through
+          `brightness()` and, on the treated panel, the extension's lookup table — which is
+          the point for the room and exactly wrong for a caption about it. Inside the filter
+          this would blow out white along with the explosion on one side and be tone-mapped
+          on the other, so the one element whose *size* is the whole message would also be
+          two different colours for no reason. */}
+      <span
+        className="nn-say"
+        data-showing={say !== ""}
+        style={{ "--loud": loud } as React.CSSProperties}
+        aria-hidden="true"
+      >
+        {say}
+      </span>
     </div>
   );
 }

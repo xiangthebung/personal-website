@@ -43,6 +43,7 @@
 
 import { useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { ViewportLayer } from "../scene/viewport-layer";
 import { useOnScreen } from "../use-on-screen";
@@ -193,6 +194,52 @@ const STOPS: readonly StopCard[] = [
 
 /** The lead time an alert fires at, from the extension's own defaults. */
 const ALERT_LEAD_MINUTES = 5;
+
+/**
+ * The three things the extension does, on the three things doing them.
+ *
+ * This scene has always been full of numbers and short of a reason to care about any of
+ * them. A badge counting down, a notification and three stop rows are all *evidence*, and
+ * the claims they were evidence for were in a column beside the scene: the countdown is
+ * there with nothing open, the positions are real so a late bus reads as late, and it
+ * reaches you before you thought to look. Nobody read them, because a road with a bus on
+ * it was moving four inches to the right.
+ *
+ * So each claim is pinned to its evidence and arrives on the beat the evidence does.
+ *
+ * The first two leave when the popup opens. The popup hangs off the toolbar button and
+ * covers most of the window beneath it, so a label parked up there would be a label on
+ * top of the thing the next five beats are about. The badge keeps counting behind it
+ * either way, which is the point they were making.
+ */
+const SPECS: readonly SpecTag<BeatName>[] = [
+  /* On the toolbar button, then on the bell, and the first hands over to the second rather
+     than sitting beside it. Both belong on the same 40px strip of browser chrome, reading
+     leftward because there is nothing to the right of either, and two labels there at once
+     are two labels on top of each other. Handing over is also the better order: the badge
+     makes its claim, and then the thing that interrupts you makes the next one. */
+  { at: "street", text: "Counts down with nothing open", x: 91.5, y: 4.5, side: "left", until: "alert" },
+  /* One row lower than the badge's label, and pointing up at the bell from just beneath it
+     rather than straight at it. On the same line it reached back across the extension's own
+     button — and the countdown in that badge is running for the whole scene, so covering it
+     for three and a half seconds costs something the frame is still using. */
+  { at: "alert", text: "It taps you five minutes out", x: 96.5, y: 10, side: "left", until: "open" },
+  /* Anchored on the popup's own left edge and reading away from it, rather than on the
+     "2 min late" text it is about. Sitting on the row meant sitting on top of two lines of
+     it — the whole panel is 420px of dense type and there is no gap inside it big enough
+     for a label. Pointing at the edge of the card costs a little precision and covers
+     nothing. Stays to the end: the popup does not move again, and this is the claim worth
+     leaving up.
+
+     It read "Real positions, so late reads late", which is a sentence explaining its own
+     joke. What it was reaching for has an ordinary name that every transit app on a phone
+     already uses, and a visitor knows what it means without being walked through the
+     consequence. */
+  { at: "stops", text: "Real-time bus tracking", x: 54, y: 43, side: "left" },
+];
+
+/** The extension's toolbar button, in the pod's own percentages. */
+const SPEC_ORIGIN = { x: 91.5, y: 4.5 };
 
 /**
  * The afternoon behind the popup. It is set dressing with one job: the thing at
@@ -723,8 +770,17 @@ export function GrtNextBusDemo() {
         />
       )}
 
-      {/* No caption. Every figure this scene is about is already printed on the badge,
-          the notification and the three stop rows. */}
+      {/* Still no caption. The figures were never the problem — they are all printed on
+          the badge, the notification and the three stop rows. What was missing was any
+          statement of why a number on a toolbar is worth having, and that is now pinned to
+          the number. See `SPECS`. */}
+      <SpecTags
+        beats={BEATS}
+        beat={beat}
+        tags={SPECS}
+        origin={SPEC_ORIGIN}
+        className="gx-specs"
+      />
     </div>
   );
 }

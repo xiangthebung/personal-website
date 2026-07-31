@@ -26,6 +26,7 @@
 import { useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useSectionBeat } from "../scene/section-beat";
+import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
@@ -235,6 +236,40 @@ const CURSOR: Partial<Record<BeatName, string>> = {
  *
  * So it is gone. The `ACT_NAMES` rail is the label.
  */
+/**
+ * Two claims, on the two things making them.
+ *
+ * The act rail names the four parts and lights the one playing, which is why this scene
+ * never needed a caption. What it did need, and what was sitting in a column beside it
+ * instead, was the *point* of two of those parts. "Notes sit over the slide, faint until
+ * you move towards them" is a description of a mechanism the frame performs but does not
+ * name — the card prints `0.26` and then `1.00`, which is the number, not the reason. And
+ * "It writes quizzes and flashcards from your own deck" is the one claim in this section
+ * that nothing on screen can support: a quiz card looks exactly the same whether a person
+ * typed it or the deck produced it.
+ *
+ * Both leave when their act does, because both are pinned to a panel the next act
+ * replaces.
+ *
+ * Coordinates are percentages of `.pdfx-stage`, not of the pod. The stage is the
+ * positioned box the slide and the panel live in — the same box `PhantomCursor` is handed,
+ * for the same reason, and there is a long note on `frameRef` below about what happens when
+ * something in this scene is measured against the wrong one.
+ */
+/* Both are anchored a couple of pixels *outside* the left edge of the panel they are about
+   and read away from it, into the slide. Inside, they cover the thing they are pointing at:
+   the notes card is a solid block of type with no gap big enough, and on the quiz the only
+   free space was the kicker row, where the label landed squarely on the "Quiz" chip. The
+   slide beside them is a title and three short bullets with room to spare. */
+const SPECS: readonly SpecTag<BeatName>[] = [
+  { at: "resting", text: "Faint until you reach for it", x: 56, y: 62, side: "left", until: "split" },
+  /* "your own deck" is what somebody who works on slide software calls a set of slides. */
+  /* Low enough to clear the slide's title. At y 30 the plate ran straight through "Signal
+     Time-of-Flight", which is the one piece of text on that side of the frame a visitor is
+     actually reading; down here it crosses the figure, which is decorative line art. */
+  { at: "to-quiz", text: "Quizzes made from your slides", x: 57, y: 55, side: "left", until: "to-match" },
+];
+
 const LETTERS = ["A", "B", "C", "D"];
 
 export function PdfExplainerDemo() {
@@ -516,10 +551,16 @@ export function PdfExplainerDemo() {
             token={`${run}-${beat}`}
           />
         )}
+
+        {/* Inside the stage, for the same reason the cursor is: these are percentages of
+            the box the slide and the panel are laid out in, and the pod around it is taller
+            by an act rail. See `SPECS`. */}
+        <SpecTags beats={BEATS} beat={beat} tags={SPECS} className="pdfx-specs" />
       </div>
 
-      {/* No caption. The act rail across the top names the four parts and lights the one
-          you are watching, which is the only labelling this scene ever needed. */}
+      {/* Still no caption. The act rail across the top names the four parts and lights the
+          one you are watching, and the two labels inside the stage carry the only claims
+          the frame cannot make on its own. */}
     </div>
   );
 }

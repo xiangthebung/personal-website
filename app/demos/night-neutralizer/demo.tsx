@@ -66,10 +66,10 @@ const SATURATION = VIDEO_PARAMS.saturation.toFixed(3);
 const [VIDEO_READING] = describeVideoEffect(STRENGTH);
 const [AUDIO_READING] = describeAudioEffect(STRENGTH, true);
 
-type BeatName = "night" | "whisper" | "blast" | "boom" | "settle" | "hold";
+type BeatName = "night" | "dark" | "whisper" | "blast" | "boom" | "settle" | "hold";
 
 /**
- * Six beats, ten and a half seconds.
+ * Seven beats, thirteen seconds.
  *
  * Every beat in this scene asks for a *comparison* — two panels, and the difference
  * between them is the whole product — and a comparison takes about twice as long to
@@ -79,83 +79,139 @@ type BeatName = "night" | "whisper" | "blast" | "boom" | "settle" | "hold";
  * across it, so the shot was still moving when the beat ended.
  *
  * The cut in the middle is the exception and stays a cut.
+ *
+ * The scene runs the product's four claims in order, one per beat, and each one is a pair
+ * of three-word verdicts under two panels: dark scenes brighter, quiet parts louder, loud
+ * parts quieter, and nothing to adjust. That order is deliberate — the two video beats
+ * bracket the two audio ones, so the last thing a visitor sees is the summary rather than
+ * a bang.
+ *
+ * There was a `look` beat here that drew dashed rings around three objects in the dark and
+ * counted them. It was a reading aid for a comparison that was not landing, and it made
+ * things worse: a visitor met two dark rectangles covered in dotted boxes and had to work
+ * out what the boxes were before they could use them. The comparison did not need
+ * scaffolding, it needed an honest exposure and a plain sentence, which is what `dark` is.
  */
 const BEATS: readonly Beat<BeatName>[] = [
-  // Two dark panels and four labels. Nothing is happening yet, on purpose: this is
+  // Two dark panels and two labels. Nothing is happening yet, on purpose: this is
   // where a visitor works out that they are looking at the same shot twice.
-  { name: "night", ms: 2400 },
-  // The subtitle and the level meter beside it, which is a second comparison inside
-  // the first one.
-  { name: "whisper", ms: 2100 },
+  { name: "night", ms: 2000 },
+  // Claim one, and the one the section is named for. Long enough to look left, look
+  // right and come back, which is what any comparison costs.
+  { name: "dark", ms: 2600 },
+  // Claim two: a line of dialogue printed at the size it sounds. Ten pixels against
+  // twenty-three, which is the whole audio argument in one glance.
+  { name: "whisper", ms: 2800 },
   /* A cut is a cut. It should feel like an assault — but the white flash it fires is
      a 190ms transition, so anything under about 300ms cut off its own punch.
      It shares `boom`'s caption rather than carrying one of its own: 300ms was the
      shortest caption exposure anywhere on the site, and "Then something explodes" is
      the one line on this page that a picture says better than prose can. */
   { name: "blast", ms: 300 },
-  // The frame the whole section exists to produce: one panel blown to white with its
-  // meter pinned, one panel intact under a ceiling.
-  { name: "boom", ms: 2400 },
+  // Claim three, and the frame the whole section exists to produce: one panel blown to
+  // white with `[EXPLOSION]` at forty pixels, one panel intact with it at twenty-eight.
+  { name: "boom", ms: 2600 },
   // Longer than the 1400–1500ms fades the stylesheet runs on the fire and the spill,
   // so the room is actually back to dark before the beat is over.
-  { name: "settle", ms: 2300 },
-  // 1200ms was under the caption floor and was only clearing it on the loop gap.
-  { name: "hold", ms: 1400 },
+  { name: "settle", ms: 2000 },
+  // Claim four: the summary, which is the sentence a visitor should leave with.
+  { name: "hold", ms: 1800 },
 ];
 
 /**
- * What is making noise, and how much of it.
+ * The soundtrack, per beat, per panel — and the one table that drives every audio thing
+ * on screen.
  *
- * There was a line of dialogue beside this meter, set like a burnt-in cinema subtitle,
- * and it took three attempts and a plain observation to see that the whole idea was
- * broken. It was "…we should not be here", then "I said I'd call you when we landed",
- * then "Have you seen my keys?", each replacement chasing the wrong fault — first that
- * the line was too ominous, then that it implied a story the reader could not
- * reconstruct.
+ * `loud` is a level from 0 to 1. It sets the size of the printed line, the number of lit
+ * segments on that panel's meter, and how solid the line looks. One number rather than
+ * three, because the three are the same fact and the previous version had them declared in
+ * three different places: a `level: "low" | "peak"` here, a `--lit-raw` per beat in the
+ * stylesheet, and no size channel at all.
  *
- * The actual fault: *this page has no sound*. A subtitle exists because you cannot hear
- * something, and a visitor here cannot hear anything at all, so a quiet line is
- * indistinguishable from a loud one and nothing about the beat lands. Printing dialogue
- * to demonstrate inaudibility on a silent page is a conceit that only works if you
- * already know what it is for.
+ * WHY THE LINE IS PRINTED AT ALL
  *
- * The meter survives, and does the job on its own: dialogue at two bars of seven, then
- * an explosion at all seven with the top three hot, and the label saying the volume did
- * not change in between. That is the argument, made in the one medium the page actually
- * has.
+ * An earlier version of this scene deleted it, and the reasoning was that this page has no
+ * audio, so a printed line of dialogue reads identically whether it is whispered or
+ * shouted, so it cannot demonstrate anything about volume. Every step of that is true and
+ * the conclusion is still wrong: it assumes the only channel available is the words. Set
+ * the whisper at ten pixels and the explosion at forty and loudness is on screen, in a
+ * form a reader decodes without being told.
+ *
+ * And it shows the product better than a meter does. Untreated, the two lines are 10px and
+ * 40px. Treated, they are 23px and 28px. A four-fold difference becoming a slight one is
+ * exactly what a compressor is, and here it is a thing you see rather than a claim.
+ *
+ * `[EXPLOSION]` in brackets because that is how a real subtitle track prints a sound that
+ * is not speech — so the convention does the work of explaining why a noise has words.
  */
-const SOUND: Partial<Record<BeatName, { level: "low" | "peak"; what: string }>> = {
-  whisper: { level: "low", what: "dialogue" },
-  /* "same volume" is the punchline, and it belongs on the meter rather than only in the
-     caption. The two beats are one setting and two wildly different levels; a label
-     that just says "explosion" leaves the reader to remember, four seconds later, that
-     nothing about the playback changed in between. */
-  blast: { level: "peak", what: "explosion · same volume" },
-  boom: { level: "peak", what: "explosion · same volume" },
+interface Level {
+  readonly db: string;
+  readonly loud: number;
+}
+
+const SOUND: Record<BeatName, { readonly say: string; readonly before: Level; readonly after: Level }> = {
+  // Room tone. No line, and the meters idle rather than sitting at zero.
+  night: { say: "", before: { db: "", loud: 0.08 }, after: { db: "", loud: 0.2 } },
+  dark: { say: "", before: { db: "", loud: 0.08 }, after: { db: "", loud: 0.2 } },
+  whisper: {
+    say: "…did you hear that?",
+    before: { db: "−38 dB", loud: 0.08 },
+    after: { db: "−21 dB", loud: 0.46 },
+  },
+  /* The cut and the frame after it are one event, so they carry one reading. `0 dB` is
+     the top of the scale, which is why it is the number that reads as a problem. */
+  blast: { say: "[EXPLOSION]", before: { db: "0 dB", loud: 1 }, after: { db: "−9 dB", loud: 0.62 } },
+  boom: { say: "[EXPLOSION]", before: { db: "0 dB", loud: 1 }, after: { db: "−9 dB", loud: 0.62 } },
+  settle: { say: "", before: { db: "", loud: 0.12 }, after: { db: "", loud: 0.22 } },
+  hold: { say: "", before: { db: "", loud: 0.08 }, after: { db: "", loud: 0.2 } },
 };
 
-const VOL_BARS = 7;
+/**
+ * One line under each panel: what you are looking at, in the plainest words available.
+ *
+ * `[before, after]`, always a matched pair, so a visitor reads across rather than down.
+ * Three or four words each, and between them they are the whole product: dark scenes
+ * brighter, quiet parts louder, loud parts quieter, nothing to adjust.
+ *
+ * This wording is the third attempt and the first one written for somebody who has not
+ * seen the extension. The first said "shadows crushed" against "shadow detail recovered",
+ * which is a comparison between two pieces of colourist vocabulary. The second said "one
+ * black mass" against "a room with things in it", which is better prose and still leaves a
+ * reader to infer the general rule from one example. These state the rule.
+ *
+ * `settle` and `hold` share their pair on purpose: 3,800ms on the closing statement, which
+ * is the one worth leaving with. It answers the objection the whole section exists for —
+ * the alternative to this extension is not a worse picture, it is spending the film with
+ * your hand on the remote.
+ */
+const VERDICT: Partial<Record<BeatName, readonly [string, string]>> = {
+  dark: ["too dark to see", "dark scenes brighter"],
+  whisper: ["too quiet to hear", "quiet parts louder"],
+  boom: ["blown out to white", "bright scenes darker"],
+  settle: ["you'd be adjusting all night", "nothing to adjust"],
+  hold: ["you'd be adjusting all night", "nothing to adjust"],
+};
 
 /**
- * The caption, one line per beat.
+ * The two controls this product exists to stop you reaching for.
  *
- * There were two: one for the explosion, one for everything else. Both were written
- * for somebody who already knows what a transfer curve and a limiter ceiling are —
- * "the transfer curve separates shadow detail before it rolls off the highlights" is
- * a sentence about the mechanism, and the panels underneath were already showing the
- * mechanism. What they were not saying was the plain thing: these are the same shot,
- * and one of them you can see.
+ * They are on screen, they have numbers, and neither of them changes for the entire scene.
+ * That is the point, and it has to be said out loud for two reasons. The honest objection
+ * to any before/after of this shape is *you just turned it up on the right* — and the
+ * answer is structural: both panels share one `--exposure` and one printed level, and the
+ * only asymmetry in the document is one `url(#nn-tone-curve)` in a filter chain. Dials that
+ * visibly sit still while the panels visibly stop matching say that in a way a sentence
+ * cannot.
  *
- * So the numbers stay where they belong, under each panel, where they are derived from
- * the extension's own `describeVideoEffect`. The caption's job is to say which frame
- * this is. One line each: the stylesheet reserves `min-height: 1.5em`, so a caption
- * that wraps shifts the panels above it.
+ * The second reason is the product itself. What a person actually does at midnight is ride
+ * these two knobs for two hours, and "you would not have to" is the pitch.
  */
-/* Named by their labels rather than by their positions. These said "left" and "right",
-   which is true at a desktop width and false on a phone, where the split stacks and
-   "left blows out to white" points at a panel that is above rather than beside. Using
-   the words already printed on the two panels — Before and After — is correct in both
-   layouts and saves the reader working out which is which. */
+const DIALS = [
+  { name: "brightness", percent: 38 },
+  { name: "volume", percent: 30 },
+] as const;
+const DIAL_STEPS = 8;
+
 /** Level meter. Fourteen segments, with a limiter ceiling above the ninth. */
 const SEGMENTS = 14;
 
@@ -172,9 +228,22 @@ const SEGMENTS = 14;
  */
 const CEILING = 9;
 
-function Meter({ treated }: { treated: boolean }) {
+/**
+ * How many segments a level lights.
+ *
+ * Derived from the same `loud` figure that sets the printed line's size, rather than
+ * declared per beat in the stylesheet as it used to be. Two hand-maintained lists of the
+ * same numbers is how a meter ends up disagreeing with the thing beside it.
+ */
+function Meter({ treated, loud }: { treated: boolean; loud: number }) {
+  const lit = Math.round(loud * SEGMENTS);
   return (
-    <div className="nn-meter" data-treated={treated} aria-hidden="true">
+    <div
+      className="nn-meter"
+      data-treated={treated}
+      style={{ "--lit": lit } as React.CSSProperties}
+      aria-hidden="true"
+    >
       {Array.from({ length: SEGMENTS }, (_, index) => (
         <span
           className="nn-seg"
@@ -186,6 +255,43 @@ function Meter({ treated }: { treated: boolean }) {
       {/* The ceiling the limiter holds. Only the treated side has one. */}
       {treated && <span className="nn-ceiling" />}
     </div>
+  );
+}
+
+/** One panel: a label with its live level, the shot, and one line about what you see. */
+function Panel({
+  title,
+  treated,
+  level,
+  say,
+  verdict,
+}: {
+  title: string;
+  treated: boolean;
+  level: Level;
+  say: string;
+  verdict: string;
+}) {
+  return (
+    <section className="nn-panel">
+      {/* The label row carries the level reading, which is where the static
+          "peaks at maximum" / "held under a ceiling" pair used to sit. Those were two
+          different kinds of statement — an alarm and a mechanism — and neither changed,
+          so neither said anything about the frame underneath. */}
+      <p className="nn-label">
+        <span>{title}</span>
+        <b className="nn-db" data-showing={level.db !== ""} data-hot={level.db === "0 dB"}>
+          {level.db}
+        </b>
+      </p>
+      <div className="nn-panel-body">
+        <NightFrame treated={treated} say={say} loud={level.loud} />
+        <Meter treated={treated} loud={level.loud} />
+      </div>
+      <p className="nn-verdict" data-showing={verdict !== ""}>
+        {verdict}
+      </p>
+    </section>
   );
 }
 
@@ -216,12 +322,14 @@ export function NightNeutralizerDemo() {
          that only applies here: the two panels stack on a narrow screen, and a screen
          reader user has no way of knowing which layout they are being described. */
       aria-label={
-        "The same night-time shot twice, labelled before and after. Before: the room " +
-        "is too dark to make anything out, and an explosion outside the window blows " +
-        "the picture to flat white and drives the level meter into the red. After, " +
-        "through Night Neutralizer: the same room shows a bookcase, a clock, a plant " +
-        "and a rug, and the same explosion keeps the shape of its fireball and stays " +
-        "under a volume ceiling."
+        "The same night-time shot twice, labelled before and after, at one brightness " +
+        "setting and one volume setting that never change. Before: the room is too dark " +
+        "to see, a whispered line reads at minus 38 decibels, and an explosion outside " +
+        "the window blows the picture to flat white and peaks at 0 decibels. After, " +
+        "through Night Neutralizer: the dark scene is brighter, the whisper is lifted to " +
+        "minus 21 decibels, and the same explosion is held to minus 9 decibels under a " +
+        "limiter ceiling while the picture keeps the shape of its fireball. Neither the " +
+        "brightness nor the volume was adjusted to achieve any of it."
       }
     >
       {/* The extension's real transfer function, as the extension installs it.
@@ -276,63 +384,85 @@ export function NightNeutralizerDemo() {
         </defs>
       </svg>
 
+      {/* --- what is fixed about this comparison ----------------------------------
+          Two statements true of every frame, so they sit above the film rather than
+          changing inside it: the panels are one shot, and the two knobs a person would
+          otherwise be riding all evening are set once and never touched.
+
+          The dials are load-bearing. The obvious objection to any before/after of this
+          shape is that the right-hand side has simply been turned up, and the answer —
+          both panels share one `--exposure` and one printed level, the only difference in
+          the document is one filter primitive — is not something a picture can say. Two
+          numbers that plainly do not move while the panels plainly do is.
+
+          A third chip here read "protected stream · still works". It was true and it was
+          for somebody who has already been let down by another extension; a first-time
+          visitor reads "protected stream" and has to stop and wonder what that is. */}
+      <div className="nn-rig" aria-hidden="true">
+        <span className="nn-rig-chip">
+          <svg viewBox="0 0 24 24" className="nn-rig-glyph">
+            <g fill="none" stroke="currentColor" strokeWidth="1.6">
+              <rect x="2.8" y="5.6" width="12.6" height="10" rx="2" />
+              <rect x="8.6" y="8.4" width="12.6" height="10" rx="2" />
+            </g>
+          </svg>
+          the same shot, twice
+        </span>
+
+        <span className="nn-dials">
+          {DIALS.map((dial) => (
+            <span className="nn-dial" key={dial.name}>
+              <span className="nn-dial-name">{dial.name}</span>
+              <span className="nn-dial-track">
+                {Array.from({ length: DIAL_STEPS }, (_, step) => (
+                  <i key={step} data-on={step < Math.round((dial.percent / 100) * DIAL_STEPS)} />
+                ))}
+              </span>
+              <b>{dial.percent}%</b>
+            </span>
+          ))}
+          <small>set once, never touched</small>
+        </span>
+      </div>
+
       <div className="nn-split">
         {/* "Before" and "After", not "As shipped" and "Night Neutralizer".
             The old pair was accurate and made the reader work: "as shipped" is
             industry shorthand, and putting the product's name on the right half
             meant the two labels were not even the same kind of thing, so nothing
             told you at a glance which one you were supposed to prefer. */}
-        {/* The small notes beside each label used to be "peaks at 0 dB" and
-            "strength 45" — a measurement in units a visitor may not read, paired with
-            a slider position for a slider that is not on screen. They are the same
-            kind of statement now, both about the thing the meters are doing, so the
-            pair can be compared without knowing what 0 dB is. The strength figure was
-            the only casualty and it was not carrying its space: nothing here lets you
-            change it. */}
-        <section className="nn-panel">
-          <p className="nn-label">
-            <span>Before</span>
-            <small data-alarm>peaks at maximum</small>
-          </p>
-          <div className="nn-panel-body">
-            <NightFrame treated={false} />
-            <Meter treated={false} />
-          </div>
-          <p className="nn-reading">Shadows crushed · highlights clipped</p>
-        </section>
-
-        <section className="nn-panel">
-          <p className="nn-label">
-            <span>After</span>
-            <small>held under a ceiling</small>
-          </p>
-          <div className="nn-panel-body">
-            <NightFrame treated />
-            <Meter treated />
-          </div>
-          <p className="nn-reading">
-            {VIDEO_READING} · {AUDIO_READING}
-          </p>
-        </section>
+        <Panel
+          title="Before"
+          treated={false}
+          level={SOUND[beat].before}
+          say={SOUND[beat].say}
+          verdict={VERDICT[beat]?.[0] ?? ""}
+        />
+        <Panel
+          title="After"
+          treated
+          level={SOUND[beat].after}
+          say={SOUND[beat].say}
+          verdict={VERDICT[beat]?.[1] ?? ""}
+        />
       </div>
 
-      {/* What the soundtrack is doing, on one meter.
-          The line of dialogue that used to sit beside this is gone — see the note on
-          `SOUND`. The meter stays, because the volume half of the argument has to be
-          visible on a silent page and a meter is how you show sound without any. */}
-      <div className="nn-subrow" data-showing={Boolean(SOUND[beat])} aria-hidden="true">
-        <span className="nn-vol" data-level={SOUND[beat]?.level ?? "low"}>
-          <span className="nn-vol-bars">
-            {Array.from({ length: VOL_BARS }, (_, index) => (
-              <i key={index} style={{ "--vol": index } as React.CSSProperties} />
-            ))}
-          </span>
-          <small>{SOUND[beat]?.what ?? ""}</small>
-        </span>
-      </div>
+      {/* The extension's own account of what it is doing, from `describeVideoEffect` and
+          `describeAudioEffect` in the vendored core. One line, under both panels, because
+          it describes the setting rather than either frame — which is why it read oddly
+          sitting under the treated panel as though it were that panel's caption.
 
-      {/* No caption. The two panels are labelled Before and After and carry the
-          extension's own readings underneath them. */}
+          It is the only place on this page where the effect is quantified, and it stays
+          for that reason: the four verdicts above say what changed, and a reader who wants
+          to know by how much should not have to open the repository to find out. */}
+      <p className="nn-spec" aria-hidden="true">
+        At strength {STRENGTH} · {VIDEO_READING} · {AUDIO_READING}
+      </p>
+
+      {/* No caption, and nothing left for one to do. Two panels labelled Before and
+          After, each printing the soundtrack at the size it sounds and one plain line
+          about what you are looking at; two dials above that never move; and the
+          extension's own figures underneath. */}
     </div>
   );
 }

@@ -6,10 +6,28 @@
  * pictures went stale — four of the projects had been renamed, one had been
  * rewritten from scratch, and one did not exist yet.
  *
- * So a project no longer carries media. It carries an id for a demo component
- * that runs the actual thing, and a short list of facts that are checkable by
- * reading the source it links to. If a fact here cannot be found in that
- * repository, it should be deleted rather than softened.
+ * So a project no longer carries media. It carries an id for a demo component that runs
+ * the actual thing.
+ *
+ * It no longer carries a feature list either, and that was the second half of the same
+ * mistake. Every project had three written notes set in a column beside its scene, and the
+ * observation that killed them is one anybody makes in the first ten seconds of the page:
+ * *nobody reads the description while the animation is running*. The scene and the list
+ * were competing for the same attention, the list lost every time, and it was still taking
+ * up the room — so the page was explaining itself in the one place a visitor was
+ * guaranteed not to be looking.
+ *
+ * The claims did not go; they moved into the frames. Each scene now labels its own
+ * evidence — "Notifications muted" beside the badge that just lost its red, "0 of 3" over
+ * the shot you cannot see anything in, "Real positions, so late reads late" on the row
+ * that says a bus is two minutes late. See `demos/scene/spec.tsx` for the component and
+ * each pod's own `SPECS` for what it claims.
+ *
+ * What survives here is a name, a platform, a headline and a reason. A section needs a
+ * title and one sentence about the problem, because a problem is the one thing a
+ * demonstration of the solution cannot state. Everything past that belongs on screen, next
+ * to the thing doing it. If a claim cannot be found by reading the repository the section
+ * links to, it should be deleted rather than softened.
  */
 
 /** Which demo component a section mounts. */
@@ -64,40 +82,28 @@ export type Project = {
    * the wrong promise now that they are films.
    */
   /**
-   * Optional, and most projects no longer have one.
+   * One line of framing above the scene, and exactly one project still has one.
    *
-   * This was the last layer of prose to be audited, and three of the seven were saying
-   * something already on the same screen. PDF Explainer's "Four parts of the workspace,
-   * in turn" sat directly above a rail naming all four and lighting the one playing.
-   * GRT's "Nothing open. Five minutes out, it tells you" was both of its own notes,
-   * shortened. N-Back's "Two back: now, against two cues ago" was the fourth statement of
-   * that rule on one screen, after the caption, the strip's own `2 BACK` badge and the
-   * register chips in the backdrop.
+   * There were seven, then four, and now one, and each round of cutting was the same
+   * discovery in a different place: the line was saying something the frame beneath it
+   * was already showing. PDF Explainer's "Four parts of the workspace, in turn" sat
+   * directly above a rail naming all four and lighting the one playing. GRT's "Nothing
+   * open. Five minutes out, it tells you" was both of its own notes, shortened.
    *
-   * What earns one: an instruction the visitor needs (Choir — the score has to be
-   * clicked), or a fact about the scene's *structure* that nothing in the frame states
-   * (Decaf and PagePack both run a before and an after; Night Neutralizer's two panels
-   * are the same shot, which two dark rectangles cannot say for themselves).
+   * The last three went when the scenes learned to label themselves. Night Neutralizer's
+   * "The same shot, twice" is now a chip in the pod's own rig, over the two panels it is
+   * about. Decaf's "A feed at full volume, then the same feed on Decaf" is answered by six
+   * labels that fly out of the switch and land on the six things it changed. PagePack's
+   * "One save, then the connection dies" was a summary of a film that is perfectly clear
+   * while you watch it.
+   *
+   * What is left earns it, on the one ground prose still has over a moving picture: it can
+   * make a claim about the *status* of what you are looking at. Choir Practice is the real
+   * application, running, and no amount of watching it can tell you that rather than that
+   * it is a very good reconstruction. It also has the one instruction on the page, because
+   * it is the one thing that has to be clicked.
    */
   invitation?: string;
-  /**
-   * Three short notes about the project. Fragments, not sentences.
-   *
-   * This was `facts`, and it read like one: five or six full lines each, stacked
-   * into a bulleted column beside every scene. Two problems with that. It was more
-   * words than anyone reads beside something that is moving — the scene and the
-   * list competed, and the list lost while still taking up the room. And the
-   * register was flat: a row of declarative claims about software reads as a
-   * specification sheet, which is the opposite of curious.
-   *
-   * So: three, short, and only the things a picture cannot say on its own. Where a
-   * note and the scene would say the same thing, the note goes and the scene keeps
-   * it — that is the whole point of having seven of them running.
-   *
-   * Still no counts of anything, and still nothing that cannot be found by reading
-   * the repository the section links to.
-   */
-  notes: string[];
 };
 
 const projectData: Project[] = [
@@ -136,15 +142,13 @@ const projectData: Project[] = [
     live: "https://satb-practice.xiangli3625.workers.dev/",
     demo: "choir-practice",
     well: "dark",
-    /* "Sound is one press away" was true when the press was the app's own Play button,
-       two clicks in. Clicking the score starts it now, and the section listens to what
-       comes out — so the line says what to do and what happens. */
+    /* The one line of framing left on the page, and the only one that was not restating
+       the frame under it. Two claims, neither of which the pod can make by running: that
+       this is the actual application rather than a reconstruction of it, and that it needs
+       a click. Everything the three deleted notes said is inside the frame now — the mixer
+       and the pitch detector carry leader lines to the app's own controls, and the four
+       voices are discs in the score's own colours moving with the mix. */
     invitation: "The real app, on a real score. Click it and all four parts sing.",
-    notes: [
-      "Turn your part up and the other three down, or the reverse",
-      "It sings all four parts itself, so you never need a recording",
-      "Sing along and it shows whether you were sharp or flat",
-    ],
   },
   {
     id: "decaf",
@@ -161,22 +165,12 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/Decaf",
     demo: "decaf",
     well: "light",
-    /* Describes the whole scene, not its last third. The previous line — "The same feed,
-       with all of it switched off" — was written when the scene opened already drained,
-       and it sat above two seconds of ordinary feed, ten seconds of flood and a pointer
-       reaching for a button, all of it flatly contradicting the caption directly above
-       it. This one is a before and an after, which is the shape the beats actually run
-       in. */
-    invitation: "A feed at full volume, then the same feed on Decaf.",
-    /* These were written from the inside. "Empties the feed where it sits, without
-       the page jumping" is a thing I was pleased with in the code and nothing a
-       person wants; "Badges" meant notification badges and did not say so. Each line
-       now names something the reader would notice happening to them. */
-    notes: [
-      "The colour, the view counts and the autoplay all switch off",
-      "Notification badges keep their number but lose the red",
-      "The feed isn't blocked, just three seconds away. Tomorrow, seven.",
-    ],
+    /* No invitation and no notes. This section was the clearest case of the problem: the
+       three notes here were the only place the page said what Decaf does, and they sat
+       beside ten seconds of hearts crossing the screen. Every one of them is now a label
+       that flies out of the toolbar switch and lands on the thing it changed — the
+       greyscaled media, the hidden counts, the muted badge that keeps its number, the
+       suggestions column that goes. The escalating hold was always in the notice card. */
   },
   {
     id: "pdf-explainer",
@@ -188,15 +182,14 @@ const projectData: Project[] = [
     why: "Otherwise you lose sight of the slide to read the explanation of it.",
     theme: "black",
     source: "https://github.com/xiangthebung/pdf-explainer",
+    live: "https://pdf-explainer.xiangli3625.workers.dev/",
     demo: "pdf-explainer",
     well: "light",
-    // No invitation. The act rail across the top of the scene names the four parts and
-    // lights the one playing, which is what this line was doing less precisely.
-    notes: [
-      "Notes sit over the slide, faint until you move towards them",
-      "Ask it questions about the slide you are looking at",
-      "It writes quizzes and flashcards from your own deck",
-    ],
+    /* The act rail across the top of the scene names the four parts and lights the one
+       playing, so there was never anything for an invitation to add. The two notes that
+       were carrying real information — the overlay wakes on approach, and the practice
+       material comes out of your own deck — are labels inside the stage now, on the panels
+       making those claims. */
   },
   {
     id: "pagepack",
@@ -210,12 +203,12 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/pagepack-extension",
     demo: "pagepack",
     well: "light",
-    invitation: "One save, then the connection dies.",
-    notes: [
-      "Saves the page exactly as you saw it, pictures and all",
-      "Follow the links and it takes the whole section with it",
-      "On a plane or underground, the saved copy just opens",
-    ],
+    /* This scene narrates itself better than any other on the page: the popup says
+       "Reading this page…", the badge lands on seven, the library head prints the page
+       count and the total, the crash screen says ERR_INTERNET_DISCONNECTED, and the reader
+       is stamped "saved copy · no network request". Two of the three notes were restating
+       those. The two claims the frame genuinely could not make — what got saved, and that
+       the save followed the links — are labels on the popup and on the cards. */
   },
   {
     id: "grt-next-bus",
@@ -229,13 +222,11 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/grt-bus-time",
     demo: "grt-next-bus",
     well: "light",
-    /* No invitation. It was "Nothing open. Five minutes out, it tells you", which is the
-       first and third notes below, shortened. */
-    notes: [
-      "The countdown sits on your toolbar with nothing open",
-      "Real bus positions, so a late bus shows up as late",
-      "It taps you on the shoulder five minutes before your bus",
-    ],
+    /* The scene was always full of numbers and short of a reason to care about any of
+       them — a badge counting down, a notification and three stop rows are evidence, and
+       the claims they were evidence for were in this list. All three are labels now, each
+       arriving on the beat its evidence does: on the badge, on the bell, on the row that
+       says a bus is running two minutes late. */
   },
   {
     id: "night-neutralizer",
@@ -243,22 +234,30 @@ const projectData: Project[] = [
     number: "06",
     name: "Night Neutralizer",
     platform: "Chrome extension",
-    headline: "Watch things at night without the volume war.",
-    why: "Turn the screen down and dark scenes vanish. Turn the volume down and the dialogue does.",
+    /* Both lines were rewritten because the pair had drifted into describing the product
+       twice. "Watch things at night without the volume war" is a benefit, and "turn the
+       screen down and dark scenes vanish" is a mechanism dressed as a problem — it asks the
+       reader to picture an adjustment they have not made yet in order to understand why they
+       would not want to make it.
+       The problem is much more ordinary than that, and everybody who watches anything late
+       has had it: you spend the film with a hand on the remote. So the headline says what
+       the extension does to the film, and the reason says what you are doing instead. */
+    headline: "Dark scenes brighter, loud scenes quieter, automatically.",
+    why: "Watching anything late means riding the volume and brightness for two hours: dialogue you can't hear, then a bang that wakes the house.",
     theme: "navy",
     source: "https://github.com/xiangthebung/night-neutralizer",
     demo: "night-neutralizer",
     well: "dark",
-    /* Trimmed. "Watch what the explosion does" was telling the visitor to watch a thing
-       that is about to be the loudest event on the page. What the line is for is the
-       first half: two dark rectangles side by side could be two different shots, and the
-       entire comparison depends on them being one. */
-    invitation: "The same shot, twice.",
-    notes: [
-      "Explosions come down, whispers come up",
-      "Dark scenes brighten without the bright ones blowing out",
-      "Works on the streaming sites that block other extensions",
-    ],
+    /* "The same shot, twice" was the last invitation to go and it was the one doing the most
+       work: two dark rectangles side by side could be two different shots, and the entire
+       comparison depends on them being one. It is a chip in the pod's own rig now, beside a
+       brightness dial and a volume dial that visibly never move — which answers the
+       objection the line could only assert.
+       The three notes went the same way, into four pairs of verdicts under the two panels:
+       dark scenes brighter, quiet parts louder, loud parts quieter, nothing to adjust. And
+       the audio half is legible on a silent page because the soundtrack is printed at the
+       size it sounds — a whisper at ten pixels, an explosion at forty, and both of them
+       landing within five pixels of each other once the extension has them. */
   },
   /* Last on purpose. It is the hardest section to arrive at cold — the other six
      describe a problem you have had, and this one has to teach a rule before its
@@ -274,17 +273,17 @@ const projectData: Project[] = [
     why: "Most versions look like a lab instrument or promise you a higher IQ. This one is four quiet minutes.",
     theme: "forest",
     source: "https://github.com/xiangthebung/n-back",
-    live: "https://n-back.ai.studio/",
+    /* Was `n-back.ai.studio`, which is where this was first hosted. It runs on Cloudflare
+       now, like everything else here, and the old host no longer serves it. */
+    live: "https://n-back.xiangli3625.workers.dev/",
     demo: "n-back",
     well: "dark",
-    /* No invitation. "Two back: now, against two cues ago" was the fourth statement of
-       that rule on one screen — the scene's caption teaches it with timing, the strip
-       carries a `2 BACK` badge, and the backdrop's register chips show the positions. */
-    notes: [
-      "Watch a square and hear a letter. Triple adds a colour.",
-      "Pressing everything scores worse than pressing nothing",
-      "Practice, not a test of you",
-    ],
+    /* No invitation: "Two back: now, against two cues ago" was the fourth statement of that
+       rule on one screen, after the caption, the strip's own `2 BACK` badge and the register
+       chips in the backdrop. And no notes: the three streams are chips beside the board,
+       including the colour one this film does not run, and the scoring rule sits under the
+       two keys it is about. This is the one scene that keeps a caption, because its subject
+       is a rule rather than an interface — see the note on `CAPTION` in the pod. */
   },
 ];
 
