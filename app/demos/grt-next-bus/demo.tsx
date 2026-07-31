@@ -217,13 +217,20 @@ const SPECS: readonly SpecTag<BeatName>[] = [
      than sitting beside it. Both belong on the same 40px strip of browser chrome, reading
      leftward because there is nothing to the right of either, and two labels there at once
      are two labels on top of each other. Handing over is also the better order: the badge
-     makes its claim, and then the thing that interrupts you makes the next one. */
-  { at: "street", text: "Counts down with nothing open", x: 91.5, y: 4.5, side: "left", until: "alert" },
+     makes its claim, and then the thing that interrupts you makes the next one.
+
+     Both lines were rewritten because they were phrased as arguments rather than as
+     descriptions. "Counts down with nothing open" is answering an objection nobody has
+     raised yet; what a visitor wants told is *what the thing they are looking at is*, which
+     is a countdown that lives on the toolbar. And "It taps you five minutes out" was doing
+     two odd things at once — a metaphor for a notification, and "five minutes out" as a
+     bare adverbial that reads as jargon. */
+  { at: "street", text: "Countdown on your toolbar", x: 91.5, y: 4.5, side: "left", until: "alert" },
   /* One row lower than the badge's label, and pointing up at the bell from just beneath it
      rather than straight at it. On the same line it reached back across the extension's own
      button — and the countdown in that badge is running for the whole scene, so covering it
      for three and a half seconds costs something the frame is still using. */
-  { at: "alert", text: "It taps you five minutes out", x: 96.5, y: 10, side: "left", until: "open" },
+  { at: "alert", text: "Alerts you before the bus arrives", x: 96.5, y: 10, side: "left", until: "open" },
   /* Anchored on the popup's own left edge and reading away from it, rather than on the
      "2 min late" text it is about. Sitting on the row meant sitting on top of two lines of
      it — the whole panel is 420px of dense type and there is no gap inside it big enough
@@ -382,18 +389,41 @@ export function GrtNextBusDemo() {
      picks: the badge follows where you are, not the top of the list. */
   const closest = STOPS[0];
   const closestBoard = board(closest, clock);
-  const closestLeft = closestBoard.head - clock;
   const badgeMinutes = minutesUntil(ANCHOR + closestBoard.head * 1000, now);
   const badgeText = formatBadge(ANCHOR + closestBoard.head * 1000, now);
 
-  /* The bus runs the same six minutes the countdown does. Past the arrival it is
-     driving away rather than starting over, so the position is taken from the beat
-     instead of from a departure that is now in the future. */
-  const ridden = beat === "gone" ? 1 : Math.min(1, Math.max(0, 1 - closestLeft / 360));
-  /* Still in shot on the way out. Sending it all the way off the edge left the last
-     beat of the loop looking at an empty road, which reads as the scene ending
-     rather than as a bus leaving. */
-  const busLeft = beat === "gone" ? 94 : -8 + ridden * (YOUR_STOP + 8);
+  /**
+   * Where the bus stands at the start of a given beat, as a percentage of the road.
+   *
+   * Both ends of the current move are published rather than one position, and that is the
+   * fix for a reported lag. The bus used to get a single `left` per beat and a 1.5s CSS
+   * transition to reach it — so on a 2,600ms beat it drove for a second and a half and then
+   * stood still for eleven hundred milliseconds. Nine lurches, each followed by a pause.
+   * Nothing was slow; it kept stopping.
+   *
+   * No transition can fix that, because the thing being animated only has a value at nine
+   * instants. So the stylesheet interpolates between these two with `--beat-t`, which the
+   * storyboard already writes onto the stage every frame without re-rendering anything. The
+   * bus becomes a continuous function of scene time, which is what it always should have
+   * been, for the cost of one custom property.
+   *
+   * `gone` is the one beat the countdown cannot place. Past the arrival the board has rolled
+   * on to the next run, so `board()` returns a departure twenty minutes out and the
+   * arithmetic puts the bus back at the start of the road. It is parked at the stop for that
+   * beat's start and drives off during it.
+   */
+  const busAt = (name: BeatName): number => {
+    if (name === "gone") return YOUR_STOP;
+    const at = CLOCK[name];
+    const left = board(closest, at).head - at;
+    const ridden = Math.min(1, Math.max(0, 1 - left / 360));
+    return -8 + ridden * (YOUR_STOP + 8);
+  };
+
+  const busFrom = busAt(beat);
+  /* Off the right-hand edge, so the last beat is a bus leaving rather than a bus parked
+     somewhere arbitrary. It used to stop dead at 94% and wait there. */
+  const busTo = beat === "gone" ? 104 : busAt(BEATS[(index + 1) % BEATS.length].name);
 
   const arrived = beat === "due";
   /* The worker refreshes predictions on a thirty-second alarm, so how stale the
@@ -740,7 +770,11 @@ export function GrtNextBusDemo() {
           <span
             className="gx-stop-tick"
             key={left}
-            data-passed={left < busLeft}
+            /* Against where the bus *is* at the start of the beat, not where it is heading.
+               Measured against the destination, every tick between here and there went spent
+               the moment the beat began — so the ticks the bus was still approaching were
+               already drawn as passed. */
+            data-passed={left < busFrom}
             style={{ left: `${left}%` }}
           />
         ))}
@@ -752,7 +786,11 @@ export function GrtNextBusDemo() {
             <span>Stop {closest.code}</span>
           </span>
         </span>
-        <span className="gx-bus-slot" style={{ left: `${busLeft}%` }} data-stopped={arrived}>
+        <span
+          className="gx-bus-slot"
+          style={{ "--bus-from": busFrom, "--bus-to": busTo } as React.CSSProperties}
+          data-stopped={arrived}
+        >
           {/* A wash of warm light thrown ahead of it. Faint on purpose: this is a
               bright mint afternoon, not a night scene, and the job is to give the
               bus a direction of travel rather than to light anything. */}

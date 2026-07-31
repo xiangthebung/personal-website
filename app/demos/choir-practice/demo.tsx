@@ -49,6 +49,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSectionBeat } from "../scene/section-beat";
 import { useOnScreen } from "../use-on-screen";
+import { useSectionFocused } from "../use-section-focus";
 
 /**
  * The score to open: Stanford's part song, 104 bars of plain SATB.
@@ -261,6 +262,31 @@ function startPlayback(frame: HTMLIFrameElement | null): boolean {
     const button = doc.querySelector<HTMLElement>(HOOKS.transport);
     if (!button) return false;
     if (button.getAttribute("aria-label") !== HOOKS.idleLabel) return false;
+    button.click();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Stops the piece, if it is going.
+ *
+ * The exact mirror of `startPlayback`, guard included, and it exists because four-part
+ * harmony carried on playing after the visitor had scrolled to another project. That is the
+ * worst version of the autoplay problem this pod was careful about at the other end: the
+ * music only ever starts on a deliberate click, and then followed you down the page anyway,
+ * with nothing on screen to connect it to. There is a twenty-second teardown that eventually
+ * unmounts the frame, so it did stop — long after it should have.
+ */
+function pausePlayback(frame: HTMLIFrameElement | null): boolean {
+  const doc = frame?.contentDocument;
+  if (!doc) return false;
+  try {
+    const button = doc.querySelector<HTMLElement>(HOOKS.transport);
+    if (!button) return false;
+    // Anything other than "Play" means it is playing; see `HOOKS.idleLabel`.
+    if (button.getAttribute("aria-label") === HOOKS.idleLabel) return false;
     button.click();
     return true;
   } catch {
@@ -492,6 +518,10 @@ export function ChoirPracticeDemo() {
   /* 400px of lead time: this frame has real work to do on load, and arriving at a
      half-drawn score is worse than arriving at a drawn one a moment late. */
   const onScreen = useOnScreen(rootRef, "400px 0px");
+  /* Whether this is the section the visitor is actually standing in. `onScreen` is the
+     wrong question for the music: it is true 400px before the section arrives and stays
+     true while the next project fills the screen. */
+  const focused = useSectionFocused(rootRef);
   const [mounted, setMounted] = useState(false);
   const [opened, setOpened] = useState(false);
   /** Whether the visitor has asked for the app, which is when it gets the wheel. */
@@ -541,6 +571,31 @@ export function ChoirPracticeDemo() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEngaged(false);
   }, [onScreen, engaged]);
+
+  /**
+   * Stop the music when this stops being the section you are looking at.
+   *
+   * Reported, and fair: the piece carried on into the next project. The pod was careful
+   * about the other end of this — nothing plays until a real click, because autoplaying
+   * four-part harmony at somebody who scrolled past is how a tab gets closed — and then let
+   * the same harmony follow them down the page with nothing on screen to explain it. The
+   * twenty-second teardown above did eventually stop it, which is a long time to listen to a
+   * choir you have left.
+   *
+   * Keyed on focus rather than `onScreen`. The frame mounts 400px before the section
+   * arrives and stays mounted while the next project fills the window, so `onScreen` is true
+   * for far longer than "you are here" — and the app would have been paused before the
+   * visitor ever reached it. `useSectionFocused` is the page's own answer to which project
+   * you are in, and it is the signal every other viewport-level effect already uses.
+   *
+   * Pausing rather than muting, so coming back finds the piece where it was rather than
+   * three minutes further on. The shield re-arms itself above, so returning and clicking
+   * starts it again from the same place.
+   */
+  useEffect(() => {
+    if (!playing || focused) return;
+    pausePlayback(frameRef.current);
+  }, [playing, focused]);
 
   /* Wheel chaining, attached once the app's document exists. Keyed on `opened` because
      that is the point at which the score — the thing with a scrollable pane — is up. */

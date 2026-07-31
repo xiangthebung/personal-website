@@ -48,7 +48,6 @@ const NOTE = {
   summary: "Distance is just time, times light",
   lead:
     "GPS measures the time a radio wave takes to reach you. Everything else in the system exists to make that one measurement trustworthy.",
-  equation: "dᵢ = c · (t_receive − t_transmit)",
   sensitivity: [
     ["1 millisecond", "300 kilometres"],
     ["1 microsecond", "300 metres"],
@@ -270,6 +269,26 @@ const SPECS: readonly SpecTag<BeatName>[] = [
   { at: "to-quiz", text: "Quizzes made from your slides", x: 57, y: 55, side: "left", until: "to-match" },
 ];
 
+/**
+ * The pseudorange equation, typeset.
+ *
+ * It was the string `"dᵢ = c · (t_receive − t_transmit)"`, and printing a LaTeX source
+ * fragment is a strange thing for this section of all sections to do: the app it is a film
+ * about renders maths with KaTeX, so a visitor is being shown the one place its output
+ * would look wrong. Underscores are the notation you type, not the notation you read.
+ *
+ * Real `<sub>` elements rather than Unicode subscripts, because the alphabet does not go
+ * far enough — there is no subscript r, c or v, so "receive" cannot be spelled that way at
+ * all. Which is presumably how it ended up as an underscore.
+ */
+function RangeEquation() {
+  return (
+    <>
+      d<sub>i</sub> = c · (t<sub>receive</sub> − t<sub>transmit</sub>)
+    </>
+  );
+}
+
 const LETTERS = ["A", "B", "C", "D"];
 
 export function PdfExplainerDemo() {
@@ -408,7 +427,9 @@ export function PdfExplainerDemo() {
             </div>
             <h5>{NOTE.summary}</h5>
             <p>{NOTE.lead}</p>
-            <p className="pdfx-equation">{NOTE.equation}</p>
+            <p className="pdfx-equation">
+              <RangeEquation />
+            </p>
             <dl className="pdfx-sensitivity">
               {NOTE.sensitivity.map(([error, effect]) => (
                 <div key={error}>

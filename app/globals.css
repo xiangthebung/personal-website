@@ -3231,15 +3231,9 @@ html.shows-shortcuts .shortcut-sheet {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
-/* The whole reason the dials are on screen. Deliberately not styled as an aside. */
-.nn-dials small {
-  color: rgba(232, 237, 243, 0.44);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
+/* A "set once, never touched" caption used to close this plate. It told the reader what to
+   conclude from a pair of dials they can watch not moving, which the verdict pair under the
+   panels already says in the scene's own voice. */
 
 .nn-split {
   display: grid;
@@ -3634,8 +3628,8 @@ html.shows-shortcuts .shortcut-sheet {
   .nn-label {
     font-size: 0.62rem;
   }
-  /* The two dials plus their label are wider than a phone, so the label drops under them
-     rather than forcing the whole plate to scroll. */
+  /* The two dials are wider than a phone, so they wrap rather than forcing the whole plate
+     to overflow. */
   .nn-dials {
     flex-wrap: wrap;
     justify-content: center;
@@ -5132,19 +5126,25 @@ html.shows-shortcuts .shortcut-sheet {
 .gx-bus-slot {
   position: absolute;
   bottom: 27px;
+  /* Interpolated across the beat rather than transitioned to the end of it.
+     `--bus-from` and `--bus-to` are the road positions at this beat's start and the next
+     one's, published by the pod; `--beat-t` is the fraction through the current beat, which
+     the storyboard writes onto the stage every frame without re-rendering anything.
+
+     This replaced `transition: left 1.5s`, which was the reported lag. A per-beat target
+     with a 1.5s transition on a 2,600ms beat means the bus drives for 1.5s and then stands
+     still for 1.1s — nine lurches with a pause after each. It was not slow, it kept
+     stopping, and no easing curve fixes a value that only exists at nine instants.
+
+     The 180ms that is left does a different job: it smooths the change of *speed* at each
+     beat boundary, since the simulated clock jumps unevenly and every segment therefore has
+     its own velocity. Retargeted each frame it low-passes the motion, which is what now
+     gives the arrival its brake and the departure its pull-away — the two things the
+     per-beat timing functions used to do by hand. */
+  left: calc((var(--bus-from, 0) + (var(--bus-to, 0) - var(--bus-from, 0)) * var(--beat-t, 0)) * 1%);
   width: 138px;
   transform: translateX(-100%);
-  transition: left 1.5s cubic-bezier(0.35, 0.1, 0.5, 0.9);
-}
-
-.gx[data-arrived="true"] .gx-bus-slot {
-  /* Slows into the stop. */
-  transition-timing-function: cubic-bezier(0.16, 0.72, 0.24, 1);
-}
-
-.gx[data-beat="gone"] .gx-bus-slot {
-  /* And pulls away from it. */
-  transition-timing-function: cubic-bezier(0.5, 0, 0.85, 0.55);
+  transition: left 180ms linear;
 }
 
 .gx-bus {
@@ -6284,9 +6284,25 @@ html.shows-shortcuts .shortcut-sheet {
   border-radius: 7px;
   background: rgba(0, 0, 0, 0.04);
   color: var(--ink) !important;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px !important;
+  /* Serif italic for the variables, which is how maths is set, rather than the monospace
+     this used while it was a line of LaTeX source. See `RangeEquation` in the pod: the app
+     this is a film about renders with KaTeX, so printing `t_receive` was showing a visitor
+     the one place its output would look wrong. */
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-size: 12.5px !important;
+  font-style: italic;
+  letter-spacing: 0.01em;
   text-align: center;
+}
+/* Subscripts that do not push the line taller. `vertical-align: sub` adds leading on its
+   own, which in a card with a fixed reserve moves everything below it. */
+.pdfx-equation sub {
+  bottom: -0.22em;
+  font-size: 0.72em;
+  font-style: normal;
+  line-height: 0;
+  vertical-align: baseline;
+  position: relative;
 }
 .pdfx-sensitivity {
   display: flex;
@@ -10657,49 +10673,14 @@ svg.bd-vehicle {
   box-shadow: none;
 }
 
-.bd-decaf-hold {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(58vw, 620px);
-  opacity: 0;
-  transform: translate(-50%, -50%) rotate(-90deg) scale(0.74);
-  transition:
-    opacity 520ms ease,
-    transform 760ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-
-.bd-decaf-hold-track,
-.bd-decaf-hold-fill {
-  fill: none;
-  stroke-width: 2;
-}
-
-.bd-decaf-hold-track {
-  stroke: rgba(45, 48, 46, 0.12);
-}
-
-.bd-decaf-hold-fill {
-  stroke: #4a5bd6;
-  stroke-linecap: round;
-  stroke-dasharray: 654;
-  stroke-dashoffset: 654;
-  transition: stroke-dashoffset 1800ms linear;
-}
-
-#decaf[data-scene-reached~="pause"] .bd-decaf-hold {
-  opacity: 0.16;
-  transform: translate(-50%, -50%) rotate(-90deg) scale(1);
-}
-
-#decaf[data-scene-beat="hold"] .bd-decaf-hold {
-  opacity: 0.42;
-}
-
-#decaf[data-scene-beat="hold"] .bd-decaf-hold-fill,
-#decaf[data-scene-reached~="settle"] .bd-decaf-hold-fill {
-  stroke-dashoffset: 0;
-}
+/* A 620px echo of the notice card's hold ring used to be here, drawn behind the whole
+   section and filling in time with the real one. It is gone, and the reason is a good
+   lesson about backdrop geometry: at that size, centred on the section, and clipped to the
+   right two thirds by the editorial safe zone below, the only part of the circle still on
+   screen was the bottom of the arc. So the effect was not a faint ring keeping time — it
+   was a pale curved line under the browser window with no visible cause, which is what got
+   reported. A backdrop element has to be composed against its own clip, not just against
+   the section. */
 
 /* ---------------------------------------------------------- PDF Explainer --- */
 
@@ -12213,11 +12194,6 @@ svg.bd-vehicle {
 .bd-decaf-card:nth-of-type(even) {
   animation: none;
 }
-.bd-decaf-hold {
-  top: 54%;
-  left: 69%;
-  width: min(46vw, 520px);
-}
 
 .bd-decaf-ladder {
   position: absolute;
@@ -12430,11 +12406,6 @@ svg.bd-vehicle {
 
   .bd-decaf-badge {
     top: 47%;
-  }
-  .bd-decaf-hold {
-    top: 69%;
-    left: 50%;
-    width: min(112vw, 480px);
   }
   .bd-decaf-card:nth-of-type(1) {
     top: 54%;

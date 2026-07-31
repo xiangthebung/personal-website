@@ -409,6 +409,13 @@ export function NightNeutralizerDemo() {
           the same shot, twice
         </span>
 
+        {/* Two readouts and nothing else. There was a "set once, never touched" caption on
+            the end of this plate, and it was the kind of line that tells you what to
+            conclude from something you are already watching: the dials sit visibly still
+            for fourteen seconds while the panels stop matching, the section's reason says
+            you would otherwise spend the film adjusting them, and the closing verdict pair
+            is "you'd be adjusting all night" against "nothing to adjust". Saying it a fourth
+            time in the furniture only made the furniture argue. */}
         <span className="nn-dials">
           {DIALS.map((dial) => (
             <span className="nn-dial" key={dial.name}>
@@ -421,7 +428,6 @@ export function NightNeutralizerDemo() {
               <b>{dial.percent}%</b>
             </span>
           ))}
-          <small>set once, never touched</small>
         </span>
       </div>
 

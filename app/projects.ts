@@ -61,8 +61,17 @@ export type Project = {
   stage: Stage;
   /** What it does, in one line, without selling it. */
   headline: string;
-  /** Why it exists. The problem, not the feature. One sentence. */
-  why: string;
+  /**
+   * Why it exists. The problem, not the feature. One sentence.
+   *
+   * Optional, because one headline turned out to already contain its own reason. PagePack's
+   * is "Save whole websites. Read them with no connection." — a reader who has understood
+   * that sentence has understood the problem, and "a reading list is just a list of links
+   * once the signal drops" was the same thought again with a metaphor on it. Where the
+   * headline does the work, this is nothing but a second paragraph above a moving scene,
+   * which is the thing this page has been removing all along.
+   */
+  why?: string;
   theme: "paper" | "mint" | "black" | "white" | "navy" | "forest";
   source: string;
   live?: string;
@@ -198,7 +207,9 @@ const projectData: Project[] = [
     name: "PagePack",
     platform: "Chrome extension",
     headline: "Save whole websites. Read them with no connection.",
-    why: "A reading list is just a list of links once the signal drops.",
+    /* No reason line. "A reading list is just a list of links once the signal drops" was the
+       headline again with a metaphor on it — anyone who has read "read them with no
+       connection" already has the problem in mind. */
     theme: "white",
     source: "https://github.com/xiangthebung/pagepack-extension",
     demo: "pagepack",

@@ -454,10 +454,16 @@ function DecafBackdrop() {
       ))}
 
       <span className="bd-decaf-badge">12</span>
-      <svg className="bd-decaf-hold" viewBox="0 0 240 240">
-        <circle className="bd-decaf-hold-track" cx="120" cy="120" r="104" />
-        <circle className="bd-decaf-hold-fill" cx="120" cy="120" r="104" />
-      </svg>
+
+      {/* There was a huge echo of the notice card's "Hold 3s" ring here, and it is gone
+          because of what it looked like rather than what it was for. At the size this
+          section gives it, clipped to the right two thirds by the editorial safe zone, all
+          that survived was the bottom of the arc: a pale curve under the browser window,
+          attached to nothing. Reported as exactly that — "there's a line in the background,
+          what is that?"
+          The idea is already in the frame twice, and better both times: the real hold ring
+          inside the notice, and the ladder below, which is the part that says the wait gets
+          longer each time. */}
 
       <span className="bd-decaf-ladder" aria-hidden="true">
         <small>daily pass</small>

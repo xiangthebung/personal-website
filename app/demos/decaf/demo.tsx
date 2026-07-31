@@ -290,14 +290,20 @@ const SPECS: readonly SpecTag<BeatName>[] = [
   /* Reads leftward, over the search field, and stops just short of the bell. Anything
      anchored at the bell and reading rightward runs off the edge of the window it is
      describing; anything anchored *on* it covers the badge that is the whole point.
-     "Notifications muted, count kept" was accurate and left the reader to work out which
-     half was the point. The count staying is the deliberate part — a real message still has
-     to get through — so the line names both halves in the order they matter. */
-  { at: "calm", text: "Keeps the count, loses the red", x: 72, y: 17.5, side: "left" },
-  /* Reads rightward along the tab strip, into the empty middle of it. Hanging below the
-     tab instead put a 155px plate across the sidebar, and the strip's own middle is the
-     one genuinely empty band in this whole frame. */
-  { at: "calm", text: "Tab title stops counting", x: 13, y: 5, side: "right" },
+
+     Two rewrites got here. "Notifications muted, count kept" described the mechanism and
+     left the reader to work out which half was the point. "Keeps the count, loses the red"
+     described the pixels — which is accurate, and reads as a riddle about a badge rather
+     than as a thing the extension does for you. This says what it is for. The badge in the
+     frame keeps its 12 and drops its red at the same moment, so the mechanism is still on
+     screen for anyone who looks; it just is not what the label is about. */
+  { at: "calm", text: "Notifications less distracting", x: 72, y: 17.5, side: "left" },
+  /* There was a second label here, reading rightward along the tab strip: "Tab title stops
+     counting", pointing at the `(3)` that a site writes into its own title and that Decaf
+     removes. It is a real behaviour and it is still in the scene — the `(3)` still goes.
+     But naming it needs the visitor to already know that sites do that, and to have noticed
+     which two characters changed in a 10px tab label. A label that has to teach a premise
+     before it can make a point is a label nobody finishes reading. */
   { at: "pause", text: "Suggestions gone", x: 89, y: 20, side: "below" },
 ];
 

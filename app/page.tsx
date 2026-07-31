@@ -207,7 +207,9 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 
           <div className="project-summary">
             <p>{project.headline}</p>
-            <small>{project.why}</small>
+            {/* Only where the headline does not already contain the reason. See the note on
+                `why` in projects.ts. */}
+            {project.why && <small>{project.why}</small>}
           </div>
 
           <div className="project-links">
