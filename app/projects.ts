@@ -65,11 +65,11 @@ export type Project = {
    * Why it exists. The problem, not the feature. One sentence.
    *
    * Optional, because one headline turned out to already contain its own reason. PagePack's
-   * is "Save whole websites. Read them with no connection." — a reader who has understood
-   * that sentence has understood the problem, and "a reading list is just a list of links
-   * once the signal drops" was the same thought again with a metaphor on it. Where the
-   * headline does the work, this is nothing but a second paragraph above a moving scene,
-   * which is the thing this page has been removing all along.
+   * is "Save linked pages together. Read them with no connection." — a reader who has
+   * understood that sentence has understood the problem, and "a reading list is just a
+   * list of links once the signal drops" was the same thought again with a metaphor on
+   * it. Where the headline does the work, this is nothing but a second paragraph above a
+   * moving scene, which is the thing this page has been removing all along.
    */
   why?: string;
   theme: "paper" | "mint" | "black" | "white" | "navy" | "forest";
@@ -157,7 +157,7 @@ const projectData: Project[] = [
        a click. Everything the three deleted notes said is inside the frame now — the mixer
        and the pitch detector carry leader lines to the app's own controls, and the four
        voices are discs in the score's own colours moving with the mix. */
-    invitation: "The real app, on a real score. Click it and all four parts sing.",
+    invitation: "The real app, on a real score. Play it and all four parts sing.",
   },
   {
     id: "decaf",
@@ -187,8 +187,7 @@ const projectData: Project[] = [
     number: "03",
     name: "PDF Explainer",
     platform: "Web app",
-    headline: "The slide, and what it means, in one window.",
-    why: "Otherwise you lose sight of the slide to read the explanation of it.",
+    headline: "The slide, and what it means, without switching windows.",
     theme: "black",
     source: "https://github.com/xiangthebung/pdf-explainer",
     live: "https://pdf-explainer.xiangli3625.workers.dev/",
@@ -206,7 +205,7 @@ const projectData: Project[] = [
     number: "04",
     name: "PagePack",
     platform: "Chrome extension",
-    headline: "Save whole websites. Read them with no connection.",
+    headline: "Save linked pages together. Read them with no connection.",
     /* No reason line. "A reading list is just a list of links once the signal drops" was the
        headline again with a metaphor on it — anyone who has read "read them with no
        connection" already has the problem in mind. */
@@ -227,7 +226,7 @@ const projectData: Project[] = [
     number: "05",
     name: "GRT Next Bus",
     platform: "Chrome extension",
-    headline: "See the next bus without opening a map.",
+    headline: "See the next Grand River Transit bus without opening a map.",
     why: "Checking one stop should not mean loading a route planner and finding it again.",
     theme: "mint",
     source: "https://github.com/xiangthebung/grt-bus-time",
@@ -280,7 +279,7 @@ const projectData: Project[] = [
     number: "07",
     name: "N-Back",
     platform: "Web game",
-    headline: "Dual and triple n-back, without the gamification.",
+    headline: "Match each cue to the one two or three turns back—without gamification.",
     why: "Most versions look like a lab instrument or promise you a higher IQ. This one is four quiet minutes.",
     theme: "forest",
     source: "https://github.com/xiangthebung/n-back",

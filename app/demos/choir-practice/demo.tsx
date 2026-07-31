@@ -600,9 +600,10 @@ function findSpot(
 export function ChoirPracticeDemo() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
-  /* 400px of lead time: this frame has real work to do on load, and arriving at a
-     half-drawn score is worse than arriving at a drawn one a moment late. */
-  const onScreen = useOnScreen(rootRef, "400px 0px");
+  /* The chunk itself now loads only as the frame approaches. A small amount of lead
+     still lets the score begin engraving before the stand is fully visible, without
+     paying for the embedded application while the visitor is on the hero. */
+  const onScreen = useOnScreen(rootRef, "80px 0px");
   /* Whether this is the section the visitor is actually standing in. `onScreen` is the
      wrong question for the music: it is true 400px before the section arrives and stays
      true while the next project fills the screen. */
@@ -907,7 +908,7 @@ export function ChoirPracticeDemo() {
                       an apology for a bug that no longer exists. Scrolling moving the
                       page is what a visitor already expects; saying so out loud only
                       raises the question of why it might not. */}
-                  {opened ? "Click to play" : "Opening a score…"}
+                  {opened ? "Play the score" : "Opening a score…"}
                 </span>
               </div>
             </div>

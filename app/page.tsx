@@ -104,10 +104,10 @@ function GalleryImage({ src, alt }: { src: string; alt: string }) {
 }
 
 /**
- * Clips play by themselves once scrolled into view (see MediaRail). `preload` is
- * left at "none" so nothing downloads until the gallery is approached; the rail
- * escalates it. The poster supplies the intrinsic size, which a video element
- * with preload="none" cannot, so the card never reflows once metadata lands.
+ * Clips play by themselves once scrolled into view (see MediaRail). Neither the
+ * video nor its poster is requested until the gallery approaches: the poster URL
+ * lives in `data-poster` and the rail promotes both together. Explicit dimensions
+ * preserve the card's intrinsic ratio before either resource arrives.
  */
 function GalleryClip({ src, alt }: { src: string; alt: string }) {
   const poster = src.replace(/\.mp4$/, "-poster.avif");
@@ -117,11 +117,11 @@ function GalleryClip({ src, alt }: { src: string; alt: string }) {
     <div className="fun-media fun-media--clip" style={tintStyle(poster)}>
       <video
         data-fun-clip
+        data-poster={poster}
         muted
         loop
         playsInline
         preload="none"
-        poster={poster}
         width={asset?.width}
         height={asset?.height}
         aria-label={alt}
@@ -146,6 +146,7 @@ function GalleryClip({ src, alt }: { src: string; alt: string }) {
 
 function ProjectSection({ project, index }: { project: Project; index: number }) {
   const motif = projectMotifs[project.id];
+  const policies = policiesFor(project.id);
 
   return (
     <section
@@ -226,17 +227,23 @@ function ProjectSection({ project, index }: { project: Project; index: number })
                 Open project <ExternalArrow />
               </a>
             )}
-            {/* Only the projects that take a payment, read a sensor or rewrite a
-                page have anything to disclose, so only those grow this link. */}
-            {policiesFor(project.id).map((policy) => (
-              <Link
-                className="project-policy-link"
-                href={`/legal/${policy.slug}`}
-                key={policy.slug}
-              >
-                {policy.kind === "privacy" ? "Privacy" : "Terms"}
-              </Link>
-            ))}
+            {/* Disclosures remain available without competing with the two primary
+                project actions. They also opt out of speculative route prefetching;
+                these low-frequency documents should load only when requested. */}
+            {policies.length > 0 && (
+              <span className="project-policy-links">
+                {policies.map((policy) => (
+                  <Link
+                    className="project-policy-link"
+                    href={`/legal/${policy.slug}`}
+                    key={policy.slug}
+                    prefetch={false}
+                  >
+                    {policy.kind === "privacy" ? "Privacy" : "Terms"}
+                  </Link>
+                ))}
+              </span>
+            )}
           </div>
 
           {/* There was a list of three notes here, per project, and it is gone.
@@ -298,6 +305,32 @@ export default function Home() {
       <div className="page-trail" aria-hidden="true">
         <span />
       </div>
+
+      {/* A compact route through the long project run. It stays hidden over the
+          hero and gallery; ProjectFocusManager reveals it only while a project
+          owns the viewport and marks the matching destination. */}
+      <nav className="project-dock" aria-label="Project navigation">
+        <a className="project-dock-home" href="#top" aria-label="Back to the top">
+          XL
+        </a>
+        <span className="project-dock-links">
+          {projects.map((project) => (
+            <a
+              href={`#${project.id}`}
+              key={project.id}
+              data-project-dock={project.id}
+              title={project.name}
+            >
+              <span>{project.number}</span>
+              <strong>{project.name}</strong>
+            </a>
+          ))}
+        </span>
+        <button type="button" data-shortcut-trigger title="Keyboard shortcuts">
+          <kbd>?</kbd>
+          <span>Shortcuts</span>
+        </button>
+      </nav>
 
       <section className="hero" aria-labelledby="hero-title">
         <picture className="hero-art">

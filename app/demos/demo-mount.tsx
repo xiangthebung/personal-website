@@ -81,11 +81,16 @@ export function DemoMount({ demo }: { demo: DemoId }) {
           observer.disconnect();
         }
       },
-      { rootMargin: "300px 0px" },
+      {
+        // Choir embeds a full application and engraves a score. Loading it only
+        // as its frame approaches keeps that work out of the hero's first visit;
+        // the lighter staged scenes retain enough lead to be ready on arrival.
+        rootMargin: demo === "choir-practice" ? "48px 0px" : "300px 0px",
+      },
     );
     observer.observe(host);
     return () => observer.disconnect();
-  }, []);
+  }, [demo]);
 
   const Demo = registry[demo];
 

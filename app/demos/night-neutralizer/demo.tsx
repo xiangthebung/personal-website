@@ -42,6 +42,7 @@
  * does, not a measurement of it.
  */
 
+import "./demo.css";
 import { useRef } from "react";
 import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";

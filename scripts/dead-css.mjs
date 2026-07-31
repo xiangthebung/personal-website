@@ -1,5 +1,5 @@
 /**
- * Finds class selectors in `globals.css` that nothing in the source refers to.
+ * Finds class selectors across the app stylesheets that nothing in the source refers to.
  *
  * Deliberately a *report*, not a fixer. Class names on this page are not all
  * literals: `prefixed()` in the GRT demo builds `grt-countdown` and `grt-is-soon`
@@ -9,11 +9,11 @@
  * against how it could be constructed before it is deleted; a sweep that trusted a
  * literal search would take out working styles.
  *
- * For each candidate it prints where the name appears in the stylesheet and any
+ * For each candidate it prints where the name appears in the stylesheets and any
  * near-miss in the source (a template literal whose prefix matches), so the
  * judgement can be made from the output rather than by grepping again.
  *
- *   node work/dead-css.mjs
+ *   node scripts/dead-css.mjs
  */
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -28,26 +28,42 @@ async function sources(dir, out = []) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       await sources(full, out);
-    } else if (/\.(tsx?|jsx?|mjs|html|md)$/.test(entry.name) && entry.name !== "globals.css") {
+    } else if (/\.(tsx?|jsx?|mjs|html|md)$/.test(entry.name)) {
       out.push(full);
     }
   }
   return out;
 }
 
-const cssPath = path.join(root, "app", "globals.css");
-const css = (await readFile(cssPath, "utf8")).replace(/\r\n/g, "\n");
-const cssLines = css.split("\n");
+/** Every stylesheet shipped from app, including lazy demo-owned CSS. */
+async function styles(dir, out = []) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) await styles(full, out);
+    else if (entry.name.endsWith(".css")) out.push(full);
+  }
+  return out;
+}
+
+const styleFiles = (await styles(path.join(root, "app"))).sort();
+const stylesheets = await Promise.all(
+  styleFiles.map(async (file) => ({
+    file: path.relative(root, file),
+    text: (await readFile(file, "utf8")).replace(/\r\n/g, "\n"),
+  })),
+);
 
 /* Class names as they appear in selectors. Keyframe percentages, custom
    properties and pseudo-classes are not class names and are excluded by the
    character class. */
 const declared = new Map();
-for (const match of css.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)) {
-  const name = match[1];
-  if (!declared.has(name)) {
-    const line = css.slice(0, match.index).split("\n").length;
-    declared.set(name, line);
+for (const stylesheet of stylesheets) {
+  for (const match of stylesheet.text.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)) {
+    const name = match[1];
+    if (!declared.has(name)) {
+      const line = stylesheet.text.slice(0, match.index).split("\n").length;
+      declared.set(name, { file: stylesheet.file, line });
+    }
   }
 }
 
@@ -77,7 +93,7 @@ for (const [file, text] of corpus) {
 }
 
 const unused = [];
-for (const [name, line] of declared) {
+for (const [name, location] of declared) {
   let found = false;
   for (const text of corpus.values()) {
     if (text.includes(name)) {
@@ -85,29 +101,35 @@ for (const [name, line] of declared) {
       break;
     }
   }
-  if (!found) unused.push({ name, line });
+  if (!found) unused.push({ name, ...location });
 }
 
-/** How many times the name is written in the stylesheet, and on what lines. */
+/** How many times the name is written in the stylesheets, and where. */
 const occurrences = (name) => {
   const hits = [];
-  const pattern = new RegExp(`\\.${name.replace(/[-[\]{}()*+?.,\\^$|#]/g, "\\$&")}(?![\\w-])`, "g");
-  cssLines.forEach((text, index) => {
-    if (pattern.test(text)) hits.push(index + 1);
-    pattern.lastIndex = 0;
-  });
+  const escaped = name.replace(/[-[\]{}()*+?.,\\^$|#]/g, "\\$&");
+  const pattern = new RegExp(`\\.${escaped}(?![\\w-])`, "g");
+
+  for (const stylesheet of stylesheets) {
+    stylesheet.text.split("\n").forEach((text, index) => {
+      if (pattern.test(text)) hits.push(`${stylesheet.file}:${index + 1}`);
+      pattern.lastIndex = 0;
+    });
+  }
   return hits;
 };
 
-console.log(`${declared.size} class names in globals.css`);
+console.log(`${declared.size} class names in ${stylesheets.length} app stylesheets`);
 console.log(`${files.length} source files searched`);
 console.log(`\n${unused.length} with no literal match in the source:\n`);
 
-for (const { name, line } of unused.sort((a, b) => a.line - b.line)) {
+for (const { name, file, line } of unused.sort((a, b) =>
+  a.file.localeCompare(b.file) || a.line - b.line
+)) {
   const hits = occurrences(name);
   const couldBeBuilt = templates.filter((entry) => name.startsWith(entry.prefix));
   console.log(`  .${name}`);
-  console.log(`      declared line ${line}; written on ${hits.length} line(s): ${hits.join(", ")}`);
+  console.log(`      declared ${file}:${line}; written on ${hits.length} line(s): ${hits.join(", ")}`);
   if (couldBeBuilt.length > 0) {
     const where = [...new Set(couldBeBuilt.map((entry) => `${entry.prefix}\${…} in ${entry.file}`))];
     console.log(`      COULD BE BUILT: ${where.join("; ")}`);

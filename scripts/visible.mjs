@@ -131,7 +131,7 @@ const CHECKS = [
   {
     label: "night volume cue",
     section: "night-neutralizer",
-    selector: "#night-neutralizer .nn-vol",
+    selector: "#night-neutralizer .nn-db[data-showing='true']",
     beat: { section: "night-neutralizer", name: "whisper" },
     required: true,
   },

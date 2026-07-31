@@ -273,6 +273,11 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
     };
 
     const warm = (clip: HTMLVideoElement) => {
+      // A `poster` attribute downloads even when video preload is "none". Keep
+      // the URL inert in data until the gallery is close, then promote poster and
+      // media together so the hero never pays for below-the-fold clips.
+      const poster = clip.dataset.poster;
+      if (poster && !clip.getAttribute("poster")) clip.setAttribute("poster", poster);
       if (clip.preload === "auto") return;
       clip.preload = "auto";
       if (clip.readyState === 0) clip.load();
@@ -519,9 +524,25 @@ export function ProjectFocusManager() {
     if (!projects.length) return;
 
     const root = document.documentElement;
+    const hero = document.querySelector<HTMLElement>(".hero");
+    const shortcutTrigger = document.querySelector<HTMLButtonElement>(
+      "[data-shortcut-trigger]",
+    );
+    const dockLinks = Array.from(
+      document.querySelectorAll<HTMLAnchorElement>("[data-project-dock]"),
+    );
     const ratios = new Map<HTMLElement, number>();
     projects.forEach((project) => ratios.set(project, 0));
-    root.classList.add("has-project-focus");
+
+    // Visibility classes are also animation gates in CSS. Set the initial hero
+    // state synchronously so its living index never flashes paused before the
+    // observer's first delivery.
+    const heroRect = hero?.getBoundingClientRect();
+    root.classList.toggle(
+      "is-hero-visible",
+      Boolean(heroRect && heroRect.bottom > 0 && heroRect.top < window.innerHeight),
+    );
+    root.classList.add("has-project-focus", "has-visibility-gates");
 
     // Progress trail across the top of the page. The transform is written straight
     // onto the trail element: setting a custom property on :root instead
@@ -621,9 +642,9 @@ export function ProjectFocusManager() {
       let active: HTMLElement | null = null;
       let bestScore = -Infinity;
 
-      projects.forEach((project) => {
+      for (const project of projects) {
         const ratio = ratios.get(project) ?? 0;
-        if (ratio <= 0) return;
+        if (ratio <= 0) continue;
 
         const rect = project.getBoundingClientRect();
         const score =
@@ -634,19 +655,35 @@ export function ProjectFocusManager() {
           bestScore = score;
           active = project;
         }
-      });
+      }
 
-      if (!active) return;
-      const activeIndex = projects.indexOf(active);
+      if (!active) {
+        root.classList.remove("has-project-in-view");
+        dockLinks.forEach((link) => {
+          link.classList.remove("is-current");
+          link.removeAttribute("aria-current");
+        });
+        return;
+      }
+      const activeProject = active;
+      const activeIndex = projects.indexOf(activeProject);
+      root.classList.add("has-project-in-view");
 
       projects.forEach((project, index) => {
-        project.classList.toggle("is-active", project === active);
+        project.classList.toggle("is-active", project === activeProject);
         project.classList.toggle("is-before-active", index < activeIndex);
         project.classList.toggle("is-after-active", index > activeIndex);
       });
 
+      dockLinks.forEach((link) => {
+        const current = link.dataset.projectDock === activeProject.id;
+        link.classList.toggle("is-current", current);
+        if (current) link.setAttribute("aria-current", "true");
+        else link.removeAttribute("aria-current");
+      });
+
       // The trail borrows the colour of whichever project you are standing in.
-      const accent = accents.get(active);
+      const accent = accents.get(activeProject);
       if (accent && trail) trail.style.setProperty("--trail-accent", accent);
 
       /**
@@ -667,7 +704,7 @@ export function ProjectFocusManager() {
        * Written on `:root` rather than per section: it is one value for the whole page,
        * and it changes when focus changes rather than every frame.
        */
-      const ambient = backgrounds.get(active);
+      const ambient = backgrounds.get(activeProject);
       if (ambient) root.style.setProperty("--ambient-bg", ambient);
     };
 
@@ -685,6 +722,17 @@ export function ProjectFocusManager() {
     );
 
     projects.forEach((project) => observer.observe(project));
+
+    // Hero index marks are useful only while the index can be seen. This class
+    // pauses their CSS timelines once the hero leaves, instead of letting nineteen
+    // decorative animations run several thousand pixels off screen.
+    const heroObserver = hero
+      ? new IntersectionObserver(
+          ([entry]) => root.classList.toggle("is-hero-visible", entry.isIntersecting),
+          { threshold: 0.01 },
+        )
+      : null;
+    if (hero && heroObserver) heroObserver.observe(hero);
 
     /**
      * The arrival trigger.
@@ -785,13 +833,35 @@ export function ProjectFocusManager() {
       }
     };
 
+    const toggleShortcuts = () => root.classList.toggle("shows-shortcuts");
+    const handleHeroLetterAnimationEnd = (event: globalThis.AnimationEvent) => {
+      if (event.animationName !== "hero-letter-land") return;
+      const letter = event.target;
+      if (
+        letter instanceof HTMLElement &&
+        letter.classList.contains("hero-letter")
+      ) {
+        letter.classList.add("has-landed");
+      }
+    };
+
+    shortcutTrigger?.addEventListener("click", toggleShortcuts);
+    hero?.addEventListener("animationend", handleHeroLetterAnimationEnd);
     document.addEventListener("keydown", handleShortcut);
 
     return () => {
       observer.disconnect();
+      heroObserver?.disconnect();
       arrivals.disconnect();
-      root.classList.remove("has-project-focus");
-      root.classList.remove("shows-shortcuts");
+      root.classList.remove(
+        "has-project-focus",
+        "has-project-in-view",
+        "has-visibility-gates",
+        "is-hero-visible",
+        "shows-shortcuts",
+      );
+      shortcutTrigger?.removeEventListener("click", toggleShortcuts);
+      hero?.removeEventListener("animationend", handleHeroLetterAnimationEnd);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       document.removeEventListener("keydown", handleShortcut);

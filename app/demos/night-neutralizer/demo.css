@@ -1,0 +1,554 @@
+/* ===========================================================================
+   Night Neutralizer — "same shot, one of them you can see"
+   ---------------------------------------------------------------------------
+   Two panels playing the same eight seconds, driven from `data-beat` on the
+   root. The left one is untouched; the right one is the same markup with the
+   extension's real `feComponentTransfer` over it, so the difference between
+   them is genuinely the extension's transfer function and not two sets of
+   hand-tuned gradients.
+
+   Everything the beats change is brightness and scale on a handful of layers.
+   The interesting consequence: the shot only has to be composed once, and both
+   panels stay in sync for free because they are the same CSS.
+   =========================================================================== */
+
+.nn {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: #e8edf3;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* The filter lives in the document but takes no space. */
+.nn-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* --- the rig: what is fixed about the comparison --------------------------
+   Three statements true of every frame, so they sit outside the film rather than
+   changing inside it: one shot shown twice, a stream of the kind that defeats other
+   extensions, and a display brightness that does not move.
+
+   The dial is doing real argumentative work. The natural objection to a side-by-side
+   like this is that the right panel has simply been turned up — and the answer is
+   structural (both panels share `--exposure`; the only asymmetry in the document is
+   one `url(#nn-tone-curve)` in a filter chain) which is exactly the kind of answer a
+   picture cannot give. A number that visibly sits still while the panels visibly stop
+   matching gives it. */
+.nn-rig {
+  display: flex;
+  flex-wrap: wrap;
+  /* Centred, not spread. Pushed to the two ends of a 1080px row the dials sat squarely
+     above the treated panel and read as that panel's settings — which is the exact
+     opposite of what they are for. In the middle they belong to neither. */
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem 0.9rem;
+  color: rgba(232, 237, 243, 0.62);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nn-rig-chip,
+.nn-dials {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.26rem 0.6rem;
+  border: 1px solid rgba(224, 234, 247, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  white-space: nowrap;
+}
+
+/* The instruments carry two readouts and a label, so they need more air inside than the
+   chip beside them. */
+.nn-dials {
+  gap: 0.85rem;
+}
+
+.nn-rig-glyph {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: rgba(232, 237, 243, 0.5);
+}
+
+.nn-dial {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.nn-dial-name {
+  color: rgba(232, 237, 243, 0.5);
+  font-weight: 550;
+}
+
+.nn-dial-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.nn-dial-track i {
+  width: 4px;
+  height: 9px;
+  border-radius: 1px;
+  background: rgba(232, 237, 243, 0.14);
+}
+.nn-dial-track i[data-on="true"] {
+  background: rgba(232, 237, 243, 0.62);
+}
+
+.nn-dial b {
+  color: #e8edf3;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.64rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+/* A "set once, never touched" caption used to close this plate. It told the reader what to
+   conclude from a pair of dials they can watch not moving, which the verdict pair under the
+   panels already says in the scene's own voice. */
+
+.nn-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(0.5rem, 1.4vw, 1rem);
+}
+
+.nn-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nn-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+/* The live level, in the slot two static phrases used to occupy.
+   They were "peaks at maximum" and "held under a ceiling": one an alarm, one a mechanism,
+   neither of them changing, so neither said anything about the frame underneath. A number
+   that moves with the soundtrack does. */
+.nn-db {
+  flex: 0 0 auto;
+  min-width: 4.2em;
+  color: rgba(232, 237, 243, 0.82);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: right;
+  text-transform: none;
+  opacity: 0;
+  transition:
+    opacity 260ms ease,
+    color 240ms ease;
+}
+.nn-db[data-showing="true"] {
+  opacity: 1;
+}
+/* The top of the scale is the one reading that is a problem rather than a measurement. */
+.nn-db[data-hot="true"] {
+  color: #ff6b5f;
+}
+
+.nn-panel-body {
+  display: flex;
+  gap: 0.45rem;
+}
+
+/* --- the shot ------------------------------------------------------------- */
+
+.nn-frame {
+  position: relative;
+  flex: 1 1 auto;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+/* The shot's exposure, per beat.
+   This is the mechanism that makes the comparison honest. Rather than drawing a
+   "blown out" panel and a "contained" panel, both panels get the *same* exposure
+   boost — the room really did get brighter — and only the treated one then has the
+   extension's transfer function after it in the filter chain. `brightness()` runs
+   first, the lookup table second, so what the curve receives is a genuinely
+   over-exposed frame and what it does with the top end is the highlight knee doing
+   its actual job. A white overlay alone was the first attempt and could not blow
+   anything out: 40% white over a near-black room is just grey. */
+/**
+ * The dark beats run *under* full exposure, and that number is the whole comparison.
+ *
+ * It was 1, and measuring the two panels is what showed why that could not work. At
+ * exposure 1 the untreated room samples at luma 8 for the wall, 15 for the clock, 12 for a
+ * book spine — genuinely the values the artwork specifies, and genuinely visible, because a
+ * PNG at luma 15 on a laptop at full brightness is a thing you can see. So the section was
+ * claiming "you cannot make anything out" over a panel in which you could make everything
+ * out, and the honest report of that is the one that came back: *I can't really see the
+ * difference*.
+ *
+ * The premise was the problem rather than the filter. Nobody watches a film at midnight
+ * with the screen at full brightness — the pod's own dial says 38%, which is the setting
+ * this product exists because of — and the extension's job is to make a *dimmed* display
+ * still show shadow detail. So both panels are shown through that dimming, which is what
+ * the situation actually is, and only the treated one then gets the curve.
+ *
+ * Measured at 0.6, wall against clock: 5 → 9 untreated, 40 → 50 treated. The untreated
+ * pair is four levels apart at the bottom of the range, which is the definition of
+ * crushed; the treated pair is ten levels apart in the mid-shadows, which is a room with
+ * things in it. Both panels get the identical multiplier — that is what keeps the
+ * comparison honest — and the only asymmetry in the document is still one
+ * `url(#nn-tone-curve)` in a filter chain.
+ *
+ * The blast beats override this upward and must keep doing so: the highlight half of the
+ * argument needs a frame that is genuinely over-exposed.
+ */
+.nn {
+  --exposure: 0.6;
+}
+/* Modest, on purpose, and much more modest than it was.
+   The first attempt drove this to 11 and the shot stopped being a shot: multiplying a
+   near-black room by eleven pushes everything above about 42/255 to pure white, so both
+   panels became featureless rectangles and the comparison had nothing left to compare.
+   2.6 and 2.1 were the correction and they were still too high, for a subtler reason
+   that only showed up in measurements of the two panels side by side.
+
+   Exposure is applied to *both* panels — that is what makes the comparison honest — so
+   every bit of it lifts the untreated shadows as well as the treated ones. At 2.1 the
+   near-black objects in the room were already visible on the untreated side before the
+   curve did anything, and the curve's shadow lift, which is half the product, had
+   almost nothing left to reveal. Measured at the wall: 31 against 57. At 1.3 the same
+   two samples read 7 against 23 — a smaller arithmetic gap that is far easier to see,
+   because it is the difference between black and visibly-not-black rather than between
+   two greys.
+
+   The room does not need multiplying to look lit anyway. `.nn-spill` pools real light
+   on the floor, and the thing that has to be too bright is the fireball, which is
+   already pure white in the artwork. A white pixel clips on the untreated panel at any
+   exposure at or above 1, and the curve rolls it to 0.87 on the treated one, so the
+   highlight half of the argument does not depend on this number at all. */
+.nn[data-beat="blast"] {
+  --exposure: 1.45;
+}
+.nn[data-beat="boom"] {
+  --exposure: 1.3;
+}
+.nn[data-beat="settle"] {
+  --exposure: 1.1;
+}
+
+.nn-shot {
+  position: absolute;
+  inset: 0;
+  /* Isolated so the filter on this element cannot reach the panel chrome. */
+  isolation: isolate;
+  filter: brightness(var(--exposure));
+  transition: filter 240ms ease-out;
+}
+.nn[data-beat="settle"] .nn-shot {
+  transition: filter 1400ms ease;
+}
+/* The treated panel: same exposure, then the extension's curve. */
+.nn-frame[data-treated="true"] .nn-shot {
+  filter: brightness(var(--exposure)) url(#nn-tone-curve);
+}
+.nn-shot > span {
+  position: absolute;
+  display: block;
+}
+
+/* --- the soundtrack, printed at its own volume ----------------------------
+   The trick this scene turns on, and the answer to a problem an earlier version gave up
+   on. This page has no audio, so a printed line of dialogue is identical whispered or
+   shouted — from which the previous version concluded that the audio half of the product
+   could not be shown, deleted the line, and left a bar meter to carry it alone.
+
+   The conclusion assumed the words were the only channel. They are not: `--loud` is the
+   level from 0 to 1, and it sets the size. A whisper at 0.08 renders around 10px; an
+   explosion at 1 renders around 40px. Loudness becomes something a reader sees, with
+   nothing to learn first.
+
+   And it demonstrates the compressor better than any meter. Untreated the two lines are
+   10px and 40px; treated they are 23px and 28px. A four-fold difference collapsing to a
+   slight one *is* the product, at a scale nobody can miss.
+
+   Opacity rides along, so a quiet line is also faint — two channels saying one thing,
+   which is what makes it read instantly rather than after a moment's thought.
+
+   Outside `.nn-shot`, therefore outside the filter chain: inside it this would blow to
+   white with the explosion on one panel and be tone-mapped on the other, so the element
+   whose entire message is its size would also have been two different colours.
+
+   Set like a burnt-in subtitle, low and centred, because that is the one convention a
+   viewer already reads as "this is the sound". */
+.nn-say {
+  position: absolute;
+  right: 6%;
+  bottom: 8%;
+  left: 6%;
+  color: #f4f8ff;
+  font-size: calc(0.5rem + var(--loud, 0) * 2rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.9),
+    0 0 18px rgba(0, 0, 0, 0.75);
+  text-wrap: balance;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    font-size 260ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.nn-say[data-showing="true"] {
+  opacity: calc(0.55 + var(--loud, 0) * 0.45);
+}
+
+/* --- one line about what you are looking at -------------------------------
+   Under each panel, three or four words, always a matched pair with the other panel so a
+   visitor reads across rather than down. See `VERDICT` in the demo: between them the four
+   pairs are the whole product, in the plainest words available.
+
+   `min-height` rather than a hidden element, because the pair appears and disappears
+   between beats and a row that collapses would move both panels every time. */
+.nn-verdict {
+  margin: 0;
+  min-height: 1.5em;
+  color: #e8edf3;
+  font-size: 0.78rem;
+  font-weight: 620;
+  letter-spacing: 0.005em;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.nn-verdict[data-showing="true"] {
+  opacity: 1;
+}
+/* The untreated panel's line is always the complaint, so it is toned as one. */
+.nn-panel:first-child .nn-verdict {
+  color: rgba(255, 173, 165, 0.92);
+}
+.nn-panel:last-child .nn-verdict {
+  color: rgba(150, 226, 190, 0.96);
+}
+
+/* --- the scene, and the two things the beats change ----------------------
+   The room is drawn once, in `frame.tsx`, as SVG. All the beats do here is set
+   an exposure and reveal what is happening outside the window. Both panels get
+   the identical treatment; the only asymmetry in the whole demo is the extra
+   `url(#nn-tone-curve)` on the treated panel's filter chain. */
+
+.nn-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The fireball outside the window. */
+.nn-fire {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 42% 62%;
+  transform: scale(0.25);
+  transition:
+    opacity 170ms ease-out,
+    transform 1000ms cubic-bezier(0.12, 0.9, 0.2, 1);
+}
+.nn[data-beat="blast"] .nn-fire,
+.nn[data-beat="boom"] .nn-fire {
+  opacity: 1;
+  transform: scale(1);
+}
+.nn[data-beat="settle"] .nn-fire {
+  opacity: 0;
+  transform: scale(1.15);
+  transition:
+    opacity 1400ms ease,
+    transform 1500ms ease-out;
+}
+
+/* Light thrown into the room by whatever is outside. */
+.nn-spill {
+  opacity: 0;
+  transition: opacity 260ms ease-out;
+}
+.nn[data-beat="blast"] .nn-spill,
+.nn[data-beat="boom"] .nn-spill {
+  opacity: 1;
+}
+.nn[data-beat="settle"] .nn-spill {
+  opacity: 0;
+  transition: opacity 1400ms ease;
+}
+
+/* One shock frame, for the cut itself. A sustained white sheet was tried and it
+   flattened the room to a rectangle, which is the opposite of the point. */
+.nn-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 190ms ease-out;
+}
+.nn[data-beat="blast"] .nn-flash {
+  opacity: 0.3;
+}
+.nn[data-beat="boom"] .nn-flash {
+  opacity: 0.04;
+  transition: opacity 700ms ease;
+}
+
+/* --- meters ---------------------------------------------------------------
+   Not an audio graph. The shape of what the compressor does, which is the part
+   worth showing: the untreated side runs out of headroom and the treated side
+   is held under a ceiling with room left above it. */
+
+.nn-meter {
+  position: relative;
+  display: flex;
+  width: 12px;
+  flex: 0 0 12px;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding: 3px 2px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+}
+/* One block, because two rule blocks for one component is how a component's appearance
+   stops being anybody's decision — there is a long note about that at the notes list this
+   page used to carry.
+
+   `--lit` is how many of the fourteen are on, written on each meter by the pod and derived
+   from the same `loud` figure that sets the size of the printed line. It used to be two
+   custom properties declared per beat here, `--lit-raw` and `--lit-treated`: the same set
+   of numbers maintained in a second place, which is how a meter ends up disagreeing with
+   the thing next to it.
+
+   `@container`-free trick: each segment compares its own index against the count using a
+   stepped opacity. `calc()` cannot branch, but a very steep clamp can — (lit - index)
+   clamped to 0..1 is 1 for lit segments and 0 for the rest. */
+.nn-seg {
+  flex: 1 1 0;
+  border-radius: 1.5px;
+  background: rgba(255, 255, 255, 0.09);
+  opacity: clamp(0, calc((var(--lit, 0) - var(--seg)) * 100), 1);
+  transition:
+    background 120ms linear,
+    opacity 120ms linear;
+}
+.nn-meter .nn-seg {
+  background: #6fd3a8;
+}
+/* Everything above the limiter's ceiling, which only the untreated side reaches.
+   Qualified by `.nn-meter` so it outranks the rule above rather than losing a
+   specificity fight to it — as the first version did, silently, leaving a meter
+   that pinned at maximum in reassuring green. */
+.nn-meter .nn-seg[data-hot="true"] {
+  background: #ff6b5f;
+  box-shadow: 0 0 5px rgba(255, 107, 95, 0.7);
+}
+
+.nn-ceiling {
+  position: absolute;
+  right: -3px;
+  left: -3px;
+  /* Above the ninth of fourteen segments: the limiter's working ceiling, and the
+     point from which segments turn red. `CEILING` in the demo is the same number. */
+  bottom: calc(9 / 14 * 100%);
+  height: 1px;
+  background: rgba(111, 211, 168, 0.8);
+  box-shadow: 0 0 6px rgba(111, 211, 168, 0.6);
+}
+
+/* --- the extension's own figures ------------------------------------------
+   One muted line under both panels, from `describeVideoEffect` and `describeAudioEffect`
+   in the vendored core. It describes the *setting*, not either frame, which is why it read
+   oddly when it sat under the treated panel as though it were that panel's caption — and
+   why there were two of them, the untreated one hand-written to keep the rows aligned.
+
+   Kept because it is the only place the effect is quantified. The four verdicts above say
+   what changed; a reader who wants to know by how much should not have to open the
+   repository.
+
+   `.nn-caption` and the volume row that used to be here are both gone. The row held a
+   seven-bar meter and a label reading "explosion · same volume", which is now two dials in
+   the rig that visibly never move and a decibel figure on each panel. */
+.nn-spec {
+  margin: 0;
+  min-height: 1.4em;
+  color: rgba(232, 237, 243, 0.4);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .nn-split {
+    grid-template-columns: 1fr;
+  }
+  .nn-label {
+    font-size: 0.62rem;
+  }
+  /* The two dials are wider than a phone, so they wrap rather than forcing the whole plate
+     to overflow. */
+  .nn-dials {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem 0.7rem;
+  }
+}
+
+#night-neutralizer .nn {
+  width: 100%;
+  max-width: 1080px;
+}
+
+#night-neutralizer .nn-panel {
+  padding: clamp(0.45rem, 1vw, 0.8rem);
+  border: 1px solid rgba(224, 234, 247, 0.1);
+  border-radius: 12px;
+  background: rgba(3, 5, 9, 0.5);
+}
+
+#night-neutralizer .nn-frame {
+  aspect-ratio: 16 / 9;
+  border-radius: 7px;
+}
+
+@media (max-width: 700px) {
+  #night-neutralizer .nn-split {
+    gap: 0.75rem;
+  }
+}
+
+/* Exposure still reaches the same measured values at every beat, but switches
+   once at the boundary instead of interpolating a full-frame SVG filter on every
+   frame. Fire, spill, flash, text and meters retain their own smooth transitions. */
+.nn-shot,
+.nn[data-beat="settle"] .nn-shot {
+  contain: paint;
+  transition: none;
+}

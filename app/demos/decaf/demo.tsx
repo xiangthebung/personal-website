@@ -33,6 +33,7 @@
  * depicted with its numbers altered, and the copy in the notice is Decaf's own.
  */
 
+import "./demo.css";
 import { useEffect, useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useSectionBeat } from "../scene/section-beat";
@@ -75,7 +76,7 @@ type BeatName =
  * its counts and its red badge, and nothing happening to it yet.
  *
  * Nothing redirected the eye before the click. The pointer set off for a 24px button
- * while thirty hearts were crossing the window, so the one thing worth watching was
+ * while dozens of rewards were crossing the window, so the one thing worth watching was
  * the least visible thing on screen. Hence `notice`: the flood drops back, the feed
  * itself dims, and the button starts pulsing on its own — a beat whose entire job is
  * to say *there is something here that is not the feed*, before anything moves toward
@@ -187,7 +188,7 @@ function burst(count: number, spec: { spread: number; from: number; glyphs: read
      * How far out this one flies, and it has to land somewhere it can be seen.
      *
      * This was `42 + (index * 29) % 52` — up to 94vh of vertical travel — and filming
-     * the flood showed what that costs: nineteen of forty-six rewards were outside the
+     * the flood showed what that costs: too many rewards were outside the
      * window entirely, and more were inside the window but outside the layer's clip to
      * Decaf's own band. Half the cloud was hanging where nobody could see it, so the
      * flood looked thin while paying for every element in it.
@@ -197,19 +198,21 @@ function burst(count: number, spec: { spread: number; from: number; glyphs: read
      * the screen because it is filling the part of the screen this section owns.
      *
      * The modulus has to be coprime with the stride, and the first version of this was
-     * `(index * 29) % 29` — which is zero for every index, so all forty-eight rewards
+     * `(index * 29) % 29` — which is zero for every index, so every reward
      * came out at exactly radius 18 and the flood rendered as a tidy ring around the
      * counter. Every stepped value in this function relies on that property; 29 against
      * 31 gives all thirty-one radii before repeating.
      */
-    const reach = 18 + ((index * 29) % 31);
+    const reach = 22 + ((index * 29) % 31);
     return {
       glyph: spec.glyphs[index % spec.glyphs.length],
-      // Cosine across the width, sine down the height. Wider than tall, like a window.
-      dx: `${(Math.cos(radians) * reach * 0.95).toFixed(2)}vw`,
-      dy: `${(Math.sin(radians) * reach * 0.58).toFixed(2)}vh`,
-      size: 26 + ((index * 13) % 42),
-      delay: (index * 137) % 2600,
+      // Cosine across the width, sine down the height. Fewer particles travel
+      // slightly farther and vary more in scale so the burst keeps its full-screen
+      // silhouette without paying for dozens of near-duplicates.
+      dx: `${(Math.cos(radians) * reach).toFixed(2)}vw`,
+      dy: `${(Math.sin(radians) * reach * 0.62).toFixed(2)}vh`,
+      size: 30 + ((index * 17) % 52),
+      delay: (index * 137) % 2300,
       spin: ((index * 53) % 90) - 45,
       /* For the fall. Nothing drops straight: a small sideways drift and some extra
          tumble on the way down, both stepped in coprime strides like the headings above
@@ -229,14 +232,15 @@ function burst(count: number, spec: { spread: number; from: number; glyphs: read
  * burst around the thing that produced it and reads as an explosion out of a button rather
  * than as a fountain aimed at the neighbours.
  */
-const LIKE_BITS = burst(48, {
+const LIKE_BITS = burst(30, {
   from: 0,
   spread: 360,
   glyphs: ["♥", "♥", "★", "♥", "▲", "♥", "★"],
 });
 
-/** Comment bubbles out of the comment counter. Fewer, and they do not travel as far. */
-const COMMENT_BITS = burst(20, {
+/** Comment bubbles share the second shockwave. Twelve varied marks read as a
+ * separate source without duplicating the like burst's density. */
+const COMMENT_BITS = burst(12, {
   from: 18,
   spread: 360,
   glyphs: ["💬"],
@@ -368,22 +372,45 @@ export function DecafDemo() {
    */
   const quiet = beat === "notice" || beat === "reach" || beat === "press";
 
+  /**
+   * Pins a reward to the emitter's viewport position when its delayed lift actually starts.
+   *
+   * The counters are inside an accelerating reel, but the rewards are portalled to the
+   * viewport. Shared layer coordinates therefore cannot remain the source of truth after a
+   * reward launches: rewriting them at `notice`, `reach` and `press` moved the whole cloud
+   * upward once per beat. The lift begins at opacity zero, so this bounded measurement lands
+   * before the reward becomes visible and its inline origin never changes afterward.
+   */
+  const pinRewardOrigin = (event: React.AnimationEvent<HTMLDivElement>) => {
+    if (event.animationName !== "dc-lift") return;
+
+    const reward = event.target;
+    if (!(reward instanceof HTMLElement) || !reward.classList.contains("dc-drop")) return;
+    if (reward.style.getPropertyValue("--drop-x")) return;
+
+    const emitter = reward.dataset.from === "like" ? likeRef.current : commentRef.current;
+    const box = emitter?.getBoundingClientRect();
+    if (!box) return;
+
+    reward.style.setProperty("--drop-x", `${Math.round(box.left + box.width / 2)}px`);
+    reward.style.setProperty("--drop-y", `${Math.round(box.top + box.height / 2)}px`);
+  };
+
   /** Reward counts become a dash — in the text and in the accessible label. */
   const count = (value: string) => (dashed ? "—" : value);
 
   /**
-   * Keeps the bursts pinned to the counters they come out of.
+   * Keeps the pre-launch origins, burst auras and section clip aligned.
    *
    * The layer is portalled to `document.body` and positioned against the viewport, while
    * the counters live inside a reel scrolling upward inside a section the visitor is also
-   * scrolling past. The origin therefore moves for two independent reasons, and writing it
-   * once on mount would leave the hearts pouring out of a point the numbers left seconds
-   * ago.
+   * scrolling past. Shared coordinates provide a safe first frame; `pinRewardOrigin`
+   * snapshots the exact moving emitter separately for every delayed reward.
    *
-   * One `requestAnimationFrame` loop, two `getBoundingClientRect` reads, four custom
-   * properties written straight onto the layer element. Nothing re-renders — the same
-   * approach the pointer light in `MediaRail` uses, and for the same reason: this must not
-   * cost a React pass per frame.
+   * One requestAnimationFrame batch, two `getBoundingClientRect` reads, four custom
+   * properties written straight onto the layer element. Scroll, resize and observed
+   * geometry changes request that batch; nothing re-renders and no callback runs
+   * continuously while the geometry is unchanged.
    *
    * Stops once the extension is on, because there is nothing left to emit and no point
    * tracking a position nobody is reading.
@@ -392,81 +419,62 @@ export function DecafDemo() {
     if (!focused || on) return;
 
     const section = stageRef.current?.closest("[data-project-section]");
-
-    /* Only measured when the geometry can actually have moved.
-       This used to read three `getBoundingClientRect`s and write five custom properties
-       on every single frame — 180 layout reads a second, and forced synchronous ones
-       whenever anything else had invalidated layout. It was the most expensive thing in
-       the scene by a wide margin.
-       Two things make it unnecessary. The page's scroll position and the window's height
-       are the only inputs that move the counters relative to the viewport, so comparing
-       those two numbers is enough to know whether a measurement is worth taking. And
-       the drops now fly out once and hang, rather than cycling forever, so the origin
-       only has to be right at the moment each one launches — tracking the counter as
-       the reel scrolls underneath it would actively drag the whole suspended cloud
-       upward, which is the opposite of what it should do. */
-    let lastY = Number.NaN;
-    let lastHeight = Number.NaN;
-
     let frame = 0;
+
     const write = () => {
-      const y = window.scrollY;
-      const height = window.innerHeight;
-      if (y === lastY && height === lastHeight) {
-        frame = window.requestAnimationFrame(write);
-        return;
-      }
-      lastY = y;
-      lastHeight = height;
-
+      frame = 0;
       const layer = delugeRef.current;
-      if (layer) {
-        const like = likeRef.current?.getBoundingClientRect();
-        const comment = commentRef.current?.getBoundingClientRect();
-        if (like) {
-          layer.style.setProperty("--like-x", `${Math.round(like.left + like.width / 2)}px`);
-          layer.style.setProperty("--like-y", `${Math.round(like.top + like.height / 2)}px`);
-        }
-        if (comment) {
-          layer.style.setProperty(
-            "--comment-x",
-            `${Math.round(comment.left + comment.width / 2)}px`,
-          );
-          layer.style.setProperty(
-            "--comment-y",
-            `${Math.round(comment.top + comment.height / 2)}px`,
-          );
-        }
+      if (!layer) return;
 
-        /* Clipped to this section's share of the window.
-           The layer covers the whole viewport, which is the point — a burst that stops at
-           the edge of a panel is not a burst. But the viewport usually also contains the
-           end of the project above, and hearts drawn over Choir Practice look like they
-           belong to Choir Practice. That was reported, from a screenshot, and no threshold
-           fixes it: at any ordinary reading position some of the neighbour is visible.
-           So the boundary is enforced as a boundary. `inset()` in pixels off the section's
-           own rect, rewritten every frame with the origin, cuts every heart off exactly
-           where the section ends. Inside its own band the effect is still full width and
-           full bleed. */
-        if (section) {
-          const box = section.getBoundingClientRect();
-          const top = Math.max(0, Math.round(box.top));
-          const bottom = Math.max(0, Math.round(window.innerHeight - box.bottom));
-          layer.style.clipPath = `inset(${top}px 0px ${bottom}px 0px)`;
-          /* The top of the band, for anything that wants to sit against it rather than
-             against the window. The notification stack does: pinned to the viewport
-             corner it was landing inside the section above and getting clipped away
-             with it, so the flood arrived without the notifications that are half the
-             point. */
-          layer.style.setProperty("--band-top", `${top}px`);
-        }
+      const like = likeRef.current?.getBoundingClientRect();
+      const comment = commentRef.current?.getBoundingClientRect();
+      if (like) {
+        layer.style.setProperty("--like-x", `${Math.round(like.left + like.width / 2)}px`);
+        layer.style.setProperty("--like-y", `${Math.round(like.top + like.height / 2)}px`);
       }
-      frame = window.requestAnimationFrame(write);
+      if (comment) {
+        layer.style.setProperty(
+          "--comment-x",
+          `${Math.round(comment.left + comment.width / 2)}px`,
+        );
+        layer.style.setProperty(
+          "--comment-y",
+          `${Math.round(comment.top + comment.height / 2)}px`,
+        );
+      }
+
+      if (section) {
+        const box = section.getBoundingClientRect();
+        const top = Math.max(0, Math.round(box.top));
+        const bottom = Math.max(0, Math.round(window.innerHeight - box.bottom));
+        layer.style.clipPath = `inset(${top}px 0px ${bottom}px 0px)`;
+        layer.style.setProperty("--band-top", `${top}px`);
+      }
     };
 
-    frame = window.requestAnimationFrame(write);
-    return () => window.cancelAnimationFrame(frame);
-  }, [focused, on]);
+    const requestWrite = () => {
+      if (!frame) frame = window.requestAnimationFrame(write);
+    };
+
+    // Geometry changes only on scrolling, resizing, or observed layout changes. The
+    // previous implementation woke up every frame even when every input was identical.
+    // Per-reward animation starts handle the reel's transform without restoring that loop.
+    requestWrite();
+    window.addEventListener("scroll", requestWrite, { passive: true });
+    window.addEventListener("resize", requestWrite);
+
+    const resizeObserver = new ResizeObserver(requestWrite);
+    if (stageRef.current) resizeObserver.observe(stageRef.current);
+    if (likeRef.current) resizeObserver.observe(likeRef.current);
+    if (commentRef.current) resizeObserver.observe(commentRef.current);
+
+    return () => {
+      window.removeEventListener("scroll", requestWrite);
+      window.removeEventListener("resize", requestWrite);
+      resizeObserver.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [focused, on, run]);
 
   return (
     <div
@@ -603,8 +611,8 @@ export function DecafDemo() {
                         <i className="dc-play" />
                       </span>
                       {/* The first post's counters are the two emitters. Only the
-                          first: it is the one reliably in frame, and thirty-eight
-                          things leaving six different points at once is noise rather
+                          first: it is the one reliably in frame, and emitting from
+                          every repeated counter would turn direction into noise rather
                           than emphasis. */}
                       <p className="dc-post-meta">
                         <span className="dc-count" ref={index === 0 ? likeRef : undefined}>
@@ -643,7 +651,7 @@ export function DecafDemo() {
           The first version of this was seven small glyphs inside the demo's own box,
           which is a tidy illustration of a thing whose defining quality is that it is
           not tidy. A feed does not politely indicate that it wants your attention. So
-          this is thirty of them, big, pouring across the whole window, with follower
+          this is forty-two of them, big, pouring across the whole window, with follower
           and like notifications stacking up in the corner on top — and all of it
           portalled out of the section so it happens to the page the visitor is
           actually looking at.
@@ -659,16 +667,26 @@ export function DecafDemo() {
           <div
             className="dc-deluge"
             ref={delugeRef}
+            onAnimationStart={pinRewardOrigin}
             data-running={flooding}
             data-spent={on}
             /* Stands down while the extension is being switched on. The whole point of
                those two beats is that a visitor sees a pointer press a button, and it
-               cannot compete with thirty hearts crossing the screen — the flood is the
+               cannot compete with dozens of rewards crossing the screen — the flood is the
                problem being described, so it gets out of the way of the moment the
                problem is solved. */
             data-quiet={quiet}
             key={`deluge-${run}`}
           >
+            {/* Two low-cost shockwaves carry the scale the reduced particle set no
+                longer has to fake with duplicate glyphs. They share the measured
+                origins, expand once, and leave the individual rewards to provide
+                texture and direction. */}
+            <div className="dc-burst-aura" aria-hidden="true">
+              <span data-from="like" />
+              <span data-from="comment" />
+            </div>
+
             {[
               { bits: LIKE_BITS, from: "like" as const },
               { bits: COMMENT_BITS, from: "comment" as const },

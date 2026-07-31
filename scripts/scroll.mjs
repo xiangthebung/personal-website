@@ -289,23 +289,64 @@ await page.mouse.move(720, 450);
 
 let stalls = 0;
 let previous = await scrollY();
-const maxScroll = await page.evaluate(
-  () => document.documentElement.scrollHeight - window.innerHeight,
-);
 
+const waitForScrollToSettle = async (idleMs = 90, timeoutMs = 1200) =>
+  page.evaluate(
+    ({ idleMs: idle, timeoutMs: timeout }) =>
+      new Promise((resolve) => {
+        let idleTimer;
+        let timeoutTimer;
+        let finished = false;
+
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          window.removeEventListener("scroll", scheduleFinish);
+          window.clearTimeout(idleTimer);
+          window.clearTimeout(timeoutTimer);
+          resolve();
+        };
+        const scheduleFinish = () => {
+          window.clearTimeout(idleTimer);
+          idleTimer = window.setTimeout(finish, idle);
+        };
+
+        window.addEventListener("scroll", scheduleFinish, { passive: true });
+        scheduleFinish();
+        timeoutTimer = window.setTimeout(finish, timeout);
+      }),
+    { idleMs, timeoutMs },
+  );
+
+let reachedBottom = false;
+let stepsRun = 0;
 for (let step = 0; step < 60; step += 1) {
   await page.mouse.wheel(0, 320);
-  await page.waitForTimeout(130);
-  const now = await scrollY();
-  if (now >= maxScroll - 4) break;
+  await waitForScrollToSettle();
+  stepsRun = step + 1;
+
+  // Lazy demos replace intrinsic placeholders as this pass reaches them, so the
+  // document height is live state rather than a number that can be snapshotted at
+  // the top. Comparing against the initial height counted every wheel at the real
+  // bottom as a stall whenever the final laid-out page was shorter than its hints.
+  const { now, maxScroll } = await page.evaluate(() => ({
+    now: window.scrollY,
+    maxScroll: document.documentElement.scrollHeight - window.innerHeight,
+  }));
+  if (now >= maxScroll - 4) {
+    reachedBottom = true;
+    break;
+  }
   if (now <= previous + 2) stalls += 1;
   previous = now;
 }
 
-if (stalls > 4) {
-  fail(`the page stalled on ${stalls} of 60 wheel steps on the way down`);
+if (!reachedBottom) {
+  fail(`the page never reached the bottom after ${stepsRun} wheel steps`);
+} else if (stalls > 4) {
+  fail(`the page stalled on ${stalls} of ${stepsRun} wheel steps on the way down`);
 } else {
-  pass(`a wheel all the way down never gets stuck (${stalls} stalled steps of 60)`);
+  pass(`a wheel all the way down never gets stuck (${stalls} stalled steps of ${stepsRun})`);
 }
 
 const finalActive = await activeSection();

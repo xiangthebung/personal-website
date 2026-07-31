@@ -44,12 +44,12 @@ app/
                       which project you are "in"
   backdrops.tsx       per-project scenery behind and in front of each scene
   index-marks.tsx     a live miniature of every scene, for the hero index
-  globals.css         one stylesheet; all motion is CSS keyed off data-beat
+  globals.css         shared and server-rendered page styles
   demos/
     demo-mount.tsx    lazy registry, one chunk per scene
     scene/            the shared runtime: storyboard, phantom cursor,
                       viewport layers, in-frame labels
-    <project>/        one directory per scene
+    <project>/        one directory per scene; lazy demos own demo.css
   legal/              privacy policies and terms, vendored from each project
 tests/                node:test against the built Cloudflare worker
 scripts/              screenshot and audit tooling (see below)

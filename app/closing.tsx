@@ -23,12 +23,18 @@ export function Closing() {
       </h2>
 
       <div className="closing-contact">
+        <p className="closing-contact-lead">Email</p>
+        <a className="closing-mail" href="mailto:xiangli3625@gmail.com">
+          xiangli3625@gmail.com
+        </a>
         <p className="closing-contact-links">
           <a href="https://github.com/xiangthebung" target="_blank" rel="noreferrer">
             github.com/xiangthebung
           </a>
           <span aria-hidden="true">·</span>
-          <Link href="/legal">Privacy &amp; terms</Link>
+          <Link href="/legal" prefetch={false}>
+            Privacy &amp; terms
+          </Link>
         </p>
       </div>
     </section>

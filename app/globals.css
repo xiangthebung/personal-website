@@ -341,7 +341,7 @@ html.has-project-focus body {
    140ms is long enough to turn a notch into a movement and short enough that dragging
    a scrollbar still feels directly connected to the page. */
 
-   What is faded is the section's *contents*, never its background. Fading the
+/* What is faded is the section's *contents*, never its background. Fading the
    section itself would open grey seams between projects, and the paper is what makes
    the page continuous while you move through it.
 
@@ -3112,529 +3112,6 @@ html.shows-shortcuts .shortcut-sheet {
    the page, and a double-tap must never zoom the viewport away from it. */
 .demo-surface * {
   -webkit-tap-highlight-color: transparent;
-}
-
-/* ===========================================================================
-   Night Neutralizer — "same shot, one of them you can see"
-   ---------------------------------------------------------------------------
-   Two panels playing the same eight seconds, driven from `data-beat` on the
-   root. The left one is untouched; the right one is the same markup with the
-   extension's real `feComponentTransfer` over it, so the difference between
-   them is genuinely the extension's transfer function and not two sets of
-   hand-tuned gradients.
-
-   Everything the beats change is brightness and scale on a handful of layers.
-   The interesting consequence: the shot only has to be composed once, and both
-   panels stay in sync for free because they are the same CSS.
-   =========================================================================== */
-
-.nn {
-  position: relative;
-  width: 100%;
-  max-width: 900px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  color: #e8edf3;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 13px;
-}
-
-/* The filter lives in the document but takes no space. */
-.nn-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-
-/* --- the rig: what is fixed about the comparison --------------------------
-   Three statements true of every frame, so they sit outside the film rather than
-   changing inside it: one shot shown twice, a stream of the kind that defeats other
-   extensions, and a display brightness that does not move.
-
-   The dial is doing real argumentative work. The natural objection to a side-by-side
-   like this is that the right panel has simply been turned up — and the answer is
-   structural (both panels share `--exposure`; the only asymmetry in the document is
-   one `url(#nn-tone-curve)` in a filter chain) which is exactly the kind of answer a
-   picture cannot give. A number that visibly sits still while the panels visibly stop
-   matching gives it. */
-.nn-rig {
-  display: flex;
-  flex-wrap: wrap;
-  /* Centred, not spread. Pushed to the two ends of a 1080px row the dials sat squarely
-     above the treated panel and read as that panel's settings — which is the exact
-     opposite of what they are for. In the middle they belong to neither. */
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem 0.9rem;
-  color: rgba(232, 237, 243, 0.62);
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.nn-rig-chip,
-.nn-dials {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.26rem 0.6rem;
-  border: 1px solid rgba(224, 234, 247, 0.12);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.035);
-  white-space: nowrap;
-}
-
-/* The instruments carry two readouts and a label, so they need more air inside than the
-   chip beside them. */
-.nn-dials {
-  gap: 0.85rem;
-}
-
-.nn-rig-glyph {
-  width: 13px;
-  height: 13px;
-  flex: none;
-  color: rgba(232, 237, 243, 0.5);
-}
-
-.nn-dial {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.nn-dial-name {
-  color: rgba(232, 237, 243, 0.5);
-  font-weight: 550;
-}
-
-.nn-dial-track {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-.nn-dial-track i {
-  width: 4px;
-  height: 9px;
-  border-radius: 1px;
-  background: rgba(232, 237, 243, 0.14);
-}
-.nn-dial-track i[data-on="true"] {
-  background: rgba(232, 237, 243, 0.62);
-}
-
-.nn-dial b {
-  color: #e8edf3;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.64rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-}
-/* A "set once, never touched" caption used to close this plate. It told the reader what to
-   conclude from a pair of dials they can watch not moving, which the verdict pair under the
-   panels already says in the scene's own voice. */
-
-.nn-split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: clamp(0.5rem, 1.4vw, 1rem);
-}
-
-.nn-panel {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.nn-label {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.6rem;
-  margin: 0;
-  font-size: 0.68rem;
-  font-weight: 650;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-/* The live level, in the slot two static phrases used to occupy.
-   They were "peaks at maximum" and "held under a ceiling": one an alarm, one a mechanism,
-   neither of them changing, so neither said anything about the frame underneath. A number
-   that moves with the soundtrack does. */
-.nn-db {
-  flex: 0 0 auto;
-  min-width: 4.2em;
-  color: rgba(232, 237, 243, 0.82);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.66rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-align: right;
-  text-transform: none;
-  opacity: 0;
-  transition:
-    opacity 260ms ease,
-    color 240ms ease;
-}
-.nn-db[data-showing="true"] {
-  opacity: 1;
-}
-/* The top of the scale is the one reading that is a problem rather than a measurement. */
-.nn-db[data-hot="true"] {
-  color: #ff6b5f;
-}
-
-.nn-panel-body {
-  display: flex;
-  gap: 0.45rem;
-}
-
-/* --- the shot ------------------------------------------------------------- */
-
-.nn-frame {
-  position: relative;
-  flex: 1 1 auto;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  border-radius: 8px;
-  background: #000;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-/* The shot's exposure, per beat.
-   This is the mechanism that makes the comparison honest. Rather than drawing a
-   "blown out" panel and a "contained" panel, both panels get the *same* exposure
-   boost — the room really did get brighter — and only the treated one then has the
-   extension's transfer function after it in the filter chain. `brightness()` runs
-   first, the lookup table second, so what the curve receives is a genuinely
-   over-exposed frame and what it does with the top end is the highlight knee doing
-   its actual job. A white overlay alone was the first attempt and could not blow
-   anything out: 40% white over a near-black room is just grey. */
-/**
- * The dark beats run *under* full exposure, and that number is the whole comparison.
- *
- * It was 1, and measuring the two panels is what showed why that could not work. At
- * exposure 1 the untreated room samples at luma 8 for the wall, 15 for the clock, 12 for a
- * book spine — genuinely the values the artwork specifies, and genuinely visible, because a
- * PNG at luma 15 on a laptop at full brightness is a thing you can see. So the section was
- * claiming "you cannot make anything out" over a panel in which you could make everything
- * out, and the honest report of that is the one that came back: *I can't really see the
- * difference*.
- *
- * The premise was the problem rather than the filter. Nobody watches a film at midnight
- * with the screen at full brightness — the pod's own dial says 38%, which is the setting
- * this product exists because of — and the extension's job is to make a *dimmed* display
- * still show shadow detail. So both panels are shown through that dimming, which is what
- * the situation actually is, and only the treated one then gets the curve.
- *
- * Measured at 0.6, wall against clock: 5 → 9 untreated, 40 → 50 treated. The untreated
- * pair is four levels apart at the bottom of the range, which is the definition of
- * crushed; the treated pair is ten levels apart in the mid-shadows, which is a room with
- * things in it. Both panels get the identical multiplier — that is what keeps the
- * comparison honest — and the only asymmetry in the document is still one
- * `url(#nn-tone-curve)` in a filter chain.
- *
- * The blast beats override this upward and must keep doing so: the highlight half of the
- * argument needs a frame that is genuinely over-exposed.
- */
-.nn {
-  --exposure: 0.6;
-}
-/* Modest, on purpose, and much more modest than it was.
-   The first attempt drove this to 11 and the shot stopped being a shot: multiplying a
-   near-black room by eleven pushes everything above about 42/255 to pure white, so both
-   panels became featureless rectangles and the comparison had nothing left to compare.
-   2.6 and 2.1 were the correction and they were still too high, for a subtler reason
-   that only showed up in measurements of the two panels side by side.
-
-   Exposure is applied to *both* panels — that is what makes the comparison honest — so
-   every bit of it lifts the untreated shadows as well as the treated ones. At 2.1 the
-   near-black objects in the room were already visible on the untreated side before the
-   curve did anything, and the curve's shadow lift, which is half the product, had
-   almost nothing left to reveal. Measured at the wall: 31 against 57. At 1.3 the same
-   two samples read 7 against 23 — a smaller arithmetic gap that is far easier to see,
-   because it is the difference between black and visibly-not-black rather than between
-   two greys.
-
-   The room does not need multiplying to look lit anyway. `.nn-spill` pools real light
-   on the floor, and the thing that has to be too bright is the fireball, which is
-   already pure white in the artwork. A white pixel clips on the untreated panel at any
-   exposure at or above 1, and the curve rolls it to 0.87 on the treated one, so the
-   highlight half of the argument does not depend on this number at all. */
-.nn[data-beat="blast"] {
-  --exposure: 1.45;
-}
-.nn[data-beat="boom"] {
-  --exposure: 1.3;
-}
-.nn[data-beat="settle"] {
-  --exposure: 1.1;
-}
-
-.nn-shot {
-  position: absolute;
-  inset: 0;
-  /* Isolated so the filter on this element cannot reach the panel chrome. */
-  isolation: isolate;
-  filter: brightness(var(--exposure));
-  transition: filter 240ms ease-out;
-}
-.nn[data-beat="settle"] .nn-shot {
-  transition: filter 1400ms ease;
-}
-/* The treated panel: same exposure, then the extension's curve. */
-.nn-frame[data-treated="true"] .nn-shot {
-  filter: brightness(var(--exposure)) url(#nn-tone-curve);
-}
-.nn-shot > span {
-  position: absolute;
-  display: block;
-}
-
-/* --- the soundtrack, printed at its own volume ----------------------------
-   The trick this scene turns on, and the answer to a problem an earlier version gave up
-   on. This page has no audio, so a printed line of dialogue is identical whispered or
-   shouted — from which the previous version concluded that the audio half of the product
-   could not be shown, deleted the line, and left a bar meter to carry it alone.
-
-   The conclusion assumed the words were the only channel. They are not: `--loud` is the
-   level from 0 to 1, and it sets the size. A whisper at 0.08 renders around 10px; an
-   explosion at 1 renders around 40px. Loudness becomes something a reader sees, with
-   nothing to learn first.
-
-   And it demonstrates the compressor better than any meter. Untreated the two lines are
-   10px and 40px; treated they are 23px and 28px. A four-fold difference collapsing to a
-   slight one *is* the product, at a scale nobody can miss.
-
-   Opacity rides along, so a quiet line is also faint — two channels saying one thing,
-   which is what makes it read instantly rather than after a moment's thought.
-
-   Outside `.nn-shot`, therefore outside the filter chain: inside it this would blow to
-   white with the explosion on one panel and be tone-mapped on the other, so the element
-   whose entire message is its size would also have been two different colours.
-
-   Set like a burnt-in subtitle, low and centred, because that is the one convention a
-   viewer already reads as "this is the sound". */
-.nn-say {
-  position: absolute;
-  right: 6%;
-  bottom: 8%;
-  left: 6%;
-  color: #f4f8ff;
-  font-size: calc(0.5rem + var(--loud, 0) * 2rem);
-  font-weight: 600;
-  line-height: 1.15;
-  text-align: center;
-  text-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.9),
-    0 0 18px rgba(0, 0, 0, 0.75);
-  text-wrap: balance;
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 220ms ease,
-    font-size 260ms cubic-bezier(0.2, 0.9, 0.2, 1);
-}
-.nn-say[data-showing="true"] {
-  opacity: calc(0.55 + var(--loud, 0) * 0.45);
-}
-
-/* --- one line about what you are looking at -------------------------------
-   Under each panel, three or four words, always a matched pair with the other panel so a
-   visitor reads across rather than down. See `VERDICT` in the demo: between them the four
-   pairs are the whole product, in the plainest words available.
-
-   `min-height` rather than a hidden element, because the pair appears and disappears
-   between beats and a row that collapses would move both panels every time. */
-.nn-verdict {
-  margin: 0;
-  min-height: 1.5em;
-  color: #e8edf3;
-  font-size: 0.78rem;
-  font-weight: 620;
-  letter-spacing: 0.005em;
-  opacity: 0;
-  transition: opacity 300ms ease;
-}
-.nn-verdict[data-showing="true"] {
-  opacity: 1;
-}
-/* The untreated panel's line is always the complaint, so it is toned as one. */
-.nn-panel:first-child .nn-verdict {
-  color: rgba(255, 173, 165, 0.92);
-}
-.nn-panel:last-child .nn-verdict {
-  color: rgba(150, 226, 190, 0.96);
-}
-
-/* --- the scene, and the two things the beats change ----------------------
-   The room is drawn once, in `frame.tsx`, as SVG. All the beats do here is set
-   an exposure and reveal what is happening outside the window. Both panels get
-   the identical treatment; the only asymmetry in the whole demo is the extra
-   `url(#nn-tone-curve)` on the treated panel's filter chain. */
-
-.nn-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* The fireball outside the window. */
-.nn-fire {
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: 42% 62%;
-  transform: scale(0.25);
-  transition:
-    opacity 170ms ease-out,
-    transform 1000ms cubic-bezier(0.12, 0.9, 0.2, 1);
-}
-.nn[data-beat="blast"] .nn-fire,
-.nn[data-beat="boom"] .nn-fire {
-  opacity: 1;
-  transform: scale(1);
-}
-.nn[data-beat="settle"] .nn-fire {
-  opacity: 0;
-  transform: scale(1.15);
-  transition:
-    opacity 1400ms ease,
-    transform 1500ms ease-out;
-}
-
-/* Light thrown into the room by whatever is outside. */
-.nn-spill {
-  opacity: 0;
-  transition: opacity 260ms ease-out;
-}
-.nn[data-beat="blast"] .nn-spill,
-.nn[data-beat="boom"] .nn-spill {
-  opacity: 1;
-}
-.nn[data-beat="settle"] .nn-spill {
-  opacity: 0;
-  transition: opacity 1400ms ease;
-}
-
-/* One shock frame, for the cut itself. A sustained white sheet was tried and it
-   flattened the room to a rectangle, which is the opposite of the point. */
-.nn-flash {
-  position: absolute;
-  inset: 0;
-  background: #fff;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 190ms ease-out;
-}
-.nn[data-beat="blast"] .nn-flash {
-  opacity: 0.3;
-}
-.nn[data-beat="boom"] .nn-flash {
-  opacity: 0.04;
-  transition: opacity 700ms ease;
-}
-
-/* --- meters ---------------------------------------------------------------
-   Not an audio graph. The shape of what the compressor does, which is the part
-   worth showing: the untreated side runs out of headroom and the treated side
-   is held under a ceiling with room left above it. */
-
-.nn-meter {
-  position: relative;
-  display: flex;
-  width: 12px;
-  flex: 0 0 12px;
-  flex-direction: column-reverse;
-  gap: 2px;
-  padding: 3px 2px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.05);
-}
-/* One block, because two rule blocks for one component is how a component's appearance
-   stops being anybody's decision — there is a long note about that at the notes list this
-   page used to carry.
-
-   `--lit` is how many of the fourteen are on, written on each meter by the pod and derived
-   from the same `loud` figure that sets the size of the printed line. It used to be two
-   custom properties declared per beat here, `--lit-raw` and `--lit-treated`: the same set
-   of numbers maintained in a second place, which is how a meter ends up disagreeing with
-   the thing next to it.
-
-   `@container`-free trick: each segment compares its own index against the count using a
-   stepped opacity. `calc()` cannot branch, but a very steep clamp can — (lit - index)
-   clamped to 0..1 is 1 for lit segments and 0 for the rest. */
-.nn-seg {
-  flex: 1 1 0;
-  border-radius: 1.5px;
-  background: rgba(255, 255, 255, 0.09);
-  opacity: clamp(0, calc((var(--lit, 0) - var(--seg)) * 100), 1);
-  transition:
-    background 120ms linear,
-    opacity 120ms linear;
-}
-.nn-meter .nn-seg {
-  background: #6fd3a8;
-}
-/* Everything above the limiter's ceiling, which only the untreated side reaches.
-   Qualified by `.nn-meter` so it outranks the rule above rather than losing a
-   specificity fight to it — as the first version did, silently, leaving a meter
-   that pinned at maximum in reassuring green. */
-.nn-meter .nn-seg[data-hot="true"] {
-  background: #ff6b5f;
-  box-shadow: 0 0 5px rgba(255, 107, 95, 0.7);
-}
-
-.nn-ceiling {
-  position: absolute;
-  right: -3px;
-  left: -3px;
-  /* Above the ninth of fourteen segments: the limiter's working ceiling, and the
-     point from which segments turn red. `CEILING` in the demo is the same number. */
-  bottom: calc(9 / 14 * 100%);
-  height: 1px;
-  background: rgba(111, 211, 168, 0.8);
-  box-shadow: 0 0 6px rgba(111, 211, 168, 0.6);
-}
-
-/* --- the extension's own figures ------------------------------------------
-   One muted line under both panels, from `describeVideoEffect` and `describeAudioEffect`
-   in the vendored core. It describes the *setting*, not either frame, which is why it read
-   oddly when it sat under the treated panel as though it were that panel's caption — and
-   why there were two of them, the untreated one hand-written to keep the rows aligned.
-
-   Kept because it is the only place the effect is quantified. The four verdicts above say
-   what changed; a reader who wants to know by how much should not have to open the
-   repository.
-
-   `.nn-caption` and the volume row that used to be here are both gone. The row held a
-   seven-bar meter and a label reading "explosion · same volume", which is now two dials in
-   the rig that visibly never move and a decibel figure on each panel. */
-.nn-spec {
-  margin: 0;
-  min-height: 1.4em;
-  color: rgba(232, 237, 243, 0.4);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.62rem;
-  letter-spacing: 0.02em;
-  text-align: center;
-}
-
-@media (max-width: 700px) {
-  .nn-split {
-    grid-template-columns: 1fr;
-  }
-  .nn-label {
-    font-size: 0.62rem;
-  }
-  /* The two dials are wider than a phone, so they wrap rather than forcing the whole plate
-     to overflow. */
-  .nn-dials {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.3rem 0.7rem;
-  }
 }
 
 /* ===========================================================================
@@ -7002,553 +6479,6 @@ html.shows-shortcuts .shortcut-sheet {
    they can only add to the section. */
 
 /* ===========================================================================
-   Decaf — "not blocked, three seconds away"
-   ---------------------------------------------------------------------------
-   A feed losing its grip, in ten seconds. Everything is driven from `data-beat`
-   plus three cumulative flags on the root — `data-grey`, `data-paused`,
-   `data-on` — because most of what happens here is a state the page stays in
-   rather than a moment it passes through.
-
-   The layout constraint is the interesting one. The header and both sidebars
-   must not move a pixel while the feed empties, because "the page does not jump"
-   is the product's quiet advantage over every other extension in this category.
-   So `.dc-app` is a fixed three-column grid and `.dc-feed` has a fixed height:
-   the notice replaces the posts inside a box whose geometry never depends on
-   what is in it.
-   =========================================================================== */
-
-.dc {
-  --paper: #fbfbfd;
-  --panel: #ffffff;
-  --ink: #16181c;
-  --ink-2: #5b616b;
-  --ink-3: #8b919b;
-  --line: rgba(0, 0, 0, 0.08);
-  --accent: #4a5bd6;
-  --alarm: #e8443a;
-  --calm: #7c828d;
-
-  position: relative;
-  width: 100%;
-  max-width: 900px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  color: var(--ink);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 12px;
-}
-
-.dc-browser {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  background: var(--paper);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 16px 40px -20px rgba(0, 0, 0, 0.3);
-}
-
-/* --- tab strip ------------------------------------------------------------
-   Here for exactly one detail: the `(3)` a site writes into its own title, and
-   the moment it stops being there. */
-.dc-tabs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--line);
-  background: #eeeef2;
-}
-.dc-tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 7px 7px 0 0;
-  background: #fff;
-  box-shadow: 0 -1px 0 var(--line) inset;
-}
-.dc-favicon {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: linear-gradient(135deg, #f0546a, #f0a154);
-  transition: filter 700ms ease;
-}
-.dc[data-grey="true"] .dc-favicon {
-  filter: grayscale(1);
-}
-.dc-tab-title {
-  color: var(--ink-2);
-  font-size: 10.5px;
-  white-space: nowrap;
-}
-.dc-tab-title b {
-  color: var(--alarm);
-  font-weight: 700;
-}
-
-.dc-toolbar {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  margin-left: auto;
-  place-items: center;
-  border-radius: 7px;
-  color: var(--ink-3);
-  transition:
-    background 220ms ease,
-    color 220ms ease,
-    transform 220ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-.dc-toolbar svg {
-  width: 15px;
-  height: 15px;
-}
-/* --- making the click impossible to miss ----------------------------------
-   The reported problem was that a visitor could not tell what had happened: the feed
-   drained and nothing said why. The pointer was already travelling to this button and
-   already pinging its ring on the press, so the cue existed — it was just a 24px target
-   growing by a tenth while thirty hearts crossed the window.
-
-   Three additions, and the scene's own timing does the rest. `.dc-toolbar` needs
-   `position: relative` for the two pseudo-elements below. */
-.dc-toolbar {
-  position: relative;
-}
-
-/* A halo that pulses while the pointer is on its way, so the eye is already on the
-   button before anything is pressed. */
-.dc-toolbar::before {
-  position: absolute;
-  inset: -5px;
-  border: 2px solid var(--accent);
-  border-radius: 11px;
-  content: "";
-  opacity: 0;
-  pointer-events: none;
-}
-/* On `notice` as well as `reach`. `notice` is the beat whose entire job is to say
-   "there is something here that is not the feed" before anything travels, so it is the
-   beat that most needs the halo. Starting it only on `reach` meant the button lit up at
-   the same moment the pointer set off for it, which is too late to redirect anybody. */
-.dc[data-beat="notice"] .dc-toolbar::before,
-.dc[data-beat="reach"] .dc-toolbar::before {
-  animation: dc-look 900ms ease-out infinite;
-}
-@keyframes dc-look {
-  0% {
-    opacity: 0;
-    transform: scale(0.72);
-  }
-  40% {
-    opacity: 0.85;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.5);
-  }
-}
-
-/* And a single ring off the button itself on the press, so the click has a source as
-   well as a cursor. */
-.dc-toolbar::after {
-  position: absolute;
-  inset: -4px;
-  border: 2px solid var(--accent);
-  border-radius: 10px;
-  content: "";
-  opacity: 0;
-  pointer-events: none;
-}
-.dc[data-beat="press"] .dc-toolbar::after {
-  animation: dc-click 520ms cubic-bezier(0.16, 0.8, 0.2, 1) both;
-}
-@keyframes dc-click {
-  0% {
-    opacity: 0.95;
-    transform: scale(0.8);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(2.1);
-  }
-}
-
-.dc[data-beat="reach"] .dc-toolbar {
-  color: var(--accent);
-  background: rgba(74, 91, 214, 0.12);
-  transform: scale(1.1);
-}
-/* Pressed *in*, not out. A button that grows while being clicked is a button nobody
-   believes was clicked. */
-.dc[data-beat="press"] .dc-toolbar {
-  color: #fff;
-  background: var(--accent);
-  transform: scale(0.92);
-}
-/* Switched on, and it stays on for the rest of the scene: solid rather than tinted, so
-   the toolbar reads as "this is doing something" at a glance from across the frame. */
-.dc[data-on="true"] .dc-toolbar {
-  color: #fff;
-  background: var(--accent);
-}
-
-/* --- and a slower, larger pointer, in this scene only ---------------------
-   The shared cursor crosses its stage in 620ms, which is right for the scenes where it
-   moves a short distance inside a card and wrong here: this one travels the diagonal of
-   a whole browser window, and at 620ms it was reported twice as not obvious enough.
-   1100ms is slow enough to follow without being slow enough to read as broken, and it
-   fits inside `reach` (1600ms) with room to settle before the press.
-
-   Bigger, too. 22px is a real pointer's size, and a real pointer's size is exactly what
-   gets lost in a busy frame. */
-.dc .ghost-cursor {
-  width: 30px;
-  height: 30px;
-  transition:
-    left 1100ms cubic-bezier(0.4, 0, 0.2, 1),
-    top 1100ms cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 300ms ease,
-    transform 130ms ease;
-}
-.dc .ghost-cursor-ring {
-  width: 34px;
-  height: 34px;
-  margin: -17px 0 0 -17px;
-}
-
-/* --- the app: three columns that never move ------------------------------- */
-
-.dc-app {
-  position: relative;
-  display: grid;
-  grid-template-columns: 132px minmax(0, 1fr) 168px;
-  gap: 14px;
-  padding: 14px;
-}
-
-/* --- the spotlight --------------------------------------------------------
-   A scrim over the app, and nothing over the tab strip.
-
-   The complaint this answers is about attention, not about contrast: the pointer set
-   off for a 24px button while the feed underneath it was the brightest, busiest,
-   fastest-moving thing in the frame. Halos on the button could not win that fight,
-   because they were competing with the entire rest of the picture.
-
-   So the rest of the picture stands down. The scrim covers `.dc-app` exactly — the
-   three columns and everything in them — and stops at the tab strip, which is where
-   the button is. The split is the browser's own chrome line, so it reads as "the page
-   went quiet and the browser did not" rather than as an effect.
-
-   Deliberately a neutral darkening and not a desaturation. `drain` is four beats away
-   and its whole claim is that the colour goes; taking the colour out here would spend
-   that beat early and leave the payoff looking like nothing happened. The feed keeps
-   every bit of its colour, it just goes dim.
-
-   It ends on `press`. From `drain` onward the real effect is running and the scene
-   wants the app fully visible again, so the scrim is only ever up for the two beats
-   where a pointer is travelling. */
-.dc-app::after {
-  position: absolute;
-  z-index: 5;
-  inset: 0;
-  background: rgba(9, 10, 16, 0.55);
-  content: "";
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 420ms ease;
-}
-.dc[data-beat="notice"] .dc-app::after,
-.dc[data-beat="reach"] .dc-app::after,
-.dc[data-beat="press"] .dc-app::after {
-  opacity: 1;
-}
-
-/* And the strip comes forward while that happens. `z-index` so its shadow lands on top
-   of the scrim rather than under it, which is the difference between the strip being
-   lit and the strip merely being unpainted. */
-.dc-tabs {
-  position: relative;
-  z-index: 6;
-  transition:
-    background 420ms ease,
-    box-shadow 420ms ease;
-}
-.dc[data-beat="notice"] .dc-tabs,
-.dc[data-beat="reach"] .dc-tabs,
-.dc[data-beat="press"] .dc-tabs {
-  background: #fdfdff;
-  box-shadow: 0 10px 26px -6px rgba(9, 10, 16, 0.5);
-}
-
-.dc-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-.dc-logo {
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #f0546a, #f0a154);
-  transition: filter 700ms ease;
-}
-.dc[data-grey="true"] .dc-logo {
-  filter: grayscale(1);
-}
-.dc-nav {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--ink-2);
-  font-size: 11px;
-}
-.dc-nav i {
-  width: 13px;
-  height: 13px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.07);
-}
-
-.dc-main {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 11px;
-}
-.dc-top {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-}
-.dc-search {
-  flex: 1 1 auto;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--ink-3);
-  font-size: 10.5px;
-}
-.dc-avatar {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6fc3f0, #4a5bd6);
-  transition: filter 700ms ease;
-}
-.dc[data-grey="true"] .dc-avatar {
-  filter: grayscale(1);
-}
-
-/* The badge that keeps its number and loses its urgency. Decaf does not remove
-   it, on purpose: a real message still has to get through. */
-.dc-bell {
-  position: relative;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
-  color: var(--ink-2);
-}
-.dc-bell svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.dc-bell b {
-  position: absolute;
-  top: -3px;
-  right: -5px;
-  min-width: 14px;
-  padding: 0 3px;
-  border-radius: 999px;
-  background: var(--alarm);
-  color: #fff;
-  font-size: 8.5px;
-  font-weight: 700;
-  line-height: 14px;
-  text-align: center;
-  transition:
-    background 620ms ease,
-    color 620ms ease,
-    box-shadow 620ms ease;
-  box-shadow: 0 0 10px rgba(232, 68, 58, 0.55);
-}
-/* Muted, not erased. The first version dropped it to a 10%-black pill with grey
-   text and the number stopped being readable, which quietly turned "keeps its
-   count so a real message still gets through" into "removes the badge" — the
-   opposite of the design decision being shown. */
-.dc-bell[data-calm="true"] b {
-  background: rgba(0, 0, 0, 0.16);
-  color: #3d424b;
-  box-shadow: none;
-}
-
-/* --- the feed box, whose size never depends on its contents --------------- */
-
-/* The container that never changes size — the detail the whole scene is built to
-   show. It holds a scrolling reel of posts, and later a notice, and it is exactly
-   268px tall either way. */
-.dc-feed {
-  display: flex;
-  height: 268px;
-  flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-}
-
-/* --- the reel -------------------------------------------------------------
-   Six posts on a strip that pulls upward, starting at a crawl and still gaining
-   speed when the extension cuts it off. The curve is the argument: a linear scroll
-   is a carousel, and an ease-in that never gets to finish is what being held by a
-   feed actually feels like.
-
-   `forwards` holds the last frame, so a paused reel stays where it stopped rather
-   than snapping back to the top — and pausing rather than fading is deliberate. A
-   feed that fades out has been switched off politely. A feed that stops dead
-   mid-scroll is what happens.
-
-   Travel is four posts' worth, written off the same custom properties the post
-   height uses so changing one cannot silently strand the other. */
-.dc-reel {
-  --dc-post-h: 129px;
-  --dc-post-gap: 10px;
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: var(--dc-post-gap);
-  animation: dc-reel-pull var(--reel-ms, 3990ms) cubic-bezier(0.72, 0, 0.94, 0.4) forwards;
-  animation-play-state: paused;
-}
-.dc-reel[data-running="true"] {
-  animation-play-state: running;
-}
-@keyframes dc-reel-pull {
-  to {
-    transform: translateY(calc(-4 * (var(--dc-post-h) + var(--dc-post-gap))));
-  }
-}
-
-.dc-post {
-  display: flex;
-  height: 129px;
-  flex: none;
-  min-height: 0;
-  flex-direction: column;
-  gap: 6px;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-}
-.dc-post-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  color: var(--ink-2);
-  font-size: 10.5px;
-}
-.dc-post-avatar {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #8ad07a, #4aa0d6);
-  transition: filter 700ms ease;
-}
-
-/* The media, and the drain.
-   Staggered so the colour leaves left to right across the page rather than
-   snapping off everywhere at once — the difference between a setting being
-   applied and a thing happening. */
-.dc-media {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  border-radius: 7px;
-  transition: filter 900ms ease;
-}
-.dc-media--a {
-  background: linear-gradient(122deg, #f0546a, #f0a154 46%, #f5d06a);
-}
-.dc-media--b {
-  background: linear-gradient(122deg, #4aa0d6, #8ad07a 52%, #f5d06a);
-}
-/* Two more for the posts further down the reel. Loud, and deliberately not a
-   variation on a theme — a feed does not colour-coordinate. */
-.dc-media--c {
-  background: linear-gradient(122deg, #8b5cf0, #e0509a 54%, #ffb35c);
-}
-.dc-media--d {
-  background: linear-gradient(122deg, #0fb5a5, #4aa0d6 48%, #7b6cf0);
-}
-
-/* --- the wash off the switch ----------------------------------------------
-   One soft glow leaving the toolbar button and crossing the window, so the press has a
-   consequence you can see travelling rather than six separate things quietly becoming
-   true. Clipped by `.dc-browser`'s own overflow, which is what makes it read as
-   something moving across a page instead of a circle on top of one.
-
-   A soft radial with no hard edge, scaled rather than grown. A ring would have to be
-   drawn as a border or a banded gradient, and `transform: scale` multiplies band
-   thickness along with everything else: a 2px ring at scale 30 is a 60px stripe. There
-   is nothing to thicken here.
-
-   Sized to arrive. 40px at scale 30 is a 1200px circle, which clears the 900px window
-   from a corner. */
-.dc-wave {
-  position: absolute;
-  z-index: 7;
-  top: 19px;
-  right: 24px;
-  width: 40px;
-  height: 40px;
-  margin: -20px -20px 0 0;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--accent) 52%, transparent),
-    transparent 70%
-  );
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.2);
-}
-.dc[data-on="true"] .dc-wave {
-  animation: dc-wash 1500ms cubic-bezier(0.15, 0.85, 0.2, 1) both;
-}
-@keyframes dc-wash {
-  0% {
-    opacity: 0.7;
-    transform: scale(0.2);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(30);
-  }
-}
-
-/* --- the labels -----------------------------------------------------------
-   Small square-cornered chips in the extension's indigo — the same colour the toolbar
-   button turns when it is on, which is where they come out of.
-
-   Decaf's character is a *switch panel*: six settings, each of them off. So the chips are
-   tight, squared and uniform, and read as a row of states rather than as annotation. The
-   lead is short because every one of them is pinned to a thing a few pixels away inside a
-   dense browser window. */
-.dc-specs {
-  --spec-ink: var(--ink);
-  --spec-paper: rgba(255, 255, 255, 0.97);
-  --spec-edge: rgba(74, 91, 214, 0.3);
-  --spec-dot: var(--accent);
-  --spec-shadow: rgba(12, 18, 44, 0.42);
-  --spec-radius: 5px;
-  --spec-pad: 0.24rem 0.5rem;
-  --spec-weight: 620;
-  --spec-lead: 12px;
-}
-
-/* ===========================================================================
    Viewport layers
    ---------------------------------------------------------------------------
    Portalled to `document.body` by `ViewportLayer`, so these sit against the real
@@ -7594,504 +6524,6 @@ html.shows-shortcuts .shortcut-sheet {
   from {
     opacity: 0;
     transform: translate3d(28px, -8px, 0) scale(0.96);
-  }
-}
-
-/* --- Decaf: the deluge ---------------------------------------------------- */
-.dc-deluge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  /* One filter on the layer rather than thirty-four on its children: when the
-     extension goes on, the whole downpour loses its colour in a single composited
-     pass. */
-  transition:
-    filter 900ms ease,
-    opacity 1600ms ease 500ms;
-}
-/* Every reward on screen loses its colour at once, in one composited pass on the layer
-   rather than forty-six on its children. The drops do their own falling — see
-   `dc-fall` — so this no longer takes the layer's opacity to zero with it; a layer
-   fading out while its contents drop is two exits competing, and the fade wins. */
-.dc-deluge[data-spent="true"] {
-  filter: grayscale(1);
-}
-
-/* Out of the way of the click. See `data-quiet` in the demo: for the three beats where
-   a pointer is reaching for the toolbar and pressing it, the flood drops back so the
-   press is the only thing moving.
-
-   Blurred rather than nearly erased. 0.07 did make the button the only legible thing
-   and it also threw away the payoff: the hearts have to still be visibly *there*,
-   hanging, for their falling to read as something that happened to them. A blur is the
-   cinema answer to the same problem — it moves them behind the plane of attention
-   instead of removing them — and it costs one filter on one layer for two seconds. The
-   bob stops too, so nothing in the frame is moving except the pointer. */
-.dc-deluge[data-quiet="true"] {
-  opacity: 0.3;
-  filter: blur(3.5px);
-  transition:
-    opacity 300ms ease,
-    filter 300ms ease;
-}
-.dc-deluge[data-quiet="true"] .dc-drop-body {
-  animation-play-state: paused;
-}
-
-/* Each bit starts exactly on its counter and flies out from there.
-   `--like-x/y` and `--comment-x/y` are written onto the layer every frame by the demo,
-   because the counters are inside a reel that scrolls inside a section that scrolls. The
-   fallback centres the burst if the measurement has not landed yet, so a first frame can
-   never put a heart in the top-left corner. */
-/* --- the rewards, and then gravity ----------------------------------------
-   These used to cycle: fly out of the counter, fade, restart, forever. It was a
-   fountain, and a fountain is scenery — nothing about it could be *ended*, so when the
-   extension went on the only available exit was to fade the whole layer out, which read
-   as the effect being switched off rather than as anything happening to the rewards.
-
-   Now they fly out once and stop, hanging in the air over the page with a slow bob on
-   them, and they accumulate: by the end of the flood there are forty-six of them
-   suspended across the window. Then the extension goes on and every one of them loses
-   its colour and falls.
-
-   That is the argument, and it is the same argument the caption makes — nothing was
-   taken away, it just stopped being worth anything. A thing that fades out has been
-   removed. A thing that drops has become worthless while remaining exactly where it
-   was.
-
-   Two elements per reward: this one flies and falls, `.dc-drop-body` inside it bobs.
-   One element cannot do both, because both are `transform`.
-
-   No `will-change`. The browser promotes an element with a running transform animation
-   on its own and releases the layer afterwards; declaring it here would pin forty-six
-   compositor layers for the eight seconds the cloud is merely sitting still. */
-.dc-drop {
-  position: absolute;
-  top: var(--comment-y, 50vh);
-  left: var(--comment-x, 50vw);
-  color: #f0546a;
-  font-size: var(--size);
-  line-height: 1;
-  /* `both`, so the last frame holds. This is what makes them hang rather than cycle. */
-  animation: dc-lift 1400ms cubic-bezier(0.1, 0.74, 0.22, 1) both;
-  animation-delay: var(--delay);
-  animation-play-state: paused;
-}
-.dc-drop[data-from="like"] {
-  top: var(--like-y, 50vh);
-  left: var(--like-x, 50vw);
-}
-.dc-drop[data-from="comment"] {
-  /* Bubbles read as objects rather than as glyphs, so they want to be smaller. */
-  font-size: calc(var(--size) * 0.78);
-}
-.dc-deluge[data-running="true"] .dc-drop {
-  animation-play-state: running;
-}
-
-/* Out of the counter and up to where it will hang. */
-@keyframes dc-lift {
-  0% {
-    opacity: 0;
-    transform: translate3d(-50%, -50%, 0) scale(0.2) rotate(0deg);
-  }
-  12% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(calc(-50% + var(--dx)), calc(-50% + var(--dy)), 0) scale(1)
-      rotate(var(--spin));
-  }
-}
-
-/* Suspended. Long, staggered off the same delay that spaced the launches, and small —
-   nine pixels is enough to read as floating and not enough to look like weather. */
-.dc-drop-body {
-  display: block;
-  animation: dc-bob 3200ms ease-in-out infinite alternate;
-  animation-delay: var(--delay);
-}
-@keyframes dc-bob {
-  to {
-    transform: translateY(-9px);
-  }
-}
-
-/* And down.
-   The starting frame is the resting transform, exactly as `dc-lift` left it, so each
-   reward detaches from precisely where it hung. `both` again, so nothing snaps back.
-   The curve is an ease-in because that is what falling is — the first version used the
-   site's standard ease-out and every heart arrived at the bottom decelerating, which
-   reads as being lowered rather than dropped.
-   Faded from 62% so they are gone before they reach the bottom of Decaf's band, where
-   the layer's clip would otherwise cut them off along an invisible horizontal line. */
-.dc-deluge[data-spent="true"] .dc-drop {
-  animation: dc-fall 1450ms cubic-bezier(0.4, 0, 0.9, 0.5) both;
-  /* A sixteenth of the launch stagger. They have to let go at slightly different
-     moments — a cloud dropping in formation reads as one object — but the whole fall,
-     stagger included, has to finish inside `drain`'s 1700ms or the last few rewards are
-     still coming down while the caption has moved on to the counts becoming dashes. */
-  animation-delay: calc(var(--delay) * 0.06);
-  animation-play-state: running;
-}
-.dc-deluge[data-spent="true"] .dc-drop-body {
-  animation: none;
-}
-@keyframes dc-fall {
-  0% {
-    opacity: 1;
-    transform: translate3d(calc(-50% + var(--dx)), calc(-50% + var(--dy)), 0) scale(1)
-      rotate(var(--spin));
-  }
-  /* The strings being cut. A few pixels of sag before the acceleration, which is the
-     oldest trick in animation and the thing that makes a drop read as a loss of support
-     rather than as a downward move. */
-  7% {
-    transform: translate3d(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 6px), 0)
-      scale(0.97) rotate(var(--spin));
-  }
-  58% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(
-        calc(-50% + var(--dx) + var(--drift, 0vw)),
-        calc(-50% + var(--dy) + 76vh),
-        0
-      )
-      scale(0.84) rotate(calc(var(--spin) + var(--tumble, 90deg)));
-  }
-}
-
-/* The notification spam, stacked where notifications really stack. Offset down the
-   right edge so they read as a pile arriving one after another rather than as a
-   designed list. */
-/* Against the top of Decaf's own band, not the top of the window. `--band-top` is
-   written by the demo's clip loop; the fallback keeps them on screen if it has not
-   landed yet. */
-.dc-spam {
-  position: absolute;
-  top: calc(var(--band-top, 0px) + clamp(14px, 2.2vh, 26px));
-  right: clamp(14px, 1.6vw, 28px);
-  display: flex;
-  width: min(300px, calc(100vw - 32px));
-  flex-direction: column;
-  gap: 9px;
-}
-.dc-spam-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 9px;
-  padding: 10px 12px 11px;
-  border-radius: 12px
-;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow:
-    0 0 0 1px rgba(20, 22, 30, 0.07),
-    0 22px 44px -20px rgba(16, 18, 26, 0.45);
-  /* Arrive and stay, rather than cycling in and out. Four notifications that keep
-     replacing themselves are a carousel; four that pile up and remain are a backlog,
-     which is the thing being complained about. They fall with the hearts. */
-  animation: dc-spam-in 560ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
-  /* Compressed from `700ms + card * 620ms`, which put the fourth card 2,560ms after the
-     flood started — still arriving during `pull`, the beat that is supposed to *be* the
-     flood at its loudest. It also made the pod's visibility check flaky, because a
-     `both`-filled animation still inside its delay renders its 0% frame, and 0% is
-     `opacity: 0`: the harness was correctly reporting an invisible card and the card was
-     correctly invisible. All four are now up 1,580ms in, well inside `raw`. */
-  animation-delay: calc(320ms + var(--card) * 420ms);
-  animation-play-state: paused;
-}
-.dc-deluge[data-running="true"] .dc-spam-card {
-  animation-play-state: running;
-}
-.dc-deluge[data-spent="true"] .dc-spam-card {
-  animation: dc-spam-fall 1400ms cubic-bezier(0.4, 0, 0.9, 0.5) both;
-  animation-delay: calc(var(--card) * 80ms);
-  animation-play-state: running;
-}
-@keyframes dc-spam-fall {
-  0% {
-    opacity: 1;
-    transform: none;
-  }
-  58% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(-2vw, 62vh, 0) rotate(7deg);
-  }
-}
-.dc-spam-dot {
-  grid-row: 1 / span 2;
-  width: 9px;
-  height: 9px;
-  align-self: center;
-  border-radius: 50%;
-  background: #f0546a;
-}
-.dc-spam-card b {
-  color: #191b22;
-  font-size: 12.5px;
-  font-weight: 700;
-}
-.dc-spam-card small {
-  color: #6d7280;
-  font-size: 11.5px;
-}
-/* In from the right edge, and it stays.
-   These keyframes used to make a round trip — in at 8%, out again by 76% — because the
-   animation ran on an infinite loop and each card had to clear the way for its own next
-   pass. It runs once now, so a round trip means it holds its *last* frame, and the last
-   frame was `opacity: 0`. The cards duly arrived, left, and stayed gone, which the
-   visibility harness reported as an invisible notification and which no amount of
-   adjusting the delays was ever going to fix. */
-@keyframes dc-spam-in {
-  from {
-    opacity: 0;
-    transform: translate3d(26px, 0, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* The in-frame burst that used to live here is gone. It was seven glyphs rising 180px
-   inside the demo's own box, and it was replaced by `.dc-deluge` — the same idea fired
-   out of the real counters and across the whole window, which is what the section is
-   actually arguing. Its rules were left behind for a while matching nothing. */
-
-.dc[data-grey="true"] .dc-media,
-.dc[data-grey="true"] .dc-post-avatar {
-  filter: grayscale(1);
-}
-.dc[data-grey="true"] .dc-media--b {
-  transition-delay: 260ms;
-}
-/* The autoplaying thing in the middle of it. */
-.dc-play {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.82);
-  transform: translate(-50%, -50%);
-  transition: opacity 500ms ease;
-}
-.dc-play::after {
-  position: absolute;
-  top: 50%;
-  left: 54%;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
-  border-left: 8px solid var(--ink);
-  content: "";
-  transform: translate(-50%, -50%);
-}
-/* Muted autoplay outside a page you opened yourself is stopped. */
-.dc[data-on="true"] .dc-play {
-  opacity: 0;
-}
-
-.dc-post-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 0;
-  color: var(--ink-3);
-  font-size: 10px;
-}
-.dc-count {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  /* Tabular so a number becoming a dash does not shuffle the row. */
-  font-variant-numeric: tabular-nums;
-}
-.dc-count b {
-  color: var(--alarm);
-  font-size: 9px;
-  transition: color 620ms ease;
-}
-.dc[data-grey="true"] .dc-count b {
-  color: var(--ink-3);
-}
-.dc-comments[data-gone="true"] {
-  display: none;
-}
-
-/* --- the notice that takes the feed's place ------------------------------- */
-
-.dc-notice {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 18px;
-  border: 1px dashed rgba(0, 0, 0, 0.16);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.015);
-  text-align: center;
-  animation: dc-notice-in 420ms ease-out;
-}
-@keyframes dc-notice-in {
-  from {
-    opacity: 0;
-  }
-}
-.dc-notice-head {
-  margin: 0;
-  font-size: 12.5px;
-  font-weight: 650;
-}
-.dc-notice-body {
-  max-width: 34ch;
-  margin: 0;
-  color: var(--ink-2);
-  font-size: 10.5px;
-  line-height: 1.5;
-}
-.dc-notice-foot {
-  margin: 0;
-  color: var(--ink-3);
-  font-size: 9.5px;
-}
-
-/* The hold. A ring that fills while the button is held down — the whole design
-   in one control: the feed is not blocked, it just costs three seconds, and
-   seven tomorrow. */
-.dc-hold {
-  position: relative;
-  display: grid;
-  width: 44px;
-  height: 44px;
-  margin: 3px 0;
-  place-items: center;
-}
-.dc-hold svg {
-  position: absolute;
-  inset: 0;
-  transform: rotate(-90deg);
-}
-.dc-hold-track,
-.dc-hold-fill {
-  fill: none;
-  stroke-width: 3;
-}
-.dc-hold-track {
-  stroke: rgba(0, 0, 0, 0.1);
-}
-.dc-hold-fill {
-  stroke: var(--accent);
-  stroke-linecap: round;
-  /* 2πr for r=19. */
-  stroke-dasharray: 119.4;
-  stroke-dashoffset: 119.4;
-}
-.dc-hold[data-holding="true"] .dc-hold-fill {
-  /* Three seconds, which is the real first-pass duration. */
-  animation: dc-fill 1800ms linear forwards;
-}
-.dc-hold[data-done="true"] .dc-hold-fill {
-  stroke-dashoffset: 0;
-  stroke: #1f8f4e;
-}
-@keyframes dc-fill {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-.dc-hold-label {
-  color: var(--ink-2);
-  font-size: 8.5px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-}
-.dc-hold[data-done="true"] .dc-hold-label {
-  color: #1f8f4e;
-}
-
-/* --- the rail that goes entirely ----------------------------------------- */
-
-.dc-suggest {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  transition:
-    opacity 520ms ease,
-    transform 520ms ease;
-}
-.dc-suggest[data-gone="true"] {
-  opacity: 0;
-  transform: translateX(10px);
-  /* `visibility` rather than `display`, so the column keeps its width and the
-     middle of the page does not widen when the rail leaves. */
-  visibility: hidden;
-}
-.dc-suggest-head {
-  margin: 0;
-  color: var(--ink-3);
-  font-size: 9.5px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.dc-suggest-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-}
-.dc-suggest-row i {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #f0a154, #4a5bd6);
-  transition: filter 700ms ease;
-}
-.dc[data-grey="true"] .dc-suggest-row i {
-  filter: grayscale(1);
-}
-.dc-suggest-row span {
-  overflow: hidden;
-  color: var(--ink-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dc-suggest-row b {
-  margin-left: auto;
-  color: var(--ink-3);
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-@media (max-width: 720px) {
-  .dc-app {
-    grid-template-columns: 84px minmax(0, 1fr);
-  }
-  /* The rail is the first thing to go on a narrow screen, and it is also the
-     thing the scene deletes — so it is dropped from the layout entirely rather
-     than reserving a column nobody can see. */
-  .dc-suggest {
-    display: none;
-  }
-  .dc-nav {
-    font-size: 10px;
-  }
-  .dc-feed {
-    height: 232px;
   }
 }
 
@@ -9723,23 +8155,6 @@ svg.bd-vehicle {
   text-transform: uppercase;
 }
 
-#night-neutralizer .nn {
-  width: 100%;
-  max-width: 1080px;
-}
-
-#night-neutralizer .nn-panel {
-  padding: clamp(0.45rem, 1vw, 0.8rem);
-  border: 1px solid rgba(224, 234, 247, 0.1);
-  border-radius: 12px;
-  background: rgba(3, 5, 9, 0.5);
-}
-
-#night-neutralizer .nn-frame {
-  aspect-ratio: 16 / 9;
-  border-radius: 7px;
-}
-
 /* ---------------------------------------------------------------- pagepack --- */
 
 /* --- the outage, taken out to the section ---------------------------------
@@ -10529,10 +8944,6 @@ svg.bd-vehicle {
   background: rgba(249, 249, 249, 0.5);
   box-shadow: 0 30px 76px -50px rgba(23, 25, 27, 0.5);
   backdrop-filter: blur(9px);
-}
-
-#decaf .dc {
-  max-width: 980px;
 }
 
 /* The backdrop stands down for the click, along with everything else.
@@ -11627,10 +10038,6 @@ svg.bd-vehicle {
 }
 
 @media (max-width: 700px) {
-  #night-neutralizer .nn-split {
-    gap: 0.75rem;
-  }
-
   .bd-night-waveform {
     gap: 4px;
   }
@@ -12607,4 +11014,286 @@ svg.bd-vehicle {
     top: 52%;
     right: 0;
   }
+}
+
+/* ===========================================================================
+   Focused runtime and review follow-up
+   ---------------------------------------------------------------------------
+   The page keeps its full-motion presentation, but decorative timelines only run
+   where they can be seen. This block also owns the compact route through the
+   project run and the measured intrinsic sizes used by content-visibility.
+   =========================================================================== */
+
+/* A quiet route through the seven-section run, visible only after the hero leaves and
+   while at least one project intersects the viewport. It stays a fixed-width rail;
+   labels open toward the page on interaction instead of widening the control. */
+.project-dock {
+  position: fixed;
+  z-index: 65;
+  top: 50%;
+  right: max(0.7rem, env(safe-area-inset-right, 0px));
+  bottom: auto;
+  left: auto;
+  display: flex;
+  width: 2.7rem;
+  max-width: none;
+  max-height: calc(100svh - 1.4rem);
+  flex-direction: column;
+  align-items: center;
+  gap: 0.16rem;
+  padding: 0.32rem 0.28rem;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 1.1rem;
+  background: rgba(12, 15, 14, 0.6);
+  box-shadow: 0 12px 34px -24px rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(12px) saturate(0.85);
+  color: #f5f5f0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(calc(100% + 2rem), -50%, 0);
+  transition:
+    opacity 220ms ease,
+    transform 360ms var(--ease-out-soft);
+}
+
+html.has-project-in-view:not(.is-hero-visible) .project-dock {
+  opacity: 0.68;
+  pointer-events: auto;
+  transform: translate3d(0, -50%, 0);
+}
+
+html.has-project-in-view:not(.is-hero-visible) .project-dock:is(:hover, :focus-within) {
+  opacity: 0.96;
+}
+
+.project-dock-home,
+.project-dock-links a,
+.project-dock button {
+  position: relative;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.72rem;
+  color: inherit;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.project-dock-home,
+.project-dock-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.project-dock-home {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.project-dock-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.project-dock-links a {
+  color: rgba(255, 255, 255, 0.54);
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+/* Names and the shortcut hint are tooltips, not part of the rail's geometry. */
+.project-dock-links a strong,
+.project-dock button span {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 0.55rem);
+  width: max-content;
+  max-width: min(14rem, calc(100vw - 5rem));
+  overflow: hidden;
+  padding: 0.4rem 0.58rem;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 0.58rem;
+  background: rgba(12, 15, 14, 0.88);
+  box-shadow: 0 10px 28px -18px rgba(0, 0, 0, 0.78);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 0.66rem;
+  font-weight: 620;
+  opacity: 0;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  visibility: hidden;
+  white-space: nowrap;
+  transform: translate3d(0.32rem, -50%, 0);
+  transition:
+    opacity 160ms ease,
+    transform 220ms var(--ease-out-soft),
+    visibility 0s linear 220ms;
+}
+
+.project-dock-links a:hover strong,
+.project-dock-links a:focus-visible strong,
+.project-dock button:hover span,
+.project-dock button:focus-visible span {
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(0, -50%, 0);
+  transition-delay: 0s;
+}
+
+.project-dock-links a.is-current {
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.7);
+  color: #fff;
+}
+
+.project-dock button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.58);
+  cursor: pointer;
+}
+
+.project-dock button:hover,
+.project-dock button:focus-visible,
+.project-dock-home:hover,
+.project-dock-home:focus-visible {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.project-dock button kbd {
+  font: inherit;
+}
+
+/* The full visual treatment remains unchanged while visible. Away from the
+   active project, CSS timelines pause on their current frame instead of keeping
+   scene and backdrop animation clocks alive off screen. */
+html.has-visibility-gates .project:not(.is-active) .demo-host *,
+html.has-visibility-gates .project:not(.is-active) .demo-host *::before,
+html.has-visibility-gates .project:not(.is-active) .demo-host *::after,
+html.has-visibility-gates .project:not(.is-active) .project-ambience *,
+html.has-visibility-gates .project:not(.is-active) .project-foreground * {
+  animation-play-state: paused !important;
+}
+
+html.has-visibility-gates:not(.is-hero-visible) .hero .imark *,
+html.has-visibility-gates:not(.is-hero-visible) .hero .imark *::before,
+html.has-visibility-gates:not(.is-hero-visible) .hero .imark *::after,
+html.has-visibility-gates:not(.is-hero-visible) .hero-cue-line::after {
+  animation-play-state: paused !important;
+}
+
+/* The name still lands letter by letter, but reaches its readable resting state
+   sooner. `has-landed` removes the completed animation object while retaining the
+   ordinary hover transform. */
+.hero-letter {
+  animation-duration: 620ms;
+  animation-delay: calc(var(--letter-index) * 42ms + 90ms);
+}
+
+.hero-letter.has-landed {
+  animation: none;
+}
+
+/* Policy documents stay available as one quiet tertiary cluster rather than
+   competing link-for-link with Source and Open project. */
+.project-policy-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.58rem;
+  margin-inline-start: 0.12rem;
+  padding-inline-start: 0.7rem;
+  border-inline-start: 1px solid color-mix(in srgb, var(--project-muted) 42%, transparent);
+  opacity: 0.68;
+}
+
+.project-policy-links:hover,
+.project-policy-links:focus-within {
+  opacity: 1;
+}
+
+.project-policy-link {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+}
+
+/* Measured skipped-section sizes prevent content-visibility from guessing every
+   project is 520px tall. The remembered `auto` value takes over after first paint. */
+.project {
+  --project-intrinsic-height: 840px;
+}
+
+#choir-practice {
+  --project-intrinsic-height: 1250px;
+}
+
+#grt-next-bus {
+  --project-intrinsic-height: 980px;
+}
+
+@supports (content-visibility: auto) {
+  .project:not(.is-active) {
+    contain-intrinsic-size: auto var(--project-intrinsic-height);
+  }
+}
+
+@media (max-width: 900px) {
+  #choir-practice { --project-intrinsic-height: 1235px; }
+  #decaf { --project-intrinsic-height: 720px; }
+  #pdf-explainer { --project-intrinsic-height: 730px; }
+  #pagepack { --project-intrinsic-height: 700px; }
+  #grt-next-bus { --project-intrinsic-height: 1140px; }
+  #night-neutralizer { --project-intrinsic-height: 690px; }
+  #n-back { --project-intrinsic-height: 870px; }
+}
+
+@media (max-width: 660px) {
+  .project-dock {
+    right: max(0.35rem, env(safe-area-inset-right, 0px));
+    width: 2.2rem;
+    gap: 0.08rem;
+    padding: 0.24rem 0.2rem;
+    border-radius: 0.88rem;
+  }
+
+  .project-dock-home,
+  .project-dock button span,
+  .project-dock-links a strong {
+    display: none;
+  }
+
+  .project-dock-links {
+    gap: 0.06rem;
+  }
+
+  .project-dock-links a,
+  .project-dock button {
+    width: 1.7rem;
+    height: 1.7rem;
+    min-width: 1.7rem;
+    min-height: 1.7rem;
+    padding: 0;
+    border-radius: 0.58rem;
+    font-size: 0.54rem;
+  }
+
+  #choir-practice { --project-intrinsic-height: 1270px; }
+  #decaf { --project-intrinsic-height: 790px; }
+  #pdf-explainer { --project-intrinsic-height: 590px; }
+  #pagepack { --project-intrinsic-height: 745px; }
+  #grt-next-bus { --project-intrinsic-height: 1210px; }
+  #night-neutralizer { --project-intrinsic-height: 1030px; }
+  #n-back { --project-intrinsic-height: 1000px; }
 }

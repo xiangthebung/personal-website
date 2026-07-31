@@ -38,6 +38,28 @@ async function render() {
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
+async function collectAppCss(directory = new URL("../app/", import.meta.url)) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const parts = [];
+
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    const url = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
+    if (entry.isDirectory()) {
+      parts.push(...(await collectAppCss(url)));
+    } else if (entry.name.endsWith(".css")) {
+      parts.push(await readFile(url, "utf8"));
+    }
+  }
+
+  return parts;
+}
+
+let appCssPromise;
+const readAppCss = () => {
+  appCssPromise ??= collectAppCss().then((stylesheets) => stylesheets.join("\n"));
+  return appCssPromise;
+};
+
 const exists = async (path) => {
   try {
     await stat(new URL(path, import.meta.url));
@@ -213,7 +235,7 @@ test("page stays a server component and the chrome stays a client one", async ()
 });
 
 test("layout rules the page depends on are still in the stylesheet", async () => {
-  const css = await read("../app/globals.css");
+  const css = await readAppCss();
 
   assert.match(css, /html\s*\{[\s\S]*overflow-x:\s*hidden/);
   assert.match(css, /body\s*\{[\s\S]*overflow-x:\s*hidden/);
@@ -461,7 +483,7 @@ test("the scenes without captions have not grown them back", async () => {
      them — the `.gx-caption` margin that used to reserve the road's band is worth
      recording — and a check that cannot tell a rule from a sentence about a rule would
      forbid documenting the removal. */
-  const css = (await read("../app/globals.css")).replace(/\/\*[\s\S]*?\*\//g, "");
+  const css = (await readAppCss()).replace(/\/\*[\s\S]*?\*\//g, "");
   for (const gone of ["dc-caption", "pdfx-caption", "pp-caption", "gx-caption", "nn-caption", "nn-sub"]) {
     /* Bounded, because `.nn-sub` is a prefix of `.nn-subrow` — which survives and holds
        the level meter. A substring search reported the meter as the deleted subtitle. */
@@ -491,7 +513,7 @@ test("the claims live in the frames, not in a column beside them", async () => {
   const [projectsSource, pageSource, rawCss] = await Promise.all([
     read("../app/projects.ts"),
     read("../app/page.tsx"),
-    read("../app/globals.css"),
+    readAppCss(),
   ]);
 
   const projects = projectsSource.replace(/\/\*[\s\S]*?\*\//g, " ");
@@ -700,7 +722,7 @@ test("the Night Neutralizer scene prints its soundtrack at the size it sounds", 
   }
 
   // The size channel has to actually be wired to the printed line.
-  const css = await read("../app/globals.css");
+  const css = await readAppCss();
   assert.match(
     css.replace(/\/\*[\s\S]*?\*\//g, " "),
     /\.nn-say\s*\{[\s\S]*?font-size:[^;]*var\(--loud/,
@@ -850,10 +872,11 @@ test("the home page links to the policies of the projects that have them", async
   // rail; the closing section replaced it and carries the same links.
   assert.match(html, /class="closing"/);
   assert.match(html, /href="\/legal"/);
-  /* There was a third assertion here, for a `mailto:` in the closing section. The
-     address was removed from the page on purpose, so the assertion went with it —
-     the GitHub profile and the policy index are the two things that still have to
-     survive down there. */
+  assert.match(
+    html,
+    /href="mailto:xiangli3625@gmail\.com"/,
+    "the closing section no longer offers the restored contact email",
+  );
 });
 
 test("the published policies still match the originals in the project repos", async (t) => {
@@ -960,7 +983,7 @@ test("the page counts nothing at the reader", async () => {
 test("the gallery is pictures and nothing else", async () => {
   const [html, css, pageSource] = await Promise.all([
     render().then((response) => response.text()),
-    read("../app/globals.css"),
+    readAppCss(),
     read("../app/page.tsx"),
   ]);
 
