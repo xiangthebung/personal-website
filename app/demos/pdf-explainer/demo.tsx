@@ -27,7 +27,9 @@ import { useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
+import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
+import { useSectionFocused } from "../use-section-focus";
 
 /** From `src/demo/demoDeck.ts` — slide 2 of the bundled GPS lecture. */
 const SLIDE = {
@@ -258,8 +260,11 @@ export function PdfExplainerDemo() {
    */
   const frameRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
+  /* Starts on focus, not on approach. Four acts in twenty seconds is a scene a visitor
+     has to catch from the top; joining it at the tutor is joining it halfway. */
+  const running = useSceneRun(useSectionFocused(stageRef), onScreen);
   const { beat, index, run, still } = useStoryboard(BEATS, {
-    running: onScreen,
+    running,
     stage: stageRef,
     // The still that carries the argument: notes awake, slide still visible.
     stillBeat: "awake",

@@ -6269,11 +6269,27 @@ html.shows-shortcuts .shortcut-sheet {
   gap: 0.6rem;
 }
 
+/* Tall enough for the application to fit inside it.
+   This was `aspect-ratio: 16 / 10`, which derived the height from the width and gave the
+   app 609px at the pod's 980px. The app needs about 850: its parts panel is a fixed side
+   column in the desktop layout that neither scrolls nor closes, so anything shorter pushes
+   it out of the body — 243px of overflow at 609, 392px at 460 — and the score is cut off
+   inside a frame that is itself cut off. An aspect ratio is the wrong rule for a box whose
+   contents have a minimum height and do not care about its width. */
 .choir-frame {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 10;
-  min-height: 520px;
+  /* Follows the window, with a floor.
+     236px is what the section spends around this frame — the heading column is beside it
+     now, so that is padding, the stand's base and the footnote. Subtracting it means the
+     section lands just inside the window rather than just outside it: at 1080 the frame
+     takes 844 and the section 1077.
+     The 760px floor is the compromise the application forces. It needs about 850 before
+     its parts panel stops pushing out of the body, and on a 900px-tall laptop there is no
+     height that both fits the window and satisfies that. Given the choice, the app stays
+     intact and the section runs a little long — a cut-off score is the fault that was
+     reported, and a section you scroll is not. */
+  height: clamp(760px, calc(100svh - 246px), 880px);
   border: 0;
   border-radius: 12px;
   background: #000;
@@ -9510,20 +9526,20 @@ svg.bd-vehicle {
   transform: translate(-50%, -50%);
 }
 
-/* --- where the coupler sits, once the window has been measured -------------
-   Anchored to the window's left edge rather than to a percentage of the viewport, and
-   for the same reason the cable's end is: the window is not a percentage of anything, so
-   a percentage cannot stay a fixed distance from it. At 18% the coupler was 99px clear of
-   the window at 1440 and 27px *inside* it at 1024 — the one part of this that exists to
-   be seen coming apart, hidden behind the article at most widths.
+/* The coupler's horizontal position is not set here, and must not be.
+   It is published by the component as `--pack-joint-left`, from the same constant the
+   wire paths are built from, because the gap in the wire and the thing that fills it are
+   one measurement. An earlier version of this file anchored the coupler to the measured
+   window edge — which is correct reasoning for the cable's *end*, and wrong here: it
+   moved the connectors without moving the gap, and shipped a hole in the cable with a
+   coupler floating to the right of it.
 
-   110px short of the edge puts its right-hand plug about 76px clear, which is a plug's
-   width and a bit. */
-#pagepack[data-pack-room="roomy"] .bd-pack-joint {
-  left: calc(var(--pack-window-left) - 110px);
-}
+   Nothing needs anchoring anyway. Measured across nine widths, 18% keeps the coupler
+   clear of the window at every width where the cable runs beside it — 264 against a
+   window at 286 in the worst case, at 1280 — and at narrower widths the whole run drops
+   below the window, so its horizontal position stops mattering. */
 
-/* And when there is no floor at all.
+/* When there is no floor at all.
    Below about 1200px the browser window starts within 200px of the section's left edge —
    53px at 820 — so there is no desk beside it to lay a cable on. Rather than pick a
    breakpoint and hope it matches the grid, the pod sets `data-pack-room` from the space it
@@ -9542,7 +9558,6 @@ svg.bd-vehicle {
      height do not scale together, so there is no percentage that clears it everywhere. */
   --pack-band-top: calc(var(--pack-window-bottom) + 14px);
   --pack-band-height: 84px;
-  --pack-joint-left: 34%;
 }
 /* Nothing to run behind, so nothing to clip against. */
 #pagepack[data-pack-room="tight"] .bd-pack-cable {
@@ -10554,7 +10569,9 @@ svg.bd-vehicle {
 .choir-rehearsal {
   position: relative;
   display: grid;
-  min-height: 650px;
+  /* Follows the frame rather than setting a second, independent floor. 650px was set when
+     the frame's height came from an aspect ratio and could be shorter than the band it sat
+     in; the frame is now the tallest thing here by a distance. */
   place-items: center;
   perspective: 1400px;
 }

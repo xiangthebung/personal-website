@@ -46,6 +46,7 @@ import { PhantomCursor } from "../scene/cursor";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { ViewportLayer } from "../scene/viewport-layer";
 import { useOnScreen } from "../use-on-screen";
+import { useSceneRun } from "../scene/use-scene-run";
 import { useSectionFocused } from "../use-section-focus";
 import {
   formatBadge,
@@ -311,8 +312,9 @@ export function GrtNextBusDemo() {
   /* The notification is only allowed onto the visitor's screen while this is the
      section they are actually in. See `useSectionFocused`. */
   const focused = useSectionFocused(stageRef);
+  const running = useSceneRun(focused, onScreen);
   const { beat, index, run, still } = useStoryboard(BEATS, {
-    running: onScreen,
+    running,
     stage: stageRef,
     // The still that carries the argument: the board open with two minutes on it,
     // not the empty street it starts from.

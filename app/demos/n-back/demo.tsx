@@ -29,7 +29,9 @@
 import { useRef } from "react";
 import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
+import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
+import { useSectionFocused } from "../use-section-focus";
 
 /** The project's letter set: eight consonants picked for not sounding alike. */
 const LETTERS = ["C", "H", "K", "L", "Q", "R", "S", "T"] as const;
@@ -173,8 +175,11 @@ function Board({ cell, small = false }: { cell: number; small?: boolean }) {
 export function NBackDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
+  /* Starts on focus. This scene teaches a rule in order — cue 1, cue 2, then the first
+     comparison — and joining it at cue 3 teaches nothing. */
+  const running = useSceneRun(useSectionFocused(stageRef), onScreen);
   const { beat, run } = useStoryboard(BEATS, {
-    running: onScreen,
+    running,
     stage: stageRef,
     // The still that carries the argument: the bracket drawn between a cue and the
     // cue two places behind it.

@@ -39,6 +39,7 @@ import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { ViewportLayer } from "../scene/viewport-layer";
 import { useOnScreen } from "../use-on-screen";
+import { useSceneRun } from "../scene/use-scene-run";
 import { useSectionFocused } from "../use-section-focus";
 
 type BeatName =
@@ -258,6 +259,11 @@ export function DecafDemo() {
      take over the visitor's whole screen — which it may only do when this is
      unambiguously the section they are looking at. */
   const focused = useSectionFocused(stageRef);
+  /* Starts when the visitor is standing here, not 120px before the section arrives. This
+     scene has the most to lose from the old behaviour: its first two seconds are a still,
+     ordinary feed, and arriving to find the flood already at full height is arriving after
+     the setup. See `useSceneRun`. */
+  const running = useSceneRun(focused, onScreen);
 
   /* The two counters the bursts come out of, and the portalled layer they are written
      onto. */
@@ -265,7 +271,7 @@ export function DecafDemo() {
   const commentRef = useRef<HTMLSpanElement | null>(null);
   const delugeRef = useRef<HTMLDivElement | null>(null);
   const { beat, index, run, still } = useStoryboard(BEATS, {
-    running: onScreen,
+    running,
     stage: stageRef,
     // The still that carries the argument: a paused feed with the page intact
     // around it.

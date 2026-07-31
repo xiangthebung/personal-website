@@ -293,8 +293,23 @@ const PACK_SHEETS = [
  */
 function PagePackForeground() {
   const sides = ["left", "right"] as const;
+
   /**
-   * The run, and why it is short.
+   * Where the two halves meet, in the stretched viewBox, and how far apart they stop.
+   *
+   * One number, because the wire's gap and the connectors that fill it are one thing and
+   * were briefly two. The joint used to be placed by CSS at `18%` while the paths stopped
+   * at 250 and resumed at 326 — 288 of 1600 is 18%, so they agreed, silently and by
+   * coincidence. Anchoring the connectors to the measured window edge then moved them
+   * without moving the gap, and the section shipped with a visible hole in the cable and a
+   * coupler floating eighty pixels to its right. Publishing the position from the same
+   * constant the paths are built from is what stops that recurring.
+   */
+  const JOINT_X = 288;
+  const JOINT_GAP = 38;
+
+  /**
+   * The run.
    *
    * Three placements were tried and photographed. Across the middle of the section was
    * the original and it was the complaint: a cord thrown over the article the browser is
@@ -302,25 +317,26 @@ function PagePackForeground() {
    * the fold, which the visibility harness caught. Squeezed into the gap between the
    * window's bottom edge and the caption, it had about forty pixels to live in.
    *
-   * So it does what a cable on a desk does instead: it comes in from the left, the two
-   * halves meet on the open floor beside the window, and the run continues right and
-   * disappears underneath it. `440` of 1600 is the browser's own left edge, measured —
-   * the path stops there, so the cable reads as going behind the window rather than
-   * being drawn across it. Nothing has to be clipped, and the connectors are on clear
-   * ground where they can be seen coming apart.
+   * So it does what a cable on a desk does: it comes in from the left, the two halves meet
+   * on the open floor beside the window, and the run continues right and disappears
+   * underneath it.
    */
   const paths = {
-    left: "M-40 384 C110 384 196 348 250 340",
+    left: `M-40 384 C110 384 196 348 ${JOINT_X - JOINT_GAP} 340`,
     /* Runs well past any window edge on purpose. What ends this cable is a `clip-path`
        positioned from `--pack-window-left`, which the pod measures — see the effect in
        `app/demos/pagepack/demo.tsx`. Drawing it to a fixed x and hoping that x is the
        window's edge is what produced a cord across the article at every width except the
        one it was measured at. */
-    right: "M326 340 C372 337 460 336 1700 336",
+    right: `M${JOINT_X + JOINT_GAP} 340 C372 337 460 336 1700 336`,
   };
 
   return (
-    <div className="bd bd--pagepack-front">
+    <div
+      className="bd bd--pagepack-front"
+      /* The connectors sit exactly in the gap the paths leave. See `JOINT_X`. */
+      style={{ "--pack-joint-left": `${((JOINT_X / 1600) * 100).toFixed(3)}%` } as React.CSSProperties}
+    >
       <svg className="bd-pack-cable" viewBox="0 0 1600 720" preserveAspectRatio="none">
         {sides.map((side) => (
           <g key={side}>

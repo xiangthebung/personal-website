@@ -45,7 +45,9 @@
 import { useRef } from "react";
 import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
+import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
+import { useSectionFocused } from "../use-section-focus";
 import { NightFrame } from "./frame";
 import { buildToneCurve, curveToTableValues, staticAdaptState } from "./core/tone-curve";
 import { mapVideoStrength } from "./core/strength";
@@ -190,8 +192,11 @@ function Meter({ treated }: { treated: boolean }) {
 export function NightNeutralizerDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
+  /* Starts on focus. The whole scene is a comparison between two dark panels and an
+     explosion; the dark is the setup and there is no point arriving at the bang. */
+  const running = useSceneRun(useSectionFocused(stageRef), onScreen);
   const { beat, run } = useStoryboard(BEATS, {
-    running: onScreen,
+    running,
     stage: stageRef,
     // The still that carries the argument: one panel blown out, one panel intact.
     stillBeat: "boom",

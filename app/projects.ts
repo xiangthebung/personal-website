@@ -103,7 +103,22 @@ export type Project = {
 const projectData: Project[] = [
   {
     id: "choir-practice",
-    stage: "stacked",
+    /**
+     * `beside`, not `stacked`, and the reason is arithmetic rather than taste.
+     *
+     * This is the one section holding a real application, and the application has a floor:
+     * its parts panel is a fixed side column in the desktop layout, it does not scroll, and
+     * it cannot be closed at desktop widths — so below about 850px of height the app
+     * overflows its own frame and the score gets cut off. Measured: 243px of overflow at
+     * 609px tall, 392px at 460px tall.
+     *
+     * `stacked` puts the heading in a band *above* the pod, which cost ~290px and made the
+     * section 1110px. No window tested could show that, which is exactly what "the score
+     * starts going offscreen" is — there is no scroll position that holds the whole thing,
+     * so moving the page always takes part of the score with it. Beside the pod, the
+     * heading costs nothing vertical and the section comes in under a normal window.
+     */
+    stage: "beside",
     number: "01",
     name: "Choir Practice",
     platform: "Web app",

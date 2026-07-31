@@ -31,7 +31,9 @@ import { useEffect, useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { useSectionBeat } from "../scene/section-beat";
 import { useStoryboard, type Beat } from "../scene/storyboard";
+import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
+import { useSectionFocused } from "../use-section-focus";
 import { captureProgressMessage, formatBytes, type CapturePhase } from "./progress";
 
 type BeatName =
@@ -254,8 +256,11 @@ export function PagePackDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const browserRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
+  /* Starts on focus. The save and the outage are cause and effect, and arriving to find
+     the connection already dead is arriving after the cause. */
+  const running = useSceneRun(useSectionFocused(stageRef), onScreen);
   const { beat, index, run, still } = useStoryboard(BEATS, {
-    running: onScreen,
+    running,
     stage: stageRef,
     // The still that carries the argument: a dead browser and a live library.
     stillBeat: "read-offline",
