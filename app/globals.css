@@ -11408,37 +11408,103 @@ svg.bd-vehicle {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-/* --- the level rule ------------------------------------------------------
-   A track with a fill, rather than a hairline with an animated `background-size`. The
-   old version could only be a meter while the scene was in its `singing` beat, because
-   the size was set by a rule qualified on it; a track whose fill is a function of `--v`
-   is a meter always, and reads as a resting level rather than as a line when nothing is
-   playing. */
-.choir-part-cues i {
-  position: relative;
-  display: block;
-  width: clamp(2rem, 7vw, 7rem);
-  height: 3px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: rgba(20, 50, 42, 0.14);
+/* --- the ripples ---------------------------------------------------------
+   Each row used to end in a horizontal level rule: a track with a fill, pointing at the
+   frame. It was reported as a line going into the music, which is what it was — a meter
+   aimed at the application, drawing the eye across the score it sits beside.
+
+   So the level went behind the frame instead. Each voice has an origin under its disc,
+   and `tapVoices` appends a ring into it every time that voice comes in; the ring
+   expands across the paper in the part's own colour and fades. The reading is the same
+   one the rule was making and the disc's dial still makes continuously — this is the
+   part that turns it into a room reacting rather than a chart being updated.
+
+   Behind the stand at z-index 1, under the acoustics arcs at 3. A ripple over the score
+   would be decoration drawn on top of a working application. */
+.choir-ripples {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
 }
-.choir-part-cues i::after {
+
+/* Positioned to sit at the centre of each disc, so the rings look like they come off it.
+   The tops match `.choir-part-cues li`, plus 1.25rem for half a disc; the sides match
+   too, so a ripple from an odd row spreads rightward off the left edge and an even row
+   spreads leftward off the right. Kept here beside those rules rather than passed
+   through the markup, because these two things have to agree and this is where the
+   agreement is visible. */
+.choir-ripple-origin {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.choir-ripple-origin:nth-child(1) {
+  top: calc(13% + 1.25rem);
+  left: 1.25rem;
+}
+.choir-ripple-origin:nth-child(2) {
+  top: calc(35% + 1.25rem);
+  right: 1.25rem;
+}
+.choir-ripple-origin:nth-child(3) {
+  top: calc(58% + 1.25rem);
+  left: calc(1.25rem - 1%);
+}
+.choir-ripple-origin:nth-child(4) {
+  top: calc(78% + 1.25rem);
+  right: calc(1.25rem - 1%);
+}
+
+/* One ring. Born at the disc, ends up `--reach` times 26rem across, which `tapVoices`
+   sets from how hard the voice came in.
+
+   `scale` on a centred, fixed-size box rather than an animated `width`/`height`, so the
+   whole thing runs on the compositor: four voices entering in close succession can put
+   half a dozen of these on screen at once and none of them should cost a layout. */
+.choir-ripple {
   position: absolute;
   top: 0;
-  bottom: 0;
   left: 0;
-  width: calc(16% + var(--v, 0) * 84%);
-  border-radius: 2px;
-  background: var(--part-color, #31594d);
-  box-shadow: 0 0 8px rgb(from var(--part-color) r g b / 0.55);
-  content: "";
+  width: 30rem;
+  height: 30rem;
+  margin: -15rem 0 0 -15rem;
+  border: 2px solid var(--part-color, #31594d);
+  border-radius: 50%;
+  opacity: 0;
+  animation: choir-ripple 2600ms cubic-bezier(0.16, 0.72, 0.24, 1) forwards;
+  will-change: transform, opacity;
 }
-/* Rows two and four sit against the right edge and run their contents backwards, so the
-   fill has to grow the other way or it points off the frame. */
-.choir-part-cues li:nth-child(even) i::after {
-  right: 0;
-  left: auto;
+
+/* The opacity holds most of the way out rather than fading with the scale. Fading in
+   step with the expansion was measured at 0.05 by the time the ring was 400px across,
+   which meant the only visible part of the effect was a pulse around the disc — the
+   ripple crossing the paper, which is the whole point, was gone before it got there. */
+@keyframes choir-ripple {
+  0% {
+    opacity: 0;
+    transform: scale(0.05);
+  }
+  /* Visible almost at once: the ring reads as the voice arriving, and a ramp puts it a
+     beat late. */
+  10% {
+    opacity: 0.55;
+  }
+  62% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(var(--reach, 1));
+  }
+}
+
+/* Nothing ripples for a visitor who has asked for stillness. The discs and their dials
+   still move, because those are a readout rather than motion for its own sake. */
+@media (prefers-reduced-motion: reduce) {
+  .choir-ripple {
+    display: none;
+  }
 }
 
 .choir-acoustics {

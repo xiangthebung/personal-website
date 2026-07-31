@@ -62,29 +62,29 @@ import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
 
 /**
- * The score to open: Stanford's part song, 104 bars of plain SATB.
+ * The score to open: Happy Birthday, four parts, nine bars.
  *
- * It was the Wilbye madrigal, which was the wrong choice twice over. That
- * transcription is 649 KB and **774 measures** for a piece that is about seventy
- * bars long, so it engraved a four-and-a-half-minute canvas 1341px tall and took
- * visibly long doing it. And its parts are Soprano 1, Soprano 2, Alto 1, Alto 2,
- * Tenor, Bass — six voices, with the lower staves resting through the opening bars,
- * so the first thing on screen was two staves of rests under a heading promising
- * four voices.
+ * Two wrong answers came before it. The Wilbye madrigal was 649 KB and 774 measures
+ * for a piece about seventy bars long, so it engraved a canvas 1341px tall and took
+ * visibly long doing it — and its parts are Soprano 1, Soprano 2, Alto 1, Alto 2,
+ * Tenor, Bass, with the lower staves resting through the opening bars, so the first
+ * thing on screen was two staves of rests under a heading promising four voices.
+ * Stanford's part song fixed all of that and introduced a subtler problem: it is a
+ * piece nobody recognises. A visitor heard four-part harmony and had no way to tell
+ * whether the app was rendering it correctly, because they had never heard it.
  *
- * This one is 104 bars, four parts named Soprano, Alto, Tenor and Bass, and every
- * staff has notes in bar one. It is also exactly the shape the pitch describes: one
- * part loud, the other three quiet.
+ * A tune everybody knows removes that doubt in about two seconds. You press play, you
+ * hear Happy Birthday in four parts, and the claim the section is making — that this
+ * thing really does sing all four lines — is checked against your own memory rather
+ * than taken on trust. Nine bars, four parts named Soprano, Alto, Tenor and Bass, and
+ * every staff has notes in bar one.
  *
- * It is not the easiest score in the app any more — there is now a four-part "Happy
- * Birthday to You", nine bars long, sitting first in the sample grid for singers who
- * want somewhere to start. It is deliberately not what this pod opens. Nine bars at
- * crotchet=104 is about sixteen seconds, and when it ends the transport stops, the
- * analyser goes quiet and the four voice meters fall flat while the visitor is still
- * looking at them. A section that plays for less time than someone spends reading it
- * is a worse demonstration than an unfamiliar tune that keeps going.
+ * The cost is length: nine bars across two tempi is about twenty seconds, where the
+ * Stanford ran for minutes. So the pod turns the app's own loop on once the score is
+ * up (see `HOOKS.loop`), which is what keeps the voice meters alive for as long as
+ * somebody is watching instead of letting them fall flat mid-visit.
  */
-const SCORE = "Quick! We have but a second.musicxml";
+const SCORE = "Happy Birthday.musicxml";
 
 /**
  * Selectors inside the vendored app, and the one piece of its state this reads.
@@ -105,6 +105,16 @@ const HOOKS = {
   transport: "#play-btn",
   parts: "#parts-btn",
   mic: "#mic-btn",
+  /**
+   * The app's loop toggle, which defaults to looping the whole score.
+   *
+   * Needed because the score is nine bars. Without it the piece ends after about
+   * twenty seconds and the section goes quiet and still while the visitor is very
+   * probably still looking at it — the meters drop, the ripples stop, and the pod
+   * reads as broken rather than finished. `aria-pressed` is the app's own published
+   * state for it, so this is read the same way `#play-btn`'s label is.
+   */
+  loop: "#loop-btn",
   /** What `#play-btn` says about itself when a press would *start* playback. */
   idleLabel: "Play",
 };
@@ -420,6 +430,46 @@ function tapVoices(frame: HTMLIFrameElement | null, root: HTMLElement | null): (
     const peaks = ranges.map(() => 0);
     const troughs = ranges.map(() => 1);
 
+    /**
+     * Ripples: one ring into the room each time a voice comes in.
+     *
+     * The four rows used to end in a horizontal level rule pointing at the score, which
+     * was reported as a line going into the music — and it was, both literally and in the
+     * sense that mattered: a meter aimed at the application, competing with it. What
+     * replaced it puts the same information behind the frame instead of beside it, where
+     * a section of a page can afford to be atmospheric.
+     *
+     * Triggered on attacks rather than animated continuously, because that is the
+     * difference between decoration and a reading of the music: a ring appears in the
+     * alto's green *when the altos come in*. `levels` is already smoothed with a fast
+     * attack, so the crossing is the attack. The two thresholds are hysteresis — one
+     * value would fire a burst of rings every time a sustained note wobbled across it.
+     *
+     * Plain DOM, appended to the origin the stylesheet has already positioned. No React:
+     * this is inside a `requestAnimationFrame` loop whose entire purpose is to avoid a
+     * render pass per frame.
+     */
+    const origins = new Map<string, HTMLElement>();
+    for (const node of root.querySelectorAll<HTMLElement>(".choir-ripple-origin")) {
+      const voice = node.dataset.voice;
+      if (voice) origins.set(voice, node);
+    }
+    /* Whether this band is currently counted as sounding. */
+    const sounding = ranges.map(() => false);
+
+    const ripple = (origin: HTMLElement, strength: number) => {
+      // A ceiling, in case a noisy band and an unlucky threshold conspire.
+      if (origin.childElementCount >= 3) return;
+      const ring = origin.ownerDocument.createElement("i");
+      ring.className = "choir-ripple";
+      // How far it gets, so a loud entry throws a wider ring than a quiet one.
+      ring.style.setProperty("--reach", (0.7 + strength * 0.6).toFixed(2));
+      ring.addEventListener("animationend", () => ring.remove(), { once: true });
+      // `appendChild`, not `append`: this project's type graph resolves `append` to an
+      // overload taking a stream, and the DOM one is not worth arguing with.
+      origin.appendChild(ring);
+    };
+
     const tick = () => {
       analyser!.getByteFrequencyData(bins);
 
@@ -457,6 +507,19 @@ function tapVoices(frame: HTMLIFrameElement | null, root: HTMLElement | null): (
           written[index] = levels[index];
           root.style.setProperty(`--v-${range.name}`, levels[index].toFixed(3));
         }
+
+        /* Rising through the upper threshold is an entry; it has to fall back below the
+           lower one before it can count as entering again. `all` has no origin, so the
+           ensemble band drives the room's swell and nothing here. */
+        const origin = origins.get(range.name);
+        if (origin) {
+          if (!sounding[index] && levels[index] > 0.6) {
+            sounding[index] = true;
+            ripple(origin, levels[index]);
+          } else if (sounding[index] && levels[index] < 0.32) {
+            sounding[index] = false;
+          }
+        }
       });
 
       raf = win.requestAnimationFrame(tick);
@@ -475,6 +538,10 @@ function tapVoices(frame: HTMLIFrameElement | null, root: HTMLElement | null): (
       /* already torn down */
     }
     for (const voice of VOICES) root.style.removeProperty(`--v-${voice.name}`);
+    /* Any ring still expanding when the music stops. Their `animationend` listeners
+       would clear them, but the loop that made them is gone and a half-finished ripple
+       frozen over the paper is worse than no ripple. */
+    for (const ring of root.querySelectorAll(".choir-ripple")) ring.remove();
   };
 }
 
@@ -669,6 +736,12 @@ export function ChoirPracticeDemo() {
       if (!transport) return;
       setOpened(true);
 
+      /* Loop the whole score, because it is nine bars long. Set before playback
+         starts rather than after, so the first pass round is already looping and
+         there is no gap to notice. */
+      const loop = doc.querySelector<HTMLElement>(HOOKS.loop);
+      if (loop && loop.getAttribute("aria-pressed") !== "true") loop.click();
+
       const parts = doc.querySelector<HTMLElement>(HOOKS.parts);
       if (parts && parts.getAttribute("aria-expanded") !== "true") parts.click();
     } catch {
@@ -709,10 +782,30 @@ export function ChoirPracticeDemo() {
             >
               <b>{part.initial}</b>
               <span>{part.name}</span>
-              <i />
             </li>
           ))}
         </ol>
+
+        {/* Where the ripples come from.
+            One origin per voice, positioned by the stylesheet to sit under that voice's
+            disc, so the two stay together without either knowing the other's
+            coordinates. `tapVoices` appends a ring into one of these when it hears that
+            voice attack; the animation and the removal are handled there.
+
+            This layer sits behind the stand rather than over it. A ripple crossing the
+            score would be something drawn on top of the application, which is the one
+            thing this pod is careful not to do — the point is that the room reacts, not
+            that the frame gets decorated. */}
+        <div className="choir-ripples" aria-hidden="true">
+          {PARTS.map((part) => (
+            <span
+              key={part.name}
+              className="choir-ripple-origin"
+              data-voice={part.voice}
+              style={{ "--part-color": part.color } as React.CSSProperties}
+            />
+          ))}
+        </div>
 
         <svg className="choir-acoustics" viewBox="0 0 1200 700" aria-hidden="true">
           <path d="M160 420 Q600 70 1040 420" />
