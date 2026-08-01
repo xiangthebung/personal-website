@@ -1268,15 +1268,42 @@ html.has-project-focus body {
 
    Child selectors throughout, to outrank `.project > :not(.sr-only)`. */
 
+/* Behind the tint and the seam, not in front of them.
+   This was `z-index: 5`, and that number was the cause of a reported fault: standing in
+   GRT Next Bus put a hard black band across the bottom of the window. The band was Night
+   Neutralizer's entrance curtain — `#04060a` across its whole box, held at full opacity
+   until its own section is reached — painting five levels above `.project-tint`, which is
+   the layer that exists to wash a neighbour into the ambient colour, and above
+   `.project-seam`, which does the same at the join. Neither could reach it. Measured at
+   1920x1020 the neighbour's rows sat 236/255 from the ambient colour, against 0 to 2 for
+   every other section on the page; see `scripts/immersion.mjs`.
+   0 is also where three of the seven already were. The safe-zone block near the end of
+   this file had already forced `#choir-practice`, `#pagepack` and `#n-back` down to 0 so
+   their resting marks would stop landing across the editorial copy — the same argument,
+   found one section at a time. This makes it the default and deletes that override.
+   The one thing that genuinely needs to be above the content is Night Neutralizer's
+   blast, and it says so itself: it raises this layer to 1 for the three beats it runs. */
 .project > .project-veil {
   position: absolute;
-  z-index: 5;
+  z-index: 0;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
 }
 
-/* Night Neutralizer: the section comes up out of the dark, the way your eyes do. */
+/* Night Neutralizer: the section comes up out of the dark, the way your eyes do.
+
+   `:not(.is-seen)` is not an "approaching" state, and reading it as one is what broke
+   immersion two sections up. `is-seen` is set once, the first time a section is properly
+   in view, so before that this curtain is up from the moment the page loads — it is the
+   default for everything below the fold, not a beat that plays on arrival. That is fine
+   while the layer sits under `.project-tint`, which fades a neighbour out by `1 -
+   presence` and therefore hides the curtain for exactly as long as the curtain has no
+   business being visible. It was not fine at `z-index: 5`; see the note there.
+   Tying the opacity to `--presence` instead was the obvious alternative and it does not
+   work: `is-seen` fires at a 0.08 intersection ratio against a viewport shrunk 18% at the
+   bottom, which at 1920x1020 is a presence of roughly 0.007. The curtain would be gated
+   to nothing and the entrance would simply not happen. */
 .project--navy > .project-veil {
   background: #04060a;
   opacity: 0;
@@ -1304,10 +1331,9 @@ html.has-project-focus body {
    It has to sit *behind* the scene, and the first version of this did not. The claim
    in this comment used to be that "the veil comes before `.project-body` in the
    document and they share a stacking level", which was wrong in the one way that
-   mattered: `.project > .project-veil` is `z-index: 5` for its other job, and
-   `.project-body` is 2. So a 0.66-opacity warm sheet was painted over the entire
-   section including both panels, at exactly the beat the two panels are supposed to
-   stop looking alike.
+   mattered: the veil was `z-index: 5` at the time, and `.project-body` is below that.
+   So a 0.66-opacity warm sheet was painted over the entire section including both
+   panels, at exactly the beat the two panels are supposed to stop looking alike.
 
    Hit-testing the panel centres is what settled it, and it needed a scan of everything
    painted over the point rather than `elementFromPoint`, which skips the veil because
@@ -1318,12 +1344,16 @@ html.has-project-focus body {
 
    So the blast drops to `z-index: 1` while it is running: above `.project-ambience` at
    0, so the drawn room behind the demo still lights up, and below `.project-body` at 2,
-   so the film does not. Qualified on `.is-seen` because `z-index: 5` is load-bearing
-   for the veil's other role — the navy entrance curtain that covers the section before
-   it has been reached — and a curtain the body paints over is not a curtain.
+   so the film does not. Qualified on `.is-seen` so the raise cannot happen while the
+   navy entrance curtain is still up, which is the layer's other role.
 
    Warm rather than white, off-centre, never fully opaque — light spilling out of a
    window, not a camera flash.
+
+   The `z-index: 1` below is now a *raise* from the layer's resting 0 rather than a drop
+   from 5, and it is the only place on the page that still needs this layer above the
+   drawn room. Qualified on `.is-seen` so it cannot fire while the entrance curtain is
+   still up.
 
    Scoped to the section rather than fixed to the viewport, deliberately. A
    `position: fixed` flash would fire across whatever the visitor happens to be
@@ -2399,10 +2429,21 @@ html.has-project-focus
    cable that ends in a hard line at the section boundary would be the same fault
    wearing the one class name that sits above the scene rather than behind it.
 
+   And the veil, which was missed. It is the third full-section decorative layer in the
+   markup and the only one that was still allowed to end on a line: Night Neutralizer's
+   entrance curtain reaches `inset: 0` at full opacity, so it met the boundary as a step
+   of 236/255 rather than as a dissolve. Lowering it under the tint is what stops a
+   neighbour seeing it at all; feathering it is what stops it drawing an edge at the join
+   during the moment both sections are at half presence and the tint is only half there.
+   The two decorations that ride this layer — the mint theme's staff lines, the route
+   line the forest and white themes draw — sit at 14% and 24% of the section and are far
+   enough in that the mask never reaches them.
+
    Smoothstepped, not linear, for the reason set out on `.project-seam`: a straight ramp
    has a corner at each end, and a corner in a fade is a faint line exactly where this
    is supposed to be removing one. */
 .project > .project-ambience,
+.project > .project-veil,
 .project > .project-foreground {
   mask-image: linear-gradient(
     to bottom,
@@ -11616,11 +11657,14 @@ svg.bd-vehicle {
    card used to stop for `prefers-reduced-motion`. See "Motion". */
 
 /* The legacy entrance marks live outside `.bd`, so they need the same safe-zone
-   treatment. Keep the one-time gesture, then leave its resting mark behind the
-   stage instead of across the editorial copy. */
-:is(#choir-practice, #pagepack, #n-back) > .project-veil {
-  z-index: 0;
-}
+   treatment: keep the one-time gesture, then leave its resting mark behind the stage
+   instead of across the editorial copy.
+
+   The `z-index: 0` that used to sit here for these three is gone, because that is now
+   the veil's resting level for every section — see the note on `.project > .project-veil`.
+   This override was the same argument arrived at one section at a time, and the section
+   it never covered was the one that mattered: Night Neutralizer, whose full-bleed curtain
+   at `z-index: 5` was painting a black band across the bottom of GRT Next Bus. */
 #choir-practice > .project-veil::before {
   top: 36%;
   opacity: 0.2;

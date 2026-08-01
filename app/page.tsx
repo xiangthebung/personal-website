@@ -172,10 +172,25 @@ function ProjectSection({ project, index }: { project: Project; index: number })
         {project.number}
       </span>
 
+      {/* This theme's signature entrance. Its own element rather than a borrowed
+          pseudo-element on `.project-ambience`, which already owns both of its own
+          for the drifting background — see the stylesheet.
+
+          Before the tint and the seam, and that order is the fix for a reported fault
+          rather than a preference. This layer used to come after both of them at
+          `z-index: 5`, which put a theme's entrance *above* the two layers whose whole
+          job is to wash a neighbouring section into the ambient colour. Night
+          Neutralizer's curtain is an opaque `#04060a` across its whole box until its
+          own section is reached, so standing in GRT Next Bus put a hard black band
+          across the bottom of the window that neither the tint nor the seam could
+          touch. An entrance belongs to the section it introduces; it does not get to
+          paint over the page's answer to "am I somewhere else yet". */}
+      <div className="project-veil" aria-hidden="true" />
+
       {/* What makes the page one place rather than a stack of coloured panels: a wash
           in the colour of whichever project you are currently standing in, at whatever
-          opacity this section has lost. Deliberately after the ambience and the number
-          so it covers both — see `.project > .project-tint`. */}
+          opacity this section has lost. Deliberately after the ambience, the number and
+          the veil so it covers all three — see `.project > .project-tint`. */}
       <div className="project-tint" aria-hidden="true" />
 
       {/* And the same colour again at the top and bottom edges only, at full strength,
@@ -184,11 +199,6 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           meet, so there is nothing to step between. The hairline that used to draw
           that line is gone with it. See `.project-seam`. */}
       <div className="project-seam" aria-hidden="true" />
-
-      {/* This theme's signature entrance. Its own element rather than a borrowed
-          pseudo-element on `.project-ambience`, which already owns both of its own
-          for the drifting background — see the stylesheet. */}
-      <div className="project-veil" aria-hidden="true" />
 
       {/* Everything the compositions arrange. A wrapper is needed because two of
           the four variants place the heading and the well as grid siblings, and

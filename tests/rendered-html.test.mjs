@@ -1011,3 +1011,198 @@ test("the gallery is pictures and nothing else", async () => {
   const height = media.match(/height:\s*clamp\((\d+)px/);
   assert.ok(height && Number(height[1]) >= 240, "the gallery media shrank again");
 });
+
+/**
+ * PagePack's save label counts the pages it is actually saving.
+ *
+ * Reported as "it says page 4 of 7, but there are 61 files? Doesn't make sense", and it did
+ * not. The two file figures were the literals `34` and `61`, and they were wrong twice over.
+ *
+ * Unattached: every other number in that scene comes from `CAPTURED` — the badge that lands
+ * on seven, the library head's "7 pages · 1.6 MB", the reader's pack index, the seven cards
+ * — so two invented figures were the one thing on screen a reader could not reconcile with
+ * anything else on screen.
+ *
+ * And contradictory. In the extension's `runCapture`, `assetsDone` and `assetsTotal` are
+ * running totals over only the pages opened so far: each page snapshots `assetsBefore` and
+ * `assetTotalBefore` and adds its own counts on top, so a finished page contributes equally
+ * to both and `assetsTotal - assetsDone` is always the outstanding files of the page being
+ * hydrated right now. `61 - 34` puts 27 files outstanding on page 4 alone while the three
+ * finished pages managed 34 between them, which is not a state the extension can reach.
+ *
+ * So this checks the arithmetic is derived rather than typed, which is the thing that
+ * actually rots. A pair of magic numbers is easy to reintroduce while tuning how the frame
+ * looks, and nothing about the label's appearance would give it away.
+ */
+test("PagePack's progress label is counted from the pages it is saving", async () => {
+  const source = await read("../app/demos/pagepack/demo.tsx");
+
+  const block = source.match(/const CAPTURED = \[([\s\S]*?)\n\];/);
+  assert.ok(block, "could not find PagePack's CAPTURED list");
+
+  const pages = [...block[1].matchAll(/\{ title: "([^"]+)", bytes: ([\d_]+), files: ([\d_]+) \}/g)].map(
+    ([, title, bytes, files]) => ({
+      title,
+      bytes: Number(bytes.replace(/_/g, "")),
+      files: Number(files.replace(/_/g, "")),
+    }),
+  );
+  assert.equal(pages.length, 7, `parsed ${pages.length} captured pages; the list shape changed`);
+
+  /* A page with no files is a page the save had nothing to fetch, which would make the
+     denominator lie about the work. */
+  for (const page of pages) {
+    assert.ok(page.files > 0, `"${page.title}" has no files`);
+    assert.ok(page.bytes > 0, `"${page.title}" has no size`);
+  }
+
+  /* Both figures come from the pages. Checked as source text because this is a
+     `"use client"` module and importing it would drag React and the scene runtime into a
+     node test — the same trade the caption and label tests above make. */
+  const label = source.match(/function labelFor\(beat: BeatName\): string \{([\s\S]*?)\n\}/);
+  assert.ok(label, "could not find labelFor");
+  assert.match(
+    label[1],
+    /assetsDone:\s*filesThrough\(/,
+    "assetsDone is not derived from the captured pages any more",
+  );
+  assert.match(
+    label[1],
+    /assetsTotal:\s*filesThrough\(/,
+    "assetsTotal is not derived from the captured pages any more",
+  );
+  /* A bare number as the value, which is what `assetsDone: 34` was. Deliberately anchored
+     to the value rather than searching the line: `Math.min(pagesDone + 1, ...)` is an index
+     offset and the first version of this check failed on its `1`. */
+  assert.doesNotMatch(
+    label[1],
+    /assets(?:Done|Total):\s*\d/,
+    "a file count is a hardcoded number again; derive it from CAPTURED",
+  );
+
+  /* And the frame that prints a page number is inside the pack. */
+  const done = Number(source.match(/const COLLECT_PAGES_DONE = (\d+)/)?.[1]);
+  assert.ok(
+    Number.isInteger(done) && done > 0 && done < pages.length,
+    `COLLECT_PAGES_DONE is ${done}, which is not a page part-way through a ${pages.length}-page pack`,
+  );
+
+  /* The invariant the old numbers broke: everything before the current page is finished, so
+     the only files still outstanding belong to the page being read. */
+  const through = (n) => pages.slice(0, n).reduce((sum, page) => sum + page.files, 0);
+  assert.equal(
+    through(done + 1) - through(done),
+    pages[done].files,
+    "the outstanding file count is no longer exactly the current page's own files",
+  );
+});
+
+/**
+ * And the formatter itself is still the extension's, word for word.
+ *
+ * `app/demos/pagepack/progress.ts` says it is copied out of `background.js`, and that claim
+ * is the only reason the scene is allowed to print a progress line at all — the section's
+ * argument is that this is the real vocabulary rather than plausible-looking placeholder
+ * text. A copy is only safe if something checks it.
+ *
+ * The signature legitimately differs: the extension destructures a plain object, the demo
+ * destructures a typed one, and the demo braces one `if`. So the comparison strips braces
+ * and collapses whitespace, which leaves every string, every unit and the whole of the
+ * arithmetic compared exactly.
+ */
+test("PagePack's progress vocabulary has not drifted from the extension", async (t) => {
+  const origin = "../../pagepack-extension/background.js";
+  if (!(await exists(origin))) {
+    t.skip("pagepack-extension checkout not present");
+    return;
+  }
+
+  /* From the first branch to the last return, which is the whole of the decision. */
+  const body = (text) => {
+    const start = text.indexOf('if (phase === "reading")');
+    const end = text.indexOf("return `Saving ${files}`;", start);
+    assert.ok(start >= 0 && end > start, "captureProgressMessage no longer has its known shape");
+    return text
+      .slice(start, end + "return `Saving ${files}`;".length)
+      .replace(/[{}]/g, (brace) => (brace === "{" || brace === "}" ? "" : brace))
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
+  const [mine, theirs] = await Promise.all([
+    read("../app/demos/pagepack/progress.ts"),
+    read(origin),
+  ]);
+
+  /* Braces matter inside the template literals, so those are protected before the strip:
+     `${files}` must not become `$files`. Done by comparing the two normalisations of the
+     same shape rather than by a cleverer regex. */
+  const normalise = (text) =>
+    text.replace(/\$\{/g, "\u0001").replace(/[{}]/g, "").replace(/\u0001/g, "${").replace(/\s+/g, " ").trim();
+
+  assert.equal(
+    normalise(body(mine)),
+    normalise(body(theirs)),
+    "the demo's captureProgressMessage has drifted from background.js; recopy it",
+  );
+});
+
+/**
+ * A theme's entrance does not paint over the page's answer to "am I somewhere else yet".
+ *
+ * Reported as GRT Next Bus not being fully immersive — "I see the black from night
+ * neutralizer" — and the cause was paint order. `.project-tint` washes every section that
+ * is *not* the one you are reading toward `--ambient-bg` by `1 - presence`, and
+ * `.project-seam` does the same at full strength along both edges of every join. Between
+ * them a neighbour poking into the window should be indistinguishable from the paper of the
+ * project you are standing in.
+ *
+ * `.project-veil` was `z-index: 5`, above both. Night Neutralizer's entrance curtain is an
+ * opaque `#04060a` across its whole box, and `:not(.is-seen)` is not an "arriving" state —
+ * it is the default for everything below the fold — so the section below GRT painted a hard
+ * black band across the bottom of the window that neither layer could reach. Measured at
+ * 1920x1020 those rows sat 236/255 from the ambient colour against 0 to 2 everywhere else.
+ *
+ * Two things keep it fixed and both are invisible in isolation, which is why they are
+ * checked here: the veil's resting level, and its position in the markup. They are separate
+ * because `z-index: 0` alone is not enough — at equal levels the later element in the
+ * document wins, so the veil has to come *before* the tint as well as share its level.
+ *
+ * `scripts/immersion.mjs` measures the consequence in a browser. This catches the cause in
+ * the two places someone would undo it without noticing.
+ */
+test("a section's entrance layer cannot paint over its neighbours' ambient wash", async () => {
+  const [pageSource, rawCss] = await Promise.all([read("../app/page.tsx"), readAppCss()]);
+
+  /* Markup order. The veil has to be painted before the tint and the seam. */
+  const order = ["project-ambience", "project-veil", "project-tint", "project-seam", "project-body"];
+  const at = order.map((name) => {
+    const index = pageSource.indexOf(`className="${name}"`);
+    assert.ok(index >= 0, `app/page.tsx no longer renders .${name}`);
+    return { name, index };
+  });
+  for (let i = 1; i < at.length; i += 1) {
+    assert.ok(
+      at[i - 1].index < at[i].index,
+      `.${at[i - 1].name} must come before .${at[i].name} in the section; ` +
+        `a layer that comes later wins at the same z-index`,
+    );
+  }
+
+  const css = rawCss.replace(/\/\*[\s\S]*?\*\//g, " ");
+
+  /* Resting level. The blast raises this layer to 1 for three beats and says so; nothing
+     else may sit it above the tint. */
+  const veil = css.match(/\.project > \.project-veil \{([^}]*)\}/);
+  assert.ok(veil, "the veil no longer has a base rule");
+  assert.match(veil[1], /z-index:\s*0\b/, "the veil is above the ambient tint again");
+
+  /* And it is feathered at the bleed like the other two full-section layers, so it cannot
+     end on a line at the join while both sections are at half presence. */
+  const mask = css.match(
+    /\.project > \.project-ambience,\s*\r?\n\.project > \.project-veil,\s*\r?\n\.project > \.project-foreground \{([\s\S]*?)\n\}/,
+  );
+  assert.ok(mask, "the veil is no longer masked with the ambience and the foreground");
+  assert.match(mask[1], /mask-image:\s*linear-gradient/);
+  assert.match(mask[1], /--project-bleed/);
+});

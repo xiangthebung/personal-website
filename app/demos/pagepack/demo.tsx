@@ -205,18 +205,32 @@ const CURSOR: Partial<Record<BeatName, string>> = {
  */
 const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>(["press", "reveal"]);
 
-/** The pages torn off the site, in the order they fly out of the button. */
+/**
+ * The pages torn off the site, in the order they fly out of the button.
+ *
+ * `files` is each page's own asset count — the stylesheets, images and fonts the save has
+ * to fetch before that page can be read offline. It is authored, like `bytes` and `title`,
+ * and it is here rather than in the progress label because the label is arithmetic over
+ * these pages and nothing else. See `labelFor` for the reported fault that put it here.
+ *
+ * Roughly but not slavishly proportional to `bytes`: a page of plates is mostly a few large
+ * images, an appendix is mostly text, and the two do not scale together.
+ */
 const CAPTURED = [
-  { title: "The Byzantine Generals Problem", bytes: 402_411 },
-  { title: "Reaching agreement in the presence of faults", bytes: 221_004 },
-  { title: "Practical Byzantine fault tolerance", bytes: 318_770 },
-  { title: "Notes on quorum intersection", bytes: 96_233 },
-  { title: "Appendix A — proofs", bytes: 64_120 },
-  { title: "Figures and plates", bytes: 512_882 },
-  { title: "References", bytes: 41_006 },
+  { title: "The Byzantine Generals Problem", bytes: 402_411, files: 34 },
+  { title: "Reaching agreement in the presence of faults", bytes: 221_004, files: 19 },
+  { title: "Practical Byzantine fault tolerance", bytes: 318_770, files: 26 },
+  { title: "Notes on quorum intersection", bytes: 96_233, files: 11 },
+  { title: "Appendix A — proofs", bytes: 64_120, files: 7 },
+  { title: "Figures and plates", bytes: 512_882, files: 38 },
+  { title: "References", bytes: 41_006, files: 5 },
 ];
 
 const TOTAL_BYTES = CAPTURED.reduce((sum, page) => sum + page.bytes, 0);
+
+/** Files discovered across the first `pages` pages of the pack. */
+const filesThrough = (pages: number) =>
+  CAPTURED.slice(0, pages).reduce((sum, page) => sum + page.files, 0);
 
 /**
  * How far apart the cards leave the button, as a multiple of the stylesheet's own
@@ -383,17 +397,51 @@ const SPECS: readonly SpecTag<BeatName>[] = [
 /** The Save button they come out of, in the pod's own percentages. */
 const SPEC_ORIGIN = { x: 82, y: 38 };
 
-/** The real label for a beat, through the extension's own formatter. */
+/**
+ * How far into the pack the one frame that prints a page number is.
+ *
+ * Three done, so the label reads "Page 4 of 7". `collect` is the beat where the middle of
+ * the burst is in the air, so the middle of the pack is what is actually on screen.
+ */
+const COLLECT_PAGES_DONE = 3;
+
+/**
+ * The real label for a beat, through the extension's own formatter.
+ *
+ * The two file figures are derived from `CAPTURED`, and that is a fix rather than tidying.
+ * They were the literals `34` and `61`, which was reported as not making sense — "it says
+ * page 4 of 7, but there are 61 files?" — and it does not, in two ways.
+ *
+ * The first is that they were unattached. Every other number this scene shows comes from
+ * `CAPTURED`: the badge that lands on seven, the library head's "7 pages · 1.6 MB", the
+ * reader's pack index, the seven cards. Two invented figures in the middle of that are the
+ * one thing on screen a reader cannot reconcile with anything else on screen.
+ *
+ * The second is that they contradicted the extension. In `runCapture`, `assetsDone` and
+ * `assetsTotal` are running totals over *only the pages opened so far* — each page captures
+ * `assetsBefore`/`assetTotalBefore` and adds its own counts on top — so a finished page
+ * contributes the same amount to both, and `assetsTotal - assetsDone` is always the
+ * outstanding files of the page being hydrated *right now*. `61 - 34` claims 27 files
+ * outstanding on page 4 alone while the three pages already finished managed 34 between
+ * them, which is not a state the extension can reach.
+ *
+ * So both come from the pages: everything through the last finished page is done, and the
+ * page now being read has just added its own files to the total. That is exactly the frame
+ * the extension publishes on entering a page, and it explains the bar beside it — the
+ * denominator grows as links are discovered, which is why a link-following save cannot show
+ * a percentage. See `isDeterminate` in `./progress`.
+ */
 function labelFor(beat: BeatName): string {
   const phase: CapturePhase =
     beat === "read" ? "reading" : beat === "finish" ? "finishing" : "assets";
-  const pagesDone = beat === "collect" ? 3 : beat === "finish" ? CAPTURED.length : 0;
+  const pagesDone =
+    beat === "collect" ? COLLECT_PAGES_DONE : beat === "finish" ? CAPTURED.length : 0;
   return captureProgressMessage({
     phase,
     pagesDone,
     pagesTotal: CAPTURED.length,
-    assetsDone: beat === "collect" ? 34 : 0,
-    assetsTotal: beat === "collect" ? 61 : 0,
+    assetsDone: filesThrough(pagesDone),
+    assetsTotal: filesThrough(Math.min(pagesDone + 1, CAPTURED.length)),
   });
 }
 
