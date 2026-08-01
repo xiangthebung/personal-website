@@ -318,13 +318,13 @@ async function main() {
     const baseline = await stage.evaluate((el) => Number(el.dataset.lap ?? "0"));
     const seen = new Set([firstBeat]);
     /* Long enough for the slowest scene to finish a lap from a standing start.
-       PDF Explainer is the slowest at 20.0s of beats plus the 1.1s gap between laps,
+       PDF Explainer is the slowest at 25.3s of beats plus the 1.1s gap between laps,
        and this check joins a lap at an arbitrary point — so the worst case is very
-       nearly a full 21.1s of waiting before `lap` ticks over. At 24s that left under
+       nearly a full 26.4s of waiting before `lap` ticks over. At 24s that left under
        three seconds of margin, which is not margin, it is a scene-pacing change away
        from a red build that has nothing to do with the change. Raise this whenever a
-       scene gets slower than about thirty seconds. */
-    const until = Date.now() + 40_000;
+       scene gets slower than about thirty-five seconds. */
+    const until = Date.now() + 50_000;
     let laps = baseline;
     while (Date.now() < until) {
       const state = await stage.evaluate((el) => ({

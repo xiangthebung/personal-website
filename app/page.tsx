@@ -178,6 +178,13 @@ function ProjectSection({ project, index }: { project: Project; index: number })
           so it covers both — see `.project > .project-tint`. */}
       <div className="project-tint" aria-hidden="true" />
 
+      {/* And the same colour again at the top and bottom edges only, at full strength,
+          whatever this section's presence is. This is what removes the seam: two
+          sections meeting are both washed to the same colour along the line where they
+          meet, so there is nothing to step between. The hairline that used to draw
+          that line is gone with it. See `.project-seam`. */}
+      <div className="project-seam" aria-hidden="true" />
+
       {/* This theme's signature entrance. Its own element rather than a borrowed
           pseudo-element on `.project-ambience`, which already owns both of its own
           for the drifting background — see the stylesheet. */}
@@ -288,14 +295,6 @@ function ProjectSection({ project, index }: { project: Project; index: number })
 
 const HERO_SOURCE = "/hero-face-1600.jpg";
 
-const shortcutHints: [string, string][] = [
-  ["J", "Next project"],
-  ["K", "Previous project"],
-  ["G", "Jump to the gallery"],
-  ["T", "Back to the top"],
-  ["?", "This list"],
-];
-
 export default function Home() {
   const heroAvif = mediaAsset(HERO_SOURCE)?.avif;
 
@@ -326,10 +325,6 @@ export default function Home() {
             </a>
           ))}
         </span>
-        <button type="button" data-shortcut-trigger title="Keyboard shortcuts">
-          <kbd>?</kbd>
-          <span>Shortcuts</span>
-        </button>
       </nav>
 
       <section className="hero" aria-labelledby="hero-title">
@@ -433,22 +428,6 @@ export default function Home() {
           </div>
         </MediaRail>
       </section>
-
-      {/* Revealed by "?" -- see the shortcut handler in ProjectFocusManager. */}
-      <aside className="shortcut-sheet" aria-label="Keyboard shortcuts">
-        <h2>Shortcuts</h2>
-        <dl>
-          {shortcutHints.map(([keys, description]) => (
-            <div key={keys}>
-              <dt>
-                <kbd>{keys}</kbd>
-              </dt>
-              <dd>{description}</dd>
-            </div>
-          ))}
-        </dl>
-        <small>Press ? or Esc to close</small>
-      </aside>
 
       {/* The last paragraph of the argument. It carries the contact details and
           the policy index that used to live in a thin footer under the photo

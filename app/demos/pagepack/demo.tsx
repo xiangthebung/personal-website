@@ -28,7 +28,8 @@
  */
 
 import { useEffect, useRef } from "react";
-import { PhantomCursor } from "../scene/cursor";
+import { PhantomCursor, SETTLE_MS } from "../scene/cursor";
+import { usePressGate } from "../scene/press-gate";
 import { useSectionBeat } from "../scene/section-beat";
 import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
@@ -48,7 +49,10 @@ type BeatName =
   | "finish"
   | "cut"
   | "dead"
+  | "aim-library"
   | "reveal"
+  | "aim-page"
+  | "open-page"
   | "read-offline"
   | "hold";
 
@@ -103,9 +107,34 @@ const BEATS: readonly Beat<BeatName>[] = [
   // across them — 640ms of transition in the stylesheet — and no longer.
   { name: "cut", ms: 800 },
   { name: "dead", ms: 1900 },
-  /* Three new things in one frame — the Library tab, a pack, and a file list — and
-     1200ms was under the floor a line of caption needs. */
-  { name: "reveal", ms: 1500 },
+  /**
+   * The two beats that used to be one, and the reason is a reported one.
+   *
+   * `reveal` was 1500ms and did everything at once: the pointer flew in from off frame,
+   * the Library tab lit up, the pack and the file list appeared, and the click landed
+   * about 580ms in. Measured, the press was correctly after the arrival — but the
+   * *effect* was not. The library opened on the beat's first frame, which is 580ms
+   * before the click that is supposed to cause it, so what a visitor sees is a panel
+   * changing on its own and a pointer turning up afterwards to take the credit.
+   *
+   * A state change is tied to a beat boundary and a click is 90ms into a beat; the two
+   * can only agree if the pointer is already standing on the thing when the beat starts.
+   * So the flight gets its own beat, exactly as `aim` does before `press` in the save.
+   */
+  { name: "aim-library", ms: 800 },
+  /* Three new things in one frame — the Library tab, a pack, and a file list. */
+  { name: "reveal", ms: 900 },
+  /**
+   * And the saved page gets opened rather than opening itself.
+   *
+   * Also reported: "the page just appears after clicking on library, rather than the
+   * actual page in the library". It did. `reading` was keyed off `read-offline`, so the
+   * reader unfolded across the section with nothing having been pressed — which quietly
+   * undid the point of the shot, because the claim is that a *saved copy* opens, and a
+   * copy has to be picked out of a list to be a copy of something.
+   */
+  { name: "aim-page", ms: 700 },
+  { name: "open-page", ms: 700 },
   // The payoff, and the only frame with real prose in it.
   { name: "read-offline", ms: 2400 },
   { name: "hold", ms: 1400 },
@@ -124,7 +153,23 @@ const SAVE_MS = BEATS.filter((beat) =>
   (SAVE_BEATS as readonly string[]).includes(beat.name),
 ).reduce((total, beat) => total + beat.ms, 0);
 
-/** Where the cursor is on each beat. `null` means it has left the frame. */
+/**
+ * Where the cursor is on each beat. `null` means it has left the frame.
+ *
+ * Two clicks at the end rather than none and a half: the Library tab, and then the saved
+ * page inside it. Each is aimed a beat before it is pressed, which is the pattern `aim`
+ * and `press` already established for the Save button and the only arrangement in which
+ * the thing a click causes cannot happen before the click.
+ *
+ * It leaves on `read-offline`, and used to stay on the Library tab through it. That was
+ * measurably wrong: the stylesheet recedes the whole browser on that beat —
+ * `translateY(-1.5rem) scale(0.88)` over 760ms, see `#pagepack .pp[data-beat="read-offline"]
+ * .pp-browser` — so the tab the pointer was sitting on moves 24px up and shrinks, and the
+ * pointer was left 48px outside it, hanging over a window at a quarter opacity. The
+ * component re-measures once when it lands, which catches a target that is still arriving;
+ * it does not chase one that moves for the whole beat, and it should not have to. The
+ * pointer's work is finished when the page opens.
+ */
 const CURSOR: Partial<Record<BeatName, string>> = {
   reach: "toolbar",
   open: "toolbar",
@@ -132,9 +177,33 @@ const CURSOR: Partial<Record<BeatName, string>> = {
   press: "save",
   read: "save",
   collect: "save",
+  "aim-library": "library-tab",
   reveal: "library-tab",
-  "read-offline": "library-tab",
+  "aim-page": "shelf-page",
+  "open-page": "shelf-page",
 };
+
+/**
+ * The beats whose visible change is caused by a click, and which therefore wait for it.
+ * See `usePressGate`.
+ *
+ * Two of the three presses, and the choreography above already does most of the work for
+ * both — each is aimed a beat early, so the pointer is standing on the control when the
+ * beat begins and the wait is 90ms rather than a flight. What the beats could not fix is
+ * that last 90ms, which is five frames and is the whole width of what a click looks like:
+ * the Save button dipped and seven pages left it, and the library opened, each of them
+ * before the ring off the pointer said anything had been pressed.
+ *
+ * `open-page` is the third press and is deliberately absent. The reader unfolds on
+ * `read-offline`, the beat after it, so there is nothing on `open-page` to hold back —
+ * gating it would render that beat as `aim-page` and take the shelf row's opened state off
+ * the screen until the click, which is a new fault rather than a fix.
+ *
+ * `press` reaches the stylesheet too. `data-did` on the root carries the button's pressed
+ * look; `data-beat` keeps the toolbar's approach highlight and the compositor hint, which
+ * are cues that belong *before* the click.
+ */
+const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>(["press", "reveal"]);
 
 /** The pages torn off the site, in the order they fly out of the button. */
 const CAPTURED = [
@@ -165,11 +234,17 @@ const TOTAL_BYTES = CAPTURED.reduce((sum, page) => sum + page.bytes, 0);
  * to clear the caption floor is exactly the kind of edit that has no visible connection
  * to a constant seventy lines away. Deriving it means the coupling cannot rot: move any
  * of those beats and the stagger follows.
+ *
+ * `SETTLE_MS` comes off the front of the window because the cards no longer leave on the
+ * beat boundary — they leave when the pointer actually presses the button, which is 90ms
+ * after the pointer has landed on it. See `usePressGate` and `CLICKS`. Without this the
+ * whole burst would shift by that much and the last card would settle after `finish` had
+ * ended, which is the one thing this arithmetic exists to prevent.
  */
 const FLYER_FLIGHT_MS = 1900;
 const FLYER_STEP_MS = 235;
 const FLYER_STAGGER =
-  (SAVE_MS - FLYER_FLIGHT_MS) / (FLYER_STEP_MS * (CAPTURED.length - 1));
+  (SAVE_MS - SETTLE_MS - FLYER_FLIGHT_MS) / (FLYER_STEP_MS * (CAPTURED.length - 1));
 
 /**
  * Where each card comes to rest, in viewport units, measured from the Save button
@@ -188,14 +263,32 @@ const FLYER_STAGGER =
  * the shot with its subject hidden. Moved down and left, into the frame's empty lower
  * quarter, where it still reads as a page that got out.
  */
+/**
+ * The width the scatter was composed at, and the floor its spread stops shrinking below.
+ *
+ * Viewport units keep the spread proportional, which is what a scatter across a whole
+ * section wants — and proportional to the *window* is the wrong thing to be, because two
+ * of the things the cards have to keep clear of are not. The popup is 232px whatever the
+ * window is, and the labels hanging off its left edge are a fixed plate of type. So as the
+ * window narrows the cards walk inward onto them: measured, the first card's title was 31%
+ * covered at 1024px, 42% at 900 and 87% at 780, while at 1180 and above nothing touched.
+ * `scripts/spec-anchors.mjs` reports it as `COVERS TYPE`.
+ *
+ * `min(-31vw, -366px)` is the authored reach or the reach it had at 1180px, whichever is
+ * further out — `min` because these are negative and it is the *magnitude* that must not
+ * collapse. Above 1180 nothing changes.
+ */
+const SCATTER_FLOOR_PX = 1180;
+const reach = (vw: number) => `min(${vw}vw, ${Math.round((vw / 100) * SCATTER_FLOOR_PX)}px)`;
+
 const SCATTER = [
-  { x: "-31vw", y: "-4vh", rot: "-11deg" },
-  { x: "30vw", y: "-5vh", rot: "9deg" },
-  { x: "-25vw", y: "8vh", rot: "7deg" },
-  { x: "26vw", y: "7vh", rot: "-6deg" },
-  { x: "-39vw", y: "2vh", rot: "13deg" },
-  { x: "38vw", y: "3vh", rot: "-9deg" },
-  { x: "-9vw", y: "13vh", rot: "4deg" },
+  { x: reach(-31), y: "-4vh", rot: "-11deg" },
+  { x: reach(30), y: "-5vh", rot: "9deg" },
+  { x: reach(-25), y: "8vh", rot: "7deg" },
+  { x: reach(26), y: "7vh", rot: "-6deg" },
+  { x: reach(-39), y: "2vh", rot: "13deg" },
+  { x: reach(38), y: "3vh", rot: "-9deg" },
+  { x: reach(-9), y: "13vh", rot: "4deg" },
 ] as const;
 
 /**
@@ -253,8 +346,38 @@ const SPECS: readonly SpecTag<BeatName>[] = [
   /* "Text, styles, images, fonts" was a list of the four things the code captures, which is
      an answer to a question nobody asked. The question a visitor has is whether this is a
      bookmark or a copy. */
-  { at: "read", text: "The whole page, images and all", x: 70, y: 40, side: "left", until: "cut" },
-  { at: "collect", text: "And every page it links to", x: 46, y: 74, until: "cut" },
+  /* Both hang off the popup's measured left edge at their own chosen heights — the panel
+     is 208px of dense type with no gap in it big enough to sit on, so a label inside it
+     covers what it is about. `axis: "x"` because the two heights are a composition: one
+     level with the page title the save is of, one down in the empty lower quarter of the
+     window where the cards have room to fly past it.
+
+     This pod is width-capped, so the edge does not currently move — which is exactly why
+     it is measured rather than trusted. A hand-tuned 70 was right until something in a
+     three-column browser mock changed width, and nothing about the constant said what it
+     had been measured against. */
+  {
+    at: "read",
+    text: "The whole page, images and all",
+    x: 70,
+    y: 35,
+    anchor: "popup",
+    grip: "left",
+    axis: "x",
+    side: "left",
+    until: "cut",
+  },
+  {
+    at: "collect",
+    text: "And every page it links to",
+    x: 70,
+    y: 74,
+    anchor: "popup",
+    grip: "left",
+    axis: "x",
+    side: "left",
+    until: "cut",
+  },
 ];
 
 /** The Save button they come out of, in the pod's own percentages. */
@@ -290,12 +413,17 @@ export function PagePackDemo() {
   /* Starts on focus. The save and the outage are cause and effect, and arriving to find
      the connection already dead is arriving after the cause. */
   const running = useSceneRun(useSectionFocused(stageRef), onScreen);
-  const { beat, index, run, still } = useStoryboard(BEATS, {
+  const state = useStoryboard(BEATS, {
     running,
     stage: stageRef,
     // The still that carries the argument: a dead browser and a live library.
     stillBeat: "read-offline",
   });
+  const { beat, index, run, still } = state;
+  /* What the three presses did, held until they happened. `beat` still decides where the
+     pointer goes and what the section's outage is doing; `did`/`reached` decide what a
+     press is allowed to have changed. */
+  const { did, reached, onPress } = usePressGate(BEATS, state, CLICKS);
 
   // The cable, section outage and reading field follow the save film beat for beat.
   useSectionBeat(stageRef, beat, BEATS);
@@ -393,17 +521,31 @@ export function PagePackDemo() {
    * played over an empty section, deleting the one image the whole vignette is
    * built to produce: a dead browser surrounded by pages that outlived it.
    */
-  const flying = index >= at("press");
+  const flying = reached >= at("press");
   const offline = index >= at("cut");
   const dead = index >= at("dead");
-  const libraryOpen = index >= at("reveal");
+  /* Both of these open one beat after the pointer has arrived on the control that opens
+     them, which is the fix for "the library tab gets clicked before the mouse actually
+     gets there" and for the reader unfolding with nothing having been pressed. See the
+     notes on `aim-library` and `aim-page` in `BEATS`. `reached` closes the last 90ms of
+     the same fault — see `CLICKS`. */
+  const libraryOpen = reached >= at("reveal");
+  /* Not gated, and it does not need to be: `open-page` is the press and the reader unfolds
+     on the beat after it, so the ordering the note above is about is already carried by the
+     beats. Holding this back would only take the shelf row's opened state off the screen
+     until the click. */
   const reading = index >= at("read-offline");
+  /* The row the pointer is about to press, lit the way a row under a pointer is. */
+  const aimingPage = beat === "aim-page" || beat === "open-page";
 
   return (
     <div
       className="pp"
       ref={stageRef}
       data-beat={beat}
+      /* The same clock a beat behind, for the beats that wait for a click. The stylesheet
+         uses it for the Save button's pressed look. See `CLICKS`. */
+      data-did={did}
       data-lap={run}
       data-offline={offline}
       data-dead={dead}
@@ -495,7 +637,7 @@ export function PagePackDemo() {
           </div>
 
           {/* ------------------------------------------------------------- popup */}
-          <div className="pp-popup" data-open={popupOpen}>
+          <div className="pp-popup" data-spec-anchor="popup" data-open={popupOpen}>
             <div className="pp-popup-head">
               <span className="pp-popup-mark" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -524,7 +666,11 @@ export function PagePackDemo() {
                   {CAPTURED.slice(0, 4).map((page, order) => (
                     <li
                       key={page.title}
+                      /* The first row is what the reader is a copy of, so it is what the
+                         pointer presses. Named as a target for that reason. */
+                      data-target={order === 0 ? "shelf-page" : undefined}
                       data-open={reading && order === 0}
+                      data-aimed={aimingPage && order === 0}
                       style={{ "--order": order } as React.CSSProperties}
                     >
                       <span className="pp-shelf-title">{page.title}</span>
@@ -655,7 +801,8 @@ export function PagePackDemo() {
         <PhantomCursor
           stage={stageRef}
           target={CURSOR[beat] ?? null}
-          pressing={beat === "press" || beat === "reveal"}
+          pressing={beat === "press" || beat === "reveal" || beat === "open-page"}
+          onPress={onPress}
           token={`${run}-${beat}`}
         />
       )}

@@ -613,6 +613,14 @@ function PdfBackdrop() {
         <small>paired</small>
         <b>A distance containing clock error</b>
       </span>
+      {/* The third practice kind. There were two of these while the scene treated matching
+          as its own act; the review set has three kinds of item and the room now echoes
+          all three. See `KINDS` in the pod. */}
+      <span className="bd-pdf-fragment bd-pdf-fragment--blank">
+        <small>blanks</small>
+        <b>clock error</b>
+        <i>that is it</i>
+      </span>
 
       <span className="bd-pdf-deck" aria-hidden="true">
         <small>deck</small>

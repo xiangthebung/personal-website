@@ -7,7 +7,15 @@
  * wheel, arrow keys, and clip playback that starts only once a clip is on screen.
  *
  * `ProjectFocusManager` decides which section you are standing in, colours the
- * progress trail with that section's accent, and owns the keyboard shortcuts.
+ * progress trail with that section's accent, and marks the dock's current stop.
+ *
+ * It used to own a set of keyboard shortcuts as well — j/k between projects, g and
+ * t to the gallery and the top, and `?` for a sheet listing them. All of it is
+ * gone. Every one of those destinations is a link in the dock two inches away, the
+ * page is a single scrolling column with nothing to operate, and a shortcut sheet
+ * that exists to explain shortcuts nobody asked for is a feature explaining itself.
+ * Removing it also stops the page competing with the browser for `?`, `j` and `k`,
+ * which is the sort of thing a portfolio has no business doing.
  *
  * This file used to also export `ProjectRail`, four hundred lines that scrolled a
  * horizontal track of screenshots and animated each card's entrance. The
@@ -525,9 +533,6 @@ export function ProjectFocusManager() {
 
     const root = document.documentElement;
     const hero = document.querySelector<HTMLElement>(".hero");
-    const shortcutTrigger = document.querySelector<HTMLButtonElement>(
-      "[data-shortcut-trigger]",
-    );
     const dockLinks = Array.from(
       document.querySelectorAll<HTMLAnchorElement>("[data-project-dock]"),
     );
@@ -616,19 +621,25 @@ export function ProjectFocusManager() {
       presenceFrame = window.requestAnimationFrame(writePresence);
     };
 
-    /* Accents and backgrounds are fixed per theme, so they are read once rather than
-       on every focus change. Each read forces a style recalculation.
+    /* A theme is fixed per section, so it is read once rather than on every focus
+       change. Each read forces a style recalculation.
 
-       The background is what makes the page become one place. See `--ambient-bg`
-       below. */
-    const accents = new Map<HTMLElement, string>();
-    const backgrounds = new Map<HTMLElement, string>();
+       Four values, because two things outside the sections have to match the section
+       you are standing in: the progress trail borrows its accent, and the dock has no
+       surface of its own and draws straight onto the page. Without the ink and the
+       muted grey that dock is unreadable twice over — near-black type on Night
+       Neutralizer's near-black paper, and pale type on everything else. */
+    type Theme = Record<"accent" | "bg" | "ink" | "muted", string>;
+    const themes = new Map<HTMLElement, Theme>();
     projects.forEach((project) => {
       const style = getComputedStyle(project);
-      const accent = style.getPropertyValue("--project-accent").trim();
-      if (accent) accents.set(project, accent);
-      const background = style.getPropertyValue("--project-bg").trim();
-      if (background) backgrounds.set(project, background);
+      const read = (name: string) => style.getPropertyValue(name).trim();
+      themes.set(project, {
+        accent: read("--project-accent"),
+        bg: read("--project-bg"),
+        ink: read("--project-ink"),
+        muted: read("--project-muted"),
+      });
     });
 
     /**
@@ -682,10 +693,6 @@ export function ProjectFocusManager() {
         else link.removeAttribute("aria-current");
       });
 
-      // The trail borrows the colour of whichever project you are standing in.
-      const accent = accents.get(activeProject);
-      if (accent && trail) trail.style.setProperty("--trail-accent", accent);
-
       /**
        * The colour the whole page drifts toward.
        *
@@ -703,9 +710,21 @@ export function ProjectFocusManager() {
        *
        * Written on `:root` rather than per section: it is one value for the whole page,
        * and it changes when focus changes rather than every frame.
+       *
+       * The other three go with it, for the fixed furniture that has to match. The
+       * trail used to take its accent as a write onto its own element; one write on
+       * `:root` now serves it and the dock both. That is only safe because this runs on
+       * focus change and not per frame — a custom property on `:root` invalidates the
+       * computed style of every node in the document, which is exactly why `--presence`
+       * and the trail's transform are still written per element.
        */
-      const ambient = backgrounds.get(activeProject);
-      if (ambient) root.style.setProperty("--ambient-bg", ambient);
+      const theme = themes.get(activeProject);
+      if (theme) {
+        root.style.setProperty("--ambient-bg", theme.bg);
+        root.style.setProperty("--focus-accent", theme.accent);
+        root.style.setProperty("--focus-ink", theme.ink);
+        root.style.setProperty("--focus-muted", theme.muted);
+      }
     };
 
     const observer = new IntersectionObserver(
@@ -778,62 +797,6 @@ export function ProjectFocusManager() {
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
 
-    // --- Keyboard navigation -------------------------------------------------
-    const jumpTo = (element: Element | null | undefined) => {
-      if (!element) return;
-      element.scrollIntoView({ block: "start", behavior: "smooth" });
-    };
-
-    const handleShortcut = (event: globalThis.KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-
-      // Never steal a key from a field, or from the rails' own arrow handling.
-      const target = event.target as HTMLElement | null;
-      if (
-        target?.isContentEditable ||
-        (target && /^(input|textarea|select)$/i.test(target.tagName))
-      ) {
-        return;
-      }
-
-      const current = projects.findIndex((project) =>
-        project.classList.contains("is-active"),
-      );
-
-      switch (event.key) {
-        case "j":
-        case "J":
-          event.preventDefault();
-          jumpTo(projects[Math.min(projects.length - 1, current + 1)]);
-          break;
-        case "k":
-        case "K":
-          event.preventDefault();
-          jumpTo(projects[Math.max(0, current - 1)]);
-          break;
-        case "g":
-        case "G":
-          event.preventDefault();
-          jumpTo(document.querySelector(".fun-section"));
-          break;
-        case "t":
-        case "T":
-          event.preventDefault();
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          break;
-        case "?":
-          event.preventDefault();
-          root.classList.toggle("shows-shortcuts");
-          break;
-        case "Escape":
-          root.classList.remove("shows-shortcuts");
-          break;
-        default:
-          break;
-      }
-    };
-
-    const toggleShortcuts = () => root.classList.toggle("shows-shortcuts");
     const handleHeroLetterAnimationEnd = (event: globalThis.AnimationEvent) => {
       if (event.animationName !== "hero-letter-land") return;
       const letter = event.target;
@@ -845,9 +808,7 @@ export function ProjectFocusManager() {
       }
     };
 
-    shortcutTrigger?.addEventListener("click", toggleShortcuts);
     hero?.addEventListener("animationend", handleHeroLetterAnimationEnd);
-    document.addEventListener("keydown", handleShortcut);
 
     return () => {
       observer.disconnect();
@@ -858,19 +819,17 @@ export function ProjectFocusManager() {
         "has-project-in-view",
         "has-visibility-gates",
         "is-hero-visible",
-        "shows-shortcuts",
       );
-      shortcutTrigger?.removeEventListener("click", toggleShortcuts);
       hero?.removeEventListener("animationend", handleHeroLetterAnimationEnd);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
-      document.removeEventListener("keydown", handleShortcut);
       if (progressFrame) window.cancelAnimationFrame(progressFrame);
       if (presenceFrame) window.cancelAnimationFrame(presenceFrame);
-      root.style.removeProperty("--ambient-bg");
+      for (const name of ["--ambient-bg", "--focus-accent", "--focus-ink", "--focus-muted"]) {
+        root.style.removeProperty(name);
+      }
       projects.forEach((project) => project.style.removeProperty("--presence"));
       trail?.style.removeProperty("transform");
-      trail?.style.removeProperty("--trail-accent");
     };
   }, []);
 

@@ -43,7 +43,8 @@
 
 import { useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
-import { SpecTags, type SpecTag } from "../scene/spec";
+import { usePressGate } from "../scene/press-gate";
+import { SpecPlate, SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { ViewportLayer } from "../scene/viewport-layer";
 import { useOnScreen } from "../use-on-screen";
@@ -129,6 +130,9 @@ const CURSOR: Partial<Record<BeatName, string>> = {
   open: "toolbar",
 };
 
+/** The beat that carries the click, and waits for it. See `usePressGate`. */
+const OPENS: ReadonlySet<BeatName> = new Set<BeatName>(["open"]);
+
 /**
  * A fixed afternoon so the server and the client agree: 17:12 in the agency's
  * timezone, which puts the first bus at 5:18 PM and the thing you are trying to get
@@ -207,30 +211,32 @@ const ALERT_LEAD_MINUTES = 5;
  *
  * So each claim is pinned to its evidence and arrives on the beat the evidence does.
  *
- * The first two leave when the popup opens. The popup hangs off the toolbar button and
- * covers most of the window beneath it, so a label parked up there would be a label on
- * top of the thing the next five beats are about. The badge keeps counting behind it
- * either way, which is the point they were making.
+ * Two of the three are here. The third is the alert's, and it is not a coordinate on this
+ * pod at all — see `ALERT_SPEC` below.
  */
 const SPECS: readonly SpecTag<BeatName>[] = [
-  /* On the toolbar button, then on the bell, and the first hands over to the second rather
-     than sitting beside it. Both belong on the same 40px strip of browser chrome, reading
-     leftward because there is nothing to the right of either, and two labels there at once
-     are two labels on top of each other. Handing over is also the better order: the badge
-     makes its claim, and then the thing that interrupts you makes the next one.
+  /* On the toolbar button, reading leftward because there is nothing to the right of it.
+     It leaves when the popup opens: the popup hangs off this very button and covers most
+     of the window beneath it, so a label parked up here would be a label on top of the
+     thing the next five beats are about. The badge keeps counting behind it either way,
+     which is the point it was making.
 
-     Both lines were rewritten because they were phrased as arguments rather than as
-     descriptions. "Counts down with nothing open" is answering an objection nobody has
-     raised yet; what a visitor wants told is *what the thing they are looking at is*, which
-     is a countdown that lives on the toolbar. And "It taps you five minutes out" was doing
-     two odd things at once — a metaphor for a notification, and "five minutes out" as a
-     bare adverbial that reads as jargon. */
-  { at: "street", text: "Countdown on your toolbar", x: 91.5, y: 4.5, side: "left", until: "alert" },
-  /* One row lower than the badge's label, and pointing up at the bell from just beneath it
-     rather than straight at it. On the same line it reached back across the extension's own
-     button — and the countdown in that badge is running for the whole scene, so covering it
-     for three and a half seconds costs something the frame is still using. */
-  { at: "alert", text: "Alerts you before the bus arrives", x: 96.5, y: 10, side: "left", until: "open" },
+     The line was rewritten because it was phrased as an argument rather than as a
+     description. "Counts down with nothing open" answers an objection nobody has raised
+     yet; what a visitor wants told is *what the thing they are looking at is*. */
+  {
+    at: "street",
+    text: "Countdown on your toolbar",
+    x: 91.5,
+    y: 4.5,
+    /* Measured off the badge itself rather than pinned at 91.5% of the pod, which was the
+       toolbar button's left edge at one window width and its middle at another. The badge
+       is the countdown; the button is only what it is drawn on. */
+    anchor: "countdown",
+    grip: "left",
+    side: "left",
+    until: "open",
+  },
   /* Anchored on the popup's own left edge and reading away from it, rather than on the
      "2 min late" text it is about. Sitting on the row meant sitting on top of two lines of
      it — the whole panel is 420px of dense type and there is no gap inside it big enough
@@ -238,12 +244,50 @@ const SPECS: readonly SpecTag<BeatName>[] = [
      nothing. Stays to the end: the popup does not move again, and this is the claim worth
      leaving up.
 
+     The y was 43, which photographed as pointing at the popup's edge halfway down it — a
+     blank inch of panel between two stop cards. It is 22 now, which is the line the claim
+     is actually about: the closest stop's `Live · 2 min late · 5 stops away`, in the one
+     card the popup highlights. Same edge, same distance from the type, a hundred and sixty
+     pixels further up and pointing at the evidence.
+
      It read "Real positions, so late reads late", which is a sentence explaining its own
      joke. What it was reaching for has an ordinary name that every transit app on a phone
      already uses, and a visitor knows what it means without being walked through the
      consequence. */
-  { at: "stops", text: "Real-time bus tracking", x: 54, y: 43, side: "left" },
+  /* Anchored on the popup's measured left edge and its own chosen height — `axis: "x"`.
+     The edge is a fact about a 420px panel hanging off a button in a `minmax(0, 1fr)`
+     column, so it moves with the window; the height is the choice described above, and
+     the line it names is not a box the popup can be asked for. */
+  {
+    at: "stops",
+    text: "Real-time bus tracking",
+    x: 54,
+    y: 22,
+    anchor: "popup",
+    grip: "left",
+    axis: "x",
+    side: "left",
+  },
 ];
+
+/**
+ * The alert's claim, which travels with the alert.
+ *
+ * This was a `SpecTag` at 96.5%/10% of the pod, pinned to the browser's own notification
+ * bell in the simulated chrome — and it was reported as pointing at the wrong thing,
+ * correctly. The notification this label is about is not in the chrome. It is portalled to
+ * `document.body` and drawn in the corner of the visitor's actual window, on purpose,
+ * because an extension whose whole pitch is that it reaches you when you are not looking
+ * cannot make that point inside a 900px panel. So the label was several hundred pixels
+ * away from its evidence, pointing at a drawing of where a notification would be if this
+ * were a picture of one.
+ *
+ * A coordinate cannot fix that: there is no percentage of the pod that lands on something
+ * in a different stacking context on the other side of the page. So the plate hangs off
+ * the notification instead — see `SpecPlate`, and `.gx-alert-spec` for the two lines of
+ * geometry that put it against the card's left edge at any window width.
+ */
+const ALERT_SPEC = "Alerts you before the bus arrives";
 
 /** The extension's toolbar button, in the pod's own percentages. */
 const SPEC_ORIGIN = { x: 91.5, y: 4.5 };
@@ -367,23 +411,30 @@ export function GrtNextBusDemo() {
      section they are actually in. See `useSectionFocused`. */
   const focused = useSectionFocused(stageRef);
   const running = useSceneRun(focused, onScreen);
-  const { beat, index, run, still } = useStoryboard(BEATS, {
+  const state = useStoryboard(BEATS, {
     running,
     stage: stageRef,
     // The still that carries the argument: the board open with two minutes on it,
     // not the empty street it starts from.
     stillBeat: "near",
   });
+  const { beat, index, run, still } = state;
+  /* The one click in this scene, and the largest thing on the page depends on it: a 420px
+     panel covering most of the window. The pointer is already on the button when `open`
+     begins — that is what `reach` is for — so the wait is the 90ms between arriving and
+     pressing, and without it the popup was opening five frames before the ring said
+     anything had been clicked. See `usePressGate`. */
+  const { reached, onPress } = usePressGate(BEATS, state, OPENS);
 
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
   const clock = CLOCK[beat];
   const now = ANCHOR + clock * 1000;
 
-  const open = index >= at("open");
+  const open = reached >= at("open");
   /* One notification per trip — the real one holds a fifteen-minute repeat guard —
      held while the cursor goes for the toolbar and dismissed by the click that
      opens the popup, so the answer replaces the question rather than joining it. */
-  const alerting = index >= at("alert") && index < at("open");
+  const alerting = index >= at("alert") && !open;
 
   /* The closest stop drives the badge, because that is what the service worker
      picks: the badge follows where you are, not the top of the list. */
@@ -513,6 +564,7 @@ export function GrtNextBusDemo() {
                   which restarts the CSS tick without the scene tracking it. */}
               <b
                 className="gx-badge"
+                data-spec-anchor="countdown"
                 key={badgeText}
                 style={{ background: badgeColor(badgeMinutes) }}
               >
@@ -570,7 +622,7 @@ export function GrtNextBusDemo() {
         </div>
 
         {/* The popup, at the 420px Chrome gives it, hanging off its own button. */}
-        <div className="grt gx-popup" data-open={open}>
+        <div className="grt gx-popup" data-spec-anchor="popup" data-open={open}>
           <div className="grt-app">
             <div className="grt-topbar">
               <span className="grt-brand">
@@ -746,6 +798,10 @@ export function GrtNextBusDemo() {
                 />
               </svg>
             </span>
+            {/* The claim, on the card, wherever the window has put it. See `ALERT_SPEC`. */}
+            <span className="gx-alert-spec">
+              <SpecPlate text={ALERT_SPEC} side="left" />
+            </span>
           </div>
         )}
       </ViewportLayer>
@@ -803,7 +859,8 @@ export function GrtNextBusDemo() {
         <PhantomCursor
           stage={stageRef}
           target={CURSOR[beat] ?? null}
-          pressing={beat === "open"}
+          pressing={OPENS.has(beat)}
+          onPress={onPress}
           token={`${run}-${beat}`}
         />
       )}

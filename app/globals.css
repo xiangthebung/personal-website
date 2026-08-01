@@ -13,6 +13,17 @@
   /* Shared easings. `soft` decelerates, `back` overshoots slightly and settles. */
   --ease-out-soft: cubic-bezier(0.16, 0.8, 0.2, 1);
   --ease-out-back: cubic-bezier(0.16, 0.86, 0.18, 1.12);
+  /**
+   * How much of the right edge the project dock occupies, for anything else anchored
+   * there to keep clear of.
+   *
+   * The rail used to be a panel, and a panel simply covered whatever was beneath it. It
+   * draws straight onto the page now, so an overlap is two pieces of type on top of each
+   * other — which measuring found in two places, both of them backdrop furniture pinned
+   * to the section's outer edge: Night Neutralizer's clock and PagePack's network status.
+   * One number, so the rail's width and the room left for it cannot drift apart.
+   */
+  --dock-rail: 3.5rem;
 }
 
 * {
@@ -28,8 +39,8 @@ html {
      Snapping the page to each project sounds right and measured badly. These sections are
      84svh with one of them taller than the window, so there is no alignment that makes a
      project own the screen: `start` leaves the next one showing below, `center` leaves both
-     neighbours showing. Worse, it fought every programmatic scroll on the page — the j/k
-     shortcuts, the anchor links, and the screenshot tooling all use `scrollIntoView`, and
+     neighbours showing. Worse, it fought every programmatic scroll on the page — the dock
+     links, the anchor links, and the screenshot tooling all use `scrollIntoView`, and
      proximity snapping pulled the result to a different offset afterwards. A photograph of
      Decaf came back with the section starting 445px down the window, which is neither
      alignment and was the snap arguing with the scroll.
@@ -250,7 +261,26 @@ a:hover .external-arrow {
      viewport instead of being squeezed. */
   justify-content: center;
   padding-block: clamp(3rem, 7svh, 6rem);
-  border-top: 1px solid var(--project-line);
+  /**
+   * How deep the dissolve at each end of the section runs. See `.project-seam`.
+   *
+   * Deep enough that the eye reads a change of place rather than a boundary, and no
+   * deeper: this washes the section's own paper toward the ambient colour, and past
+   * about a fifth of a screen at each end there is not much section left in the
+   * middle. `svh` so it is the same fraction of a phone and a monitor.
+   */
+  --project-bleed: clamp(48px, 10svh, 160px);
+  /* No `border-top`, and its absence is the point.
+     There was a hairline here, faded by presence, under a note explaining that the
+     border and the change of background were what separated one project from the
+     next. Both of those were the reported fault: standing in Decaf you could see
+     exactly where it stopped and the next project started, which is the opposite of
+     what a page that dyes itself the colour of wherever you are standing is for. The
+     colour step is now a dissolve — see `.project-seam` — and a one-pixel line
+     drawn across a soft gradient is a hard edge with nothing left to justify it.
+     It also could not have been covered from inside: `inset: 0` on an absolutely
+     positioned child resolves against the *padding* box, so no layer in here reaches
+     a border. */
   background: var(--project-bg);
   color: var(--project-ink);
 }
@@ -301,14 +331,85 @@ a:hover .external-arrow {
     background 380ms linear;
 }
 
-/* The seam between two sections. At full presence it is the section's own hairline;
-   faded, it goes with the paper rather than drawing a bright line across a dark page. */
-.project {
-  border-top-color: color-mix(
-    in srgb,
-    var(--project-line),
-    transparent calc((1 - var(--presence)) * 100%)
-  );
+/* --- the seam, dissolved ---------------------------------------------------
+   Each section's own paper washed toward the ambient colour at its top and bottom
+   edges, so where two of them meet there is no colour to step between.
+
+   This is the answer to the fault the tint above could not reach. The tint fades a
+   *whole* section toward the ambient colour by however much presence it has lost,
+   which is right for a neighbour a screen away and does nothing at all for the
+   boundary itself: at the moment two sections share a screenful they are both at
+   roughly half presence, so both are half-mixed toward the same colour and still not
+   the same colour as each other. What you saw was two flat panels meeting along a
+   line — and a hairline border drawn on that line, in case the line was not clear
+   enough. Photographing Decaf is what made it undeniable: a screenful of drifting
+   pink and blue ending dead flat, across the full width, with grey underneath.
+
+   Both edges of every section, not just the top, because the boundary belongs to
+   both sides of it. At full presence the ambient colour *is* this section's own
+   paper, so a project you are standing in is untouched by this and pays nothing for
+   it; it only starts doing work once you are between two.
+
+   Two background layers on one element rather than two pseudo-elements: they never
+   overlap — the middle of the section is transparent — and one element is one paint.
+
+   The stops are a smoothstep, and getting there took a measurement. They were three
+   stops weighted toward the edge, which reaches full strength *steeply*: the wash
+   arrived at the boundary still descending hard and then stopped, because the section
+   below has nowhere left to travel — it is already the ambient colour. A slope that
+   goes from steep to zero in one pixel is a crease, and magnifying the Night
+   Neutralizer join four times showed it plainly, a soft line right on the boundary
+   where the gradient gives up. `scripts/seam.mjs` put it at 6/255 beyond the local
+   ramp, against 0 to 2 for the joins that read as seamless.
+
+   `1 - (3d² - 2d³)` has zero slope at both ends, so there is nothing to crease at
+   either the boundary or the point the wash runs out. Its middle is steeper than a
+   straight ramp's and that costs nothing: a gradient's steepest point is invisible,
+   and only its discontinuities are not.
+
+   Its own element rather than a second layer on `.project-tint`, which would have
+   been tidier and does not work: the tint carries the presence crossfade as element
+   `opacity`, and element opacity applies to everything the element paints. An
+   always-on edge wash cannot live inside a layer whose whole job is to fade out.
+
+   The doubled class is the same specificity tie the tint documents:
+   `.project > :not(.sr-only)` is (0,2,0) and would otherwise make this a
+   relatively-positioned element with no content and no height.
+
+   Placed after the tint in the markup and sharing its `z-index: 0`, so tree order
+   puts it over the ambience, the ghost number and the tint, and under the body at 1.
+   The content fades on its own and does not want washing. */
+.project > .project-seam.project-seam {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background:
+    linear-gradient(
+        to bottom,
+        var(--ambient-bg, var(--paper)) 0,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 94%, transparent) 15%,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 78%, transparent) 30%,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 50%, transparent) 50%,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 22%, transparent) 70%,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 6%, transparent) 85%,
+        transparent 100%
+      )
+      left top / 100% var(--project-bleed) no-repeat,
+    linear-gradient(
+        to top,
+        var(--ambient-bg, var(--paper)) 0,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 94%, transparent) 15%,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 78%, transparent) 30%,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 50%, transparent) 50%,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 22%, transparent) 70%,
+        color-mix(in srgb, var(--ambient-bg, var(--paper)) 6%, transparent) 85%,
+        transparent 100%
+      )
+      left bottom / 100% var(--project-bleed) no-repeat;
+  pointer-events: none;
+  /* With the tint and the page, for the reason given there: a room changing colour
+     should lag slightly behind whatever caused it. */
+  transition: background 380ms linear;
 }
 
 /* Everything the sections do not cover — the gaps a fast scroll can expose, and the
@@ -1371,7 +1472,7 @@ html.has-project-focus body {
 }
 
 /* ===========================================================================
-   The gallery, the page trail and the shortcut sheet
+   The gallery and the page trail
    ---------------------------------------------------------------------------
    Given a banner of its own because it did not have one, and a section without
    a banner is a section the block-replacing script will absorb into whatever
@@ -1658,11 +1759,20 @@ html.has-project-focus body {
     grid-template-columns: minmax(210px, 0.8fr) minmax(280px, 1.2fr);
   }
 
-  .project-links {
-    position: absolute;
-    top: 0.85rem;
-    right: 3vw;
-  }
+  /* The links are *not* pinned to the top-right corner here, and that omission is a
+     fix rather than an oversight.
+     They were `position: absolute; top: 0.85rem; right: 3vw`, which was correct when
+     this heading was a full-width band with its links in the far column — the same
+     arrangement `.project[data-stage] .project-links` documents undoing for the
+     in-flow case. It is not a band any more. Below this breakpoint every composition
+     collapses to one left-aligned column that is only as wide as its contents, so
+     "the top-right of the heading" is a couple of inches to the right of the title,
+     on the same line as it. Measured across the run at 900, 820, 760 and 700px, four
+     of the seven sections had their links printed on top of their own name — GRT read
+     "GRT Next BusSource" — and the other three had them marooned in the middle of the
+     section with nothing around them.
+     Somebody had already found the bottom end of this and patched it at 440px with a
+     `position: static` override. That override is gone with the rule it was undoing. */
 
   .project-identity h2 {
     font-size: 2rem;
@@ -1705,9 +1815,10 @@ html.has-project-focus body {
     padding: 0.8rem 1rem;
   }
 
-  .project-identity {
-    padding-right: 7rem;
-  }
+  /* The 7rem of right padding that used to be here went with the absolute links it was
+     reserving room for. With the links back in flow underneath, it was a hundred and
+     twelve pixels taken out of a title's measure on the narrowest screens to clear
+     something that is not there. */
 
   .project-identity h2 {
     font-size: 1.75rem;
@@ -1725,9 +1836,9 @@ html.has-project-focus body {
     font-size: 0.82rem;
   }
 
+  /* No `top`/`right` either: they were offsets for an absolute position that no
+     longer happens. See the note at the 900px breakpoint. */
   .project-links {
-    top: 1rem;
-    right: 1rem;
     gap: 0.7rem;
     font-size: 0.78rem;
   }
@@ -2143,8 +2254,8 @@ html.has-project-focus
   background: linear-gradient(
     90deg,
     transparent,
-    var(--trail-accent, var(--ink)) 38%,
-    var(--trail-accent, var(--ink))
+    var(--focus-accent, var(--ink)) 38%,
+    var(--focus-accent, var(--ink))
   );
   transform: scaleX(var(--page-progress, 0));
   transform-origin: left center;
@@ -2268,6 +2379,48 @@ html.has-project-focus
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* --- and it must not end on a line ----------------------------------------
+   The clip above is what contains a layer that translates sideways with the scroll,
+   and it is also a straight horizontal cut across the top and bottom of every
+   ambience on the page. That is the other half of the reported fault: Decaf's four
+   drifting colour fields fill a screen and then stop, flat, all the way across.
+   `.project-seam` deals with the paper; this deals with what is drawn on it.
+
+   A mask rather than a shorter gradient inside each theme, because there are seven
+   themes and four of them draw real markup — a road, a manuscript, an orbit diagram,
+   a cable — and none of those can be asked to fade themselves out at the edges. A
+   mask on the layer fades whatever the layer painted, including the parts of it that
+   `contain: paint` on `.bd` had already cut.
+
+   The foreground gets the same treatment. Only PagePack uses one, and its cable runs
+   at 66-78% of the section, well clear of a tenth of a screen at the bottom — but a
+   cable that ends in a hard line at the section boundary would be the same fault
+   wearing the one class name that sits above the scene rather than behind it.
+
+   Smoothstepped, not linear, for the reason set out on `.project-seam`: a straight ramp
+   has a corner at each end, and a corner in a fade is a faint line exactly where this
+   is supposed to be removing one. */
+.project > .project-ambience,
+.project > .project-foreground {
+  mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0) 0,
+    rgb(0 0 0 / 0.06) calc(var(--project-bleed) * 0.15),
+    rgb(0 0 0 / 0.22) calc(var(--project-bleed) * 0.3),
+    rgb(0 0 0 / 0.5) calc(var(--project-bleed) * 0.5),
+    rgb(0 0 0 / 0.78) calc(var(--project-bleed) * 0.7),
+    rgb(0 0 0 / 0.94) calc(var(--project-bleed) * 0.85),
+    rgb(0 0 0 / 1) var(--project-bleed),
+    rgb(0 0 0 / 1) calc(100% - var(--project-bleed)),
+    rgb(0 0 0 / 0.94) calc(100% - var(--project-bleed) * 0.85),
+    rgb(0 0 0 / 0.78) calc(100% - var(--project-bleed) * 0.7),
+    rgb(0 0 0 / 0.5) calc(100% - var(--project-bleed) * 0.5),
+    rgb(0 0 0 / 0.22) calc(100% - var(--project-bleed) * 0.3),
+    rgb(0 0 0 / 0.06) calc(100% - var(--project-bleed) * 0.15),
+    rgb(0 0 0 / 0) 100%
+  );
 }
 
 /* The counterpart to the ambience: the same full-section box, on the other side of
@@ -2547,90 +2700,14 @@ html.has-project-focus
   z-index: 1;
 }
 
-/* --- Shortcut sheet -------------------------------------------------------
-   Hidden with `visibility` so it stays out of the tab order until summoned. */
-.shortcut-sheet {
-  position: fixed;
-  z-index: 70;
-  bottom: clamp(1rem, 3vw, 2.5rem);
-  left: clamp(1rem, 3vw, 2.5rem);
-  width: min(22rem, calc(100vw - 2rem));
-  padding: 1.1rem 1.25rem 0.9rem;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
-  box-shadow: 0 26px 60px rgba(22, 25, 23, 0.26);
-  opacity: 0;
-  transform: translateY(14px) scale(0.97);
-  visibility: hidden;
-  transition:
-    opacity 220ms ease,
-    transform 380ms var(--ease-out-back),
-    visibility 0s linear 220ms;
-  backdrop-filter: blur(14px);
-}
-
-html.shows-shortcuts .shortcut-sheet {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  visibility: visible;
-  transition:
-    opacity 220ms ease,
-    transform 380ms var(--ease-out-back),
-    visibility 0s linear;
-}
-
-.shortcut-sheet h2 {
-  margin: 0 0 0.7rem;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.58rem;
-  font-weight: 650;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.shortcut-sheet dl {
-  display: grid;
-  gap: 0.4rem;
-  margin: 0;
-}
-
-.shortcut-sheet dl > div {
-  display: grid;
-  grid-template-columns: 4.4rem 1fr;
-  gap: 0.6rem;
-  align-items: baseline;
-}
-
-.shortcut-sheet dt,
-.shortcut-sheet dd {
-  margin: 0;
-}
-
-.shortcut-sheet kbd {
-  display: inline-block;
-  padding: 0.16rem 0.4rem;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.6);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.6rem;
-}
-
-.shortcut-sheet dd {
-  color: var(--muted);
-  font-size: 0.74rem;
-}
-
-.shortcut-sheet small {
-  display: block;
-  margin-top: 0.8rem;
-  color: var(--muted);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.52rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
+/* A keyboard-shortcut sheet used to be styled here: a fixed panel listing j, k, g, t and
+   the question mark, revealed by a class the focus manager toggled on the root. Both the
+   shortcuts and the sheet are gone — see the note on `ProjectFocusManager`. Every
+   destination it listed is a link in the dock two inches away, and a panel whose only
+   subject is its own key bindings is furniture.
+   Deliberately not naming the two class names it used: `scripts/dead-css.mjs` reads class
+   tokens straight out of the stylesheet text and would report a sentence about a deleted
+   rule as a rule with nothing using it. */
 
 /* --- Sideways prompt ------------------------------------------------------
    The rails are the whole point of a project section, so the invitation to move
@@ -2830,14 +2907,19 @@ html.shows-shortcuts .shortcut-sheet {
    "from over there to here".
    =========================================================================== */
 
-.speclayer {
-  /* --- what a scene may change -------------------------------------------
-     Colour was the whole contract at first, and four projects came out looking like one
-     component wearing four dot colours. A label is furniture belonging to a piece of
-     software, and the four pieces of software here do not share a visual language: a
-     transit extension and a study workspace should not annotate themselves the same way.
-     So shape, type, case, tracking, padding and lead length are all a scene's own
-     business, and the defaults below are only what a pale pod would want. */
+/* --- what a scene may change ---------------------------------------------
+   Colour was the whole contract at first, and four projects came out looking like one
+   component wearing four dot colours. A label is furniture belonging to a piece of
+   software, and the four pieces of software here do not share a visual language: a
+   transit extension and a study workspace should not annotate themselves the same way.
+   So shape, type, case, tracking, padding and lead length are all a scene's own
+   business, and these defaults are only what a pale pod would want.
+
+   Declared on `:root` rather than on `.speclayer`, because not every plate is inside a
+   layer: GRT's alert label hangs off a notification portalled to `document.body`, which
+   inherits from nothing in the pod. A scene still overrides them on its layer, and an
+   inherited declaration beats one on the root. */
+:root {
   --spec-ink: #101820;
   --spec-paper: rgba(255, 255, 255, 0.97);
   --spec-edge: rgba(16, 24, 32, 0.14);
@@ -2856,7 +2938,18 @@ html.shows-shortcuts .shortcut-sheet {
   /* How far the plate stands off the point it is pinned to. */
   --spec-lead: 15px;
   --spec-step: 130ms;
+}
 
+/* The layer itself, which is only geometry. Splitting it from the palette above was worth
+   one mistake recording: the two were one rule, and renaming that rule's selector to
+   `:root` to make the palette reachable from outside took `position: absolute`, `inset: 0`
+   and `pointer-events: none` onto `html` with it. The page still looked almost right —
+   which is the point. The labels kept their coordinates, because a `.spectag` resolves its
+   percentages against the nearest positioned ancestor and the pod is one, so the geometry
+   in a measurement pass came back correct to the pixel. What they lost was the stacking
+   context, and they went behind `.gx-browser`. Nothing reported an error; the labels were
+   simply not on screen. */
+.speclayer {
   position: absolute;
   /* Above every panel and scrim any scene raises, and below the phantom cursor at 20.
      A label under the thing it describes is not a label; a label over the pointer is a
@@ -2899,30 +2992,56 @@ html.shows-shortcuts .shortcut-sheet {
   /* Zero, because the pin below draws the space rather than leaving it. */
   gap: 0;
   opacity: 0;
-  /* Overshoots slightly. These arrive several at a time out of one press, and a
-     linear fade-up reads as annotation added afterwards rather than as something the
-     press caused. */
-  transform: translate(var(--spec-tx), var(--spec-ty)) scale(0.5);
+  /**
+   * `translate` and `scale` as separate properties, not one `transform`, and the reason
+   * is a bug that took two harnesses and a pair of screenshots to corner.
+   *
+   * The offset is a *percentage* — `-100%` puts a left-reading label's right edge on its
+   * anchor — so it resolves against the plate's own width. It used to be inside the same
+   * `transform` as the pop, and `transform` was transitioned over 540ms, which means the
+   * offset animated every time the plate changed size. `--spec-size` is
+   * `clamp(10px, 1.15vw, 12px)`, so the plate changes size whenever the window's *width*
+   * does.
+   *
+   * What that looked like: resize the window and, for half a second, every left-reading
+   * label slides across the thing it is pointing at and back again. Measured mid-flight on
+   * GRT, the transform was at 76% of its way home and the label was lying across the
+   * popup's first stop — a stop whose name and distance it had covered. It only surfaced
+   * because `beat-shot.mjs` photographs a section by scrolling it into view, which nudged
+   * the layout, while `spec-anchors.mjs` measured a settled page and reported the label
+   * correctly placed. Both were right. Neither was looking at a resize.
+   *
+   * Split, the pop still overshoots — these arrive several at a time out of one press, and
+   * a linear fade-up reads as annotation added afterwards rather than as something the
+   * press caused — and the offset is geometry that never animates, because an anchor
+   * offset is not a movement.
+   */
+  translate: var(--spec-tx) var(--spec-ty);
+  scale: 0.5;
   transform-origin: var(--spec-origin);
   transition:
     opacity 200ms ease,
-    transform 540ms cubic-bezier(0.18, 1.32, 0.36, 1);
+    scale 540ms cubic-bezier(0.18, 1.32, 0.36, 1);
   transition-delay: calc(var(--spec-order, 0) * var(--spec-step));
 }
-.spectag[data-shown="true"] .spectag-body {
+.spectag-body[data-shown="true"] {
   opacity: 1;
-  transform: translate(var(--spec-tx), var(--spec-ty)) scale(1);
+  scale: 1;
 }
 
 /* Which end of the label the pin belongs on. The offsets in `spec.tsx` put the plate on
-   the correct side of the point; this puts the pin back on the point. */
-.spectag[data-side="left"] .spectag-body {
+   the correct side of the point; this puts the pin back on the point.
+
+   Keyed off the plate rather than off the point above it, because a plate does not have
+   to have a point: `SpecPlate` is used on its own for the claim that hangs off GRT's
+   notification, which is portalled out of the pod entirely. */
+.spectag-body[data-side="left"] {
   flex-direction: row-reverse;
 }
-.spectag[data-side="above"] .spectag-body {
+.spectag-body[data-side="above"] {
   flex-direction: column-reverse;
 }
-.spectag[data-side="below"] .spectag-body {
+.spectag-body[data-side="below"] {
   flex-direction: column;
 }
 
@@ -2987,32 +3106,32 @@ html.shows-shortcuts .shortcut-sheet {
 }
 
 /* Mirrored, so the dot stays on the point when the plate reads the other way. */
-.spectag[data-side="left"] .spectag-pin::before {
+.spectag-body[data-side="left"] .spectag-pin::before {
   right: 0;
   left: auto;
 }
-.spectag[data-side="left"] .spectag-pin::after {
+.spectag-body[data-side="left"] .spectag-pin::after {
   right: 6px;
   left: 0;
 }
 
 /* Upright, for the two vertical orientations. */
-.spectag[data-side="above"] .spectag-pin,
-.spectag[data-side="below"] .spectag-pin {
+.spectag-body[data-side="above"] .spectag-pin,
+.spectag-body[data-side="below"] .spectag-pin {
   width: 7px;
   height: calc(var(--spec-lead) + 7px);
 }
-.spectag[data-side="above"] .spectag-pin::before,
-.spectag[data-side="below"] .spectag-pin::before {
+.spectag-body[data-side="above"] .spectag-pin::before,
+.spectag-body[data-side="below"] .spectag-pin::before {
   top: auto;
   bottom: 0;
 }
-.spectag[data-side="below"] .spectag-pin::before {
+.spectag-body[data-side="below"] .spectag-pin::before {
   top: 0;
   bottom: auto;
 }
-.spectag[data-side="above"] .spectag-pin::after,
-.spectag[data-side="below"] .spectag-pin::after {
+.spectag-body[data-side="above"] .spectag-pin::after,
+.spectag-body[data-side="below"] .spectag-pin::after {
   top: 0;
   right: auto;
   bottom: 6px;
@@ -3020,7 +3139,7 @@ html.shows-shortcuts .shortcut-sheet {
   width: 1px;
   height: auto;
 }
-.spectag[data-side="below"] .spectag-pin::after {
+.spectag-body[data-side="below"] .spectag-pin::after {
   top: 6px;
   bottom: 0;
 }
@@ -3032,7 +3151,7 @@ html.shows-shortcuts .shortcut-sheet {
    above, and any fill would strand it on the keyframe instead — `both` left every dot
    wearing a 9px transparent ring and no tint at all. Without a fill the rule simply stops
    applying and the base declaration comes back. */
-.spectag[data-shown="true"] .spectag-pin::before {
+.spectag-body[data-shown="true"] .spectag-pin::before {
   animation: spec-land 900ms ease-out;
   animation-delay: calc(var(--spec-order, 0) * var(--spec-step) + 340ms);
 }
@@ -3075,35 +3194,39 @@ html.shows-shortcuts .shortcut-sheet {
   .spectag[data-shown="true"] {
     display: block;
   }
-  .spectag-body,
   /* All four sides collapse to one. The direction rules exist to put the pin back on the
      point the label is aimed at, and there is no point any more — so `left` left a dot
      trailing after its text and `below` stacked one above it, which is three different chip
      shapes in one row. */
-  .spectag[data-side] .spectag-body {
+  .speclayer .spectag-body,
+  .speclayer .spectag-body[data-side] {
     position: static;
     flex-direction: row;
     gap: 0.32rem;
     opacity: 1;
-    transform: none;
+    /* `translate` and `scale` rather than `transform`, matching what the desktop rule
+       sets. Leaving `transform: none` here would have reset a property nothing uses and
+       left every chip offset by its own width. */
+    translate: none;
+    scale: 1;
     transition: none;
   }
 
   /* The lead goes with the pointing. A line to nothing is just a dash before the text. */
-  .spectag-pin,
-  .spectag[data-side] .spectag-pin {
+  .speclayer .spectag-pin,
+  .speclayer .spectag-body[data-side] .spectag-pin {
     width: 7px;
     height: 7px;
   }
-  .spectag-pin::before,
-  .spectag[data-side] .spectag-pin::before {
+  .speclayer .spectag-pin::before,
+  .speclayer .spectag-body[data-side] .spectag-pin::before {
     top: 0;
     right: auto;
     bottom: auto;
     left: 0;
   }
-  .spectag-pin::after,
-  .spectag[data-side] .spectag-pin::after {
+  .speclayer .spectag-pin::after,
+  .speclayer .spectag-body[data-side] .spectag-pin::after {
     display: none;
   }
 }
@@ -4490,8 +4613,13 @@ html.shows-shortcuts .shortcut-sheet {
    This is the one section about a physical network with its own graphic language, so its
    labels borrow it: a filled dark-green plate, white uppercase mono, wide tracking, almost
    no corner radius. The same treatment as the destination sign on the front of a bus, and
-   as the route badges the popup is already full of. See `.speclayer` for the component. */
-.gx-specs {
+   as the route badges the popup is already full of. See `.speclayer` for the component.
+
+   `.gx-alert-spec` is in the same list because it is the same signage on the same scene's
+   label — it is only declared separately because that one is portalled to `document.body`
+   with the notification and cannot inherit anything from the pod. */
+.gx-specs,
+.gx-alert-spec {
   --spec-ink: #f2fbf6;
   --spec-paper: #145c40;
   --spec-edge: rgba(255, 255, 255, 0.16);
@@ -5259,7 +5387,11 @@ html.shows-shortcuts .shortcut-sheet {
     transform 120ms ease,
     filter 200ms ease;
 }
-.pp[data-beat="press"] .pp-primary {
+/* `data-did` rather than `data-beat`, so the button dips when the pointer presses it
+   rather than when the beat containing that press starts. The two are 90ms apart — the
+   pointer settles before it clicks — and five frames is the whole width of what a click
+   looks like. See `usePressGate` and `CLICKS` in the demo. */
+.pp[data-did="press"] .pp-primary {
   filter: brightness(0.86);
   transform: scale(0.96);
 }
@@ -5363,6 +5495,13 @@ html.shows-shortcuts .shortcut-sheet {
     opacity: 0;
     transform: translateX(10px);
   }
+}
+/* The row the pointer is standing on, before it presses. A row that is about to be
+   clicked has to look like it, or the click reads as landing on the panel rather than on
+   the page — and the page is what the reader below is a copy of. */
+.pp-shelf li[data-aimed="true"] {
+  background: color-mix(in srgb, var(--accent-soft) 62%, var(--surface));
+  box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.18);
 }
 .pp-shelf li[data-open="true"] {
   background: var(--accent-soft);
@@ -5488,6 +5627,14 @@ html.shows-shortcuts .shortcut-sheet {
    stage is 880px on a desktop and 340px on a phone. The travel is a transition
    rather than a keyframe: a beat change part-way through a move should redirect
    it, not restart it.
+
+   Its duration is `--ghost-travel`, written onto the element by the component from
+   the distance it is about to cover. It was a fixed 620ms here, and moving it into
+   the component is what made a click possible to time: the press now waits out the
+   flight instead of firing at the start of the beat, half a frame's travel away from
+   the thing it is supposed to be clicking. Decaf's copy of this rule went the same
+   way — it overrode the transition to a flat 1100ms, and that override could not be
+   seen from the code doing the scheduling. It passes a `pace` instead.
    =========================================================================== */
 
 .ghost-cursor {
@@ -5501,8 +5648,8 @@ html.shows-shortcuts .shortcut-sheet {
   opacity: 0;
   pointer-events: none;
   transition:
-    left 620ms cubic-bezier(0.33, 0, 0.15, 1),
-    top 620ms cubic-bezier(0.33, 0, 0.15, 1),
+    left var(--ghost-travel, 620ms) cubic-bezier(0.33, 0, 0.15, 1),
+    top var(--ghost-travel, 620ms) cubic-bezier(0.33, 0, 0.15, 1),
     opacity 260ms ease,
     transform 130ms ease;
 }
@@ -5520,6 +5667,29 @@ html.shows-shortcuts .shortcut-sheet {
   height: 100%;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
 }
+
+/* --- the click indicator --------------------------------------------------
+   One ring off the point of the arrow, at the moment of the press, over a disc of the
+   same colour that flashes and goes. It is the only thing on screen that says a click
+   happened rather than a thing having changed on its own, and that is worth being sure
+   of: the pointer's own dip is a 10% scale and two pixels of movement — exactly as much
+   as a real trackpad click, and therefore almost nothing to look at.
+
+   Mounted fresh by the component with a key, so the animation restarts by remounting
+   and always runs in full. The rule used to hang off `[data-pressing="true"]`, which
+   tied the ring's life to the length of the press — and PagePack's press beat is 320ms
+   against a 460ms ring, so the signal was cut off two thirds of the way through.
+   Nothing here reads the press state.
+
+   `forwards`, so a spent ring rests at the invisible end of its own animation instead
+   of snapping back to a 30%-scale circle and sitting on screen until the next click.
+
+   Dark ink inside a white halo, which is the same two-tone trick the arrow above uses and
+   for the same reason. It was a plain white ring with a white wash inside it, tuned
+   against Decaf's greyed media and GRT's dark green signage — and photographing the press
+   on PDF Explainer's quiz card showed nothing at all, because a white ring on a white
+   panel is not a ring. Neither colour on its own can work here: these four scenes include
+   a near-white study workspace and a browser window that goes to a quarter opacity. */
 .ghost-cursor-ring {
   position: absolute;
   top: 1px;
@@ -5527,23 +5697,22 @@ html.shows-shortcuts .shortcut-sheet {
   width: 26px;
   height: 26px;
   margin: -13px 0 0 -13px;
-  border: 2px solid currentColor;
+  border: 2px solid rgba(18, 18, 20, 0.5);
   border-radius: 50%;
-  opacity: 0;
-  color: #fff;
-  transform: scale(0.3);
-}
-.ghost-cursor[data-pressing="true"] .ghost-cursor-ring {
-  animation: ghost-ping 460ms cubic-bezier(0.16, 0.8, 0.2, 1);
+  background: rgba(18, 18, 20, 0.1);
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.75),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.6);
+  animation: ghost-ping 460ms cubic-bezier(0.16, 0.8, 0.2, 1) forwards;
 }
 @keyframes ghost-ping {
   0% {
-    opacity: 0.9;
-    transform: scale(0.3);
+    opacity: 0.95;
+    transform: scale(0.28);
   }
   100% {
     opacity: 0;
-    transform: scale(1.8);
+    transform: scale(1.9);
   }
 }
 
@@ -5571,8 +5740,25 @@ html.shows-shortcuts .shortcut-sheet {
   --line: rgba(0, 0, 0, 0.09);
   --line-strong: rgba(0, 0, 0, 0.16);
   --accent: #0b6fd6;
+  /**
+   * The application's own tint palette, from the light theme in `src/index.css`.
+   *
+   * Three of these were missing and it mattered. `--good` and `--good-soft` were never
+   * declared here at all, so `.pdfx-option[data-state="reveal"]` — the rule that turns the
+   * correct answer green when the quiz is marked — has been resolving `var(--good)` to
+   * nothing and quietly doing no work. Invalid at computed-value time is a silent failure
+   * by design, which is why a whole verdict state can be dead for as long as it likes.
+   * The teal was a near-miss hex repeated in nine places rather than the one the app
+   * engraves, and the amber did not exist because the scene had no blanks card to need it.
+   */
   --violet: #6d28d9;
   --violet-soft: rgba(109, 40, 217, 0.09);
+  --teal: #0f766e;
+  --teal-soft: rgba(15, 118, 110, 0.1);
+  --amber: #b45309;
+  --amber-soft: rgba(180, 83, 9, 0.11);
+  --good: #1f8f4e;
+  --good-soft: rgba(31, 143, 78, 0.1);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
   --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06);
 
@@ -6044,10 +6230,108 @@ html.shows-shortcuts .shortcut-sheet {
   font-size: 11px;
 }
 
-/* --- III/IV. practice cards ----------------------------------------------
-   The real cards are tinted by kind — violet for quizzes, teal for matching —
-   and the tint is a left edge rather than a fill, so the card still reads as
-   paper. */
+/* --- III. the review set --------------------------------------------------
+   One panel, one set, three kinds of item. The header is the part that says so, and it
+   is the part the scene was missing: a progress line over a filter row that counts each
+   kind, straight out of `PracticePanel.tsx`. Without it the three cards are three
+   unrelated exercises, which is exactly how the rail used to describe them. */
+.pdfx-practice {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 9px;
+}
+.pdfx-practice-head {
+  flex: 0 0 auto;
+}
+.pdfx-practice-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 5px;
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.pdfx-practice-all {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--good-soft);
+  color: var(--good);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+.pdfx-progress {
+  display: block;
+  width: 130px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.pdfx-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--violet);
+  transition: width 420ms var(--ease-out-soft);
+}
+
+/* The filter row, which is the sentence "a review set has three kinds of item" written
+   as a control rather than as prose. Each chip carries its kind's own tint, and those are
+   the same three tints the cards are drawn in — so the row is also the key. */
+.pdfx-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+.pdfx-filters span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  opacity: 0.8;
+  transition:
+    background 260ms ease,
+    color 260ms ease,
+    opacity 260ms ease;
+}
+.pdfx-filters span b {
+  font-weight: 650;
+  opacity: 0.7;
+}
+/* The selected filter. It follows the card on screen, which is consistent rather than
+   decorative: filtering to one kind in the application shows one card of that kind, and
+   one card of that kind is what the frame shows. */
+.pdfx-filters span[data-on="true"] {
+  opacity: 1;
+}
+.pdfx-filters span.pdfx-chip--violet[data-on="true"] {
+  background: var(--violet);
+  color: #fff;
+}
+.pdfx-filters span.pdfx-chip--teal[data-on="true"] {
+  background: var(--teal);
+  color: #fff;
+}
+.pdfx-filters span.pdfx-chip--amber[data-on="true"] {
+  background: var(--amber);
+  color: #fff;
+}
+
+/* --- the cards -----------------------------------------------------------
+   The real cards are tinted by kind — violet for multiple choice, teal for matching,
+   amber for blanks — and the tint is a left edge rather than a fill, so the card still
+   reads as paper. */
 .pdfx-card {
   display: flex;
   min-height: 0;
@@ -6071,7 +6355,10 @@ html.shows-shortcuts .shortcut-sheet {
   border-left-color: var(--violet);
 }
 .pdfx-card--teal {
-  border-left-color: #0f7f76;
+  border-left-color: var(--teal);
+}
+.pdfx-card--amber {
+  border-left-color: var(--amber);
 }
 .pdfx-card-kicker {
   display: flex;
@@ -6081,9 +6368,20 @@ html.shows-shortcuts .shortcut-sheet {
   color: var(--ink-3);
   font-size: 10px;
 }
+/* The matching game's own counter, right-aligned in the kicker row. It is the only thing
+   on screen that distinguishes six taps from one, which is what this scene was reported
+   for getting wrong. */
+.pdfx-card-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
 .pdfx-chip--teal {
-  background: rgba(15, 127, 118, 0.11);
-  color: #0f7f76;
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.pdfx-chip--amber {
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 .pdfx-question {
   margin: 0;
@@ -6180,14 +6478,23 @@ html.shows-shortcuts .shortcut-sheet {
     color 300ms ease;
 }
 .pdfx-match li[data-matched="true"] {
-  border-color: #0f7f76;
-  background: rgba(15, 127, 118, 0.09);
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+/* A term tapped and waiting for its definition. This is the state the scene had no way
+   of showing while the whole game was one beat, and it is half of what makes the six taps
+   legible as six: a cell lights, then a second cell locks it in.
+   The real game's `pickedConcept` styling: `border-teal bg-teal-soft`. */
+.pdfx-match li[data-held="true"] {
+  border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 14%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 14%, transparent);
 }
 .pdfx-tick {
   position: absolute;
   top: 6px;
   right: 7px;
-  color: #0f7f76;
+  color: var(--good);
   font-size: 10px;
   font-style: normal;
   opacity: 0;
@@ -6199,6 +6506,139 @@ html.shows-shortcuts .shortcut-sheet {
 .pdfx-match li[data-matched="true"] .pdfx-tick {
   opacity: 1;
   transform: none;
+}
+
+/* --- fill in the blank ----------------------------------------------------
+   The third kind, and the one that needs a person to produce an answer rather than
+   choose one. From `src/practice/ClozeCard.tsx`: a dashed blank that is itself the
+   reveal control, a field, a Check button, and "That is it" when the answer lands. */
+.pdfx-cloze {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 2;
+}
+.pdfx-cloze-blank {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px dashed color-mix(in srgb, var(--amber) 50%, transparent);
+  border-radius: 8px;
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  vertical-align: middle;
+}
+.pdfx-cloze-filled {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 8px;
+  background: var(--good-soft);
+  color: var(--good);
+  font-size: 11.5px;
+  font-weight: 650;
+  vertical-align: middle;
+  animation: pdfx-pop 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+@keyframes pdfx-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+.pdfx-cloze-verdict {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--good);
+  font-size: 11px;
+  font-weight: 600;
+  animation: pdfx-bubble-in 300ms ease-out;
+}
+.pdfx-cloze-verdict i {
+  font-style: normal;
+}
+.pdfx-cloze-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pdfx-field {
+  display: flex;
+  min-width: 0;
+  height: 26px;
+  flex: 1 1 auto;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  font-size: 11.5px;
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+/* Focused, because the pointer clicked into it. The application's focus ring. */
+.pdfx-field[data-typed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.pdfx-field em {
+  color: var(--ink-3);
+  font-style: normal;
+}
+/**
+ * The typing.
+ *
+ * A `steps()` reveal of the answer's own width, with a caret riding the right edge. No
+ * keystrokes are simulated and none need to be: the width *is* the typing, and expressing
+ * it as one animation on one element means it costs nothing per frame and restarts by
+ * remounting — which is what the `key` in the pod is for.
+ *
+ * `ch` units against the same monospace the field prints in, so the steps land on
+ * character boundaries rather than part way through a glyph. The width comes from
+ * `--chars`, which the pod publishes from the answer's own length: it was `11ch` here and
+ * `steps(11)` below, which is the answer's length written down twice in a stylesheet that
+ * cannot see the answer. The step count stays a literal on purpose — it only has to be
+ * roughly one per character to read as typing, and being a few out is invisible.
+ */
+.pdfx-typed {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  border-right: 1.5px solid var(--accent);
+  color: var(--ink);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  animation:
+    pdfx-type 620ms steps(11) both,
+    pdfx-caret 620ms steps(2, jump-none) infinite;
+}
+@keyframes pdfx-type {
+  from {
+    width: 0;
+  }
+  to {
+    width: calc(var(--chars, 11) * 1ch);
+  }
+}
+@keyframes pdfx-caret {
+  50% {
+    border-right-color: transparent;
+  }
+}
+.pdfx-check {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 @media (max-width: 760px) {
@@ -6524,6 +6964,38 @@ html.shows-shortcuts .shortcut-sheet {
   from {
     opacity: 0;
     transform: translate3d(28px, -8px, 0) scale(0.96);
+  }
+}
+
+/* The claim that belongs to that card, hung on the card.
+   A zero-size point on the notification's left edge, halfway down it, which is all the
+   geometry a `SpecPlate` needs: the plate translates itself fully left of the point and
+   the pin's dot stays on it. So the label is correct at every window width, which is the
+   thing a percentage of the pod could never be — the notification is not in the pod.
+   See `ALERT_SPEC` in the scene for what was wrong before.
+   Delayed behind the card, because a label arriving with the thing it labels reads as part
+   of the notification rather than as an annotation of it. */
+.gx-alert-spec {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0;
+  height: 0;
+  animation: gx-spec-in 300ms ease-out both;
+  animation-delay: 420ms;
+}
+@keyframes gx-spec-in {
+  from {
+    opacity: 0;
+  }
+}
+/* Narrow windows have no room to its left: the card is already `100vw - 32px` wide. The
+   same trade the layer makes at this width, where the labels stop pointing and become a
+   row of chips under the scene — except there is no row to join out here, so this one
+   goes. The bell in the pod's chrome still rings, and the notification still arrives. */
+@media (max-width: 760px) {
+  .gx-alert-spec {
+    display: none;
   }
 }
 
@@ -9108,7 +9580,10 @@ svg.bd-vehicle {
     linear-gradient(135deg, #d3e7f4, #d8d9ef);
 }
 
-#pdf-explainer[data-scene-reached~="to-quiz"] {
+/* The room takes the tint of the practice item on screen. Three washes for the three
+   kinds, which is the same colour code the cards and the panel's filter row use — violet
+   for multiple choice, teal for matching, amber for blanks. */
+#pdf-explainer[data-scene-reached~="to-practice"] {
   background:
     radial-gradient(58% 52% at 48% 42%, rgba(249, 245, 255, 0.86), transparent 72%),
     linear-gradient(135deg, #dedcf5, #eadcf1);
@@ -9118,6 +9593,12 @@ svg.bd-vehicle {
   background:
     radial-gradient(58% 52% at 48% 42%, rgba(240, 252, 249, 0.88), transparent 72%),
     linear-gradient(135deg, #d8ece8, #d8e2f0);
+}
+
+#pdf-explainer[data-scene-reached~="to-blank"] {
+  background:
+    radial-gradient(58% 52% at 48% 42%, rgba(255, 250, 240, 0.88), transparent 72%),
+    linear-gradient(135deg, #ece4d5, #e2e0ee);
 }
 
 #pdf-explainer .demo-surface {
@@ -9209,16 +9690,24 @@ svg.bd-vehicle {
   transform: translate(-1rem, 1rem) rotate(3deg) scale(0.9);
 }
 
-.bd-pdf-fragment--concept {
+/* The blank shares the concept's slot at every width rather than claiming one of its own,
+   and that is not laziness — it is the only arrangement that cannot drift. These
+   fragments are repositioned three times below (900px, 700px, and a late override that
+   pulls the whole backdrop out of the editorial column at every width), and a fourth slot
+   would have to be placed in all three or it lands behind the heading, which is exactly
+   what the first attempt did. The matching pair fades as the blank arrives, so they are
+   never both readable. */
+.bd-pdf-fragment--concept,
+.bd-pdf-fragment--blank {
   right: 23%;
   bottom: 8%;
-  border-left: 3px solid #0f7f76;
+  border-left: 3px solid #0f766e;
 }
 
 .bd-pdf-fragment--definition {
   right: 2.5%;
   bottom: 8%;
-  border-left: 3px solid #0f7f76;
+  border-left: 3px solid #0f766e;
 }
 
 #pdf-explainer[data-scene-reached~="arrive"] .bd-pdf-fragment--notes,
@@ -9246,18 +9735,18 @@ svg.bd-vehicle {
   transform: rotate(1deg) scale(1);
 }
 
-#pdf-explainer[data-scene-reached~="to-quiz"] .bd-pdf-fragment--tutor {
+#pdf-explainer[data-scene-reached~="to-practice"] .bd-pdf-fragment--tutor {
   opacity: 0.1;
   transform: translate(2rem, -1rem) rotate(4deg) scale(0.86);
 }
 
-#pdf-explainer[data-scene-reached~="to-quiz"] .bd-pdf-fragment--quiz,
-#pdf-explainer[data-scene-reached~="to-quiz"] .bd-pdf-link--quiz {
+#pdf-explainer[data-scene-reached~="to-practice"] .bd-pdf-fragment--quiz,
+#pdf-explainer[data-scene-reached~="to-practice"] .bd-pdf-link--quiz {
   opacity: 0.9;
   stroke-dashoffset: 0;
 }
 
-#pdf-explainer[data-scene-reached~="to-quiz"] .bd-pdf-fragment--quiz {
+#pdf-explainer[data-scene-reached~="to-practice"] .bd-pdf-fragment--quiz {
   transform: rotate(1deg) scale(1);
 }
 
@@ -9284,15 +9773,44 @@ svg.bd-vehicle {
 }
 
 #pdf-explainer[data-scene-reached~="matched"] .bd-pdf-fragment--concept {
-  border-color: #0f7f76;
+  border-color: #0f766e;
   background: rgba(235, 250, 247, 0.9);
   transform: translateX(2.4rem) scale(1);
 }
 
 #pdf-explainer[data-scene-reached~="matched"] .bd-pdf-fragment--definition {
-  border-color: #0f7f76;
+  border-color: #0f766e;
   background: rgba(235, 250, 247, 0.9);
   transform: translateX(-2.4rem) scale(1);
+}
+
+/* The third kind, so the room echoes all three rather than the two it used to.
+   The matching pair leaves as it arrives, the same handover the tutor and quiz fragments
+   make. Position comes from the concept's rule above; this is only its own colour and its
+   own entrance. */
+.bd-pdf-fragment--blank {
+  /* Literals, not `var(--amber)`: the backdrop is a child of `.project-ambience`, outside
+     `.pdfx`, so the application's palette is not in scope here. These are the same two
+     figures the pod's tokens carry. */
+  border-left-color: #b45309;
+  transform: translate(0, 1rem) scale(0.9);
+}
+
+#pdf-explainer[data-scene-reached~="to-blank"] :is(
+    .bd-pdf-fragment--concept,
+    .bd-pdf-fragment--definition
+  ) {
+  opacity: 0.1;
+}
+
+#pdf-explainer[data-scene-reached~="to-blank"] .bd-pdf-fragment--blank {
+  opacity: 0.92;
+  transform: rotate(-1deg) scale(1);
+}
+
+#pdf-explainer[data-scene-reached~="solved"] .bd-pdf-fragment--blank {
+  border-color: var(--good, #1a7f4b);
+  background: rgba(235, 250, 240, 0.92);
 }
 
 /* ----------------------------------------------------------------- n-back --- */
@@ -10087,7 +10605,8 @@ svg.bd-vehicle {
     display: none;
   }
 
-  .bd-pdf-fragment--concept {
+  .bd-pdf-fragment--concept,
+  .bd-pdf-fragment--blank {
     right: auto;
     bottom: 2%;
     left: 4%;
@@ -10220,17 +10739,11 @@ svg.bd-vehicle {
 /* At narrow phone widths, the title and the absolute link row no longer fit side
    by side. Return the links to document flow instead of squeezing or truncating
    either editorial label. */
-@media (max-width: 440px) {
-  .project[data-stage] .project-identity {
-    padding-right: 0;
-  }
-
-  .project[data-stage] .project-links {
-    position: static;
-    align-self: stretch;
-    justify-content: flex-start;
-  }
-}
+/* This breakpoint held two rules and both of them were undoing the same thing: the
+   links' absolute position at 900px and the right padding at 660px that reserved room
+   for it. Both are gone at the source, so the corrections are gone with them. A patch
+   that only covers the last 440 pixels of a fault that starts at 900 is worse than none,
+   because it makes the fault look handled. */
 
 /* Keep the notification outside the browser, but inside the demo gutter. The old
    viewport-relative overhang landed its close button exactly on the capture edge. */
@@ -10340,9 +10853,45 @@ svg.bd-vehicle {
   z-index: -1;
   border-radius: 18px;
   background: color-mix(in srgb, var(--project-bg) 96%, transparent);
-  box-shadow: 0 0 28px 18px color-mix(in srgb, var(--project-bg) 88%, transparent);
   content: "";
   pointer-events: none;
+  /**
+   * A ground for the type, with no edge to it.
+   *
+   * This was an opaque rounded rectangle with a `0 0 28px 18px` shadow around it, and at
+   * 2560 it read as exactly that: a pale panel behind the heading, boxed, with the film
+   * going on outside it. Twenty-eight pixels of blur is a soft edge on a button and a
+   * sharp one on a four-hundred-pixel block.
+   *
+   * A mask instead, one ramp per axis composited together, so the rectangle has no border
+   * at all — it simply stops being there. `intersect` rather than the default `add`,
+   * because two ramps added together give the union, which is opaque everywhere either of
+   * them is; the product is what fades all four sides and rounds the corners for free.
+   *
+   * The insets below are widened to pay for it. The fade has to happen *outside* the
+   * words, or the words lose their ground, so the box now extends far enough past them
+   * that the type sits in the flat middle.
+   */
+  mask-image:
+    linear-gradient(
+      to right,
+      rgb(0 0 0 / 0) 0,
+      rgb(0 0 0 / 0.5) 6%,
+      rgb(0 0 0 / 1) 13%,
+      rgb(0 0 0 / 1) 87%,
+      rgb(0 0 0 / 0.5) 94%,
+      rgb(0 0 0 / 0) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0) 0,
+      rgb(0 0 0 / 0.5) 7%,
+      rgb(0 0 0 / 1) 15%,
+      rgb(0 0 0 / 1) 85%,
+      rgb(0 0 0 / 0.5) 93%,
+      rgb(0 0 0 / 0) 100%
+    );
+  mask-composite: intersect;
 }
 
 :is(
@@ -10354,14 +10903,17 @@ svg.bd-vehicle {
     #n-back,
     #night-neutralizer
   ) .project-heading::before {
-  inset: -0.8rem -1rem;
+  /* Wide enough that the mask above fades outside the words rather than across them.
+     It was `-0.8rem -1rem`, which is the right amount of padding for a panel with a
+     border and nowhere near enough for one without. */
+  inset: -2.4rem -3rem;
 }
 
 /* Transit silhouettes are deliberately high-contrast. Unlike the softer films,
-   they need a fully opaque editorial ground rather than a translucent wash. */
+   they need a fully opaque editorial ground rather than a translucent wash. The mask
+   is what softens it now, so there is no shadow here to give it an edge back. */
 #grt-next-bus .project-heading::before {
   background: var(--project-bg);
-  box-shadow: 0 0 28px 18px var(--project-bg);
 }
 
 :is(
@@ -10373,7 +10925,10 @@ svg.bd-vehicle {
     #n-back,
     #night-neutralizer
   ) .demo-chrome::before {
-  inset: -0.35rem -0.55rem;
+  /* Also widened, and less than the heading's: this backs a scene rather than a block of
+     type, and a scene is opaque, so the mask only has to lose the panel's edge into the
+     section rather than clear anything. */
+  inset: -1.4rem -1.6rem;
 }
 
 /* One of these is left. Five scenes lost their per-beat caption because the captions were
@@ -10395,26 +10950,80 @@ svg.bd-vehicle {
   box-shadow: 0 0 18px 10px color-mix(in srgb, var(--project-bg) 72%, transparent);
 }
 
-/* Hard desktop copy reservations. Stacked/offset projects reserve their top
-   editorial band; mirrored projects reserve the right column; Decaf reserves
-   the left column. */
+/* --- keeping the copy column clear, without a line where it ends -----------
+   Every drawn backdrop has to stay out of the band or column the editorial copy sits
+   in: the stacked and offset compositions reserve their top band, the mirrored ones
+   reserve the right column, Decaf and GRT reserve the left.
+
+   These were `clip-path`, and a clip is a cut. GRT's road ran the full width and simply
+   *began* at 34%, so a page whose whole point is that one project dissolves into the
+   next had a hard vertical edge two thirds of the way across it with traffic on one side
+   and nothing on the other. Photographing the section at 2560 is what made it plain —
+   the lane lines and the dashed centre line all start on the same invisible column.
+   Decaf, Choir, Night Neutralizer, PagePack, PDF Explainer and N-Back had the same
+   thing, five times over, in four directions.
+
+   So they are masks, and the reservation is now a fade. The copy still gets its ground:
+   the backdrop is fully transparent where the type is and fully present where the film
+   is, and what changed is the fifty pixels in between. Smoothstepped for the reason
+   `.project-seam` sets out — a straight ramp has a corner at each end and a corner in a
+   fade is the faint line this is removing.
+
+   `contain: paint` on `.bd` still clips these to their own box, which is what the
+   `clip-path` was doing for containment; nothing else relied on it. */
 #choir-practice .bd--choir,
 #night-neutralizer .bd--night,
 #pagepack .bd--pagepack {
-  clip-path: inset(30% 0 0);
+  mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0) 24%,
+    rgb(0 0 0 / 0.06) 25.5%,
+    rgb(0 0 0 / 0.22) 27%,
+    rgb(0 0 0 / 0.5) 29%,
+    rgb(0 0 0 / 0.78) 31%,
+    rgb(0 0 0 / 0.94) 32.5%,
+    rgb(0 0 0 / 1) 34%
+  );
 }
 
 #decaf .bd--decaf {
-  clip-path: polygon(32% 0, 100% 0, 100% 100%, 32% 100%);
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 0) 26%,
+    rgb(0 0 0 / 0.06) 27%,
+    rgb(0 0 0 / 0.22) 28.5%,
+    rgb(0 0 0 / 0.5) 30%,
+    rgb(0 0 0 / 0.78) 31.5%,
+    rgb(0 0 0 / 0.94) 33%,
+    rgb(0 0 0 / 1) 34%
+  );
 }
 
 #grt-next-bus .bd--transit {
-  clip-path: polygon(34% 0, 100% 0, 100% 100%, 34% 100%);
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 0) 28%,
+    rgb(0 0 0 / 0.06) 29%,
+    rgb(0 0 0 / 0.22) 30.5%,
+    rgb(0 0 0 / 0.5) 32%,
+    rgb(0 0 0 / 0.78) 33.5%,
+    rgb(0 0 0 / 0.94) 35%,
+    rgb(0 0 0 / 1) 36%
+  );
 }
 
 #pdf-explainer .bd--pdf,
 #n-back .bd--nback {
-  clip-path: polygon(0 0, 66% 0, 66% 100%, 0 100%);
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 1) 58%,
+    rgb(0 0 0 / 0.94) 59%,
+    rgb(0 0 0 / 0.78) 60.5%,
+    rgb(0 0 0 / 0.5) 62%,
+    rgb(0 0 0 / 0.22) 63.5%,
+    rgb(0 0 0 / 0.06) 65%,
+    rgb(0 0 0 / 0) 66%
+  );
 }
 
 .bd {
@@ -10548,7 +11157,10 @@ svg.bd-vehicle {
   position: absolute;
   z-index: 4;
   top: 38%;
-  right: max(0.8rem, 2.5vw);
+  /* Clear of the dock — see `--dock-rail`. Without it the clock and the rail's numbers
+     are two mono columns half an inch apart at the same size, reading as one crowded
+     one. */
+  right: calc(max(0.8rem, 2.5vw) + var(--dock-rail));
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -10582,7 +11194,8 @@ svg.bd-vehicle {
    to sit here fought it. */
 .bd-pack-status {
   top: 41%;
-  right: max(0.8rem, 2.5vw);
+  /* And clear of the dock, for the same reason. See `--dock-rail`. */
+  right: calc(max(0.8rem, 2.5vw) + var(--dock-rail));
   left: auto;
 }
 #pagepack[data-scene-reached~="cut"] .bd-pack-packet {
@@ -10726,7 +11339,8 @@ svg.bd-vehicle {
   bottom: 8%;
   left: 2%;
 }
-.bd-pdf-fragment--concept {
+.bd-pdf-fragment--concept,
+.bd-pdf-fragment--blank {
   right: auto;
   bottom: 6%;
   left: 27%;
@@ -10839,8 +11453,13 @@ svg.bd-vehicle {
 /* --------------------------------------------------------------- responsive --- */
 
 @media (max-width: 900px) {
-  /* Every composition becomes one column here, so all six backdrops reserve the
-     complete editorial band rather than pretending a side gutter still exists. */
+  /* Every composition becomes one column here, so all seven backdrops reserve the
+     complete editorial band rather than pretending a side gutter still exists.
+
+     A mask, not a clip, for the reason set out where the wide reservations live: a clip
+     ends the drawing on a line. This one was easy to miss — the wide rules had already
+     become masks and this override reinstated the cut for every window under 900px,
+     which is most phones and every tablet held upright. */
   :is(
       #choir-practice .bd--choir,
       #decaf .bd--decaf,
@@ -10850,7 +11469,17 @@ svg.bd-vehicle {
       #n-back .bd--nback,
       #night-neutralizer .bd--night
     ) {
-    clip-path: inset(clamp(26rem, 38%, 34rem) 0 0);
+    --bd-band: clamp(26rem, 38%, 34rem);
+    mask-image: linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0) var(--bd-band),
+      rgb(0 0 0 / 0.06) calc(var(--bd-band) + 0.6rem),
+      rgb(0 0 0 / 0.22) calc(var(--bd-band) + 1.2rem),
+      rgb(0 0 0 / 0.5) calc(var(--bd-band) + 2rem),
+      rgb(0 0 0 / 0.78) calc(var(--bd-band) + 2.8rem),
+      rgb(0 0 0 / 0.94) calc(var(--bd-band) + 3.4rem),
+      rgb(0 0 0 / 1) calc(var(--bd-band) + 4rem)
+    );
   }
 
   .bd-night-room--base {
@@ -10912,7 +11541,8 @@ svg.bd-vehicle {
     top: 71%;
     bottom: auto;
   }
-  .bd-pdf-fragment--concept {
+  .bd-pdf-fragment--concept,
+  .bd-pdf-fragment--blank {
     right: auto;
     bottom: 4%;
     left: 3%;
@@ -10965,7 +11595,7 @@ svg.bd-vehicle {
     left: 0.7rem;
   }
   .bd-night-hour {
-    right: 0.7rem;
+    right: calc(0.7rem + var(--dock-rail));
   }
 
   .bd-pack-resources,
@@ -11025,109 +11655,145 @@ svg.bd-vehicle {
    =========================================================================== */
 
 /* A quiet route through the seven-section run, visible only after the hero leaves and
-   while at least one project intersects the viewport. It stays a fixed-width rail;
-   labels open toward the page on interaction instead of widening the control. */
+   while at least one project intersects the viewport.
+
+   It has no surface. It used to be a dark glass pill — `rgba(12,15,14,0.6)` behind a
+   `blur(12px) saturate(0.85)`, white type, a drop shadow, a 1.1rem radius — and it was
+   reported as not fitting in, which it did not: this page is warm paper with ink type on
+   it, and a slab of frosted charcoal floating over Decaf's lavender is the visual
+   language of a phone's control centre rather than of anything else here.
+
+   Nothing replaced it. The rail is now seven numbers drawn straight onto the section
+   they are sitting over, which is what the rest of the page does with everything.
+
+   That only works because the ink comes from the section. `--focus-ink`, `--focus-muted`
+   and `--focus-accent` are the active project's own three colours, published on `:root`
+   by `ProjectFocusManager` — the same place `--ambient-bg` comes from, and `--ambient-bg`
+   is what is behind the dock, because `html.has-project-focus body` paints it. So the
+   dock is always the current project's type on the current project's paper: legible on
+   Night Neutralizer's near-black and on PagePack's lavender without a panel to separate
+   the two. The fallbacks are the page's own tokens, for the moment before the first
+   focus lands and for no JavaScript at all. */
 .project-dock {
   position: fixed;
   z-index: 65;
   top: 50%;
-  right: max(0.7rem, env(safe-area-inset-right, 0px));
+  right: max(0.9rem, env(safe-area-inset-right, 0px));
   bottom: auto;
   left: auto;
   display: flex;
-  width: 2.7rem;
+  width: 2.1rem;
   max-width: none;
   max-height: calc(100svh - 1.4rem);
   flex-direction: column;
   align-items: center;
-  gap: 0.16rem;
-  padding: 0.32rem 0.28rem;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 1.1rem;
-  background: rgba(12, 15, 14, 0.6);
-  box-shadow: 0 12px 34px -24px rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(12px) saturate(0.85);
-  color: #f5f5f0;
+  gap: 0.1rem;
+  color: var(--focus-ink, var(--ink));
   opacity: 0;
   pointer-events: none;
-  transform: translate3d(calc(100% + 2rem), -50%, 0);
+  transform: translate3d(0.9rem, -50%, 0);
   transition:
-    opacity 220ms ease,
-    transform 360ms var(--ease-out-soft);
+    opacity 260ms ease,
+    transform 420ms var(--ease-out-soft),
+    color 380ms linear;
 }
 
 html.has-project-in-view:not(.is-hero-visible) .project-dock {
-  opacity: 0.68;
+  opacity: 1;
   pointer-events: auto;
   transform: translate3d(0, -50%, 0);
 }
 
-html.has-project-in-view:not(.is-hero-visible) .project-dock:is(:hover, :focus-within) {
-  opacity: 0.96;
-}
-
-.project-dock-home,
-.project-dock-links a,
-.project-dock button {
-  position: relative;
-  width: 2rem;
-  height: 2rem;
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0;
-  border: 0;
-  border-radius: 0.72rem;
-  color: inherit;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.6rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
 .project-dock-home,
 .project-dock-links a {
+  position: relative;
   display: inline-flex;
+  width: 100%;
   align-items: center;
   justify-content: center;
+  padding-block: 0.3rem;
+  color: color-mix(in srgb, var(--focus-muted, var(--muted)) 72%, transparent);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1;
   text-decoration: none;
+  transition: color 200ms ease;
 }
 
+.project-dock-home:hover,
+.project-dock-home:focus-visible,
+.project-dock-links a:hover,
+.project-dock-links a:focus-visible {
+  color: var(--focus-ink, var(--ink));
+}
+
+/* Separated from the run by a rule rather than by a gap, because it is a different
+   kind of destination and seven digits with an eighth thing above them read as eight
+   stops. */
 .project-dock-home {
-  color: rgba(255, 255, 255, 0.58);
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--focus-muted, var(--muted)) 28%, transparent);
+  letter-spacing: 0.04em;
 }
 
 .project-dock-links {
   display: flex;
+  width: 100%;
   flex-direction: column;
   align-items: center;
-  gap: 0.1rem;
+  gap: 0.02rem;
 }
 
-.project-dock-links a {
-  color: rgba(255, 255, 255, 0.54);
-  transition:
-    color 180ms ease,
-    background 180ms ease,
-    box-shadow 180ms ease;
-}
-
-/* Names and the shortcut hint are tooltips, not part of the rail's geometry. */
-.project-dock-links a strong,
-.project-dock button span {
+/* The current stop. A dot on the outside edge, in the project's accent, and the number
+   comes up to full ink — which is the same pairing the trail across the top uses.
+   The old treatment was a translucent white tile with a white inset bar, and both of
+   those were parts of the panel that has gone. */
+.project-dock-links a::after {
   position: absolute;
   top: 50%;
-  right: calc(100% + 0.55rem);
+  right: -0.02rem;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--focus-accent, var(--ink));
+  content: "";
+  opacity: 0;
+  transform: translate3d(0.2rem, -50%, 0) scale(0.4);
+  transition:
+    opacity 200ms ease,
+    transform 320ms var(--ease-out-soft);
+}
+
+.project-dock-links a.is-current {
+  color: var(--focus-ink, var(--ink));
+}
+
+.project-dock-links a.is-current::after {
+  opacity: 1;
+  transform: translate3d(0, -50%, 0) scale(1);
+}
+
+/* The name is a tooltip, not part of the rail's geometry — the rail stays one column
+   wide and the label opens over the page instead of widening the control. Paper and a
+   hairline, like every other raised surface here. */
+.project-dock-links a strong {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 0.3rem);
   width: max-content;
   max-width: min(14rem, calc(100vw - 5rem));
   overflow: hidden;
-  padding: 0.4rem 0.58rem;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 0.58rem;
-  background: rgba(12, 15, 14, 0.88);
-  box-shadow: 0 10px 28px -18px rgba(0, 0, 0, 0.78);
+  padding: 0.34rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--focus-ink, var(--ink)) 14%, transparent);
+  border-radius: 7px;
+  background: var(--ambient-bg, var(--paper));
+  box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--focus-ink, var(--ink)) 70%, transparent);
+  color: var(--focus-ink, var(--ink));
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 0.66rem;
-  font-weight: 620;
+  font-size: 0.64rem;
+  font-weight: 600;
   opacity: 0;
   pointer-events: none;
   text-overflow: ellipsis;
@@ -11141,40 +11807,11 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock:is(:hover, :focus-w
 }
 
 .project-dock-links a:hover strong,
-.project-dock-links a:focus-visible strong,
-.project-dock button:hover span,
-.project-dock button:focus-visible span {
+.project-dock-links a:focus-visible strong {
   opacity: 1;
   visibility: visible;
   transform: translate3d(0, -50%, 0);
   transition-delay: 0s;
-}
-
-.project-dock-links a.is-current {
-  background: rgba(255, 255, 255, 0.13);
-  box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.7);
-  color: #fff;
-}
-
-.project-dock button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.58);
-  cursor: pointer;
-}
-
-.project-dock button:hover,
-.project-dock button:focus-visible,
-.project-dock-home:hover,
-.project-dock-home:focus-visible {
-  background: rgba(255, 255, 255, 0.09);
-  color: #fff;
-}
-
-.project-dock button kbd {
-  font: inherit;
 }
 
 /* The full visual treatment remains unchanged while visible. Away from the
@@ -11260,33 +11897,27 @@ html.has-visibility-gates:not(.is-hero-visible) .hero-cue-line::after {
 }
 
 @media (max-width: 660px) {
-  .project-dock {
-    right: max(0.35rem, env(safe-area-inset-right, 0px));
-    width: 2.2rem;
-    gap: 0.08rem;
-    padding: 0.24rem 0.2rem;
-    border-radius: 0.88rem;
+  /* The rail is narrower here, so the room reserved for it is too. */
+  :root {
+    --dock-rail: 2.4rem;
   }
 
+  .project-dock {
+    right: max(0.4rem, env(safe-area-inset-right, 0px));
+    width: 1.7rem;
+    gap: 0.06rem;
+  }
+
+  /* The home mark and the hover labels go: there is no hover on a phone, and "XL" over
+     the numbers is the one item here that a thumb-width rail cannot afford. */
   .project-dock-home,
-  .project-dock button span,
   .project-dock-links a strong {
     display: none;
   }
 
-  .project-dock-links {
-    gap: 0.06rem;
-  }
-
-  .project-dock-links a,
-  .project-dock button {
-    width: 1.7rem;
-    height: 1.7rem;
-    min-width: 1.7rem;
-    min-height: 1.7rem;
-    padding: 0;
-    border-radius: 0.58rem;
-    font-size: 0.54rem;
+  .project-dock-links a {
+    padding-block: 0.26rem;
+    font-size: 0.52rem;
   }
 
   #choir-practice { --project-intrinsic-height: 1270px; }

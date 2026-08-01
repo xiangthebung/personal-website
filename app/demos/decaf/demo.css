@@ -147,7 +147,17 @@
 }
 
 /* And a single ring off the button itself on the press, so the click has a source as
-   well as a cursor. */
+   well as a cursor.
+
+   `data-did` rather than `data-beat`, and that one letter of difference is the fix for a
+   reported fault. `data-beat` flips when the beat starts; the pointer presses 90ms later,
+   because it settles before it clicks. So the button rang, and depressed, five frames
+   before the ring off the cursor said a click had happened — two rings for one click, in
+   the wrong order. `data-did` is the beat the press has actually reached. See `CLICKS` in
+   the demo, and `usePressGate`.
+
+   520ms of ring inside what is left of an 800ms beat after the wait, so it still finishes
+   before `drain` takes over. */
 .dc-toolbar::after {
   position: absolute;
   inset: -4px;
@@ -157,7 +167,7 @@
   opacity: 0;
   pointer-events: none;
 }
-.dc[data-beat="press"] .dc-toolbar::after {
+.dc[data-did="press"] .dc-toolbar::after {
   animation: dc-click 520ms cubic-bezier(0.16, 0.8, 0.2, 1) both;
 }
 @keyframes dc-click {
@@ -177,8 +187,8 @@
   transform: scale(1.1);
 }
 /* Pressed *in*, not out. A button that grows while being clicked is a button nobody
-   believes was clicked. */
-.dc[data-beat="press"] .dc-toolbar {
+   believes was clicked. `data-did`, for the reason on the ring below. */
+.dc[data-did="press"] .dc-toolbar {
   color: #fff;
   background: var(--accent);
   transform: scale(0.92);
@@ -190,23 +200,19 @@
   background: var(--accent);
 }
 
-/* --- and a slower, larger pointer, in this scene only ---------------------
-   The shared cursor crosses its stage in 620ms, which is right for the scenes where it
-   moves a short distance inside a card and wrong here: this one travels the diagonal of
-   a whole browser window, and at 620ms it was reported twice as not obvious enough.
-   1100ms is slow enough to follow without being slow enough to read as broken, and it
-   fits inside `reach` (1600ms) with room to settle before the press.
+/* --- and a larger pointer, in this scene only -----------------------------
+   22px is a real pointer's size, and a real pointer's size is exactly what gets lost in
+   a busy frame.
 
-   Bigger, too. 22px is a real pointer's size, and a real pointer's size is exactly what
-   gets lost in a busy frame. */
+   The slower travel used to be here too, as a `transition` override at a flat 1100ms —
+   this scene crosses the diagonal of a whole browser window and at the shared pace the
+   movement was reported twice as not obvious enough. It is a `pace` prop on the
+   component now. A duration living in a stylesheet is invisible to the code that has to
+   schedule a click against it, and the click has to land after the pointer arrives; see
+   the note in `scene/cursor.tsx`. */
 .dc .ghost-cursor {
   width: 30px;
   height: 30px;
-  transition:
-    left 1100ms cubic-bezier(0.4, 0, 0.2, 1),
-    top 1100ms cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 300ms ease,
-    transform 130ms ease;
 }
 .dc .ghost-cursor-ring {
   width: 34px;
@@ -405,8 +411,12 @@
    feed that fades out has been switched off politely. A feed that stops dead
    mid-scroll is what happens.
 
-   Travel is four posts' worth, written off the same custom properties the post
-   height uses so changing one cannot silently strand the other. */
+   Travel is written off the same custom properties the post height uses, so changing
+   one cannot silently strand the other, and the *number* of posts comes from the demo
+   as `--reel-posts`. That used to be a literal 4 here, which mattered once the feed's
+   three labels started being measured against whichever post the pull leaves in frame:
+   two files would have had to agree about the same distance without either mentioning
+   the other. See `REEL_TRAVEL_POSTS`. */
 .dc-reel {
   --dc-post-h: 129px;
   --dc-post-gap: 10px;
@@ -422,7 +432,9 @@
 }
 @keyframes dc-reel-pull {
   to {
-    transform: translateY(calc(-4 * (var(--dc-post-h) + var(--dc-post-gap))));
+    transform: translateY(
+      calc(-1 * var(--reel-posts, 4) * (var(--dc-post-h) + var(--dc-post-gap)))
+    );
   }
 }
 
@@ -545,13 +557,54 @@
   --spec-lead: 12px;
 }
 
-/* --- Decaf: the deluge ---------------------------------------------------- */
+/* --- Decaf: the deluge ----------------------------------------------------
+   Portalled to the viewport, and held inside Decaf's own band of the page by a mask
+   rather than by a clip.
+
+   It was `clip-path: inset(top 0 bottom 0)`, written on the element from the measured
+   band — and a clip has one edge and no width. Forty-two rewards fell through a line
+   that was not there and were cut in half on it, at the top and bottom of the section,
+   across the whole width. The scene already worked around the lower one: `dc-fall`
+   fades from 58% so the hearts are gone before they reach it. That is a workaround for
+   a boundary that should never have been visible, and the same boundary the sections
+   themselves used to have — see `.project-seam`.
+
+   So the demo publishes `--band-top` and `--band-bottom` and the fade is here, with a
+   feather at both ends. A reward crossing into the next project dissolves into it
+   instead of being sliced by it.
+
+   `--band-feather` is generous because what it is fading is large, fast and brightly
+   coloured: a 40px heart at three quarters opacity reads as cut off long before its
+   last pixel goes. The fallbacks keep the layer fully visible for the frame before the
+   measurement lands, which is the right way round — a missing measurement should show
+   too much rather than nothing. */
 .dc-deluge {
+  --band-feather: clamp(40px, 9svh, 130px);
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
+  /* Smoothstepped at both ends, the same curve and for the same reason as
+     `.project-ambience`'s mask: a straight ramp has a corner where it starts and where it
+     stops, and a corner in a fade is a faint line exactly where this is removing one. */
+  mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0) var(--band-top, 0px),
+    rgb(0 0 0 / 0.06) calc(var(--band-top, 0px) + var(--band-feather) * 0.15),
+    rgb(0 0 0 / 0.22) calc(var(--band-top, 0px) + var(--band-feather) * 0.3),
+    rgb(0 0 0 / 0.5) calc(var(--band-top, 0px) + var(--band-feather) * 0.5),
+    rgb(0 0 0 / 0.78) calc(var(--band-top, 0px) + var(--band-feather) * 0.7),
+    rgb(0 0 0 / 0.94) calc(var(--band-top, 0px) + var(--band-feather) * 0.85),
+    rgb(0 0 0 / 1) calc(var(--band-top, 0px) + var(--band-feather)),
+    rgb(0 0 0 / 1) calc(100% - var(--band-bottom, 0px) - var(--band-feather)),
+    rgb(0 0 0 / 0.94) calc(100% - var(--band-bottom, 0px) - var(--band-feather) * 0.85),
+    rgb(0 0 0 / 0.78) calc(100% - var(--band-bottom, 0px) - var(--band-feather) * 0.7),
+    rgb(0 0 0 / 0.5) calc(100% - var(--band-bottom, 0px) - var(--band-feather) * 0.5),
+    rgb(0 0 0 / 0.22) calc(100% - var(--band-bottom, 0px) - var(--band-feather) * 0.3),
+    rgb(0 0 0 / 0.06) calc(100% - var(--band-bottom, 0px) - var(--band-feather) * 0.15),
+    rgb(0 0 0 / 0) calc(100% - var(--band-bottom, 0px))
+  );
   /* One filter on the layer rather than one per child: when the extension
      goes on, the whole downpour loses its colour in a single composited pass. */
   transition:

@@ -36,6 +36,7 @@
 import "./demo.css";
 import { useEffect, useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { usePressGate } from "../scene/press-gate";
 import { useSectionBeat } from "../scene/section-beat";
 import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
@@ -101,14 +102,18 @@ const BEATS: readonly Beat<BeatName>[] = [
      in the stylesheet — because a pointer that crosses the frame in half a second is a
      pointer nobody saw move. */
   { name: "reach", ms: 1600 },
-  // The press, comfortably longer than the 520ms its own click ring takes to play.
+  // The press: the travel is over, then 90ms to settle, 150ms down, and a 460ms ring.
   { name: "press", ms: 800 },
   // One claim per beat from here, each with its own line of caption.
   { name: "drain", ms: 1700 },
   { name: "dashes", ms: 1500 },
   { name: "calm", ms: 1400 },
   { name: "pause", ms: 1800 },
-  { name: "aim-hold", ms: 800 },
+  /* The other travel, back across the window to the notice card's hold button, at the
+     same deliberate pace. It was 800ms, which was shorter than the 1100ms the pointer
+     took to get there — so the beat whose entire content is a pointer arriving ended
+     before it had. */
+  { name: "aim-hold", ms: 1050 },
   { name: "hold", ms: 1900 },
   { name: "settle", ms: 1500 },
 ];
@@ -130,6 +135,23 @@ const CURSOR: Partial<Record<BeatName, string>> = {
   "aim-hold": "hold",
   hold: "hold",
 };
+
+/**
+ * The two beats that carry a click, and both of them wait for it. See `usePressGate`.
+ *
+ * The pointer is already standing on both controls when these beats begin — `reach` and
+ * `aim-hold` exist for exactly that — so the wait here is only the 90ms between arriving
+ * and pressing, not a flight. It is worth taking anyway, because 90ms is five frames and
+ * both of these are the frame a visitor is being asked to read: the toolbar button
+ * depressing, and a progress ring starting to fill. Filmed, both were doing it before the
+ * ring off the pointer said anything had been clicked.
+ *
+ * `press` reaches the stylesheet as well as this component. `data-did` on the root is what
+ * the button's pressed look and its own click ring hang off, rather than `data-beat`; the
+ * halo and the scrim stay on `data-beat`, because those are the cues that go *before* a
+ * click and would be absurd waiting for it.
+ */
+const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>(["press", "hold"]);
 
 /**
  * Posts in the feed. Numbers are the shapes sites actually write.
@@ -161,6 +183,24 @@ const POSTS = [
  * on a feed sitting still. If a beat in that range changes, this changes with it.
  */
 const REEL_MS = 7700;
+
+/**
+ * The post the feed's three labels are measured against.
+ *
+ * The reel travels four posts' worth — see `dc-reel-pull` — and finishes exactly as
+ * `drain` begins, because `REEL_MS` is the sum of the beats it runs across. So at the
+ * frame the labels arrive, post 4 is flush against the top of the feed and post 5 fills
+ * the rest of it: everything before has scrolled out of the window and everything after
+ * is runway. Post 4 is therefore the one post that is both fully in frame and still
+ * there for all three of `drain`, `dashes` and `calm`.
+ *
+ * So this is the reel's own travel, and the keyframe now reads it from here rather than
+ * hardcoding a 4 of its own — see `--reel-posts` in the stylesheet. The two cannot drift
+ * apart: change how far the feed pulls and the labels follow it to the post that ends up
+ * in frame.
+ */
+const REEL_TRAVEL_POSTS = 4;
+const LABELLED_POST = REEL_TRAVEL_POSTS;
 
 /**
  * A burst of rewards leaving one point on the screen.
@@ -275,9 +315,15 @@ const SUGGESTIONS = ["an account like yours", "trending near you", "because you 
  * different parts of the page. That reads as *this switch did all of this* in a way six
  * bullet points four inches away cannot.
  *
- * Coordinates are percentages of the pod, which is a fixed-geometry browser — `.dc-app`
- * is a fixed three-column grid and `.dc-feed` is exactly 268px whatever is in it, for the
- * reasons in the stylesheet — so a percentage lands on the same element at every width.
+ * Every one of them names the element it is about and is measured against it. The
+ * coordinates are still here and are still worth getting close, because they are what the
+ * server renders and what a visitor with no JavaScript keeps — but they are no longer the
+ * position. They were, under a comment claiming this pod was fixed geometry, and it is
+ * not: `.dc-app`'s middle column is `minmax(0, 1fr)`, so the header, the bell and the
+ * suggestions rail all move as a fraction of the layer when the window changes width.
+ * Measured, the bell sits at 72.7% of the layer at a 1440px window and 75.7% at 2560, and
+ * the label pinned at 72 was thirty-six pixels out on the wider screen — parked on the
+ * search field, which is not what it says. See `scripts/spec-anchors.mjs`.
  *
  * The three labels over the feed carry `until: "pause"`, because the feed is what the
  * notice card replaces. A label left pinned over the notice would be a label pointing at
@@ -287,13 +333,58 @@ const SUGGESTIONS = ["an account like yours", "trending near you", "because you 
  */
 const SPECS: readonly SpecTag<BeatName>[] = [
   /* "Media greyscaled" was the first wording and it was written from inside the code.
-     Greyscale is a filter name; a person watching this sees the colour go. */
-  { at: "drain", text: "Colour off", x: 21, y: 35, until: "pause" },
-  { at: "drain", text: "Autoplay stopped", x: 50, y: 42, until: "pause" },
-  { at: "dashes", text: "Likes and views hidden", x: 22, y: 59, until: "pause" },
-  /* Reads leftward, over the search field, and stops just short of the bell. Anything
-     anchored at the bell and reading rightward runs off the edge of the window it is
-     describing; anything anchored *on* it covers the badge that is the whole point.
+     Greyscale is a filter name; a person watching this sees the colour go.
+
+     On the media's top-*right* corner, reading back into the picture, and pushed down into
+     it. Two things were wrong with the top-left it started on. A plate is centred on its
+     dot, so a dot correctly placed on a corner hangs half a plate above the thing it is
+     pointing at — this one struck a line through "because you watched" in the post header,
+     which `scripts/spec-anchors.mjs` now reports as `COVERS TYPE` and previously could not,
+     because it was checking where the dots landed and a dot's position and a plate's
+     position are different facts. And the counts label below has to be on the left, because
+     the counts are: two plates in the same corner of a 97px-tall picture read as a stack of
+     tags on it rather than as two labels about two things. The three now sit top-right,
+     middle and bottom-left, which is also the order the eye reads them in.
+
+     Reading leftward is what keeps it inside the picture. Anchored at the right edge and
+     reading right, it would run out of the window and across the suggestions rail. */
+  {
+    at: "drain",
+    text: "Colour off",
+    x: 76,
+    y: 35,
+    anchor: "media",
+    grip: "top right",
+    nudge: { y: 8 },
+    side: "left",
+    until: "pause",
+  },
+  { at: "drain", text: "Autoplay stopped", x: 48, y: 42, anchor: "autoplay", until: "pause" },
+  /* Straight above the numbers with a line down to them, which is what `side: "above"` is
+     for. The row is 16px tall and the plate is 25px, so a label reading sideways at the
+     row's own height covers the counts it is about; reading sideways just *clear* of the
+     row — which is what this did — puts the dot on the media's bottom-left corner instead,
+     two labels deep in the same column, and it read as a second tag on the picture rather
+     than as a label on the numbers.
+
+     The x nudge slides the dot along the row to the views count, so the plate above it is
+     centred over the feed rather than over the sidebar: `above` centres a 152px plate on
+     its dot, and the numbers start eleven pixels inside a feed whose left edge has a
+     navigation rail beyond it. */
+  {
+    at: "dashes",
+    text: "Likes and views hidden",
+    x: 21,
+    y: 46,
+    anchor: "counts",
+    grip: "top left",
+    nudge: { x: 40 },
+    side: "above",
+    until: "pause",
+  },
+  /* Reads leftward out of the bell's left edge. Anything anchored at the bell and reading
+     rightward runs off the edge of the window it is describing; anything anchored *on* it
+     covers the badge that is the whole point.
 
      Two rewrites got here. "Notifications muted, count kept" described the mechanism and
      left the reader to work out which half was the point. "Keeps the count, loses the red"
@@ -301,14 +392,29 @@ const SPECS: readonly SpecTag<BeatName>[] = [
      than as a thing the extension does for you. This says what it is for. The badge in the
      frame keeps its 12 and drops its red at the same moment, so the mechanism is still on
      screen for anyone who looks; it just is not what the label is about. */
-  { at: "calm", text: "Notifications less distracting", x: 72, y: 17.5, side: "left" },
+  {
+    at: "calm",
+    text: "Notifications less distracting",
+    x: 74,
+    y: 18,
+    anchor: "bell",
+    grip: "left",
+    side: "left",
+  },
   /* There was a second label here, reading rightward along the tab strip: "Tab title stops
      counting", pointing at the `(3)` that a site writes into its own title and that Decaf
      removes. It is a real behaviour and it is still in the scene — the `(3)` still goes.
      But naming it needs the visitor to already know that sites do that, and to have noticed
      which two characters changed in a 10px tab label. A label that has to teach a premise
      before it can make a point is a label nobody finishes reading. */
-  { at: "pause", text: "Suggestions gone", x: 89, y: 20, side: "below" },
+  {
+    at: "pause",
+    text: "Suggestions gone",
+    x: 89,
+    y: 16,
+    anchor: "suggestions",
+    side: "below",
+  },
 ];
 
 /** The button they all come out of: the toolbar icon, in the pod's own percentages. */
@@ -333,13 +439,17 @@ export function DecafDemo() {
   const likeRef = useRef<HTMLSpanElement | null>(null);
   const commentRef = useRef<HTMLSpanElement | null>(null);
   const delugeRef = useRef<HTMLDivElement | null>(null);
-  const { beat, index, run, still } = useStoryboard(BEATS, {
+  const state = useStoryboard(BEATS, {
     running,
     stage: stageRef,
     // The still that carries the argument: a paused feed with the page intact
     // around it.
     stillBeat: "pause",
   });
+  const { beat, index, run, still } = state;
+  /* What the two presses did, held until they happened. `beat` still decides where the
+     pointer goes; `did` decides what the press is allowed to have changed. */
+  const { did, onPress } = usePressGate(BEATS, state, CLICKS);
 
   /* This scene drives its whole section. Decaf's claim is that a page stops
      shouting at you, and proving that inside a frame on an otherwise loud page
@@ -352,7 +462,10 @@ export function DecafDemo() {
   const dashed = index >= at("dashes");
   const calmed = index >= at("calm");
   const paused = index >= at("pause");
-  const holding = beat === "hold";
+  /* The ring only starts filling once the button under the pointer has actually been
+     pressed. It runs 1800ms inside a 1900ms beat, which leaves exactly enough room for the
+     90ms the press waits — see `CLICKS`. */
+  const holding = did === "hold";
 
   /**
    * Whether the feed is actively working on you.
@@ -443,12 +556,24 @@ export function DecafDemo() {
         );
       }
 
+      /**
+       * Where Decaf's band sits in the visitor's window, so the layer can keep itself
+       * inside it.
+       *
+       * Published as two numbers for the stylesheet to feather, rather than applied here
+       * as `clip-path: inset(...)`. A clip has one edge and no width: it cut forty-two
+       * falling rewards in half along an invisible horizontal line at the top and bottom
+       * of the section, which is the same hard edge the sections themselves had. The
+       * scene was already working around it — the fall fades from 62% so the hearts are
+       * gone before they reach the line — and that is a workaround for a boundary that
+       * should not have been visible in the first place. See `.dc-deluge`'s mask.
+       */
       if (section) {
         const box = section.getBoundingClientRect();
         const top = Math.max(0, Math.round(box.top));
         const bottom = Math.max(0, Math.round(window.innerHeight - box.bottom));
-        layer.style.clipPath = `inset(${top}px 0px ${bottom}px 0px)`;
         layer.style.setProperty("--band-top", `${top}px`);
+        layer.style.setProperty("--band-bottom", `${bottom}px`);
       }
     };
 
@@ -481,6 +606,10 @@ export function DecafDemo() {
       className="dc"
       ref={stageRef}
       data-beat={beat}
+      /* The same clock a beat behind, for the two beats that wait for a click. The
+         stylesheet uses it for the button's pressed look and its click ring, so those
+         land with the pointer rather than 90ms ahead of it. See `CLICKS`. */
+      data-did={did}
       data-lap={run}
       data-on={on}
       data-grey={grey}
@@ -544,7 +673,7 @@ export function DecafDemo() {
           <div className="dc-main">
             <header className="dc-top">
               <span className="dc-search">Search</span>
-              <span className="dc-bell" data-calm={calmed}>
+              <span className="dc-bell" data-calm={calmed} data-spec-anchor="bell">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     d="M12 4a5 5 0 0 0-5 5v3.5L5.5 15.5h13L17 12.5V9a5 5 0 0 0-5-5Z"
@@ -599,7 +728,12 @@ export function DecafDemo() {
                   className="dc-reel"
                   key={`reel-${run}`}
                   data-running={flooding}
-                  style={{ "--reel-ms": `${REEL_MS}ms` } as React.CSSProperties}
+                  style={
+                    {
+                      "--reel-ms": `${REEL_MS}ms`,
+                      "--reel-posts": REEL_TRAVEL_POSTS,
+                    } as React.CSSProperties
+                  }
                 >
                   {POSTS.map((post, index) => (
                     <article className="dc-post" key={post.who}>
@@ -607,15 +741,35 @@ export function DecafDemo() {
                         <span className="dc-post-avatar" />
                         {post.who}
                       </p>
-                      <span className={`dc-media dc-media--${post.tint}`}>
-                        <i className="dc-play" />
+                      <span
+                        className={`dc-media dc-media--${post.tint}`}
+                        /* Two of the three feed labels are measured against this one
+                           post, and it is this one because of where the reel stops.
+                           `REEL_MS` is the sum of `raw` through `press`, so the pull
+                           finishes exactly as `drain` begins and the fifth post is
+                           sitting flush against the top of the feed at the frame the
+                           labels arrive. Anything earlier has scrolled out of the
+                           window; anything later is the runway. */
+                        data-spec-anchor={index === LABELLED_POST ? "media" : undefined}
+                      >
+                        <i
+                          className="dc-play"
+                          /* Still measurable once the extension has stopped it: `data-on`
+                             takes it to `opacity: 0` and leaves the box, which is what a
+                             label saying it was stopped needs to point at. */
+                          data-spec-anchor={index === LABELLED_POST ? "autoplay" : undefined}
+                        />
                       </span>
                       {/* The first post's counters are the two emitters. Only the
                           first: it is the one reliably in frame, and emitting from
                           every repeated counter would turn direction into noise rather
                           than emphasis. */}
                       <p className="dc-post-meta">
-                        <span className="dc-count" ref={index === 0 ? likeRef : undefined}>
+                        <span
+                          className="dc-count"
+                          ref={index === 0 ? likeRef : undefined}
+                          data-spec-anchor={index === LABELLED_POST ? "counts" : undefined}
+                        >
                           <b>♥</b> {count(post.likes)}
                         </span>
                         <span className="dc-count">{count(post.views)}</span>
@@ -635,7 +789,9 @@ export function DecafDemo() {
           </div>
 
           <aside className="dc-suggest" data-gone={paused}>
-            <p className="dc-suggest-head">Suggested for you</p>
+            <p className="dc-suggest-head" data-spec-anchor="suggestions">
+              Suggested for you
+            </p>
             {SUGGESTIONS.map((item) => (
               <span className="dc-suggest-row" key={item}>
                 <i />
@@ -740,7 +896,13 @@ export function DecafDemo() {
         <PhantomCursor
           stage={stageRef}
           target={CURSOR[beat] ?? null}
-          pressing={beat === "press" || holding}
+          pressing={CLICKS.has(beat)}
+          onPress={onPress}
+          /* Deliberate rather than brisk, for the reason in this scene's stylesheet: the
+             pointer crosses a whole browser window here with a flood of animation going
+             on around it. This replaces a flat 1100ms transition override, so the longest
+             move is about what it was and the short ones are no longer artificially slow. */
+          pace={2.4}
           token={`${run}-${beat}`}
         />
       )}
