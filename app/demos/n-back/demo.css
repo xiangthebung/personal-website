@@ -1,0 +1,463 @@
+/*
+ * This scene's own styles, loaded with its chunk.
+ *
+ * They lived in app/globals.css until they were moved here, along with every other
+ * scene's. That file had become twelve thousand lines of appended passes, and the
+ * cost was not tidiness: three separate live rules had been silently destroyed by
+ * dangling selectors left behind when neighbouring code was deleted, because at that
+ * size nobody can see a stylesheet whole. A scene's rules now sit beside the markup
+ * they style, and arrive only when that scene does.
+ *
+ * What deliberately did NOT come here: anything whose subject is the section rather
+ * than the scene — the ambient wash, the entrance veil, the ghost number. The section
+ * is server-rendered and on screen long before this file is fetched, so styling it
+ * from here would flash.
+ */
+
+/**
+ * N-Back — "hold two, compare, let the oldest go"
+ *
+ * A diagram that moves rather than a game. Three parts stacked: the cue that just
+ * arrived, the strip of cues being held, and the two answer keys.
+ */
+
+/* --- the cue on screen now ------------------------------------------------ */
+
+.nb-now {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nb-stage {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.9rem, 2.5vw, 1.6rem);
+}
+
+.nb-board {
+  display: grid;
+  width: clamp(108px, 22vw, 138px);
+  aspect-ratio: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--nb-line);
+  border-radius: 12px;
+  background: var(--nb-well);
+}
+
+/* The spoken letter, drawn as a letter because this page does not talk. */
+.nb-voice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.nb-voice[data-on="true"] {
+  opacity: 1;
+}
+
+.nb-wave {
+  display: flex;
+  height: 26px;
+  align-items: center;
+  gap: 3px;
+}
+
+@keyframes nb-wave {
+  50% {
+    transform: scaleY(0.4);
+  }
+}
+
+.nb-now-label {
+  margin: 0;
+  color: var(--nb-faint);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* What a cue is made of, including the stream this demonstration does not run.
+   "Watch a square and hear a letter. Triple adds a colour." was a written note beside
+   the scene, and two thirds of it were already the first thing the scene does. The third
+   could never be shown here — there is no colour stream in this film — so nothing in the
+   frame could hint that the game has one. Three chips, one of them explicitly off, put
+   the whole shape of the game on screen for six words. */
+.nb-streams {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.56rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --- the memory strip ---------------------------------------------------- */
+
+.nb-memory {
+  position: relative;
+  padding: 0.75rem 0.85rem 1.9rem;
+  border: 1px solid var(--nb-line);
+  border-radius: 14px;
+  background: var(--nb-well);
+}
+
+.nb-memory-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin: 0 0 0.6rem;
+  color: var(--nb-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nb-strip {
+  display: grid;
+  grid-template-columns: repeat(var(--nb-slots), 1fr);
+  gap: var(--nb-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nb-mini {
+  display: grid;
+  width: 34px;
+  aspect-ratio: 1;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+
+.nb-slot-letter {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.nb-slot-index {
+  color: var(--nb-faint);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+}
+
+/* The bracket.
+   Spans from slot `--from` to slot `--from + --span`, measured in the strip's own
+   grid units. One slot is `(100% - (slots-1) * gap) / slots` wide, so the left
+   edge of slot n is `n * (slotWidth + gap)`. Written out rather than approximated,
+   because a bracket that points between two cues instead of at them would teach
+   the wrong rule. */
+.nb-bracket {
+  --slot: calc((100% - (var(--nb-slots) - 1) * var(--nb-gap)) / var(--nb-slots));
+  --step: calc(var(--slot) + var(--nb-gap));
+
+  position: absolute;
+  bottom: 0.55rem;
+  left: calc(0.85rem + var(--from) * var(--step) + var(--slot) / 2);
+  width: calc(var(--span) * var(--step));
+  height: 12px;
+  border-bottom: 1.5px solid var(--nb-accent);
+  border-left: 1.5px solid var(--nb-accent);
+  border-right: 1.5px solid var(--nb-accent);
+  border-radius: 0 0 4px 4px;
+  opacity: 0;
+  transition:
+    opacity 260ms ease,
+    left 320ms ease,
+    width 320ms ease;
+}
+
+.nb-bracket[data-showing="true"] {
+  opacity: 1;
+}
+
+.nb-bracket-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  padding: 0.1rem 0.4rem;
+  color: var(--nb-accent);
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  transform: translate(-50%, -0.15rem);
+}
+
+/* --- the answer keys ----------------------------------------------------- */
+
+.nb-answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+/* The one rule of the game a film of it cannot demonstrate.
+   Nobody presses anything here, so every answer this scene can show is a correct one, and
+   "pressing everything scores worse than pressing nothing" is unshowable. It was a written
+   note in the column beside the scene; it belongs beside the two keys it is about, which
+   is here. Spanning both columns so it reads as a statement about the pair. */
+.nb-answer-cost {
+  grid-column: 1 / -1;
+  color: var(--nb-faint);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.nb-answer {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--nb-line);
+  border-radius: 11px;
+  background: var(--nb-well);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.nb-answer[data-lit="true"] {
+  border-color: rgba(127, 216, 164, 0.55);
+  background: var(--nb-accent-dim);
+  box-shadow: 0 0 24px -8px rgba(127, 216, 164, 0.6);
+}
+
+.nb-answer-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.nb-answer-verdict {
+  margin-left: auto;
+  min-width: 2.2em;
+  color: var(--nb-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+/* --- caption ------------------------------------------------------------- */
+
+.nb-caption {
+  margin: 0;
+  min-height: 2.6em;
+  color: var(--nb-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .nb-stage {
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .nb-answers {
+      grid-template-columns: 1fr;
+    }
+}
+
+/* One of these is left. Five scenes lost their per-beat caption because the captions were
+   paraphrasing the written notes beside them while the scene demonstrated the same claim a
+   third time — and the notes have since gone too, into the frames themselves. Choir's
+   footnote went the same way: it printed a build path at a visitor and then repeated the
+   invitation. N-Back keeps its caption because its subject is a rule rather than an
+   interface: what a visitor needs help with is which slot to look at *right now*, which
+   changes every beat and is the one thing a pinned label cannot say. */
+#n-back .nb-caption {
+  position: relative;
+  z-index: 12;
+  width: fit-content;
+  max-width: 100%;
+  align-self: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--project-bg) 94%, transparent);
+  box-shadow: 0 0 18px 10px color-mix(in srgb, var(--project-bg) 72%, transparent);
+}
+
+/* Rules that need one of this scene's own classes as an ancestor to match at all —
+   they style bare elements and shared label markup, but only ever inside this scene. */
+
+.nb-board > span {
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  transition:
+    background 130ms ease-out,
+    box-shadow 130ms ease-out,
+    transform 130ms ease-out;
+}
+
+.nb-board > span[data-on="true"] {
+  background: var(--nb-accent);
+  box-shadow: 0 0 18px -2px rgba(127, 216, 164, 0.7);
+  transform: scale(1.04);
+}
+
+.nb-voice strong {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: clamp(2.4rem, 7vw, 3.4rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.nb-wave i {
+  width: 3px;
+  border-radius: 999px;
+  background: var(--nb-accent);
+  animation: nb-wave 900ms ease-in-out infinite;
+}
+
+.nb-wave i:nth-child(1) {
+  height: 40%;
+}
+
+.nb-wave i:nth-child(2) {
+  height: 100%;
+  animation-delay: 120ms;
+}
+
+.nb-wave i:nth-child(3) {
+  height: 60%;
+  animation-delay: 240ms;
+}
+
+.nb-streams span {
+  padding: 0.16rem 0.4rem;
+  border: 1px solid var(--nb-accent-dim);
+  border-radius: 999px;
+  background: var(--nb-accent-dim);
+  color: var(--nb-accent);
+}
+
+/* Present, and not what you are watching. A dashed edge says "available" where a solid
+   one would claim the scene is running it. */
+.nb-streams span[data-off="true"] {
+  border-style: dashed;
+  border-color: var(--nb-line);
+  background: none;
+  color: var(--nb-faint);
+}
+
+.nb-streams small {
+  color: var(--nb-faint);
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
+}
+
+.nb-memory-head span {
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  background: var(--nb-accent-dim);
+  color: var(--nb-accent);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+}
+
+.nb-strip > li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.3rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  opacity: 0.3;
+  transition:
+    opacity 220ms ease,
+    border-color 220ms ease,
+    background 220ms ease,
+    transform 260ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.nb-strip > li[data-filled="true"] {
+  opacity: 1;
+  border-color: var(--nb-line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* The cue that just landed. */
+.nb-strip > li[data-current="true"] {
+  border-color: rgba(127, 216, 164, 0.5);
+  transform: translateY(-3px);
+}
+
+/* The cue being compared against. */
+.nb-strip > li[data-target="true"] {
+  border-color: rgba(127, 216, 164, 0.5);
+  background: var(--nb-accent-dim);
+}
+
+.nb-mini > span {
+  border-radius: 1.5px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nb-mini > span[data-on="true"] {
+  background: var(--nb-accent);
+}
+
+.nb-answer kbd {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--nb-line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.72rem;
+  font-weight: 650;
+  transition: transform 90ms ease;
+}
+
+/* The key goes down when the answer is being given. */
+.nb-answer[data-lit="true"] kbd {
+  border-bottom-width: 1px;
+  transform: translateY(1px);
+}
+
+.nb-caption strong {
+  color: var(--nb-ink);
+  font-weight: 650;
+}
+
+@media (max-width: 620px) {
+  .nb-voice strong {
+      font-size: 2.2rem;
+    }
+}
+
+/* Two short pulses per cue; the keyed element remounts on the next cue. */
+.nb-wave i {
+  animation: nb-wave 720ms ease-in-out 2 both;
+}

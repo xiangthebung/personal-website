@@ -1,0 +1,817 @@
+/*
+ * This scene's own styles, loaded with its chunk.
+ *
+ * They lived in app/globals.css until they were moved here, along with every other
+ * scene's. That file had become twelve thousand lines of appended passes, and the
+ * cost was not tidiness: three separate live rules had been silently destroyed by
+ * dangling selectors left behind when neighbouring code was deleted, because at that
+ * size nobody can see a stylesheet whole. A scene's rules now sit beside the markup
+ * they style, and arrive only when that scene does.
+ *
+ * What deliberately did NOT come here: anything whose subject is the section rather
+ * than the scene — the ambient wash, the entrance veil, the ghost number. The section
+ * is server-rendered and on screen long before this file is fetched, so styling it
+ * from here would flash.
+ */
+
+/**
+ * Choir Practice — the pod around the real application
+ *
+ * The frame, the four voices, and the leader lines onto the app's own controls.
+ * The application itself is vendored under public/demos/choir and styles itself.
+ */
+
+/* Tall enough for the application to fit inside it.
+   This was `aspect-ratio: 16 / 10`, which derived the height from the width and gave the
+   app 609px at the pod's 980px. The app needs about 850: its parts panel is a fixed side
+   column in the desktop layout that neither scrolls nor closes, so anything shorter pushes
+   it out of the body — 243px of overflow at 609, 392px at 460 — and the score is cut off
+   inside a frame that is itself cut off. An aspect ratio is the wrong rule for a box whose
+   contents have a minimum height and do not care about its width. */
+.choir-frame {
+  display: block;
+  width: 100%;
+  /* Follows the window, with a floor.
+     236px is what the section spends around this frame — the heading column is beside it
+     now, so that is padding, the stand's base and the footnote. Subtracting it means the
+     section lands just inside the window rather than just outside it: at 1080 the frame
+     takes 844 and the section 1077.
+     The 760px floor is the compromise the application forces. It needs about 850 before
+     its parts panel stops pushing out of the body, and on a 900px-tall laptop there is no
+     height that both fits the window and satisfies that. Given the choice, the app stays
+     intact and the section runs a little long — a cut-off score is the fault that was
+     reported, and a section you scroll is not. */
+  /* 860px flat, which is what the application needs before its parts panel pushes out of
+     its own body. Not a function of the window: a shorter frame does not make the section
+     fit — the heading band above it costs ~290px either way — it only cuts the score off
+     inside a frame that is already too short. Given the choice between an intact app in a
+     section you scroll a little, and a cut-off app in a section that fits, the app wins;
+     the cut-off score is the fault that was reported. */
+  height: 860px;
+  border: 0;
+  border-radius: 12px;
+  background: #000;
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.7);
+  /* Fades up rather than appearing, so a 1.6 MB application arriving does not
+     land as a jump-cut in the middle of a page that is otherwise composed. */
+  animation: choir-in 520ms ease-out;
+}
+
+@keyframes choir-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Holds the space before the frame exists, at the same size, so nothing on the
+   page moves when it arrives. */
+.choir-holding {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 520px;
+  place-items: center;
+  border-radius: 12px;
+  background: radial-gradient(120% 120% at 18% 0%, #16222a, #0a0e11 72%);
+}
+
+/* The footnote row is gone. It printed a build path — `/demos/choir/` — at a visitor,
+   followed by the same instruction the shield gives and the same claim the invitation
+   above the frame already makes. */
+
+/* --- the scroll shield ----------------------------------------------------
+   Covers the frame until the visitor asks for it, so the wheel keeps belonging to the
+   page. See the comment at the markup for the trap this fixes.
+
+   Light enough to read the score through — this is a scrim, not a door. The gradient
+   is heavier at the bottom, where the cluster sits, so the controls have something to
+   be legible against without the engraving being dimmed where it matters. */
+.choir-shield {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 10, 14, 0.06) 0%,
+    rgba(6, 10, 14, 0.1) 52%,
+    rgba(6, 10, 14, 0.58) 100%
+  );
+  cursor: pointer;
+  opacity: 1;
+  transition:
+    opacity 260ms ease,
+    visibility 260ms;
+}
+
+/* Gone completely once engaged: `visibility` as well as opacity, so it stops
+   hit-testing and the app gets the wheel it was handed. */
+.choir-shield[data-engaged="true"] {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* The controls sit in their own layer above the scrim rather than inside it, so the
+   whole scrim stays one clean click target and the button is not a hole in it. */
+.choir-shield-controls {
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem 1.1rem;
+  opacity: 1;
+  transition:
+    opacity 260ms ease,
+    visibility 260ms;
+}
+
+.choir-shield-controls[data-engaged="true"] {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.choir-shield-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem 0.9rem;
+}
+
+.choir-shield-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: rgba(245, 248, 250, 0.9);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+.choir-shield-glyph {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* --- pointing at the pitch control ----------------------------------------
+   A label on a leader line, hung off the application's own microphone button.
+
+   This replaces a second microphone button that the pod carried itself, reading "Sing
+   into it / your browser will ask for the microphone". Both halves were wrong. Warning
+   a visitor that a browser is about to ask for permission is a site apologising for
+   something every site does, and it draws attention to the prompt rather than to the
+   feature. And a duplicate control means somebody who later finds the real one in the
+   transport has no way of knowing they are the same thing — a label teaches where a
+   feature lives, a button hides it.
+
+   `--cue-x` and `--cue-y` are the button's centre inside the frame, measured by
+   `findMicSpot` and given in the stand's coordinates. The label sits up and to the left
+   of it so it never covers the transport it is describing.
+
+   `pointer-events: none` throughout: the thing to click is underneath. */
+.choir-cue {
+  position: absolute;
+  z-index: 6;
+  top: var(--cue-y);
+  left: var(--cue-x);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  /* Sits to the left of the button, vertically centred on it. */
+  transform: translate(calc(-100% - 14px), -50%);
+  animation: choir-cue-in 520ms cubic-bezier(0.16, 0.86, 0.18, 1.06) both;
+}
+
+/* The leader. Ends in a dot on the button rather than an arrowhead — an arrow at this
+   size reads as a chevron, and a dot reads as "this one". */
+.choir-cue-line {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 2px;
+  order: 2;
+  background: linear-gradient(90deg, rgba(232, 250, 240, 0.9), rgba(232, 250, 240, 0.5));
+}
+
+.choir-cue-line::after {
+  position: absolute;
+  top: 50%;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(232, 250, 240, 0.95);
+  content: "";
+  transform: translateY(-50%);
+}
+
+@keyframes choir-cue-in {
+  from {
+    opacity: 0;
+    transform: translate(calc(-100% - 2px), -50%);
+  }
+}
+
+.choir-rehearsal {
+  position: relative;
+  display: grid;
+  /* Follows the frame rather than setting a second, independent floor. 650px was set when
+     the frame's height came from an aspect ratio and could be shorter than the band it sat
+     in; the frame is now the tallest thing here by a distance. */
+  place-items: center;
+  perspective: 1400px;
+}
+
+.choir-stand {
+  position: relative;
+  z-index: 4;
+  width: min(86%, 980px);
+  transform: rotateX(1.2deg) translateY(-0.5rem);
+  transform-origin: bottom center;
+}
+
+.choir-frame,
+.choir-holding {
+  position: relative;
+  z-index: 2;
+  min-height: 540px;
+  border-radius: 8px 8px 4px 4px;
+  box-shadow:
+    0 0 0 1px rgba(18, 40, 33, 0.22),
+    0 34px 78px -38px rgba(13, 31, 25, 0.72);
+}
+
+.choir-stand-lip {
+  position: absolute;
+  z-index: 5;
+  right: -2%;
+  bottom: -10px;
+  left: -2%;
+  height: 22px;
+  border-radius: 4px 4px 10px 10px;
+  background: linear-gradient(#2c3934, #101715);
+  box-shadow: 0 12px 20px -10px rgba(8, 13, 11, 0.7);
+  pointer-events: none;
+}
+
+.choir-stand-base {
+  position: absolute;
+  z-index: 1;
+  bottom: 0;
+  left: 50%;
+  width: 17%;
+  height: 38%;
+  background: linear-gradient(90deg, transparent 44%, #202b27 44% 56%, transparent 56%);
+  transform: translateX(-50%);
+}
+
+.choir-stand-base::after {
+  position: absolute;
+  right: 8%;
+  bottom: 0;
+  left: 8%;
+  height: 12px;
+  border-radius: 50%;
+  background: #1c2723;
+  box-shadow: 0 12px 28px -10px rgba(8, 17, 14, 0.6);
+  content: "";
+}
+
+.choir-score-leaf {
+  position: absolute;
+  z-index: 2;
+  top: 14%;
+  display: flex;
+  width: clamp(180px, 24vw, 320px);
+  aspect-ratio: 0.72;
+  flex-direction: column;
+  justify-content: space-evenly;
+  padding: 8% 7%;
+  border: 1px solid rgba(30, 63, 53, 0.18);
+  border-radius: 4px;
+  background: rgba(252, 251, 242, 0.86);
+  box-shadow: 0 30px 72px -42px rgba(18, 43, 35, 0.68);
+  opacity: 0.2;
+  transition:
+    opacity 700ms ease,
+    transform 900ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+  pointer-events: none;
+}
+
+.choir-score-leaf--left {
+  left: -7%;
+  transform: translateX(3rem) rotate(-3deg) scale(0.9);
+}
+
+.choir-score-leaf--right {
+  right: -7%;
+  transform: translateX(-3rem) rotate(3deg) scale(0.9);
+}
+
+#choir-practice[data-scene-reached~="score"] .choir-score-leaf {
+  opacity: 0.94;
+}
+
+#choir-practice[data-scene-reached~="score"] .choir-score-leaf--left {
+  transform: translateX(0) rotate(-7deg) scale(1);
+}
+
+#choir-practice[data-scene-reached~="score"] .choir-score-leaf--right {
+  transform: translateX(0) rotate(7deg) scale(1);
+}
+
+.choir-score-system {
+  position: relative;
+  height: 48px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(32, 65, 55, 0.28) 0 1px,
+    transparent 1px 10px
+  );
+}
+
+.choir-part-cues {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+/* --- the ripples ---------------------------------------------------------
+   Each row used to end in a horizontal level rule: a track with a fill, pointing at the
+   frame. It was reported as a line going into the music, which is what it was — a meter
+   aimed at the application, drawing the eye across the score it sits beside.
+
+   So the level went behind the frame instead. Each voice has an origin under its disc,
+   and `tapVoices` appends a ring into it every time that voice comes in; the ring
+   expands across the paper in the part's own colour and fades. The reading is the same
+   one the rule was making and the disc's dial still makes continuously — this is the
+   part that turns it into a room reacting rather than a chart being updated.
+
+   Behind the stand at z-index 1, under the acoustics arcs at 3. A ripple over the score
+   would be decoration drawn on top of a working application. */
+.choir-ripples {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Positioned to sit at the centre of each disc, so the rings look like they come off it.
+   The tops match `.choir-part-cues li`, plus 1.25rem for half a disc; the sides match
+   too, so a ripple from an odd row spreads rightward off the left edge and an even row
+   spreads leftward off the right. Kept here beside those rules rather than passed
+   through the markup, because these two things have to agree and this is where the
+   agreement is visible. */
+.choir-ripple-origin {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.choir-ripple-origin:nth-child(1) {
+  top: calc(13% + 1.25rem);
+  left: 1.25rem;
+}
+
+.choir-ripple-origin:nth-child(2) {
+  top: calc(35% + 1.25rem);
+  right: 1.25rem;
+}
+
+.choir-ripple-origin:nth-child(3) {
+  top: calc(58% + 1.25rem);
+  left: calc(1.25rem - 1%);
+}
+
+.choir-ripple-origin:nth-child(4) {
+  top: calc(78% + 1.25rem);
+  right: calc(1.25rem - 1%);
+}
+
+/* One ring. Born at the disc, ends up `--reach` times 26rem across, which `tapVoices`
+   sets from how hard the voice came in.
+
+   `scale` on a centred, fixed-size box rather than an animated `width`/`height`, so the
+   whole thing runs on the compositor: four voices entering in close succession can put
+   half a dozen of these on screen at once and none of them should cost a layout. */
+.choir-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30rem;
+  height: 30rem;
+  margin: -15rem 0 0 -15rem;
+  border: 2px solid var(--part-color, #31594d);
+  border-radius: 50%;
+  opacity: 0;
+  animation: choir-ripple 2600ms cubic-bezier(0.16, 0.72, 0.24, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* The opacity holds most of the way out rather than fading with the scale. Fading in
+   step with the expansion was measured at 0.05 by the time the ring was 400px across,
+   which meant the only visible part of the effect was a pulse around the disc — the
+   ripple crossing the paper, which is the whole point, was gone before it got there. */
+@keyframes choir-ripple {
+  0% {
+    opacity: 0;
+    transform: scale(0.05);
+  }
+  /* Visible almost at once: the ring reads as the voice arriving, and a ramp puts it a
+     beat late. */
+  10% {
+    opacity: 0.55;
+  }
+  62% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(var(--reach, 1));
+  }
+}
+
+/* A `prefers-reduced-motion` block hid the ripples here, and it was the last one left
+   on the site — surviving a deletion that took the other four out and left a banner in
+   globals.css headed "why there is no `prefers-reduced-motion` block" arguing at length
+   that this site answers that setting with a control instead. One rule, in the longest
+   file, contradicting a page of prose about itself.
+   It is gone rather than kept, because the argument it contradicted has since been
+   honoured: the hold control in the dock stops every scene on the page, ripples
+   included, and does it because somebody asked rather than because Windows turned the
+   setting on for a battery saver. See `demos/scene/hold.ts`. */
+
+.choir-acoustics {
+  position: absolute;
+  z-index: 3;
+  inset: -4% -7% 0;
+  width: 114%;
+  height: 100%;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 900ms ease;
+}
+
+@keyframes choir-room-breathe {
+  to {
+    opacity: 0.38;
+    transform: scale(1.025);
+  }
+}
+
+#choir-practice[data-scene-reached~="score"] .choir-acoustics {
+  opacity: 1;
+}
+
+@media (max-width: 900px) {
+  .choir-rehearsal {
+      min-height: 600px;
+    }
+
+    .choir-stand {
+      width: 92%;
+    }
+
+    .choir-score-leaf {
+      width: 190px;
+    }
+}
+
+@media (max-width: 700px) {
+  .choir-rehearsal {
+      min-height: 540px;
+    }
+
+    .choir-stand {
+      width: 100%;
+    }
+
+    .choir-frame,
+    .choir-holding {
+      min-height: 480px;
+    }
+
+    .choir-score-leaf {
+      top: 20%;
+      width: 128px;
+      opacity: 0.12;
+    }
+
+    .choir-score-leaf--left {
+      left: -10%;
+    }
+
+    .choir-score-leaf--right {
+      right: -10%;
+    }
+
+    .choir-part-cues {
+      z-index: 6;
+    }
+}
+
+
+/* Rules that need one of this scene's own classes as an ancestor to match at all —
+   they style bare elements and shared label markup, but only ever inside this scene. */
+
+.choir-holding span {
+  width: 34px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  animation: demo-shimmer 1.5s ease-in-out infinite;
+}
+
+.choir-shield-glyph svg {
+  width: 100%;
+  height: 100%;
+}
+
+.choir-cue b {
+  padding: 0.34rem 0.6rem;
+  border-radius: 8px;
+  color: #0d1a16;
+  background: rgba(232, 250, 240, 0.94);
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.8);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.choir-score-leaf > small {
+  color: #47665d;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.choir-score-system i {
+  position: absolute;
+  color: #294d42;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-style: normal;
+  line-height: 1;
+}
+
+.choir-score-system i:nth-child(1) {
+  top: 7px;
+  left: 9%;
+}
+
+.choir-score-system i:nth-child(2) {
+  top: -1px;
+  left: 28%;
+}
+
+.choir-score-system i:nth-child(3) {
+  top: 18px;
+  left: 49%;
+}
+
+.choir-score-system i:nth-child(4) {
+  top: 8px;
+  left: 69%;
+}
+
+.choir-score-system i:nth-child(5) {
+  top: 25px;
+  left: 86%;
+}
+
+/* Each row is inked in its own voice's colour, which is the colour the application
+   engraves that part in on the canvas six inches away. `--part-color` is declared per row
+   in the markup from `PARTS`, which is a copy of the app's `PART_COLORS` — see the note
+   there, and the test that keeps the two in step.
+
+   These were all one mint: the section's accent, applied to four things the section is
+   asking you to tell apart from four differently-coloured lines in a score. Which is the
+   opposite of what a colour code is for. */
+.choir-part-cues li {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--part-color, #31594d);
+  opacity: 0;
+  transition:
+    opacity 480ms ease,
+    transform 680ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.choir-part-cues li:nth-child(1) {
+  top: 13%;
+  left: 0;
+  transform: translateX(-1rem);
+}
+
+.choir-part-cues li:nth-child(2) {
+  top: 35%;
+  right: 0;
+  flex-direction: row-reverse;
+  transform: translateX(1rem);
+}
+
+.choir-part-cues li:nth-child(3) {
+  top: 58%;
+  left: -1%;
+  transform: translateX(-1rem);
+}
+
+.choir-part-cues li:nth-child(4) {
+  top: 78%;
+  right: -1%;
+  flex-direction: row-reverse;
+  transform: translateX(1rem);
+}
+
+#choir-practice[data-scene-reached~="score"] .choir-part-cues li {
+  opacity: 0.76;
+  transform: none;
+  transition-delay: calc(var(--part) * 100ms);
+}
+
+/* --- the four rows, driven by the four voices -----------------------------
+   `--v-soprano` through `--v-bass` are written onto `.choir` by `tapVoices` in the pod,
+   from an analyser tapped onto the embedded app's master gain. They are a reading of the
+   real mix: press play and the row for whichever part is carrying the line brightens and
+   leans in, in time with the singing.
+
+   Each row picks up its own band as `--v` in the markup, so everything below is written
+   once against a generic variable. The fallback of 0 is what makes this inert when nothing
+   is playing and when the analyser could not be reached at all — which is the same
+   rendering the section had before any of this existed. Four `nth-child` rules used to do
+   that mapping here; declaring it where the row is built keeps the row's colour and its
+   band in one place, since both come from the same entry in `PARTS`.
+
+   Transitions are deliberately absent. The values already arrive smoothed, with a fast
+   attack and a slow release, and a CSS transition on top would be a second filter
+   fighting the first — the attacks are the part worth seeing and a transition is exactly
+   what rounds them off. */
+
+/* Brighter, and standing slightly proud of the page. `--part` is the row's index and
+   already sets the side each row sits on, so the lean has to be signed per row; rows 2
+   and 4 are on the right and lean the other way. */
+#choir-practice[data-scene-beat="singing"] .choir-part-cues li {
+  opacity: calc(0.72 + var(--v, 0) * 0.28);
+}
+
+#choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(odd) {
+  transform: translateX(calc(var(--v, 0) * 0.7rem));
+}
+
+#choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(even) {
+  transform: translateX(calc(var(--v, 0) * -0.7rem));
+}
+
+/* The disc is the loudest signal, so it carries the most of it: it swells and throws a
+   halo *in its own colour* at the top of its range. Relative colour syntax rather than
+   `color-mix` with a calculated percentage, because the alpha is the thing being driven
+   and `rgb(from …)` takes a plain `calc()` there. */
+#choir-practice[data-scene-beat="singing"] .choir-part-cues b {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.62),
+    0 4px 14px -6px rgb(from var(--part-color) r g b / 0.55),
+    0 0 calc(8px + var(--v, 0) * 34px) rgb(from var(--part-color) r g b / calc(var(--v, 0) * 0.8));
+  transform: scale(calc(1 + var(--v, 0) * 0.18));
+}
+
+/* --- the disc ------------------------------------------------------------
+   1.8rem of pale mint with a hairline border, containing a letter at 0.8rem. Four of
+   them, all the same colour, at the edges of a 980px application. They were furniture.
+
+   They are the one thing in this section that says "there are four voices here and you
+   can hear them apart", so they are now the size and the colour of a thing that means
+   something: filled discs at 2.5rem in the part's own ink, white letters, and a level
+   ring around each one. */
+.choir-part-cues b {
+  position: relative;
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--part-color, #31594d);
+  color: #fff;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.62),
+    0 4px 14px -6px rgb(from var(--part-color) r g b / 0.55);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(10, 30, 24, 0.35);
+}
+
+/* A ring around the disc that fills with that voice's level. The most information a
+   circle can carry without becoming a chart, and it is the part that makes the rack
+   entertaining rather than merely legible: four dials, moving apart, in four colours, in
+   time with four voices.
+
+   A conic gradient with the middle punched out. `mask` is what makes it a ring rather
+   than a pie — without it the fill sweeps across the disc and hides the letter. */
+.choir-part-cues b::before {
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--part-color, #31594d) calc(var(--v, 0) * 360deg),
+    rgba(255, 255, 255, 0.42) 0
+  );
+  content: "";
+  -webkit-mask: radial-gradient(circle, transparent 0 66%, #000 67%);
+  mask: radial-gradient(circle, transparent 0 66%, #000 67%);
+  opacity: 0.9;
+}
+
+.choir-part-cues span {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  /* Mixed toward the section's ink so that four hues chosen for a dark canvas stay
+     readable on pale mint paper. Tenor's #ff9800 is the one that needs it. */
+  color: color-mix(in srgb, var(--part-color, #31594d) 64%, #0d1f1a);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.choir-acoustics path {
+  fill: none;
+  stroke: rgba(36, 101, 81, 0.2);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 12;
+  transform-origin: center bottom;
+  animation: choir-room-breathe 5.8s ease-in-out infinite alternate;
+}
+
+.choir-acoustics path:nth-child(2) {
+  animation-delay: -1.8s;
+}
+
+.choir-acoustics path:nth-child(3) {
+  animation-delay: -3.6s;
+}
+
+/* The room, swelling with the singing.
+   `--v-all` is the loudest of the four bands. The arcs are already breathing on a 5.8s
+   loop of their own, which stands in for a room when nothing is happening; while the
+   choir is actually singing the stroke follows the mix instead, so the arcs read as
+   sound leaving the stand rather than as decoration that happens to move.
+
+   `stroke-width` and `stroke-opacity` rather than `transform` or `opacity`: the
+   keyframe animation already owns both of those on this element, and two things
+   animating one property is how you get an effect that silently does nothing. */
+#choir-practice[data-scene-beat="singing"] .choir-acoustics path {
+  stroke: rgba(36, 101, 81, calc(0.2 + var(--v-all, 0) * 0.5));
+  stroke-width: calc(1.5px + var(--v-all, 0) * 2.5px);
+  stroke-dasharray: 5 calc(12px - var(--v-all, 0) * 5px);
+}
+
+@media (max-width: 900px) {
+  .choir-part-cues span {
+      display: none;
+    }
+}
+
+@media (max-width: 700px) {
+  .choir-score-system i {
+      font-size: 0.85rem;
+    }
+
+    .choir-part-cues li:nth-child(1),
+    .choir-part-cues li:nth-child(3) {
+      left: -0.55rem;
+    }
+
+    .choir-part-cues li:nth-child(2),
+    .choir-part-cues li:nth-child(4) {
+      right: -0.55rem;
+    }
+}
+
+/* The one remaining acoustic breath belongs only to the focused Choir section. */
+#choir-practice:not(.is-active) .choir-acoustics path:first-child {
+  animation-play-state: paused;
+}
+
+/* Keep one slow acoustic breath; the other arcs remain visible and static. */
+.choir-acoustics path {
+  animation: none;
+}
+
+.choir-acoustics path:first-child {
+  animation: choir-room-breathe 7.2s ease-in-out infinite alternate;
+}

@@ -1,0 +1,1016 @@
+/*
+ * This scene's own styles, loaded with its chunk.
+ *
+ * They lived in app/globals.css until they were moved here, along with every other
+ * scene's. That file had become twelve thousand lines of appended passes, and the
+ * cost was not tidiness: three separate live rules had been silently destroyed by
+ * dangling selectors left behind when neighbouring code was deleted, because at that
+ * size nobody can see a stylesheet whole. A scene's rules now sit beside the markup
+ * they style, and arrive only when that scene does.
+ *
+ * What deliberately did NOT come here: anything whose subject is the section rather
+ * than the scene — the ambient wash, the entrance veil, the ghost number. The section
+ * is server-rendered and on screen long before this file is fetched, so styling it
+ * from here would flash.
+ */
+
+/**
+ * PDF Explainer — "reach for the notes and they wake"
+ *
+ * Four parts of the workspace in turn, each named by the act rail across the top.
+ */
+
+.pdfx-stage {
+  position: relative;
+  border-radius: 14px;
+  background: var(--canvas);
+  padding: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* --- the slide ------------------------------------------------------------ */
+
+.pdfx-slide {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  padding: clamp(1rem, 3vw, 2.2rem);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.07),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.pdfx-slide-rule {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 6px;
+  background: var(--accent);
+}
+
+.pdfx-figure {
+  position: absolute;
+  right: clamp(1rem, 3vw, 2.2rem);
+  bottom: clamp(1rem, 3vw, 2.2rem);
+  width: min(46%, 300px);
+  color: var(--ink-3);
+}
+
+.pdfx-slide-number {
+  position: absolute;
+  bottom: clamp(0.6rem, 2vw, 1.2rem);
+  left: clamp(1rem, 3vw, 2.2rem);
+  color: var(--ink-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the floating notes --------------------------------------------------- */
+
+.pdfx-notes {
+  position: absolute;
+  top: 26px;
+  right: 26px;
+  bottom: 26px;
+  z-index: 2;
+  display: flex;
+  width: min(360px, 46%);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  opacity: 0;
+  box-shadow: var(--shadow-soft);
+  /* The card slides in from the right the first time, then never moves again. */
+  transform: translateX(16px);
+  transition:
+    opacity 300ms ease-out,
+    transform 420ms cubic-bezier(0.16, 0.86, 0.18, 1.12),
+    box-shadow 300ms ease-out,
+    border-color 300ms ease-out;
+}
+
+.pdfx-notes[data-present="true"] {
+  opacity: 0.26;
+  transform: none;
+}
+
+.pdfx-notes[data-awake="true"] {
+  border-color: var(--line-strong);
+  opacity: 1;
+  box-shadow: var(--shadow-float);
+}
+
+.pdfx-notes-backing {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--elevated);
+  backdrop-filter: blur(24px);
+}
+
+.pdfx-notes-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.pdfx-notes-eyebrow {
+  color: var(--violet);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* The number itself, so the mechanism is legible and not just felt. */
+.pdfx-opacity {
+  color: var(--ink-3);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdfx-notes-body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.85rem 1rem 1.1rem;
+  scrollbar-width: thin;
+}
+
+.pdfx-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.pdfx-chip {
+  padding: 0.12rem 0.42rem;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.pdfx-chip--violet {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+
+.pdfx-equation {
+  padding: 0.5rem 0.6rem;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--ink) !important;
+  /* Serif italic for the variables, which is how maths is set, rather than the monospace
+     this used while it was a line of LaTeX source. See `RangeEquation` in the pod: the app
+     this is a film about renders with KaTeX, so printing `t_receive` was showing a visitor
+     the one place its output would look wrong. */
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-size: 12.5px !important;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.pdfx-sensitivity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+/* --- the act rail ---------------------------------------------------------
+   Four labels across the top, the current one lit and the finished ones ticked
+   down. Not navigation, and not clickable: it exists so that "this project has
+   four parts" is legible in the first second, rather than being something a
+   visitor discovers by watching a loop twice. */
+/* The in-frame labels, as marks made on a document.
+   This is a section about studying, so its labels are the thing a person does to a page
+   they are studying: a violet highlighter wash with violet ink, and no white plate. Read as
+   annotation rather than as interface, which is what the rest of this pod already looks
+   like — the notes overlay, the chips and the practice cards are all tinted washes.
+
+   They live inside `.pdfx-stage` rather than the pod, so their percentages are the same
+   coordinate space the phantom cursor uses; there is a long note in the pod about what went
+   wrong the one time something here was measured against the other box. */
+.pdfx-specs {
+  --spec-ink: #4c1d95;
+  --spec-paper: rgba(237, 228, 254, 0.95);
+  --spec-edge: rgba(109, 40, 217, 0.22);
+  --spec-gloss: rgba(255, 255, 255, 0.5);
+  --spec-dot: var(--violet);
+  --spec-shadow: rgba(76, 29, 149, 0.3);
+  --spec-radius: 4px;
+  --spec-pad: 0.24rem 0.52rem;
+  --spec-weight: 640;
+  --spec-lead: 16px;
+}
+
+.pdfx-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pdfx-act-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.32;
+  transition:
+    opacity 320ms ease,
+    transform 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.pdfx-acts li[data-done="true"] .pdfx-act-dot {
+  opacity: 0.7;
+}
+
+.pdfx-acts li[data-on="true"] .pdfx-act-dot {
+  opacity: 1;
+  transform: scale(1.5);
+}
+
+/* --- the split ------------------------------------------------------------
+   The slide keeps the whole stage for the overlay act and gives up a third of it
+   when a panel opens, which is what the real workspace does. Animating
+   `grid-template-columns` is the one layout property worth animating here: the
+   alternative is transforming the slide, which would scale its type. */
+.pdfx-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 0fr;
+  gap: 0;
+  transition:
+    grid-template-columns 620ms cubic-bezier(0.22, 0.9, 0.24, 1),
+    gap 620ms cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+
+.pdfx-stage[data-split="true"] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
+  gap: 14px;
+}
+
+/* The satellite diagram is sized for a full-width slide, where it sits clear of
+   the bullets in the bottom-right corner. On a narrowed slide it crossed straight
+   through "Timing error → position error", so it shrinks and drops into the corner
+   for the acts that split the stage. It is only load-bearing in the first act,
+   where it is the thing the notes must not cover. */
+.pdfx-stage[data-split="true"] .pdfx-figure {
+  width: 38%;
+  opacity: 0.5;
+  transition:
+    width 620ms cubic-bezier(0.22, 0.9, 0.24, 1),
+    opacity 620ms ease;
+}
+
+/* --- the panel ------------------------------------------------------------ */
+.pdfx-panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 420ms ease;
+}
+
+.pdfx-panel[data-open="true"] {
+  opacity: 1;
+}
+
+.pdfx-panel-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+/* --- II. the tutor -------------------------------------------------------- */
+.pdfx-chat {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  /* Newest at the bottom, which is where a conversation grows. */
+  justify-content: flex-end;
+}
+
+.pdfx-bubble {
+  max-width: 88%;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 14px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  animation: pdfx-bubble-in 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+@keyframes pdfx-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.pdfx-bubble--user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 5px;
+}
+
+.pdfx-bubble--bot {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom-left-radius: 5px;
+}
+
+/* The app's own thinking state: three dots that bounce out of phase. */
+.pdfx-thinking {
+  display: flex;
+  gap: 4px;
+  padding: 11px 12px;
+}
+
+@keyframes pdfx-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+.pdfx-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.pdfx-composer {
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+/* --- III. the review set --------------------------------------------------
+   One panel, one set, three kinds of item. The header is the part that says so, and it
+   is the part the scene was missing: a progress line over a filter row that counts each
+   kind, straight out of `PracticePanel.tsx`. Without it the three cards are three
+   unrelated exercises, which is exactly how the rail used to describe them. */
+.pdfx-practice {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.pdfx-practice-head {
+  flex: 0 0 auto;
+}
+
+.pdfx-practice-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 5px;
+  color: var(--ink);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.pdfx-practice-all {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--good-soft);
+  color: var(--good);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.pdfx-progress {
+  display: block;
+  width: 130px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+/* The filter row, which is the sentence "a review set has three kinds of item" written
+   as a control rather than as prose. Each chip carries its kind's own tint, and those are
+   the same three tints the cards are drawn in — so the row is also the key. */
+.pdfx-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.pdfx-filters span.pdfx-chip--violet[data-on="true"] {
+  background: var(--violet);
+  color: #fff;
+}
+
+.pdfx-filters span.pdfx-chip--teal[data-on="true"] {
+  background: var(--teal);
+  color: #fff;
+}
+
+.pdfx-filters span.pdfx-chip--amber[data-on="true"] {
+  background: var(--amber);
+  color: #fff;
+}
+
+/* --- the cards -----------------------------------------------------------
+   The real cards are tinted by kind — violet for multiple choice, teal for matching,
+   amber for blanks — and the tint is a left edge rather than a fill, so the card still
+   reads as paper. */
+.pdfx-card {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 13px 13px 15px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 12px;
+  background: var(--surface);
+  animation: pdfx-card-in 340ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+@keyframes pdfx-card-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+.pdfx-card--violet {
+  border-left-color: var(--violet);
+}
+
+.pdfx-card--teal {
+  border-left-color: var(--teal);
+}
+
+.pdfx-card--amber {
+  border-left-color: var(--amber);
+}
+
+.pdfx-card-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+/* The matching game's own counter, right-aligned in the kicker row. It is the only thing
+   on screen that distinguishes six taps from one, which is what this scene was reported
+   for getting wrong. */
+.pdfx-card-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdfx-chip--teal {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.pdfx-chip--amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.pdfx-question {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+
+.pdfx-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pdfx-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  font-size: 11.5px;
+  line-height: 1.45;
+  transition:
+    background 260ms ease,
+    border-color 260ms ease,
+    opacity 260ms ease;
+}
+
+.pdfx-option-letter {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.pdfx-option[data-state="chosen"] {
+  border-color: var(--violet);
+  background: var(--violet-soft);
+}
+
+.pdfx-option[data-state="reveal"] {
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+
+.pdfx-option[data-state="reveal"] .pdfx-option-letter {
+  border-color: var(--good);
+  background: var(--good);
+  color: #fff;
+}
+
+/* Everything else recedes once the answer is out, rather than disappearing. */
+.pdfx-option[data-state="dim"] {
+  opacity: 0.42;
+}
+
+.pdfx-verdict {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.5;
+  animation: pdfx-bubble-in 300ms ease-out;
+}
+
+/* --- matching ------------------------------------------------------------- */
+.pdfx-match {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 6px;
+}
+
+.pdfx-tick {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  color: var(--good);
+  font-size: 10px;
+  font-style: normal;
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 260ms ease,
+    transform 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.pdfx-match li[data-matched="true"] .pdfx-tick {
+  opacity: 1;
+  transform: none;
+}
+
+/* --- fill in the blank ----------------------------------------------------
+   The third kind, and the one that needs a person to produce an answer rather than
+   choose one. From `src/practice/ClozeCard.tsx`: a dashed blank that is itself the
+   reveal control, a field, a Check button, and "That is it" when the answer lands. */
+.pdfx-cloze {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 2;
+}
+
+.pdfx-cloze-blank {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px dashed color-mix(in srgb, var(--amber) 50%, transparent);
+  border-radius: 8px;
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  vertical-align: middle;
+}
+
+.pdfx-cloze-filled {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 8px;
+  background: var(--good-soft);
+  color: var(--good);
+  font-size: 11.5px;
+  font-weight: 650;
+  vertical-align: middle;
+  animation: pdfx-pop 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+@keyframes pdfx-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
+.pdfx-cloze-verdict {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--good);
+  font-size: 11px;
+  font-weight: 600;
+  animation: pdfx-bubble-in 300ms ease-out;
+}
+
+.pdfx-cloze-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdfx-field {
+  display: flex;
+  min-width: 0;
+  height: 26px;
+  flex: 1 1 auto;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  font-size: 11.5px;
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+/* Focused, because the pointer clicked into it. The application's focus ring. */
+.pdfx-field[data-typed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/**
+ * The typing.
+ *
+ * A `steps()` reveal of the answer's own width, with a caret riding the right edge. No
+ * keystrokes are simulated and none need to be: the width *is* the typing, and expressing
+ * it as one animation on one element means it costs nothing per frame and restarts by
+ * remounting — which is what the `key` in the pod is for.
+ *
+ * `ch` units against the same monospace the field prints in, so the steps land on
+ * character boundaries rather than part way through a glyph. The width comes from
+ * `--chars`, which the pod publishes from the answer's own length: it was `11ch` here and
+ * `steps(11)` below, which is the answer's length written down twice in a stylesheet that
+ * cannot see the answer. The step count stays a literal on purpose — it only has to be
+ * roughly one per character to read as typing, and being a few out is invisible.
+ */
+.pdfx-typed {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  border-right: 1.5px solid var(--accent);
+  color: var(--ink);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  animation:
+    pdfx-type 620ms steps(11) both,
+    pdfx-caret 620ms steps(2, jump-none) infinite;
+}
+
+@keyframes pdfx-type {
+  from {
+    width: 0;
+  }
+  to {
+    width: calc(var(--chars, 11) * 1ch);
+  }
+}
+
+@keyframes pdfx-caret {
+  50% {
+    border-right-color: transparent;
+  }
+}
+
+.pdfx-check {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  /* One column: a 0.82fr panel beside a slide is unreadable at this width, and
+       the acts still read in sequence stacked. */
+    .pdfx-stage[data-split="true"] {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .pdfx-match {
+      grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+  .pdfx-notes {
+      top: 14px;
+      right: 14px;
+      bottom: 14px;
+      width: 58%;
+      border-radius: 14px;
+    }
+
+    .pdfx-notes-body {
+      padding: 0.6rem 0.7rem 0.8rem;
+    }
+
+    .pdfx-sensitivity {
+      display: none;
+    }
+}
+
+
+/* Rules that need one of this scene's own classes as an ancestor to match at all —
+   they style bare elements and shared label markup, but only ever inside this scene. */
+
+.pdfx-slide h4 {
+  max-width: 22ch;
+  margin: 0 0 0.9rem;
+  color: var(--ink);
+  font-size: clamp(1rem, 2.3vw, 1.6rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.pdfx-slide ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ink-2);
+  font-size: clamp(0.72rem, 1.3vw, 0.95rem);
+  line-height: 1.7;
+  list-style: disc;
+}
+
+.pdfx-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pdfx-notes-body h5 {
+  margin: 0 0 0.4rem;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.pdfx-notes-body p {
+  margin: 0 0 0.6rem;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+/* Subscripts that do not push the line taller. `vertical-align: sub` adds leading on its
+   own, which in a card with a fixed reserve moves everything below it. */
+.pdfx-equation sub {
+  bottom: -0.22em;
+  font-size: 0.72em;
+  font-style: normal;
+  line-height: 0;
+  vertical-align: baseline;
+  position: relative;
+}
+
+.pdfx-sensitivity > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.28rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.pdfx-sensitivity dt {
+  color: var(--ink-2);
+  font-size: 10.5px;
+}
+
+.pdfx-sensitivity dd {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdfx-acts li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-3);
+  transition: color 320ms ease;
+}
+
+.pdfx-acts li[data-done="true"] {
+  color: var(--ink-3);
+}
+
+.pdfx-acts li[data-on="true"] {
+  color: var(--violet);
+}
+
+.pdfx-panel-tabs span {
+  padding: 3px 9px;
+  border-radius: 6px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  transition:
+    background 260ms ease,
+    color 260ms ease;
+}
+
+.pdfx-panel-tabs span[data-on="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.pdfx-thinking i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pdfx-bounce 900ms ease-in-out infinite;
+}
+
+.pdfx-thinking i:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.pdfx-thinking i:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+.pdfx-suggest span {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 10px;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    color 220ms ease;
+}
+
+.pdfx-suggest span[data-picked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.pdfx-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--violet);
+  transition: width 420ms var(--ease-out-soft);
+}
+
+.pdfx-filters span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  opacity: 0.8;
+  transition:
+    background 260ms ease,
+    color 260ms ease,
+    opacity 260ms ease;
+}
+
+.pdfx-filters span b {
+  font-weight: 650;
+  opacity: 0.7;
+}
+
+/* The selected filter. It follows the card on screen, which is consistent rather than
+   decorative: filtering to one kind in the application shows one card of that kind, and
+   one card of that kind is what the frame shows. */
+.pdfx-filters span[data-on="true"] {
+  opacity: 1;
+}
+
+.pdfx-verdict strong {
+  color: var(--good);
+}
+
+.pdfx-match ul {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pdfx-match li {
+  position: relative;
+  padding: 7px 20px 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink);
+  font-size: 10.5px;
+  line-height: 1.4;
+  transition:
+    background 300ms ease,
+    border-color 300ms ease,
+    color 300ms ease;
+}
+
+.pdfx-match li[data-matched="true"] {
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+
+/* A term tapped and waiting for its definition. This is the state the scene had no way
+   of showing while the whole game was one beat, and it is half of what makes the six taps
+   legible as six: a cell lights, then a second cell locks it in.
+   The real game's `pickedConcept` styling: `border-teal bg-teal-soft`. */
+.pdfx-match li[data-held="true"] {
+  border-color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 14%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 14%, transparent);
+}
+
+.pdfx-cloze-verdict i {
+  font-style: normal;
+}
+
+.pdfx-field em {
+  color: var(--ink-3);
+  font-style: normal;
+}

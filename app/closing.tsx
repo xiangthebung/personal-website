@@ -7,10 +7,18 @@
  * commit hashes. All of it true, and all of it a wall of text after seven
  * sections that had already made the argument by running.
  *
- * What is left is the part a reader actually needs at the bottom of a page: an
- * address, a profile, and the legal index. The checks still exist and still run
- * — see the verification list in the README — they just do not need describing
- * to a visitor.
+ * So it became an address and two links, and that overshot. A page that spends
+ * seven sections being deliberate should not end like the bottom of a form. The
+ * two notes below are the smallest thing that is neither: a reason these exist,
+ * and the two facts about the page a visitor cannot get by looking at it.
+ *
+ * Both are held to the rule the rest of the page is held to — nothing here is a
+ * claim you could not check. The first is the seven `why` lines in
+ * `projects.ts` said once instead of seven times. The second is what the README
+ * says about the vendored Choir app, plus the one control the page now has; the
+ * hold button is deliberately not given a location, because a control described
+ * well enough to find is more fun to find than one pointed at, and the dock it
+ * lives in is not on screen this far down anyway.
  */
 
 import Link from "next/link";
@@ -36,6 +44,22 @@ export function Closing() {
             Privacy &amp; terms
           </Link>
         </p>
+
+        <div className="closing-notes">
+          <p>
+            Every one of these began as something small and annoying: a part you
+            could not pick out of the choir, a stop you could not check without
+            opening a map, a film you spent two hours reaching for the remote
+            through.
+          </p>
+          <p>
+            Six of the scenes above are reconstructions, built out of the same
+            moving parts as the software rather than filmed off a screen. Choir
+            Practice is the application itself. And any of them will stop on the
+            single frame that carries its point, if you find the way to ask —
+            stopped films turn out to be strips, and strips can be wound by hand.
+          </p>
+        </div>
       </div>
     </section>
   );

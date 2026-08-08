@@ -44,6 +44,7 @@ import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
+import "./demo.css";
 
 /** From `src/demo/demoDeck.ts` — slide 2 of the bundled GPS lecture. */
 const SLIDE = {

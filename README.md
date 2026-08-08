@@ -39,22 +39,55 @@ problem, which is the one thing a demonstration of the solution cannot state.
 ```
 app/
   page.tsx            the whole page, as a server component
+  not-found.tsx       the section that does not exist
   projects.ts         every project's copy, and what each section may claim
-  page-chrome.tsx     the photo rail, and the focus manager that decides
-                      which project you are "in"
+  page-chrome.tsx     the gallery rail, the hold control, and the focus manager
+                      that decides which project you are "in"
   backdrops.tsx       per-project scenery behind and in front of each scene
   index-marks.tsx     a live miniature of every scene, for the hero index
-  globals.css         shared and server-rendered page styles
+  closing.tsx         the address, and the last two sentences
+  globals.css         the page: chassis, theming, hero, gallery, sections
   demos/
     demo-mount.tsx    lazy registry, one chunk per scene
-    scene/            the shared runtime: storyboard, phantom cursor,
-                      viewport layers, in-frame labels
-    <project>/        one directory per scene; lazy demos own demo.css
+    scene/            the shared runtime: storyboard, hold, phantom cursor,
+                      press gate, viewport layers, in-frame labels
+    <project>/        one directory per scene — demo.tsx and demo.css
   legal/              privacy policies and terms, vendored from each project
 tests/                node:test against the built Cloudflare worker
 scripts/              screenshot and audit tooling (see below)
 worker/               the Cloudflare entry point
 ```
+
+### Where a style belongs
+
+Every scene's rules live in its own `demo.css` and load with its chunk. They used to
+be in `globals.css`, all of them, and the file reached twelve thousand lines — which
+was not a tidiness problem. Three separate live rules were destroyed by dangling
+selectors left behind when neighbouring code was deleted, and every one of them
+shipped, because at that size nobody reads the file whole. One had the gallery's
+arrows rendering at twice their intended size for months.
+
+The split rule is about *when the element exists*, not about who the styles feel like
+they belong to:
+
+- **The scene's own furniture** — anything that needs one of its `nb-`/`gx-`/`pp-`/
+  `pdfx-`/`choir-`/`dc-`/`nn-` classes as an ancestor to match at all — goes in
+  `demo.css`. Those elements do not exist until the chunk mounts, so the stylesheet
+  cannot be late.
+- **The section around it** — the ambient wash, the entrance veil, the ghost number,
+  anything on `.project-*` — stays in `globals.css`. The section is server-rendered
+  and on screen long before any chunk is fetched. Styling it from a chunk flashes.
+- **`@keyframes` follows its consumer, not its name.** Two of N-Back's entrance
+  keyframes were moved into its chunk because they were called `nb-…`; the rule
+  playing them is on `.project-veil`, which arrives first, so the entrance silently
+  stopped running. Nothing errors when this happens.
+
+Two tests hold the line: one refuses scene-internal selectors in `globals.css`, one
+refuses a `@keyframes` block in any stylesheet other than the one that plays it. The
+move was verified by fingerprinting the computed style of every element in every
+section at three viewport widths, before and after — 4,431 elements, zero differences.
+It also took 48K off the render-blocking stylesheet, which is now split across seven
+files that arrive with the scenes that need them.
 
 ### How a scene works
 
@@ -90,7 +123,8 @@ lost; the reading is not.
 
 ## Motion
 
-**This site does not honour `prefers-reduced-motion`, on purpose.**
+**This site does not honour `prefers-reduced-motion`, on purpose. It gives you a
+button instead.**
 
 The seven scenes are the content, not decoration wrapped around it. The page's
 whole claim is that each project is running on it, so a visitor who cannot see the
@@ -101,17 +135,50 @@ The setting also fires for the wrong people here. Windows turns `reduce` on from
 places nobody associates with animation: performance options, battery savers, and
 remote desktop sessions. Most machines reporting it never asked for it.
 
-What was removed, if it ever needs to come back:
+So motion control is a control: the ring at the foot of the dock, beneath the seven
+numbers. `app/demos/scene/hold.ts` holds one boolean and a set of subscribers —
+the scenes are seven independently lazy chunks with no common ancestor short of a
+server component, so a context would mean making the page a client component to
+share a boolean.
 
-- four `@media (prefers-reduced-motion: reduce)` blocks in `app/globals.css`,
-  including a blanket one that flattened every animation and transition
-- the still-frame branch in `useStoryboard` (`app/demos/scene/storyboard.ts`),
-  which held one nominated beat instead of looping
+**Held is not paused**, and that is the whole design. Pausing stops each scene
+wherever it happens to be, which for six of the seven is a transitional frame that
+argues nothing — a cursor halfway to a button, a card mid-flight. Held reads the
+`stillBeat` every scene has always declared, cuts to the frame that carries its
+argument, and leaves every accumulated in-frame label pinned to its evidence. The
+page stops being seven films and becomes seven labelled diagrams: Decaf's feed
+under its notice card, PagePack's pack being read with the network down, Night
+Neutralizer's explosion blown out on one side and levelled on the other.
 
-The seam survives. Every scene still declares `stillBeat` — the single frame that
-carries its argument — and `SceneState.still` is still threaded through to the
-phantom cursor. Bringing motion control back should mean a control on the page a
-visitor can find and press, not an ambient setting read behind their back.
+**And a held film is in your hands.** Drag across any stage and the storyboard
+scrubs, the stage's own width mapping the first beat to the last, backwards
+included — the cursor turns east-west over the wells to say so. A held stage also
+takes focus, and steps a beat at a time on the arrow keys, jumping to either end on
+Home and End: the drag shipped pointer-only, which is a feature half the people who
+might want it cannot reach. Beats rather than pixels for the keyboard, because a
+beat is the unit the storyboard is written in and stepping one lands on a frame the
+film was composed around. The state a scrub writes is exactly the state the clock
+would have written at that elapsed time, so a scrubbed frame is never a new claim;
+it is a frame the film already contains.
+The press-gate opens on stills for the same honesty (`press-gate.ts`): a still is
+not a moment in a gesture but a diagram of the world after it, so a frame at or
+past a press shows the pressed world rather than waiting for a phantom hand that
+is deliberately hidden. This is the line the page keeps: the scenes never became
+operable software again — you cannot press Decaf's switch — but the *films* became
+an object, which is what films on a desk are.
+
+Two details that are not obvious and were both found by looking:
+
+- The cut and the freeze are **not simultaneous**. `SETTLE_MS` gives the page time
+  to arrive before CSS clocks stop; Decaf's rewards take 1450ms to drain away and
+  freezing them at 900ms left forty-two hearts halfway down, across the heading.
+- The freeze applies to **what loops, not to everything**. Entrances are animations
+  too, so a universal `animation-play-state: paused` froze any section reached
+  while held at the first frame of its own arrival — an empty coloured panel.
+
+What was removed when the media query went, if it is ever wanted back: four
+`@media (prefers-reduced-motion: reduce)` blocks in `app/globals.css`, including a
+blanket one that flattened every animation and transition.
 
 ## Tests
 

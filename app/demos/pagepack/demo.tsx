@@ -37,6 +37,7 @@ import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
 import { captureProgressMessage, formatBytes, type CapturePhase } from "./progress";
+import "./demo.css";
 
 type BeatName =
   | "settle"

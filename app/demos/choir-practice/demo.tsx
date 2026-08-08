@@ -60,6 +60,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSectionBeat } from "../scene/section-beat";
 import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
+import "./demo.css";
 
 /**
  * The score to open: Happy Birthday, four parts, nine bars.

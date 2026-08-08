@@ -60,6 +60,7 @@ import {
   routeBadgeColor,
 } from "./format";
 import { departureLabels, shortTimeLabel } from "./labels";
+import "./demo.css";
 
 type BeatName =
   | "street"
