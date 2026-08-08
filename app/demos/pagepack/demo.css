@@ -1,0 +1,1080 @@
+/*
+ * This scene's own styles, loaded with its chunk.
+ *
+ * They lived in app/globals.css until they were moved here, along with every other
+ * scene's. That file had become twelve thousand lines of appended passes, and the
+ * cost was not tidiness: three separate live rules had been silently destroyed by
+ * dangling selectors left behind when neighbouring code was deleted, because at that
+ * size nobody can see a stylesheet whole. A scene's rules now sit beside the markup
+ * they style, and arrive only when that scene does.
+ *
+ * What deliberately did NOT come here: anything whose subject is the section rather
+ * than the scene — the ambient wash, the entrance veil, the ghost number. The section
+ * is server-rendered and on screen long before this file is fetched, so styling it
+ * from here would flash.
+ */
+
+/**
+ * PagePack — "the signal drops and the pack still opens"
+ *
+ * A thirteen-second film in five acts: a page open, a save, cards tearing off the
+ * page into a stack, the connection dying, and the stack surviving it.
+ */
+
+/* --- the browser ---------------------------------------------------------- */
+
+.pp-browser {
+  position: relative;
+  /* A stacking context, explicitly.
+     Without one, `z-index: auto` here let the browser's inner layers — the popup
+     at 4, the outage wash at 2 — be compared against `.pp-spill` at 6 in a
+     shared ancestor context instead of against each other. The wash then painted
+     over the escaped cards that happened to land back across the frame, so three
+     of the seven saved pages went dark along with the browser they had just
+     escaped from. Confining them keeps the whole frame at 0, under the spill. */
+  z-index: 0;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--canvas);
+  box-shadow: var(--shadow);
+}
+
+/* The outage.
+   Done as an overlay, not as `filter` on the browser. A filter on the container
+   was the obvious first attempt and it was wrong: filters compose down the tree,
+   so desaturating the frame also desaturated the popup inside it — and the popup
+   staying lit while everything around it dies is the entire point of the shot.
+   An overlay only affects what paints beneath it, so the popup and the saved page
+   sit above it in full colour and become the only light in the frame. */
+.pp-drain {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: rgba(13, 15, 19, 0.88);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 640ms ease;
+}
+
+.pp[data-dead="true"] .pp-drain {
+  opacity: 1;
+}
+
+/* Draining the colour is a separate job from darkening, and it is done here, on
+   the chrome's own subtree.
+   `backdrop-filter: grayscale(1)` on the wash was tried first and produced a
+   subtle, expensive bug: Chromium promotes a backdrop-filtered element into its
+   own compositing layer, which reordered it against its siblings, and the saved-page
+   card at `z-index: 5` came out grey underneath a wash at `z-index: 2`. The one
+   card that has to look alive was the one thing being killed. A filter on a subtree
+   that contains no popup and no reader cannot have that problem. */
+.pp-chrome {
+  transition: filter 640ms ease;
+}
+
+.pp[data-dead="true"] .pp-chrome {
+  filter: grayscale(1) brightness(0.42);
+}
+
+.pp-chrome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(#fafafc, #f1f1f4);
+}
+
+.pp-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.pp-omnibox {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.pp-lock {
+  flex: 0 0 auto;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.pp-url {
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp[data-offline="true"] .pp-url {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+
+/* The signal, and the moment it goes. */
+/* 17px was the honest size for a browser's own signal indicator and too small to be
+   the moment the scene turns on. Bumped, because the arcs going out one by one is the
+   cause of everything that follows. */
+.pp-wifi {
+  flex: 0 0 auto;
+  width: 24px;
+  color: var(--ink-2);
+}
+
+.pp-wifi-arc,
+.pp-wifi-dot {
+  transition: opacity 200ms ease;
+}
+
+.pp-wifi-slash {
+  stroke: var(--alarm);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  /* Drawn on, so the cut has a direction instead of appearing. */
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  transition: stroke-dashoffset 380ms cubic-bezier(0.16, 0.8, 0.2, 1);
+}
+
+.pp[data-offline="true"] .pp-wifi {
+  color: var(--alarm);
+}
+
+/* The arcs drop outside-in, which is how a connection actually feels like it
+   fails: the far bars go first. */
+.pp[data-offline="true"] .pp-wifi-arc--3 {
+  opacity: 0;
+  transition-delay: 0ms;
+}
+
+.pp[data-offline="true"] .pp-wifi-arc--2 {
+  opacity: 0;
+  transition-delay: 110ms;
+}
+
+.pp[data-offline="true"] .pp-wifi-arc--1 {
+  opacity: 0;
+  transition-delay: 220ms;
+}
+
+.pp[data-offline="true"] .pp-wifi-slash {
+  stroke-dashoffset: 0;
+  transition-delay: 260ms;
+}
+
+.pp-toolbar {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--ink-2);
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    transform 220ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.pp[data-beat="reach"] .pp-toolbar,
+.pp[data-beat="open"] .pp-toolbar {
+  color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.08);
+}
+
+.pp-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  min-width: 14px;
+  padding: 0 3px;
+  border: 1.5px solid #f5f5f7;
+  border-radius: 999px;
+  background: var(--good);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  animation: pp-badge-in 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+@keyframes pp-badge-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+/* --- the page, and its failure ------------------------------------------- */
+
+.pp-viewport {
+  position: relative;
+  height: 306px;
+  padding: 20px 22px;
+  background: var(--surface);
+}
+
+.pp-page {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 7px;
+  transition:
+    opacity 420ms ease,
+    transform 520ms ease;
+}
+
+.pp-byline {
+  margin: -2px 0 4px;
+  color: var(--ink-3);
+  font-size: 8.5px;
+  letter-spacing: 0.09em;
+}
+
+.pp-line {
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: #ececed;
+}
+
+.pp-figure {
+  height: 54px;
+  margin: 5px 0;
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(
+        -45deg,
+        rgba(0, 0, 0, 0.05) 0 6px,
+        transparent 6px 12px
+      ),
+    #f4f4f6;
+}
+
+/* Once the connection is gone the page is not dimmed, it is *absent*. Dimming
+   would say "still there, quieter"; this has to say "gone". */
+.pp[data-offline="true"] .pp-page {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* Above the wash, and styled for it: this is the browser's own dead-end screen,
+   so it is the one thing that should be legible in a frame gone dark. */
+.pp-crash {
+  position: absolute;
+  z-index: 3;
+  top: 26px;
+  left: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  opacity: 0;
+  color: rgba(255, 255, 255, 0.4);
+  transition:
+    opacity 420ms ease,
+    transform 520ms ease;
+  transform: translateY(8px);
+}
+
+.pp[data-dead="true"] .pp-crash {
+  opacity: 1;
+  transform: none;
+}
+
+.pp-crash-glyph {
+  width: 34px;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+/* --- pages leaving the building ------------------------------------------
+   Seven cards tear off the page, tumble out through the browser window, and come
+   to rest scattered across the section — over the project title, out past the
+   gutters, down into the copy. They do not come back. That is the argument: the
+   reading has left the browser, and is now somewhere the browser cannot lose it.
+
+   `.pp-spill` lives outside `.pp-browser`, for the plain reason that the browser
+   clips its own contents and these have to get out of it. The perspective the cards
+   tumble in comes from there too, so all seven look like they are in the same room.
+   There was once a shared `.demo-spill` base class for this; no demo ever applied
+   it, so it has been removed and each scene now sizes its own spill layer.
+
+   One keyframe, a per-card delay, three custom properties for the landing spot:
+   seven cards cost seven composited transforms and no JavaScript. */
+
+.pp-spill {
+  /* Stage coordinates matched to the popup's own position, so a card leaves the
+     Save button rather than the middle of a rectangle. */
+  --emit-right: 130px;
+  --emit-top: 150px;
+}
+
+/* The in-frame labels, in the same idiom as the extension.
+   PagePack's whole design is unashamedly Apple-flavoured — see the token set at the top of
+   this section — so its labels are fully rounded frosted pills with a hairline edge, the
+   shape that platform puts every transient status in. See `.speclayer` for the component
+   and `SPECS` in the pod for the two claims it carries and why there are only two. */
+.pp-specs {
+  --spec-ink: var(--ink);
+  --spec-paper: rgba(255, 255, 255, 0.82);
+  --spec-edge: rgba(0, 0, 0, 0.1);
+  --spec-gloss: rgba(255, 255, 255, 0.85);
+  --spec-dot: var(--accent);
+  --spec-shadow: rgba(0, 0, 0, 0.34);
+  --spec-radius: 999px;
+  --spec-pad: 0.28rem 0.68rem;
+  --spec-weight: 590;
+  --spec-lead: 18px;
+}
+
+.pp-flyer {
+  position: absolute;
+  top: var(--emit-top);
+  right: var(--emit-right);
+  display: flex;
+  width: 84px;
+  height: 104px;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 8px 9px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: 7px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 18px 40px -16px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  will-change: transform;
+}
+
+.pp-flyer-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.pp-flyer-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: #e6e6e9;
+}
+
+.pp-flyer-bar:nth-child(4) {
+  width: 78%;
+}
+
+.pp-flyer-bar:last-child {
+  width: 52%;
+}
+
+/* Timed against the beats, not chosen for feel. Seven cards at 1900ms with a
+   235ms stagger means the last one settles as `finish` ends — 3310ms after the
+   press, which is exactly `press + read + collect + finish`. An earlier attempt
+   used 1500ms and a 165ms stagger, and the pages were all gone before the beat
+   was over, leaving the middle of the shot empty. */
+.pp-flyer[data-flying="true"] {
+  animation: pp-burst 1900ms cubic-bezier(0.22, 0.9, 0.24, 1) forwards;
+  animation-delay: calc(var(--order) * 235ms);
+}
+
+@keyframes pp-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-14deg) scale(0.22);
+  }
+  8% {
+    opacity: 1;
+  }
+  /* Through the glass and toward the viewer. The positive Z is the whole trick:
+     it makes this a card coming out of a window rather than a sprite sliding
+     across one. */
+  44% {
+    transform:
+      translate3d(calc(var(--to-x) * 0.4), calc(var(--to-y) * 0.3 - 9vh), 220px)
+      rotate3d(1, 0.55, 0.22, 212deg)
+      scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(var(--to-x), var(--to-y), 0) rotate(var(--rot)) scale(1);
+  }
+}
+
+/* When the connection dies, these are the only things that do not. Outlined and
+   lifted, so a glance at the dead frame finds them instead of it. */
+.pp-flyer[data-kept="true"] {
+  border-color: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 46px -10px rgba(255, 255, 255, 0.32),
+    0 22px 48px -18px rgba(0, 0, 0, 0.55);
+}
+
+/* --- the popup ------------------------------------------------------------ */
+
+.pp-popup {
+  position: absolute;
+  z-index: 4;
+  top: 10px;
+  right: 14px;
+  width: 232px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 22px 48px -18px rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  transform: translateY(-8px) scale(0.96);
+  transform-origin: 88% 0;
+  transition:
+    opacity 240ms ease,
+    transform 340ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.pp-popup[data-open="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* It sits above the wash, so it keeps its colour for free. The glow is what turns
+   "not dimmed" into "the only thing still on". */
+.pp[data-dead="true"] .pp-popup {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 0 58px -6px rgba(120, 180, 255, 0.4),
+    0 22px 48px -18px rgba(0, 0, 0, 0.7);
+}
+
+.pp-popup-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-2);
+}
+
+.pp-popup-mark {
+  width: 14px;
+  color: var(--accent);
+}
+
+.pp-tabs {
+  display: flex;
+  margin-left: auto;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.pp-save,
+.pp-library {
+  padding: 11px 11px 12px;
+}
+
+.pp-target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 10px;
+}
+
+.pp-target-title {
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-target-host {
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+.pp-primary {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  transition:
+    transform 120ms ease,
+    filter 200ms ease;
+}
+
+/* `data-did` rather than `data-beat`, so the button dips when the pointer presses it
+   rather than when the beat containing that press starts. The two are 90ms apart — the
+   pointer settles before it clicks — and five frames is the whole width of what a click
+   looks like. See `usePressGate` and `CLICKS` in the demo. */
+.pp[data-did="press"] .pp-primary {
+  filter: brightness(0.86);
+  transform: scale(0.96);
+}
+
+.pp-options {
+  margin: 8px 0 0;
+  color: var(--ink-3);
+  font-size: 10px;
+  text-align: center;
+}
+
+.pp-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 11px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+  animation: pp-rise 260ms cubic-bezier(0.16, 0.8, 0.2, 1);
+}
+
+@keyframes pp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+.pp-bar {
+  position: relative;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+@keyframes pp-slide {
+  0% {
+    transform: translateX(-105%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+.pp-progress-label {
+  color: var(--ink-2);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the library, after the lights go out -------------------------------- */
+
+.pp-library-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.pp-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@keyframes pp-land {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+.pp-shelf-title {
+  overflow: hidden;
+  font-size: 10.5px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-shelf-meta {
+  flex: 0 0 auto;
+  color: var(--ink-3);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-offline-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 9px 0 0;
+  color: var(--good);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+/* The saved page, reopened outside the window it came from.
+   Positioned in the spill layer and pushed left of the browser on purpose: the
+   frame behind it is dead, and a reading pane floating clear of it says so more
+   plainly than one tucked neatly inside the dead frame's borders. Deliberately
+   the brightest, largest thing on screen by this point — it is the payoff. */
+.pp-reader {
+  position: absolute;
+  z-index: 8;
+  bottom: 3vh;
+  left: -11vw;
+  display: flex;
+  width: min(300px, 74vw);
+  flex-direction: column;
+  gap: 7px;
+  padding: 14px 16px 17px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow:
+    0 0 70px -6px rgba(255, 255, 255, 0.3),
+    0 30px 66px -18px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transform: translate3d(46px, 26px, 0) rotate(-5deg) scale(0.88);
+  transition:
+    opacity 420ms ease,
+    transform 640ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.pp-reader[data-open="true"] {
+  opacity: 1;
+  transform: translate3d(0, 0, 90px) rotate(-1.5deg) scale(1);
+}
+
+.pp-reader-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 3px;
+}
+
+.pp-reader .pp-line {
+  background: #e9e9ec;
+}
+
+@media (max-width: 720px) {
+  .pp-viewport {
+      height: 268px;
+      padding: 14px 15px;
+    }
+
+    .pp-popup {
+      right: 8px;
+      width: 196px;
+    }
+
+    .pp-spill {
+      --emit-right: 104px;
+      --emit-top: 132px;
+    }
+
+    /* Smaller cards, and no scaling up mid-flight. At this width a card at 1.18
+       scale covers most of the browser it is supposed to be escaping from. The
+       landing spots need no override: they are in viewport units, so the spread
+       shrinks with the screen on its own. */
+    .pp-flyer {
+      width: 62px;
+      height: 78px;
+    }
+
+    .pp-reader {
+      left: -6vw;
+      bottom: -3vh;
+    }
+}
+
+#pagepack .pp-browser {
+  transition:
+    opacity 620ms ease,
+    transform 760ms cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+
+#pagepack .pp[data-beat="read-offline"] .pp-browser,
+#pagepack .pp[data-beat="hold"] .pp-browser {
+  opacity: 0.24;
+  transform: translateY(-1.5rem) scale(0.88);
+}
+
+/* The selected saved page becomes the section's reading plane rather than one
+   more card beside a dead browser. */
+#pagepack .pp-reader {
+  z-index: 8;
+  bottom: -1.25rem;
+  left: 50%;
+  display: block;
+  width: min(900px, calc(100vw - 4rem));
+  padding: clamp(1.1rem, 2.4vw, 2rem);
+  border-radius: 16px;
+  opacity: 0;
+  transform: translate3d(-50%, 44px, 0) rotate(-1deg) scale(0.9);
+}
+
+#pagepack .pp-reader[data-open="true"] {
+  opacity: 1;
+  transform: translate3d(-50%, 0, 110px) rotate(0deg) scale(1);
+}
+
+#pagepack .pp-reader-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin: 0 0 1.1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid #e2e3e7;
+}
+
+.pp-reader-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.38fr);
+  gap: clamp(1.2rem, 3vw, 2.6rem);
+}
+
+.pp-reader-document {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.48rem;
+}
+
+.pp-reader-byline {
+  margin: 0 0 0.25rem;
+  color: #777d87;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pp-reader-callout {
+  margin: 0.45rem 0;
+  padding: 0.7rem 0.8rem;
+  border-left: 3px solid #2d7fd2;
+  background: #f3f6fa;
+  color: #545b66;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.pp-reader-index {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 1rem;
+  border-left: 1px solid #e2e3e7;
+}
+
+@media (max-width: 700px) {
+  #pagepack .pp-reader {
+      bottom: -2rem;
+      width: calc(100vw - 2rem);
+      padding: 1rem;
+    }
+
+    .pp-reader-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pp-reader-index {
+      display: none;
+    }
+
+    .pp-reader-callout {
+      font-size: 0.62rem;
+    }
+}
+
+@media (max-width: 700px) {
+  #pagepack .pp[data-beat="read-offline"] .pp-browser,
+    #pagepack .pp[data-beat="hold"] .pp-browser {
+      display: none;
+    }
+
+    #pagepack .pp[data-beat="read-offline"] .pp-reader[data-open="true"],
+    #pagepack .pp[data-beat="hold"] .pp-reader[data-open="true"] {
+      position: relative;
+      inset: auto;
+      left: 50%;
+    }
+}
+
+/* The burst has a compositor budget only while it is actually in flight. */
+.pp-flyer {
+  will-change: auto;
+}
+
+/* End the reading plane above the caption instead of painting through it. */
+#pagepack .pp-reader,
+#pagepack .pp-reader[data-open="true"] {
+  bottom: 4.35rem;
+}
+
+@media (max-width: 700px) {
+  #pagepack .pp-reader,
+    #pagepack .pp-reader[data-open="true"] {
+      bottom: 4.8rem;
+    }
+}
+
+
+/* Rules that need one of this scene's own classes as an ancestor to match at all —
+   they style bare elements and shared label markup, but only ever inside this scene. */
+
+.pp-dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #d3d3d8;
+}
+
+.pp-wifi svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pp-toolbar svg {
+  width: 15px;
+  height: 15px;
+}
+
+.pp-page h4 {
+  max-width: 26ch;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.pp-crash-glyph svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pp-crash strong {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pp-crash span:last-child {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+}
+
+/* The one place a blur is worth its cost: a translucent pill needs something behind it to
+   be translucent *against*, and both of these sit over a page of body text. */
+.pp-specs .spectag-text {
+  backdrop-filter: blur(8px) saturate(1.4);
+}
+
+.pp-flyer-head i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.pp-flyer-head span {
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 6.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-popup-mark svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pp-popup-head strong {
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.pp-tabs span {
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: var(--ink-3);
+  font-size: 9.5px;
+  font-weight: 600;
+  transition:
+    background 220ms ease,
+    color 220ms ease;
+}
+
+.pp-tabs span[data-on="true"] {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.pp-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/* Indeterminate for a link-following save, because it genuinely does not know
+   its own total yet. The sliding bar is the honest shape of that. */
+.pp-bar[data-indeterminate="true"] i {
+  width: 42%;
+  animation: pp-slide 1250ms ease-in-out infinite;
+}
+
+.pp-library-head strong {
+  font-size: 11.5px;
+}
+
+.pp-library-head span {
+  color: var(--ink-3);
+  font-size: 9.5px;
+}
+
+.pp-shelf li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  animation: pp-land 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12) backwards;
+  animation-delay: calc(var(--order) * 80ms);
+  transition:
+    background 260ms ease,
+    box-shadow 260ms ease;
+}
+
+/* The row the pointer is standing on, before it presses. A row that is about to be
+   clicked has to look like it, or the click reads as landing on the panel rather than on
+   the page — and the page is what the reader below is a copy of. */
+.pp-shelf li[data-aimed="true"] {
+  background: color-mix(in srgb, var(--accent-soft) 62%, var(--surface));
+  box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.18);
+}
+
+.pp-shelf li[data-open="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.3);
+}
+
+.pp-offline-note span {
+  font-size: 7px;
+}
+
+.pp-reader-head span {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.pp-reader-head small {
+  flex: 0 0 auto;
+  color: var(--good);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#pagepack .pp-reader-head span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #24272d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.1rem, 2.3vw, 1.7rem);
+  font-weight: 400;
+}
+
+#pagepack .pp-reader-head small,
+#pagepack .pp-reader-head b {
+  color: #25804d;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+#pagepack .pp-reader-head b {
+  padding: 0.28rem 0.52rem;
+  border-radius: 999px;
+  background: rgba(37, 128, 77, 0.1);
+}
+
+.pp-reader-document h4 {
+  margin: 0 0 0.45rem;
+  color: #24272d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(0.9rem, 1.5vw, 1.15rem);
+  font-weight: 400;
+}
+
+.pp-reader-index > small {
+  margin-bottom: 0.2rem;
+  color: #898f98;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pp-reader-index > span {
+  display: grid;
+  grid-template-columns: 1.8rem minmax(0, 1fr);
+  gap: 0.4rem;
+  padding: 0.38rem 0.45rem;
+  border-radius: 6px;
+  color: #6c727d;
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.pp-reader-index > span[data-current="true"] {
+  background: rgba(11, 111, 214, 0.09);
+  color: #263647;
+}
+
+.pp-reader-index i {
+  color: #2d7fd2;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.55rem;
+  font-style: normal;
+}

@@ -98,7 +98,7 @@ export const policies: Policy[] = [
     kind: "privacy",
     label: "Decaf privacy policy",
     summary:
-      "An extension that rewrites twelve social sites and syncs nothing, on purpose — the list of sites you want calmed says too much to put in an account.",
+      "An extension that rewrites twelve social sites — and any you add yourself — and syncs nothing, on purpose. The list of sites you want calmed says too much to put in an account.",
     original: `${REPOS.decaf}/PRIVACY_POLICY.md`,
     copy: "policies/decaf-privacy.md",
     markdown: decafPrivacy,

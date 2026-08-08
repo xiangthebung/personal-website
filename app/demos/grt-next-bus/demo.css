@@ -1,0 +1,1224 @@
+/*
+ * This scene's own styles, loaded with its chunk.
+ *
+ * They lived in app/globals.css until they were moved here, along with every other
+ * scene's. That file had become twelve thousand lines of appended passes, and the
+ * cost was not tidiness: three separate live rules had been silently destroyed by
+ * dangling selectors left behind when neighbouring code was deleted, because at that
+ * size nobody can see a stylesheet whole. A scene's rules now sit beside the markup
+ * they style, and arrive only when that scene does.
+ *
+ * What deliberately did NOT come here: anything whose subject is the section rather
+ * than the scene — the ambient wash, the entrance veil, the ghost number. The section
+ * is server-rendered and on screen long before this file is fetched, so styling it
+ * from here would flash.
+ */
+
+/**
+ * GRT Next Bus — "the wait is on the toolbar"
+ *
+ * A calendar week with a browser around it, and the extension answering the only
+ * question that matters from the toolbar: how long until the next one.
+ */
+
+/* --- the browser ---------------------------------------------------------- */
+
+.gx-browser {
+  position: relative;
+  /* Above the road, which passes behind the window rather than in front of it. */
+  z-index: 2;
+  border: 1px solid var(--gx-chrome-line);
+  border-radius: 14px;
+  background: var(--gx-page);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 30px 66px -34px rgba(8, 26, 30, 0.45);
+}
+
+.gx-chrome {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--gx-chrome-line);
+  border-radius: 13px 13px 0 0;
+  background: linear-gradient(var(--gx-chrome), color-mix(in srgb, var(--gx-chrome) 84%, #fff));
+}
+
+.gx-lights {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.gx-tabs {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gx-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 168px;
+  padding: 7px 13px;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  color: rgba(16, 40, 44, 0.5);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gx-tab.is-active {
+  color: #16262c;
+  background: var(--gx-page);
+  box-shadow: 0 -1px 0 var(--gx-chrome-line) inset;
+}
+
+.gx-favicon {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border-radius: 3px;
+  background: rgba(16, 40, 44, 0.2);
+}
+
+.gx-favicon--cal {
+  background: #c26a15;
+}
+
+.gx-bar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gx-omni {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: rgba(16, 40, 44, 0.46);
+  background: color-mix(in srgb, #fff 78%, var(--gx-chrome));
+  box-shadow: 0 0 0 1px var(--gx-chrome-line) inset;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The extension's own button. The only thing clicked in this scene, so it is the
+   only thing in the chrome with full contrast. */
+.gx-action {
+  position: relative;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #0f6a62;
+  transition: background 0.2s ease;
+}
+
+.gx-action[data-open="true"] {
+  background: color-mix(in srgb, #0f6a62 15%, transparent);
+}
+
+/* A ring while the badge is the only thing on screen doing anything. It stops
+   once the popup is open, where it would be pointing at old news. */
+.gx-action[data-live="true"]::before {
+  position: absolute;
+  border: 1.5px solid #0f6a62;
+  border-radius: 10px;
+  content: "";
+  inset: -3px;
+  opacity: 0;
+  animation: gx-ping 2.8s ease-out infinite;
+}
+
+@keyframes gx-ping {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.86);
+  }
+  55%,
+  100% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+}
+
+.gx-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  min-width: 18px;
+  padding: 0 3px;
+  border-radius: 5px;
+  color: #fff;
+  box-shadow: 0 0 0 1.5px var(--gx-chrome);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  /* Remounted on every change — the element is keyed by its own text — so the
+     tick plays without the scene having to say when a minute passed. */
+  animation: gx-tick 0.5s ease-out;
+}
+
+@keyframes gx-tick {
+  from {
+    transform: translateY(-3px) scale(1.2);
+  }
+}
+
+/* --- the tab you had open ------------------------------------------------- */
+
+/* This carries the window's height, and it is why the popup needs no magic
+   number: six agenda rows of a fixed minimum are taller than any popup this
+   scene shows, and the popup simply overhangs if that ever stops being true. */
+.gx-page {
+  position: relative;
+  padding: 18px 20px 20px;
+  border-radius: 0 0 13px 13px;
+  overflow: hidden;
+}
+
+.gx-page-head {
+  margin: 0 0 12px;
+  color: rgba(16, 40, 44, 0.42);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gx-agenda {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gx-agenda-time {
+  flex: 0 0 44px;
+  padding-top: 6px;
+  color: rgba(16, 40, 44, 0.34);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.gx-agenda-slot {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The reason the countdown matters. Dimmed, because it is set dressing, but
+   legible, because "5:30" against a bus at "5:18 PM" is the whole stake. */
+.gx-agenda-event {
+  margin: 4px 0 6px;
+  padding: 9px 12px;
+  border-left: 3px solid #c26a15;
+  border-radius: 4px 7px 7px 4px;
+  color: color-mix(in srgb, #c26a15 78%, #16262c);
+  background: color-mix(in srgb, #c26a15 12%, transparent);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* --- the popup ------------------------------------------------------------ */
+
+.gx-popup {
+  position: absolute;
+  z-index: 3;
+  /* Clear of the chrome, not over it. The badge is the feature this project leads
+     with, and the first version of this pulled the popup up across the toolbar and
+     hid the very button it had just been opened from. */
+  top: 44px;
+  right: -26px;
+  width: 420px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow:
+    0 0 0 1px rgba(16, 40, 44, 0.09),
+    0 36px 72px -30px rgba(6, 20, 24, 0.5);
+  opacity: 0;
+  /* Grows out of its own button, which is where a popup comes from. */
+  transform: scale(0.965) translateY(-9px);
+  transform-origin: 84% 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none;
+}
+
+.gx-popup[data-open="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.grt-app {
+  padding: 0 14px 18px;
+  border-radius: 14px;
+  color: var(--text);
+  background:
+    radial-gradient(120% 60% at 100% 0%, var(--bg-glow) 0%, transparent 62%),
+    var(--bg);
+}
+
+.grt-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 12px;
+}
+
+.grt-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.grt-eyebrow {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.grt-title {
+  margin-top: 2px;
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.grt-feed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 20px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.grt-feed-state {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.grt-feed-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.grt-feed-state.is-live {
+  color: var(--live);
+}
+
+.grt-feed-state.is-live .grt-feed-dot {
+  background: var(--live);
+  box-shadow: 0 0 0 3px var(--live-soft);
+  animation: grt-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes grt-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.grt-feed-detail {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+/* --- stop cards ----------------------------------------------------------- */
+
+.grt-stop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grt-stop-card {
+  padding: 14px 14px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+}
+
+.grt-stop-card.is-nearest {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+}
+
+/* The card for the stop the bus has just reached. Not a colour change — the row
+   already went red on its own — just enough lift to tie it to the pole outside. */
+.grt-stop-card[data-hit="true"] {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+.grt-stop-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.grt-stop-identity {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Wraps to two lines rather than truncating: a stop name is the one thing that
+   has to stay readable. */
+.grt-stop-name {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.32;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.grt-stop-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.grt-stop-tag {
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.grt-departures {
+  margin: 12px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+/* Baseline alignment, not centring: the copy column is taller than the time
+   column, so matching first baselines keeps the headsign, the route number and
+   the countdown reading as one line across the row. */
+.grt-departure {
+  display: flex;
+  min-height: 54px;
+  align-items: baseline;
+  gap: 11px;
+  padding: 10px 0 0;
+}
+
+.grt-route-badge {
+  display: inline-flex;
+  min-width: 34px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 7px;
+  color: var(--accent-contrast);
+  background: var(--accent);
+  font-size: 11.5px;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.grt-departure-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.grt-headsign {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Both of these keep their height when empty, so a row does not resize as live
+   information arrives and drops away. */
+.grt-departure-note,
+.grt-departure-then {
+  display: flex;
+  min-height: 16px;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.grt-departure-then {
+  margin-top: 3px;
+}
+
+.grt-note-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grt-note-sep {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.grt-note-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--live);
+  font-weight: 750;
+}
+
+.grt-note-live::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.grt-note-late {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.grt-note-early {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.grt-then-label {
+  color: var(--text-muted);
+}
+
+.grt-then-time {
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.grt-departure-time {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.grt-countdown {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  /* Keyed by its own text, so a minute passing is visible rather than inferred. */
+  animation: gx-count 0.45s ease-out;
+}
+
+@keyframes gx-count {
+  from {
+    opacity: 0.15;
+    transform: translateY(-4px);
+  }
+}
+
+.grt-is-soon {
+  color: var(--danger);
+}
+
+.grt-is-near {
+  color: var(--warn);
+}
+
+.grt-is-distant {
+  color: var(--text-soft);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.grt-clock {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the notification ----------------------------------------------------- */
+
+/* --- the browser's notification bell -------------------------------------
+   The alert used to arrive with nothing in the chrome to have produced it, which
+   made the banner read as a card the page had decided to show. A bell that rings
+   on the same beat gives it an origin, and gives the scene a beat of "something
+   just happened" before you have read what. */
+.gx-bell {
+  position: relative;
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  border-radius: 7px;
+  color: #7d8f8c;
+  transition:
+    color 0.3s ease,
+    background 0.3s ease;
+}
+
+.gx-bell[data-ringing="true"] {
+  color: #0f6a62;
+  background: #dcefec;
+  /* Two swings and out. A bell that keeps shaking for the rest of the scene stops
+     being an event and becomes a decoration. */
+  animation: gx-bell-ring 820ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 1 both;
+}
+
+.gx-bell-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid #f4f7f6;
+  border-radius: 50%;
+  background: #c2352f;
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity 0.22s ease,
+    transform 0.32s cubic-bezier(0.2, 1.4, 0.3, 1);
+}
+
+.gx-bell[data-unread="true"] .gx-bell-dot {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes gx-bell-ring {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  12% {
+    transform: rotate(13deg);
+  }
+  28% {
+    transform: rotate(-11deg);
+  }
+  44% {
+    transform: rotate(8deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  78% {
+    transform: rotate(3deg);
+  }
+}
+
+/* Arrives from outside the frame, because that is where a system notification
+   comes from: not from the page, and not from anything the rider did. */
+.gx-alert {
+  position: absolute;
+  z-index: 8;
+  top: 54px;
+  right: -6.5vw;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 352px;
+  padding: 14px 14px 15px;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(16, 40, 44, 0.08),
+    0 30px 64px -26px rgba(8, 26, 30, 0.5);
+  opacity: 0;
+  transform: translateX(62px) scale(0.97);
+  transition:
+    opacity 0.3s ease,
+    transform 0.44s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+.gx-alert[data-in="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.gx-alert-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #0f6a62;
+  background: #e2f0ee;
+}
+
+.gx-alert-source {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+  color: #7d8f8c;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gx-alert-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.gx-alert-title {
+  color: #16262c;
+  font-size: 13.5px;
+  font-weight: 750;
+}
+
+.gx-alert-body {
+  margin-top: 3px;
+  overflow: hidden;
+  color: #486067;
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+}
+
+.gx-alert-context {
+  margin-top: 5px;
+  color: #6d8087;
+  font-size: 11px;
+}
+
+.gx-alert-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: rgba(16, 40, 44, 0.32);
+}
+
+/* --- the route ------------------------------------------------------------ */
+
+/* Runs out past both edges of the section, so the bus the countdown is counting
+   arrives from somewhere rather than from the border of a card. The band sits in
+   the space the caption's top margin reserves. */
+/* Wider than the viewport at any viewport, and centred on the stage.
+   This used to be `left: -34vw; right: -20vw`, which worked only while the stage grew
+   with the window. Once `.project-body` was given a measure the stage stopped growing
+   at about 1600px, so on a 2560px screen those overhangs no longer reached: the road
+   started 80px inside the left edge and stopped 50px short of the right one, and a
+   road with two visible ends is a drawn line rather than a street passing through.
+   Anchoring the width to the viewport instead keeps both ends off-screen at every
+   width, and because the pole and the bus are placed as percentages of this element,
+   their spacing scales with it rather than sliding off one end. */
+.gx-street {
+  position: absolute;
+  z-index: 1;
+  bottom: 46px;
+  left: 50%;
+  width: 148vw;
+  height: 94px;
+  margin-left: -74vw;
+}
+
+.gx-road {
+  position: absolute;
+  right: 0;
+  bottom: 30px;
+  left: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--gx-road);
+}
+
+/* Lane markings, sliding left at the speed the traffic in the backdrop moves, so
+   the two read as the same road rather than as two drawings of one. */
+.gx-dashes {
+  position: absolute;
+  right: 0;
+  bottom: -11px;
+  left: 0;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--gx-road) 0 22px,
+    transparent 22px 48px
+  );
+  opacity: 0.7;
+  animation: gx-dash-run 2.6s linear infinite;
+}
+
+@keyframes gx-dash-run {
+  to {
+    transform: translateX(-48px);
+  }
+}
+
+/* The stops behind yours. There are as many between the bus and the pole as the
+   card says there are, because both come from the same clock. */
+.gx-stop-tick {
+  position: absolute;
+  bottom: 33px;
+  width: 2px;
+  height: 13px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--project-accent) 34%, transparent);
+  transition:
+    background 0.5s ease,
+    height 0.5s ease,
+    opacity 0.5s ease;
+}
+
+/* Behind the bus. The stops it has already called at are spent, so the ones left
+   between it and your pole are countable — which is the number the card claims. */
+.gx-stop-tick[data-passed="true"] {
+  height: 8px;
+  background: color-mix(in srgb, var(--project-accent) 14%, transparent);
+  opacity: 0.7;
+}
+
+/* The light thrown in front of it. Wide, soft and low-contrast: enough to say
+   which way the bus is going, not enough to look like night. */
+/* The in-frame labels, as transit signage.
+   This is the one section about a physical network with its own graphic language, so its
+   labels borrow it: a filled dark-green plate, white uppercase mono, wide tracking, almost
+   no corner radius. The same treatment as the destination sign on the front of a bus, and
+   as the route badges the popup is already full of. See `.speclayer` for the component.
+
+   `.gx-alert-spec` is in the same list because it is the same signage on the same scene's
+   label — it is only declared separately because that one is portalled to `document.body`
+   with the notification and cannot inherit anything from the pod. */
+.gx-specs,
+.gx-alert-spec {
+  --spec-ink: #f2fbf6;
+  --spec-paper: #145c40;
+  --spec-edge: rgba(255, 255, 255, 0.16);
+  --spec-gloss: rgba(255, 255, 255, 0.14);
+  --spec-dot: #145c40;
+  --spec-shadow: rgba(10, 34, 28, 0.5);
+  --spec-radius: 3px;
+  --spec-pad: 0.28rem 0.52rem;
+  --spec-font: var(--font-geist-mono), ui-monospace, monospace;
+  --spec-size: clamp(9px, 1vw, 10.5px);
+  --spec-weight: 700;
+  --spec-tracking: 0.09em;
+  --spec-case: uppercase;
+  --spec-lead: 16px;
+}
+
+.gx-beam {
+  position: absolute;
+  right: -6px;
+  bottom: 4px;
+  width: 210px;
+  height: 46px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, #ffd79a 34%, transparent),
+    color-mix(in srgb, #ffe6bd 14%, transparent) 46%,
+    transparent
+  );
+  clip-path: polygon(0 26%, 100% 0, 100% 100%, 0 74%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(100%);
+  transition: opacity 0.6s ease;
+}
+
+/* Only while it is actually moving. A parked bus with its lights blazing at a stop
+   it has already reached is a bus that has not noticed it arrived. */
+.gx[data-open="true"] .gx-beam {
+  opacity: 0.85;
+}
+
+.gx[data-arrived="true"] .gx-beam,
+.gx[data-beat="gone"] .gx-beam {
+  opacity: 0.25;
+}
+
+.gx-pole {
+  position: absolute;
+  bottom: 30px;
+  height: 56px;
+}
+
+.gx-pole-mast {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--project-accent) 62%, transparent);
+}
+
+.gx-pole-flag {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 27px;
+  height: 17px;
+  border-radius: 3px;
+  background: var(--project-accent);
+}
+
+/* To the right of the mast, where the bus does not cover it: the bus stops with
+   its nose at the pole and its body trailing back the way it came. */
+.gx-pole-label {
+  position: absolute;
+  bottom: 0;
+  left: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--project-ink);
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.gx-pole[data-hit="true"] .gx-pole-flag {
+  animation: gx-pole-hit 1.2s ease-out;
+}
+
+@keyframes gx-pole-hit {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--project-accent) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 18px transparent;
+  }
+}
+
+/* `left` is the bus's *nose*, so it can pull up at the pole without covering the
+   name of the stop it has pulled up at. */
+.gx-bus-slot {
+  position: absolute;
+  bottom: 27px;
+  /* Interpolated across the beat rather than transitioned to the end of it.
+     `--bus-from` and `--bus-to` are the road positions at this beat's start and the next
+     one's, published by the pod; `--beat-t` is the fraction through the current beat, which
+     the storyboard writes onto the stage every frame without re-rendering anything.
+
+     This replaced `transition: left 1.5s`, which was the reported lag. A per-beat target
+     with a 1.5s transition on a 2,600ms beat means the bus drives for 1.5s and then stands
+     still for 1.1s — nine lurches with a pause after each. It was not slow, it kept
+     stopping, and no easing curve fixes a value that only exists at nine instants.
+
+     The 180ms that is left does a different job: it smooths the change of *speed* at each
+     beat boundary, since the simulated clock jumps unevenly and every segment therefore has
+     its own velocity. Retargeted each frame it low-passes the motion, which is what now
+     gives the arrival its brake and the departure its pull-away — the two things the
+     per-beat timing functions used to do by hand. */
+  left: calc((var(--bus-from, 0) + (var(--bus-to, 0) - var(--bus-from, 0)) * var(--beat-t, 0)) * 1%);
+  width: 138px;
+  transform: translateX(-100%);
+  transition: left 180ms linear;
+}
+
+.gx-bus {
+  position: relative;
+  display: block;
+}
+
+.gx-bus-body {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.gx-bus-shell {
+  fill: color-mix(in srgb, var(--project-accent) 88%, #0b2b2c);
+}
+
+.gx-bus-sign {
+  fill: color-mix(in srgb, #fff 22%, transparent);
+}
+
+.gx-bus-glass {
+  fill: color-mix(in srgb, #fff 78%, var(--project-accent));
+}
+
+.gx-bus-wheels {
+  fill: #1b2b2e;
+}
+
+/* The route number on the destination sign, which is the same number as the badge
+   in the card. */
+.gx-bus-route {
+  position: absolute;
+  top: 12.5%;
+  left: 7%;
+  width: 22.7%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 19px;
+  text-align: center;
+}
+
+/* --- GRT: a notification, in the corner of your actual window ------------- */
+.gx-os-alert {
+  position: absolute;
+  top: clamp(14px, 2.2vh, 26px);
+  right: clamp(14px, 1.6vw, 28px);
+  display: flex;
+  width: min(374px, calc(100vw - 32px));
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 14px 15px;
+  border-radius: 14px;
+  color: #12201f;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(16, 40, 44, 0.09),
+    0 34px 70px -24px rgba(8, 26, 30, 0.55);
+  /* Comes in the way the operating system's does: from off the right edge, fast,
+     with a small overshoot. */
+  animation: gx-os-in 460ms cubic-bezier(0.18, 1.1, 0.28, 1) both;
+}
+
+@keyframes gx-os-in {
+  from {
+    opacity: 0;
+    transform: translate3d(28px, -8px, 0) scale(0.96);
+  }
+}
+
+/* The claim that belongs to that card, hung on the card.
+   A zero-size point on the notification's left edge, halfway down it, which is all the
+   geometry a `SpecPlate` needs: the plate translates itself fully left of the point and
+   the pin's dot stays on it. So the label is correct at every window width, which is the
+   thing a percentage of the pod could never be — the notification is not in the pod.
+   See `ALERT_SPEC` in the scene for what was wrong before.
+   Delayed behind the card, because a label arriving with the thing it labels reads as part
+   of the notification rather than as an annotation of it. */
+.gx-alert-spec {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0;
+  height: 0;
+  animation: gx-spec-in 300ms ease-out both;
+  animation-delay: 420ms;
+}
+
+@keyframes gx-spec-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .gx-alert-spec {
+      display: none;
+    }
+}
+
+/* At narrow phone widths, the title and the absolute link row no longer fit side
+   by side. Return the links to document flow instead of squeezing or truncating
+   either editorial label. */
+/* This breakpoint held two rules and both of them were undoing the same thing: the
+   links' absolute position at 900px and the right padding at 660px that reserved room
+   for it. Both are gone at the source, so the corrections are gone with them. A patch
+   that only covers the last 440 pixels of a fault that starts at 900 is worse than none,
+   because it makes the fault look handled. */
+
+/* Keep the notification outside the browser, but inside the demo gutter. The old
+   viewport-relative overhang landed its close button exactly on the capture edge. */
+.gx-alert {
+  right: -1rem;
+}
+
+/* Chrome's real popup width stays intact; only surplus vertical air is tightened.
+   All three stops and both later departures remain visible without shrinking the
+   type or turning the sheet into a scroll position the film cannot communicate. */
+.gx-popup .grt-app {
+  padding-bottom: 11px;
+}
+
+.gx-popup .grt-topbar {
+  padding: 11px 0 8px;
+}
+
+.gx-popup .grt-feed {
+  margin-bottom: 8px;
+}
+
+.gx-popup .grt-stop-list {
+  gap: 8px;
+}
+
+.gx-popup .grt-stop-card {
+  padding: 10px 12px 9px;
+}
+
+.gx-popup .grt-stop-meta {
+  margin-top: 3px;
+}
+
+.gx-popup .grt-departures {
+  margin-top: 7px;
+}
+
+.gx-popup .grt-departure {
+  min-height: 46px;
+  gap: 8px;
+  padding-top: 7px;
+}
+
+.gx-popup .grt-departure-note,
+.gx-popup .grt-departure-then {
+  min-height: 14px;
+  gap: 5px;
+  margin-top: 2px;
+  line-height: 1.25;
+}
+
+.gx-popup .grt-departure-then {
+  margin-top: 1px;
+}
+
+
+/* Rules that need one of this scene's own classes as an ancestor to match at all —
+   they style bare elements and shared label markup, but only ever inside this scene. */
+
+.gx-lights i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(16, 40, 44, 0.16);
+}
+
+.gx-action .grt-mark,
+.gx-action .grt-mark svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  border-radius: 0;
+}
+
+.gx-page-head b {
+  color: rgba(16, 40, 44, 0.72);
+  font-weight: 750;
+}
+
+/* The row height is what keeps this column taller than the popup beside it. At 74px
+   the popup hung ~40px below the window and the bus leaving at the end of the loop
+   passed behind it, which looks like a clipping bug rather than like depth. */
+.gx-agenda li {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  min-height: 84px;
+  border-top: 1px solid rgba(16, 40, 44, 0.09);
+}
+
+.grt-brand p {
+  margin: 0;
+}
+
+.grt-mark,
+.grt-mark svg {
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 11px;
+  color: var(--accent);
+}
+
+.gx-bell svg {
+  width: 17px;
+  height: 17px;
+}
+
+.gx-alert-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.gx-alert-source small {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.gx-alert-copy p {
+  margin: 0;
+}
+
+.gx-alert-close svg {
+  width: 15px;
+  height: 15px;
+}
+
+.gx-pole-label b {
+  font-weight: 700;
+}
+
+.gx-pole-label span {
+  color: var(--project-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}

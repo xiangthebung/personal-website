@@ -20,17 +20,23 @@ sitting there is a deploy candidate.
 
 | file | composer | status |
 | --- | --- | --- |
+| `Happy Birthday.musicxml` | arr. David Bauguess | freely reproducible, per the arranger's own notice on the score |
 | `Draw On, Sweet Night.musicxml` | John Wilbye (1574–1638) | public domain |
 | `Quick! We have but a second.musicxml` | C. V. Stanford (1852–1924) | public domain |
-| `Warm-up in four parts.musicxml` | generated | written for the repository |
 
-A fourth sample used to sit here, a setting of *Smávinir fagrir*. Its own
-`credit-words` name the composer as **Jón Nordal, born 1926**, so the music is
-comfortably inside copyright and could not ship on a public page. It was removed
-from both projects. The generated warm-up replaced it deliberately rather than
-incidentally: two of the test suites depended on having a third sample, and one
-browser test needs a score where two voices share a staff, so the generator
-reproduces that shape.
+`Happy Birthday` is the one this site's pod opens; see `SCORE` in
+`app/demos/choir-practice/demo.tsx`, and the test that checks the pod still names a
+score that is actually here.
+
+Two samples have been removed from both projects over time, for opposite reasons.
+A setting of *Smávinir fagrir* went because its own `credit-words` name the
+composer as **Jón Nordal, born 1926** — comfortably inside copyright, and not
+publishable on a public page. A generated "Warm-up in four parts" replaced it, and
+has now gone too: it was a harmony exercise rather than music, and it existed only
+to give one browser test a score where two voices share a staff. That shape is a
+test fixture in the source repository now
+(`e2e/fixtures/two-voices-on-one-staff.js`), loaded through the app's file input,
+so the three samples that ship are three real pieces.
 
 ## Keeping it current
 

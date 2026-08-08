@@ -51,6 +51,15 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Xiang Li",
     description: DESCRIPTION,
+    icons: {
+      icon: [
+        { url: "/icon.svg", type: "image/svg+xml" },
+        { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+        { url: "/favicon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/favicon-512.png", sizes: "512x512", type: "image/png" },
+      ],
+      apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    },
     openGraph: {
       title: "Xiang Li",
       description: DESCRIPTION,
@@ -78,10 +87,26 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  /* Who this page is about, for anything that reads pages by machine. Only
+     claims that hold anywhere the site is served, so no URL: the host is not
+     known here, and a hardcoded one would be the exact kind of quietly-stale
+     fact this site exists to avoid. */
+  const person = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "Xiang Li",
+    email: "mailto:xiangli3625@gmail.com",
+    sameAs: ["https://github.com/xiangthebung"],
+  };
+
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(person) }}
+        />
       </body>
     </html>
   );

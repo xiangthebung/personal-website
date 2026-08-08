@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Backdrop, BackdropFront } from "./backdrops";
 import { Closing } from "./closing";
 import { IndexMark } from "./index-marks";
-import { MediaRail, ProjectFocusManager } from "./page-chrome";
+import { MediaRail, MotionHold, ProjectFocusManager } from "./page-chrome";
 import { DemoMount } from "./demos/demo-mount";
 import { policiesFor } from "./legal/policies";
 import { mediaAsset } from "./media-manifest";
@@ -317,25 +317,34 @@ export default function Home() {
 
       {/* A compact route through the long project run. It stays hidden over the
           hero and gallery; ProjectFocusManager reveals it only while a project
-          owns the viewport and marks the matching destination. */}
-      <nav className="project-dock" aria-label="Project navigation">
+          owns the viewport and marks the matching destination.
+
+          A div holding a nav rather than a nav itself, because the last thing in it
+          is not a destination: `MotionHold` stops every film on the page, and a
+          button that goes nowhere does not belong inside a navigation landmark. */}
+      <div className="project-dock">
         <a className="project-dock-home" href="#top" aria-label="Back to the top">
           XL
         </a>
-        <span className="project-dock-links">
+        <nav className="project-dock-links" aria-label="Project navigation">
           {projects.map((project) => (
             <a
               href={`#${project.id}`}
               key={project.id}
               data-project-dock={project.id}
+              /* Same palette hook as the hero index. The dock is on screen for the
+                 whole project run, so seven coloured numerals is the one place the
+                 page can show its shape while you are inside it. */
+              data-theme={project.theme}
               title={project.name}
             >
               <span>{project.number}</span>
               <strong>{project.name}</strong>
             </a>
           ))}
-        </span>
-      </nav>
+        </nav>
+        <MotionHold />
+      </div>
 
       <section className="hero" aria-labelledby="hero-title">
         <picture className="hero-art">
@@ -382,6 +391,11 @@ export default function Home() {
             <a
               href={`#${project.id}`}
               key={project.id}
+              /* Which of the six rooms this row is a door into. The stylesheet turns
+                 it into a colour; see `--accent-*` and `.project-index a[data-theme]`.
+                 An attribute rather than an inline custom property, so the palette
+                 stays in one file instead of being half in this one. */
+              data-theme={project.theme}
               style={{ "--order": order } as CSSProperties}
             >
               <span className="project-index-number">{project.number}</span>

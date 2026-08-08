@@ -33,6 +33,7 @@ import {
   type ReactNode,
   type WheelEvent,
 } from "react";
+import { setHeld, useHeld } from "./demos/scene/hold";
 
 /**
  * Panning a rail must not start a native image drag. Images carry
@@ -524,7 +525,78 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
   );
 }
 
+/**
+ * The control that holds every film on the page still.
+ *
+ * The README has argued for a long time that this site should not honour
+ * `prefers-reduced-motion` — the scenes are the content, so obeying an ambient setting
+ * turns the page into captions describing motion that never arrives, and on Windows
+ * that setting is switched on by battery savers and remote sessions rather than by
+ * anybody choosing it. The argument ends with an obligation: motion control belongs on
+ * the page, as something a visitor can find and press.
+ *
+ * This is it, and it does something better than stopping. Each scene long ago nominated
+ * the single frame that carries its argument — see `stillBeat` in every pod — so
+ * pressing this does not freeze six scenes mid-gesture, it *cuts to the point*: the
+ * badge that has just lost its red, the shot you cannot see anything in, the pack being
+ * read with the network down. Every label that has accumulated stays pinned to its
+ * evidence, so the page stops being seven films and becomes seven labelled diagrams,
+ * which is a genuinely different way to read it rather than a lesser one.
+ *
+ * It lives in the dock because the dock is the furniture of the project run, and the
+ * project run is where the films are.
+ */
+export function MotionHold() {
+  const held = useHeld();
+
+  return (
+    <button
+      className="dock-hold"
+      type="button"
+      aria-pressed={held}
+      /* The label says what pressing it does, not what state it is in — a toggle
+         labelled with its own state makes a screen reader read the opposite of what
+         `aria-pressed` just said. */
+      aria-label={held ? "Let the scenes run" : "Hold the scenes on one frame"}
+      title={held ? "Let the scenes run" : "Hold the scenes on one frame"}
+      onClick={() => setHeld(!held)}
+    >
+      {/* Two bars for hold, a triangle for run: the same pair the gallery's clip
+          control draws, so the page has one vocabulary for "this moves". */}
+      <span aria-hidden="true" />
+    </button>
+  );
+}
+
+/**
+ * A note for whoever opens the console.
+ *
+ * The people most likely to press F12 on a page like this are the people it is
+ * written for, and the thing they are most likely to be checking is whether the seven
+ * running scenes are seven videos. They are not, and that is the single most
+ * interesting fact about how this page is built — so it is worth two lines to anyone
+ * who went looking, and worth nothing to anyone who did not, which is the correct
+ * shape for an easter egg.
+ *
+ * Once per load, `log` rather than anything louder, and no art: a console banner large
+ * enough to scroll a real error off the screen is a page being rude to a developer in
+ * the name of delighting one.
+ */
+function useConsoleNote() {
+  useEffect(() => {
+    const ink = "color:#161917;font:600 13px ui-serif,Georgia,serif";
+    const soft = "color:#6d726e;font:12px ui-monospace,monospace";
+    console.log(
+      `%cXiang Li%c\nNothing here is a video. Every scene is a storyboard of timed beats —\nJavaScript owns when, CSS owns what it looks like.\ngithub.com/xiangthebung`,
+      ink,
+      soft,
+    );
+  }, []);
+}
+
 export function ProjectFocusManager() {
+  useConsoleNote();
+
   useEffect(() => {
     const projects = Array.from(
       document.querySelectorAll<HTMLElement>("[data-project-section]"),

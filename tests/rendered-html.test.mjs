@@ -771,6 +771,117 @@ test("the Choir pod inks each voice the colour the app engraves it in", async ()
   }
 });
 
+/**
+ * Every `@keyframes` ships in the same stylesheet as the rules that name it.
+ *
+ * The scenes' styles used to live in `app/globals.css` — twelve thousand lines of it —
+ * and now sit in `app/demos/<id>/demo.css`, loaded with the scene's own lazy chunk.
+ * That is a real improvement and it introduces exactly one new way to be wrong, which
+ * this test exists to catch, because it caught it the day the move was made.
+ *
+ * `globals.css` is always there. A demo's stylesheet is not: it arrives when its chunk
+ * does, which is a few hundred milliseconds after the section it belongs to has been
+ * scrolled to. So a `@keyframes` block that moved into a chunk, whose consumer is a
+ * rule that correctly stayed behind — a section entrance, say, on `.project-veil` —
+ * is asked to play before its definition exists. The animation silently does not run.
+ * Nothing throws, nothing logs, and the only symptom is an entrance nobody sees.
+ *
+ * Two of N-Back's entrance keyframes were moved that way, on the grounds that their
+ * names began `nb-`. The names were the scene's; the elements were the section's.
+ *
+ * The reverse is checked too, and it is only a weight problem rather than a bug: a
+ * keyframes block sitting in the always-loaded stylesheet that only a lazy chunk ever
+ * uses is bytes on the critical path for a scene that may never be reached.
+ */
+test("every keyframes block ships with the rules that use it", async () => {
+  const globals = await read("../app/globals.css");
+  const demoDirs = (await readdir(new URL("../app/demos/", import.meta.url), { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  const demos = [];
+  for (const name of demoDirs) {
+    if (!(await exists(`../app/demos/${name}/demo.css`))) continue;
+    demos.push({ name, css: await read(`../app/demos/${name}/demo.css`) });
+  }
+  assert.ok(demos.length >= 5, `expected most scenes to own a stylesheet, found ${demos.length}`);
+
+  /** Does this stylesheet name that animation in an `animation`/`animation-name`? */
+  const uses = (css, animation) =>
+    new RegExp(
+      String.raw`animation(?:-name)?\s*:[^;}]*(?<![\w-])${animation}(?![\w-])`,
+    ).test(css);
+
+  const named = (css) => [...css.matchAll(/@keyframes\s+([A-Za-z0-9_-]+)/g)].map((m) => m[1]);
+
+  for (const demo of demos) {
+    for (const animation of named(demo.css)) {
+      assert.ok(
+        !uses(globals, animation),
+        `@keyframes ${animation} is in ${demo.name}/demo.css but globals.css plays it. ` +
+          `globals is always loaded and that chunk is not, so the animation is asked ` +
+          `for before it exists and never runs. Move the keyframes to globals.css.`,
+      );
+      for (const other of demos) {
+        assert.ok(
+          other.name === demo.name || !uses(other.css, animation),
+          `@keyframes ${animation} is in ${demo.name}/demo.css but ${other.name} plays it; ` +
+            `neither chunk can rely on the other having loaded.`,
+        );
+      }
+    }
+  }
+
+  for (const animation of named(globals)) {
+    if (uses(globals, animation)) continue;
+    const user = demos.find((demo) => uses(demo.css, animation));
+    assert.ok(
+      !user,
+      `@keyframes ${animation} sits in globals.css but only ${user?.name} uses it; ` +
+        `move it into that scene's stylesheet so it is not on the critical path.`,
+    );
+  }
+});
+
+/**
+ * The scenes' styles stay out of the always-loaded stylesheet.
+ *
+ * This is the check that keeps the refactor from silently undoing itself. The way
+ * `globals.css` reached twelve thousand lines was never a decision — it was a hundred
+ * small ones, each of them "this rule is easiest to add at the bottom of the file I
+ * already have open". The cost was not untidiness: three separate live rules were
+ * destroyed by dangling selectors left behind when neighbouring code was deleted, and
+ * every one of them shipped, because at that size nobody reads the file whole.
+ */
+test("a scene's own styles live with the scene, not in globals.css", async () => {
+  const globals = (await read("../app/globals.css")).replace(/\/\*[\s\S]*?\*\//g, " ");
+
+  /* Prefix per scene. A selector whose *subject* — the rightmost compound, the thing
+     actually being styled — carries one of these is scene furniture and belongs in
+     that scene's stylesheet. Section furniture (`.project-*`, the veil, the ambience)
+     is server-rendered and correctly stays here however it is qualified. */
+  const SCENE = /\.(nb|gx|pp|pdfx|choir|dc|nn)-[\w-]+$/;
+
+  const offenders = [];
+  for (const [, prelude] of globals.matchAll(/(^|\})\s*([^{}@][^{}]*?)\{/g)) {
+    for (const selector of prelude.split(",")) {
+      const compounds = selector.trim().split(/\s*[\s>+~]\s*/).filter(Boolean);
+      const subject = compounds[compounds.length - 1] ?? "";
+      /* Pseudo-elements and states are stripped so `.nb-cell:hover` and
+         `.nb-cell::after` are judged by the class they hang off. */
+      const bare = subject.replace(/::?[\w-]+(\([^)]*\))?/g, "");
+      if (SCENE.test(bare)) offenders.push(selector.trim());
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `these style scene internals from the always-loaded stylesheet; they belong in ` +
+      `app/demos/<scene>/demo.css:\n  ${offenders.slice(0, 12).join("\n  ")}`,
+  );
+});
+
 /* ===========================================================================
    /legal
    ---------------------------------------------------------------------------

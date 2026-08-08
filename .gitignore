@@ -51,3 +51,9 @@ next-env.d.ts
 # rather than about the work of changing it. Put that in a comment beside the
 # code, which is where the next reader will be standing.
 /ai/
+
+# Editor and assistant scaffolding. Same argument as `/ai/` above: these describe
+# the work of changing the project rather than the project, they are written by
+# whichever tool happened to be open, and none of it is reviewed.
+/.claude/
+/.abacusai/

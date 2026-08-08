@@ -68,8 +68,14 @@ a {
   outline-offset: 4px;
 }
 
+/* Selected text is in the colour of whichever project you are standing in.
+   `--focus-accent` is already written onto the root on every focus change, for the
+   progress trail and the dock, so this costs nothing to read and nothing to maintain
+   — and it is the cheapest way to make the page feel like somewhere with rooms in it
+   rather than one document. Nudged toward black because the six accents are chosen to
+   sit on pale paper, and a highlight has to carry white type instead. */
 ::selection {
-  background: #161917;
+  background: color-mix(in srgb, var(--focus-accent, #161917) 88%, #000);
   color: #fff;
 }
 
@@ -88,7 +94,6 @@ a {
 .eyebrow,
 .project-number,
 .project-platform,
-.scene-kicker > span,
 
 /* Padded so the hit area clears 24px. Every link in these rows measured 16 to 19px
    tall, which is a fine size for a word and a poor size for a target — and these are
@@ -189,14 +194,22 @@ a:hover .external-arrow {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
+/* The name is the loudest thing on the site, and it was set at a size that let the
+   photograph win. 9rem over a full-bleed portrait reads as a caption on someone
+   else's picture; at this size it is the picture's equal and the two argue, which is
+   the point of putting type on a face at all.
+
+   The measure comes off with it. A 900px cap on a line that now runs past 1100 was
+   breaking "Xiang Li" over two lines at the exact widths where it finally had room to
+   sit on one. */
 .hero-copy h1 {
-  max-width: 900px;
+  max-width: none;
   margin: 0.9rem 0 1.2rem;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(4.5rem, 9vw, 9rem);
+  font-size: clamp(4.5rem, 13.5vw, 15rem);
   font-weight: 400;
   letter-spacing: -0.075em;
-  line-height: 0.84;
+  line-height: 0.82;
 }
 
 .hero-copy > p:last-child {
@@ -571,77 +584,108 @@ html.has-project-focus body {
     var(--project-bg);
 }
 
-/* Give each project its own color atmosphere while keeping text contrast high. */
+/* The seven rooms' signature colours, named once.
+
+   They used to be six literals buried one per theme block, which was fine while the
+   only thing that wanted a project's colour was the project. The hero index wants them
+   too — each row is a door into one of these rooms and now says so — and a palette
+   written down twice is a palette that drifts. This site already keeps one copied
+   palette honest with a test (the Choir voices against the vendored app's own
+   engraving); the cheaper answer, where both readers are in this file, is to not copy
+   it. */
+:root {
+  --accent-mint: #0b8d73;
+  --accent-paper: #4b4b4b;
+  --accent-black: #5d56c7;
+  --accent-white: #7b4fc8;
+  --accent-navy: #3378aa;
+  --accent-forest: #4f8b5d;
+}
+
+/* Give each project its own color atmosphere while keeping text contrast high.
+
+   The six grounds were deepened deliberately — the page was seven pastel washes a
+   shade apart from the paper between them, which reads as one long cream document
+   with the colour turned almost off, and the white scene pods had nothing to sit
+   against. These are the same six hues carrying enough saturation to be a room.
+
+   `--project-muted` was re-solved rather than eyeballed after that change, and it had
+   to be: every one of the six had fallen to between 3.3 and 3.8 against its own
+   ground, and the muted tone is not decoration here — it sets the `why` line, which is
+   the one sentence stating the problem each project exists for. Each is now the
+   *lightest* value of its own hue that clears 4.6:1 against the darkest stop of its
+   own gradient, which is the worst case rather than the average one. Headings were
+   never at risk and were left alone; they run 5.7:1 to 10.2:1. */
 .project.project--mint {
-  --project-bg: #d8f2e7;
+  --project-bg: #a5e6ce;
   --project-ink: #173f36;
-  --project-muted: #4f7168;
+  --project-muted: #3e5952;
   --project-line: rgba(23, 63, 54, 0.16);
-  --project-accent: #0b8d73;
+  --project-accent: var(--accent-mint);
   background:
     radial-gradient(circle at 84% 18%, rgba(255, 207, 102, 0.38), transparent 28%),
     radial-gradient(circle at 10% 88%, rgba(55, 174, 151, 0.26), transparent 34%),
-    linear-gradient(135deg, #e8faef 0%, var(--project-bg) 58%, #cbe9e5 100%);
+    linear-gradient(135deg, #c7f2df 0%, var(--project-bg) 58%, #8fd8c6 100%);
 }
 
 .project.project--paper {
-  --project-bg: #e5e5e5;
+  --project-bg: #d5d3ce;
   --project-ink: #252525;
-  --project-muted: #686868;
+  --project-muted: #4b4b4b;
   --project-line: rgba(37, 37, 37, 0.17);
-  --project-accent: #4b4b4b;
+  --project-accent: var(--accent-paper);
   background:
     radial-gradient(circle at 78% 24%, rgba(0, 0, 0, 0.08), transparent 31%),
     radial-gradient(circle at 15% 82%, rgba(255, 255, 255, 0.62), transparent 34%),
-    linear-gradient(140deg, #f4f4f4 0%, var(--project-bg) 58%, #d2d2d2 100%);
+    linear-gradient(140deg, #e8e6e1 0%, var(--project-bg) 58%, #bfbdb7 100%);
 }
 
 .project.project--black {
-  --project-bg: #dce6f8;
+  --project-bg: #bcd0f4;
   --project-ink: #26375b;
-  --project-muted: #5e6e91;
+  --project-muted: #3d485e;
   --project-line: rgba(38, 55, 91, 0.16);
-  --project-accent: #5d56c7;
+  --project-accent: var(--accent-black);
   background:
     radial-gradient(circle at 83% 20%, rgba(133, 104, 224, 0.3), transparent 30%),
     radial-gradient(circle at 12% 86%, rgba(79, 151, 223, 0.3), transparent 34%),
-    linear-gradient(135deg, #edf3ff 0%, var(--project-bg) 57%, #d8d4f2 100%);
+    linear-gradient(135deg, #d8e6ff 0%, var(--project-bg) 57%, #b9b2ec 100%);
 }
 
 .project.project--white {
-  --project-bg: #eee0fa;
+  --project-bg: #dcc4f6;
   --project-ink: #49345f;
-  --project-muted: #766187;
+  --project-muted: #544560;
   --project-line: rgba(73, 52, 95, 0.16);
-  --project-accent: #7b4fc8;
+  --project-accent: var(--accent-white);
   background:
     radial-gradient(circle at 18% 24%, rgba(79, 185, 206, 0.25), transparent 30%),
     radial-gradient(circle at 84% 82%, rgba(211, 105, 173, 0.27), transparent 35%),
-    linear-gradient(138deg, #f5edff 0%, var(--project-bg) 56%, #e7d7f4 100%);
+    linear-gradient(138deg, #ecdcff 0%, var(--project-bg) 56%, #cdb0ee 100%);
 }
 
 .project.project--navy {
-  --project-bg: #d9eaf7;
+  --project-bg: #b3d8f0;
   --project-ink: #243e60;
-  --project-muted: #58718e;
+  --project-muted: #3d4e62;
   --project-line: rgba(36, 62, 96, 0.16);
-  --project-accent: #3378aa;
+  --project-accent: var(--accent-navy);
   background:
     radial-gradient(circle at 16% 22%, rgba(74, 166, 205, 0.28), transparent 30%),
     radial-gradient(circle at 82% 78%, rgba(227, 130, 160, 0.25), transparent 34%),
-    linear-gradient(135deg, #e8f6ff 0%, var(--project-bg) 56%, #d8deef 100%);
+    linear-gradient(135deg, #d3ecff 0%, var(--project-bg) 56%, #a8c2e2 100%);
 }
 
 .project.project--forest {
-  --project-bg: #dcebd4;
+  --project-bg: #bfe0ae;
   --project-ink: #294733;
-  --project-muted: #5d765f;
+  --project-muted: #425443;
   --project-line: rgba(41, 71, 51, 0.16);
-  --project-accent: #4f8b5d;
+  --project-accent: var(--accent-forest);
   background:
     radial-gradient(circle at 80% 20%, rgba(235, 186, 77, 0.3), transparent 29%),
     radial-gradient(circle at 14% 84%, rgba(77, 151, 100, 0.26), transparent 34%),
-    linear-gradient(140deg, #edf7df 0%, var(--project-bg) 58%, #cfe0c6 100%);
+    linear-gradient(140deg, #dcefc7 0%, var(--project-bg) 58%, #a6cf99 100%);
 }
 
 .project::before {
@@ -859,13 +903,21 @@ html.has-project-focus body {
   color: var(--project-muted);
 }
 
+/* The default, which is the size the two narrow compositions get.
+
+   `beside` and `beside-flip` put the heading in a column next to the scene and the
+   scene takes what it needs first, so that column measures about 336px at 1440 —
+   which is the ceiling on this number, not taste. "Night Neutralizer" at anything
+   past about 3rem breaks into three lines in a 336px column. The two compositions
+   that hand the heading a full-width band are sized separately below, and they are
+   where this page gets to be loud. */
 .project-identity h2 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.55rem, 2.45vw, 2.55rem);
+  font-size: clamp(1.75rem, 3vw, 3rem);
   font-weight: 400;
-  letter-spacing: -0.045em;
-  line-height: 0.95;
+  letter-spacing: -0.05em;
+  line-height: 0.94;
 }
 
 .project-platform-row {
@@ -1148,9 +1200,13 @@ html.has-project-focus body {
 .project[data-stage="stacked"] .project-summary {
   grid-area: 1 / 2;
 }
+/* The full-width band, and the loudest type on the page after the name itself. This
+   composition gives the heading the whole measure — 1180px at 1440 — and it was
+   spending it on 4.6rem. */
 .project[data-stage="stacked"] .project-identity h2 {
-  font-size: clamp(2.4rem, 6vw, 4.6rem);
-  line-height: 0.92;
+  font-size: clamp(2.8rem, 8.5vw, 7rem);
+  letter-spacing: -0.055em;
+  line-height: 0.88;
 }
 
 /* --- variant: offset -----------------------------------------------------
@@ -1180,6 +1236,14 @@ html.has-project-focus body {
   max-width: 46rem;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+/* This one gets 46rem of heading, which is between the narrow columns and the full
+   band, so it is sized between them too. */
+.project[data-stage="offset"] .project-identity h2 {
+  font-size: clamp(2.3rem, 5.4vw, 4.8rem);
+  letter-spacing: -0.052em;
+  line-height: 0.9;
 }
 
 /* The number, as furniture rather than as information. Sits behind everything,
@@ -1215,37 +1279,70 @@ html.has-project-focus body {
    and the well is enough to read as a sequence and not as a queue.
 
    There was a third thing arriving here, staggered per item: the list of notes beside
-   each scene. The list is gone — see `page.tsx` — and so is its stagger. */
+   each scene. The list is gone — see `page.tsx` — and so is its stagger.
 
-.project-heading,
-.project-window {
-  transition:
-    opacity 620ms var(--ease-out-soft),
-    transform 760ms var(--ease-out-soft);
+   Animations rather than transitions, and that is a repair rather than a preference.
+   This was written as a pair of transitions off `:not(.is-seen)`, and none of it had
+   run for a long time: the calm-focus pass much further down sets
+   `html.has-project-focus .project .project-heading { transform: none }` at four
+   classes to this rule's three, and the focus manager adds `has-project-focus` at
+   mount. Measured on a section below the fold, every heading and every well read back
+   `transform: none` with a 260ms opacity transition — so seven sections that were
+   meant to slide and rise in were doing a flat fade, and the ghost number, which the
+   pass does not name, was the only thing still arriving.
+
+   An animation is not decided by specificity. The animation origin outranks every
+   normal author declaration, so this plays over the top of that pass without either
+   rule having to know about the other — and when it finishes, the element is handed
+   straight back to the cascade, which is what keeps the focus dimming in charge
+   afterwards. `backwards` fill, and no `to` keyframe: the implicit end is whatever the
+   cascade says, so a section that arrives while it is not the active one settles at
+   0.32 like its neighbours rather than being pinned bright by its own entrance. */
+
+.project.is-seen .project-heading {
+  animation: project-arrive-heading 760ms var(--ease-out-soft) backwards;
+}
+.project[data-stage="beside-flip"].is-seen .project-heading,
+.project[data-stage="offset"].is-seen .project-heading {
+  animation-name: project-arrive-heading-flip;
+}
+.project.is-seen .project-window {
+  animation: project-arrive-well 760ms var(--ease-out-soft) 90ms backwards;
 }
 
-.project:not(.is-seen) .project-heading {
-  opacity: 0;
-  transform: translate3d(-1.6rem, 0, 0);
-}
-.project[data-stage="beside-flip"]:not(.is-seen) .project-heading,
-.project[data-stage="offset"]:not(.is-seen) .project-heading {
-  transform: translate3d(1.6rem, 0, 0);
-}
+/* Held dark until the section is reached, so nothing arrives having already arrived.
+   The focus pass that would otherwise out-specify these now excludes unseen sections
+   by name — see the note beside its `.is-seen` selectors. */
+.project:not(.is-seen) .project-heading,
 .project:not(.is-seen) .project-window {
   opacity: 0;
-  transform: translate3d(0, 2.2rem, 0) scale(0.985);
 }
-.project .project-window {
-  transition-delay: 90ms;
+
+@keyframes project-arrive-heading {
+  from {
+    opacity: 0;
+    transform: translate3d(-1.6rem, 0, 0);
+  }
+}
+@keyframes project-arrive-heading-flip {
+  from {
+    opacity: 0;
+    transform: translate3d(1.6rem, 0, 0);
+  }
+}
+@keyframes project-arrive-well {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 2.2rem, 0) scale(0.985);
+  }
 }
 
 /* The ghost number arrives last and from further away, because it is the one
    element allowed to be theatrical. */
 .project > .project-ghost-number {
   transition:
-    opacity 900ms ease,
-    transform 1200ms var(--ease-out-soft);
+    opacity 700ms ease,
+    transform 900ms var(--ease-out-soft);
 }
 .project:not(.is-seen) > .project-ghost-number {
   opacity: 0;
@@ -1253,8 +1350,15 @@ html.has-project-focus body {
 }
 
 /* --- signature entrances -------------------------------------------------
-   One per theme, each a physical joke about what the project does. These are the
+   One per project, each a physical joke about what that project does. These are the
    reason the page is worth scrolling twice, and they cost one element each.
+
+   All of them run in about 1.2 seconds, and that is a number rather than a taste. The
+   heading and the well arrive in 760ms; these were taking 1500 to 2100, so a section
+   finished assembling itself and then, most of a second later, finished decorating
+   itself — two events where there should be one. Scenery is allowed to be slower than
+   the words it sits behind, which is why this is not 760 either. It is not allowed to
+   still be arriving after the reader has started reading.
 
    That element is `.project-veil`, and it is new rather than borrowed.
    `.project-ambience` and its two pseudo-elements were the obvious place — they
@@ -1304,12 +1408,12 @@ html.has-project-focus body {
    work: `is-seen` fires at a 0.08 intersection ratio against a viewport shrunk 18% at the
    bottom, which at 1920x1020 is a presence of roughly 0.007. The curtain would be gated
    to nothing and the entrance would simply not happen. */
-.project--navy > .project-veil {
+#night-neutralizer > .project-veil {
   background: #04060a;
   opacity: 0;
-  transition: opacity 1500ms ease;
+  transition: opacity 1100ms ease;
 }
-.project--navy:not(.is-seen) > .project-veil {
+#night-neutralizer:not(.is-seen) > .project-veil {
   opacity: 1;
 }
 
@@ -1393,17 +1497,17 @@ html.has-project-focus body {
 
 /* Decaf: arrives saturated and loses it, which is the extension's own job
    performed on its own section. */
-.project--paper > .project-body {
-  transition: filter 1700ms ease;
+#decaf > .project-body {
+  transition: filter 1200ms ease;
 }
-.project--paper:not(.is-seen) > .project-body {
+#decaf:not(.is-seen) > .project-body {
   filter: saturate(2.4);
 }
 
 /* PDF Explainer: the well arrives as a short stack of slides, the top one sliding
    off the pile into place. */
-.project--black .project-window::before,
-.project--black .project-window::after {
+#pdf-explainer .project-window::before,
+#pdf-explainer .project-window::after {
   position: absolute;
   z-index: -1;
   inset: 0;
@@ -1415,20 +1519,29 @@ html.has-project-focus body {
     opacity 800ms ease,
     transform 1000ms var(--ease-out-soft);
 }
-.project--black .project-window::before {
+#pdf-explainer .project-window::before {
   transform: translate(1.5rem, 1.2rem) rotate(0.8deg);
 }
-.project--black .project-window::after {
+#pdf-explainer .project-window::after {
   transform: translate(0.75rem, 0.6rem) rotate(0.4deg);
 }
-.project--black:not(.is-seen) .project-window::before,
-.project--black:not(.is-seen) .project-window::after {
+#pdf-explainer:not(.is-seen) .project-window::before,
+#pdf-explainer:not(.is-seen) .project-window::after {
   opacity: 0;
   transform: none;
 }
 
+/* The four remaining entrances are keyed to the *section*, not the theme, and that
+   is a repair. Keyed by palette, two of them landed on the wrong project the day the
+   palette map changed: GRT is mint because transit signage is, so a bus network
+   arrived under Choir's staff lines two screens after Choir did — the exact
+   "no two neighbours share a composition" promise, broken at the entrance layer —
+   and the route line whose own comment said it was drawn for GRT was playing over
+   N-Back, a memory game with no route in it. A palette is shared; a joke is not.
+   Section ids are the one name here that cannot drift. */
+
 /* Choir Practice: staff lines rule themselves across the section. */
-.project--mint > .project-veil::before {
+#choir-practice > .project-veil::before {
   position: absolute;
   top: 14%;
   right: 0;
@@ -1442,16 +1555,15 @@ html.has-project-focus body {
   content: "";
   opacity: 0.45;
   transform-origin: left center;
-  transition: transform 1600ms var(--ease-out-soft);
+  transition: transform 1200ms var(--ease-out-soft);
 }
-.project--mint:not(.is-seen) > .project-veil::before {
+#choir-practice:not(.is-seen) > .project-veil::before {
   transform: scaleX(0);
 }
 
-/* GRT Next Bus and PagePack: a line drawn across the section — a route for one, a
-   connection for the other, and it is the same gesture either way. */
-.project--forest > .project-veil::before,
-.project--white > .project-veil::before {
+/* PagePack: a connection drawn across the section, because that is the thing the
+   extension exists to survive losing. */
+#pagepack > .project-veil::before {
   position: absolute;
   top: 24%;
   right: 0;
@@ -1460,12 +1572,145 @@ html.has-project-focus body {
   background: color-mix(in srgb, var(--project-accent) 38%, transparent);
   content: "";
   transform-origin: left center;
-  transition: transform 1700ms var(--ease-out-soft);
+  transition: transform 1200ms var(--ease-out-soft);
 }
-.project--forest:not(.is-seen) > .project-veil::before,
-.project--white:not(.is-seen) > .project-veil::before {
+#pagepack:not(.is-seen) > .project-veil::before {
   transform: scaleX(0);
 }
+
+/* GRT Next Bus: the route draws, and the bus arrives along it when you do. The line
+   is the same gesture PagePack makes — that much of the old shared rule was right —
+   but a route with nothing travelling it is a wire, and this project is about the
+   vehicle. The bus is the ::after: it sets off from outside the section as the line
+   rules itself, and parks at its stop just past a third of the way in, where it stays
+   — the resting frame of this entrance is a bus, waiting, which is the product. */
+#grt-next-bus > .project-veil::before {
+  position: absolute;
+  top: 22%;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--project-accent) 44%, transparent);
+  content: "";
+  transform-origin: left center;
+  transition: transform 1200ms var(--ease-out-soft);
+}
+#grt-next-bus:not(.is-seen) > .project-veil::before {
+  transform: scaleX(0);
+}
+#grt-next-bus > .project-veil::after {
+  position: absolute;
+  top: calc(22% - 7px);
+  /* Its stop is in the heading column's open paper. 34% was the first draft and it
+     parked the bus exactly behind the demo window — an entrance whose resting frame
+     is hidden is an entrance that ends by disappearing, which is the wrong joke for
+     a transit tracker. */
+  left: 16%;
+  width: 26px;
+  height: 12px;
+  border-radius: 3px 5px 2px 2px;
+  background: var(--project-accent);
+  /* Two pale windows, drawn on rather than drawn with more elements. */
+  background-image: linear-gradient(
+    to right,
+    transparent 4px,
+    rgba(232, 246, 240, 0.85) 4px 9px,
+    transparent 9px 13px,
+    rgba(232, 246, 240, 0.85) 13px 18px,
+    transparent 18px
+  );
+  content: "";
+  opacity: 0.85;
+  transition:
+    transform 1300ms var(--ease-out-soft) 100ms,
+    opacity 420ms ease 100ms;
+}
+#grt-next-bus:not(.is-seen) > .project-veil::after {
+  opacity: 0;
+  transform: translateX(clamp(-40vw, -30rem, -12rem));
+}
+
+/* N-Back: the entrance is a round of the game. One cell lights, a second lights
+   somewhere else, then the first lights again — the one two turns back, back — and
+   that third blink is the bright one, because it is the match. Two pseudo-elements
+   play three cues: the ::before owns the first and third blink, the ::after the
+   middle one. They settle faint rather than clearing, the way every entrance here
+   leaves its mark on the wall. */
+#n-back > .project-veil::before,
+#n-back > .project-veil::after {
+  position: absolute;
+  width: clamp(2.2rem, 3.4vw, 3.4rem);
+  height: clamp(2.2rem, 3.4vw, 3.4rem);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--project-accent) 70%, transparent);
+  content: "";
+  opacity: 0;
+}
+/* In the corner of the eye, not the corner of the section: this composition puts
+   the well on the left, and the first draft put the cues at left 9% — behind an
+   opaque dark panel, an entrance performed to nobody. The open ground here is the
+   heading column's lower half. */
+#n-back > .project-veil::before {
+  top: 56%;
+  left: 78%;
+}
+#n-back > .project-veil::after {
+  top: 68%;
+  left: 70%;
+}
+#n-back.is-seen > .project-veil::before {
+  animation: nb-cue-and-match 1500ms ease-out both;
+}
+#n-back.is-seen > .project-veil::after {
+  animation: nb-cue-between 1500ms ease-out both;
+}
+
+/* These two live here, beside the rule that plays them, and not in the scene's own
+   stylesheet where the rest of the nb- keyframes went. The subject is
+   `.project-veil` — server-rendered section furniture — so the animation is asked
+   for the instant the section is reached, which is well before the demo chunk is
+   fetched. A keyframes block that arrives after its one-shot animation has been
+   asked for is a keyframes block that never runs, and nothing errors to say so.
+   A keyframes rule belongs in the same stylesheet as the rules that name it. */
+@keyframes nb-cue-and-match {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  20% {
+    opacity: 0.5;
+  }
+  30%,
+  62% {
+    opacity: 0;
+  }
+  72%,
+  88% {
+    /* The match. Brighter than either cue, because it is the point. */
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.16;
+  }
+}
+
+@keyframes nb-cue-between {
+  0%,
+  36% {
+    opacity: 0;
+  }
+  44%,
+  56% {
+    opacity: 0.5;
+  }
+  66% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.07;
+  }
+}
+
 
 /* The two implementations of the notes list that used to fight over this spot are both
    gone, along with the list. Their history is worth one line, because it was the same
@@ -1690,7 +1935,14 @@ html.has-project-focus body {
   border: 1px solid rgba(240, 239, 233, 0.35);
   border-radius: 50%;
   background: rgba(12, 14, 12, 0.6);
-  color: var(--fun-ink);
+  /* Paper, not ink. The glyph below is drawn in `currentColor` on a near-black
+     scrim, and this was `--fun-ink` — which is the page's near-black, and became
+     near-black when the gallery was redrawn from a dark band onto light paper.
+     So every clip in the gallery carried a play button with an invisible
+     triangle in it: the disc was there, the shape inside it was not. The scrim
+     is dark on purpose — it has to hold over any frame of any video — so the
+     mark on top of it has to be light, whatever the section around it is. */
+  color: color-mix(in srgb, #fff 92%, var(--paper));
   cursor: pointer;
   opacity: 0;
   place-items: center;
@@ -1758,9 +2010,27 @@ html.has-project-focus body {
     transform 180ms ease;
 }
 
+/* Inverted on hover: dark disc, paper chevron. The background already went dark
+   here and the ink did not follow, so the arrow vanished at exactly the moment a
+   pointer arrived on it — the one moment it has to be legible. */
 .fun-nav-button:hover:not(:disabled) {
   background: rgba(60, 70, 63, 0.84);
+  color: color-mix(in srgb, #fff 92%, var(--paper));
   transform: scale(1.06);
+}
+
+/* And the chevron leans the way it would take you. Two pixels, on the control
+   that moves a rail sideways — small enough to be felt rather than watched. */
+.fun-nav-button svg {
+  transition: transform 180ms var(--ease-out-soft);
+}
+.fun-nav:hover .fun-nav-button:first-child:not([data-disabled="true"]) svg,
+.fun-nav-button:first-child:focus-visible svg {
+  transform: translateX(-2px);
+}
+.fun-nav:hover .fun-nav-button:last-child:not([data-disabled="true"]) svg,
+.fun-nav-button:last-child:focus-visible svg {
+  transform: translateX(2px);
 }
 
 .fun-nav-button:disabled {
@@ -1878,59 +2148,6 @@ html.has-project-focus body {
     padding-bottom: 0.75rem;
   }
 
-  .scene-card,
-
-  .project > .portrait-popout {
-    --popout-top: 5.25rem;
-    --popout-w: 180px;
-    top: var(--popout-top);
-  }
-
-  .project--navy > .portrait-popout {
-    --popout-w: 180px;
-    left: 20%;
-  }
-
-  .project--navy > .portrait-popout .scene-callout {
-    right: -12rem;
-    width: 220px;
-  }
-
-  .project--black > .portrait-popout {
-    --popout-w: 220px;
-  }
-
-  .project--black > .portrait-popout--step-0,
-  .project--black > .portrait-popout--step-2 {
-    left: 8%;
-  }
-
-  .project--black > .portrait-popout--step-1,
-  .project--black > .portrait-popout--step-3 {
-    left: 54%;
-  }
-
-  .project--black > .portrait-popout .scene-callout {
-    width: 220px;
-  }
-
-  .project--navy .scene-card--step-4 .scene-callout {
-    left: 7rem;
-    width: min(240px, 68%);
-  }
-
-  .project--navy .scene-card--step-5 .scene-callout {
-    top: 44%;
-    right: 0.7rem;
-    width: 72%;
-  }
-
-  .project--navy .scene-card--step-6 .scene-callout {
-    top: 11rem;
-    right: 0.7rem;
-    width: 72%;
-  }
-
   .fun-section {
     padding-right: 1rem;
     padding-left: 1rem;
@@ -1989,8 +2206,18 @@ html.has-project-focus body {
     transform 620ms var(--ease-out-soft);
 }
 
-.project:not(.is-active) .project-heading,
-.project:not(.is-active) .project-window {
+/* `.is-seen` again, and for the same reason as the pass below this one: the resting
+   brightness of a section that is not the one you are reading is a statement about
+   sections you have already met. Applied to one you have not, it pre-empts the
+   entrance — the section is sitting at its settled opacity before it is reached, so
+   the arrival has nowhere to arrive from.
+
+   Three passes in this file set opacity on these two elements: this, the focus pass
+   below, and the arrival block above. They were written in that order and each was
+   added in front of the last rather than into it, which is why the earliest one — the
+   entrance — had stopped running. The gate is the same in all three now. */
+.project.is-seen:not(.is-active) .project-heading,
+.project.is-seen:not(.is-active) .project-window {
   opacity: 0.38;
 }
 
@@ -2004,16 +2231,6 @@ html.has-project-focus body {
   transform: translate3d(0, 14px, 0) scale(0.992);
 }
 
-.project:not(.is-active) > .portrait-popout {
-  visibility: hidden;
-  opacity: 0;
-}
-
-.project.is-active > .portrait-popout {
-  visibility: visible;
-  opacity: 1;
-}
-
 /* Scroll position is already frame-coalesced in JavaScript. Retargeting a CSS
    transition on each frame adds lag and keeps compositor work alive. */
 .project::before,
@@ -2024,46 +2241,6 @@ html.has-project-focus body {
 .project.project--navy::before,
 .project.project--forest::before {
   transition: none;
-}
-
-/* The card itself follows the rail immediately. Its inner layer owns the
-   discrete entrance animation, so scroll motion never retargets that easing. */
-
-.scene-card--portrait-proxy,
-.scene-card--portrait-proxy.is-visible,
-
-.project > .portrait-popout {
-  transition:
-    opacity 320ms ease,
-    visibility 0s linear 320ms;
-}
-
-.project.is-active > .portrait-popout {
-  transition:
-    opacity 360ms ease 80ms,
-    visibility 0s linear;
-}
-
-.project > .portrait-popout.is-positioned {
-  left: 0 !important;
-}
-
-/* `.fun-media picture` used to be in this list, and being later in the file it
-   won: it stretched every gallery picture to fill its container, which is the
-   opposite of what the gallery now wants. The gallery's own rule sizes it to the
-   image. Do not re-add it here. */
-.scene-image picture {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.project--paper .scene-image img {
-  transition: none;
-}
-
-.project:not(.project--paper) .scene-image img {
-  filter: none;
 }
 
 /* The dangling `.project-scroll-help,` that used to sit here took this whole
@@ -2091,16 +2268,6 @@ html.has-project-focus body {
    entrance states are progressive enhancements enabled after observers mount. */
 html:not(.has-project-focus) .project-heading,
 html:not(.has-project-focus) .project-window {
-  opacity: 1;
-  transform: none;
-}
-
-html:not(.has-project-focus) .project > .portrait-popout {
-  visibility: visible;
-  opacity: 1;
-}
-
-html:not(.has-project-focus) .scene-card-motion {
   opacity: 1;
   transform: none;
 }
@@ -2175,84 +2342,51 @@ html.has-project-focus .project.is-after-active .project-window {
   transform: none;
 }
 
-html.has-project-focus .project.is-active .project-heading,
-html.has-project-focus .project.is-active .project-window {
+/* Every one of these carries `.is-seen`, and that is what hands the first few hundred
+   milliseconds of a section's life back to the arrival block far above.
+
+   Without it this pass owns opacity from the moment the stylesheet loads, at four
+   classes against that block's three, and a section below the fold is already sitting
+   at its resting brightness before it has been reached — so there is nothing left for
+   an entrance to move. `is-seen` is set once, on approach, and never removed, which
+   makes it the exact seam between the two ideas: before it, a section is arriving and
+   the entrance is in charge; after it, the section is furniture and this pass is. */
+html.has-project-focus .project.is-seen.is-active .project-heading,
+html.has-project-focus .project.is-seen.is-active .project-window {
   opacity: 1;
 }
 
-html.has-project-focus .project:not(.is-active) .project-heading {
+html.has-project-focus .project.is-seen:not(.is-active) .project-heading {
   opacity: 0.32;
 }
 
-html.has-project-focus .project:not(.is-active) .project-window {
+html.has-project-focus .project.is-seen:not(.is-active) .project-window {
   opacity: 1;
 }
 
-/* Cards leave from the bottom and fan toward alternating sides. The rail itself
-   stays still, so scrolling between projects does not move the whole viewport. */
-html.has-project-focus
-  .project-track
+/* Everything that used to be here belonged to the screenshot rail — the track, the
+   cards, the portrait pop-outs and their alternating exit fans. The rail was deleted
+   two redesigns ago and none of those class names appears anywhere in the source.
+   (Deliberately not writing them out, for the reason given in the note about the
+   shortcut sheet further down: the dead-class audit reads class tokens straight out of
+   this file's text, so a sentence about a deleted rule becomes a rule with nothing
+   using it.)
 
-html.has-project-focus
-  .project-track
+   They did not go quietly. Eight of the selectors had lost their `{ }` bodies, and a
+   body-less selector does not error — it fuses with whatever rule comes next. So the
+   chevron rule below was reached through four dead ancestors, one of which matched an
+   `html` element as a descendant of itself, which matches nothing. The gallery's
+   arrows shipped unsized: 34.8px of chevron inside a 36.8px button, against the
+   16.8px asked for here.
 
-html.has-project-focus
-  .project
-  .project-track
-  > .scene-card
+   That is the third time this stylesheet has lost a live rule to a dangling selector —
+   see the two notes above about `@supports` blocks being swallowed the same way. The
+   fault is invisible to both audit scripts, because the fused selector is valid CSS and
+   the class it eats is still "used". `node scripts/dead-css.mjs` is what finds the
+   corpses; deleting them promptly is what stops them taking a neighbour with them. */
 
-html.has-project-focus
-  .project:not(.is-active)
-  .project-track
-  > .scene-card
-
-html.has-project-focus
-  .project.is-active
-  .project-track
-  > .scene-card.is-visible
-
-/* Portrait screenshots use the same alternating fan without moving the
-   JS-positioned card shell. Delayed visibility prevents adjacent overlap. */
-html.has-project-focus .portrait-popout--step-0,
-html.has-project-focus .portrait-popout--step-2,
-html.has-project-focus .portrait-popout--step-4 {
-  --focus-exit-x: clamp(-140px, -9vw, -56px);
-  --focus-exit-turn: -4deg;
-}
-
-html.has-project-focus .portrait-popout--step-1,
-html.has-project-focus .portrait-popout--step-3,
-html.has-project-focus .portrait-popout--step-5 {
-  --focus-exit-x: clamp(56px, 9vw, 140px);
-  --focus-exit-turn: 4deg;
-}
-
-html.has-project-focus .project > .portrait-popout {
-  visibility: visible;
-  opacity: 1;
-  transition: visibility 0s linear;
-}
-
-html.has-project-focus .project:not(.is-active) > .portrait-popout {
-  visibility: hidden;
-  opacity: 1;
-  transition: visibility 0s linear 540ms;
-}
-
-html.has-project-focus
-  .project
-  > .portrait-popout
-
-html.has-project-focus
-  .project:not(.is-active)
-  > .portrait-popout
-
-html.has-project-focus
-  .project.is-active
-  > .portrait-popout.is-visible
-
-/* The chevrons inside them. Sized here rather than in the markup, because the
-   markup's job is the shape and the stylesheet's is how big it is. */
+/* The chevrons inside the gallery's arrow buttons. Sized here rather than in the
+   markup, because the markup's job is the shape and the stylesheet's is how big it is. */
 .fun-nav-button svg {
   width: 1.05rem;
   height: 1.05rem;
@@ -2309,8 +2443,27 @@ html.has-project-focus
   transition: transform 420ms var(--ease-out-back);
 }
 
+/* Poke one and its neighbours get out of the way.
+
+   The nudge on its own was a letter twitching by a ninth of an em, on type nine rem
+   tall — technically a hover state and, at that size, indistinguishable from nothing.
+   A name set this large is the most inviting thing on the page to touch and it was the
+   least rewarding, so the letters now behave like objects: the one under the pointer
+   lifts and turns, and the two either side lean away from it.
+
+   The lean is what makes it read as physics rather than as a rollover, and it is two
+   sibling selectors rather than any script — `:has()` reaches backwards for the letter
+   before, `+` reaches forwards for the letter after. */
 .hero-letter:hover {
-  transform: translateY(-0.09em) rotate(-4deg);
+  transform: translateY(-0.17em) rotate(-7deg) scale(1.06);
+}
+
+.hero-letter:has(+ .hero-letter:hover) {
+  transform: translateY(-0.06em) rotate(-4deg);
+}
+
+.hero-letter:hover + .hero-letter {
+  transform: translateY(-0.06em) rotate(4deg);
 }
 
 @keyframes hero-letter-land {
@@ -2385,19 +2538,15 @@ html.has-project-focus
   }
 }
 
-/* --- Project index previews ----------------------------------------------
-   Hovering an index row peeks at where it leads. */
+/* --- Project index rows ---------------------------------------------------
+   These used to fly out a screenshot on hover, and the peek element went with the
+   rest of the screenshots. The row already carries the scene itself, running, in
+   miniature, so a preview of a preview had nothing to add. What a hover owes the
+   reader here is smaller: which row am I on, and which way does it go — see the
+   row's own hover rules in the hero block. */
 .project-index a {
   position: relative;
 }
-
-.project-index a:hover .project-index-peek,
-.project-index a:focus-visible .project-index-peek {
-  opacity: 1;
-  transform: translateY(-50%) translateX(0) rotate(-2deg) scale(1);
-}
-
-.project-index-peek picture,
 
 /* --- Per-theme ambience ---------------------------------------------------
    Each project gets background motion drawn from what the project itself is
@@ -2750,34 +2899,20 @@ html.has-project-focus
    tokens straight out of the stylesheet text and would report a sentence about a deleted
    rule as a rule with nothing using it. */
 
-/* --- Sideways prompt ------------------------------------------------------
-   The rails are the whole point of a project section, so the invitation to move
-   them has to be impossible to miss on arrival. It is bold and in the project's
-   own accent, drifts to draw the eye, and retires for good the moment that rail
-   has been moved by any means. */
-
-.project-scroll-help-grip::before,
-
-/* Used once, never shown again. */
-.project.is-rail-explored .project-scroll-help {
-  opacity: 0;
-  transform: translateX(-50%) translateY(-0.5rem);
-  animation: none;
-}
+/* The sideways prompt that used to sit here belonged to the per-project screenshot
+   rails, and retired itself when one was dragged. There are no per-project rails; the
+   one rail left is the gallery, which says what it is by overflowing the screen. The
+   class the manager still sets on that section — the one meaning "this has been
+   explored" — is read by the gallery's own rules further up, not here. */
 
 /* --- Media is not draggable ------------------------------------------------
    Panning a rail used to tear the screenshot out of the page as a native image
    drag. `draggable={false}` in the markup handles Firefox; these cover the
    WebKit/Blink drag affordance and stop text selection mid-pan. */
-.scene-image img,
-.scene-image video,
-.scene-image picture,
 .fun-media img,
 .fun-media video,
 .fun-media picture,
 .hero-art img,
-
-.project-scroller,
 .fun-scroller {
   -webkit-user-drag: none;
 }
@@ -3313,383 +3448,6 @@ html.has-project-focus
   font-size: 13px;
 }
 
-/* --- the cue on screen now ------------------------------------------------ */
-
-.nb-now {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-.nb-stage {
-  display: flex;
-  align-items: center;
-  gap: clamp(0.9rem, 2.5vw, 1.6rem);
-}
-
-.nb-board {
-  display: grid;
-  width: clamp(108px, 22vw, 138px);
-  aspect-ratio: 1;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 5px;
-  padding: 5px;
-  border: 1px solid var(--nb-line);
-  border-radius: 12px;
-  background: var(--nb-well);
-}
-.nb-board > span {
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.05);
-  transition:
-    background 130ms ease-out,
-    box-shadow 130ms ease-out,
-    transform 130ms ease-out;
-}
-.nb-board > span[data-on="true"] {
-  background: var(--nb-accent);
-  box-shadow: 0 0 18px -2px rgba(127, 216, 164, 0.7);
-  transform: scale(1.04);
-}
-
-/* The spoken letter, drawn as a letter because this page does not talk. */
-.nb-voice {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  opacity: 0;
-  transition: opacity 160ms ease;
-}
-.nb-voice[data-on="true"] {
-  opacity: 1;
-}
-.nb-voice strong {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: clamp(2.4rem, 7vw, 3.4rem);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-.nb-wave {
-  display: flex;
-  height: 26px;
-  align-items: center;
-  gap: 3px;
-}
-.nb-wave i {
-  width: 3px;
-  border-radius: 999px;
-  background: var(--nb-accent);
-  animation: nb-wave 900ms ease-in-out infinite;
-}
-.nb-wave i:nth-child(1) {
-  height: 40%;
-}
-.nb-wave i:nth-child(2) {
-  height: 100%;
-  animation-delay: 120ms;
-}
-.nb-wave i:nth-child(3) {
-  height: 60%;
-  animation-delay: 240ms;
-}
-@keyframes nb-wave {
-  50% {
-    transform: scaleY(0.4);
-  }
-}
-
-.nb-now-label {
-  margin: 0;
-  color: var(--nb-faint);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-/* What a cue is made of, including the stream this demonstration does not run.
-   "Watch a square and hear a letter. Triple adds a colour." was a written note beside
-   the scene, and two thirds of it were already the first thing the scene does. The third
-   could never be shown here — there is no colour stream in this film — so nothing in the
-   frame could hint that the game has one. Three chips, one of them explicitly off, put
-   the whole shape of the game on screen for six words. */
-.nb-streams {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.3rem;
-  margin: 0;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.56rem;
-  font-weight: 650;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.nb-streams span {
-  padding: 0.16rem 0.4rem;
-  border: 1px solid var(--nb-accent-dim);
-  border-radius: 999px;
-  background: var(--nb-accent-dim);
-  color: var(--nb-accent);
-}
-/* Present, and not what you are watching. A dashed edge says "available" where a solid
-   one would claim the scene is running it. */
-.nb-streams span[data-off="true"] {
-  border-style: dashed;
-  border-color: var(--nb-line);
-  background: none;
-  color: var(--nb-faint);
-}
-.nb-streams small {
-  color: var(--nb-faint);
-  font-size: 0.52rem;
-  letter-spacing: 0.12em;
-}
-
-/* --- the memory strip ---------------------------------------------------- */
-
-.nb-memory {
-  position: relative;
-  padding: 0.75rem 0.85rem 1.9rem;
-  border: 1px solid var(--nb-line);
-  border-radius: 14px;
-  background: var(--nb-well);
-}
-.nb-memory-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.6rem;
-  margin: 0 0 0.6rem;
-  color: var(--nb-muted);
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.nb-memory-head span {
-  padding: 0.1rem 0.42rem;
-  border-radius: 999px;
-  background: var(--nb-accent-dim);
-  color: var(--nb-accent);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.62rem;
-  font-weight: 650;
-  letter-spacing: 0.1em;
-}
-
-.nb-strip {
-  display: grid;
-  grid-template-columns: repeat(var(--nb-slots), 1fr);
-  gap: var(--nb-gap);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.nb-strip > li {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.5rem 0.3rem 0.4rem;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  opacity: 0.3;
-  transition:
-    opacity 220ms ease,
-    border-color 220ms ease,
-    background 220ms ease,
-    transform 260ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-.nb-strip > li[data-filled="true"] {
-  opacity: 1;
-  border-color: var(--nb-line);
-  background: rgba(255, 255, 255, 0.03);
-}
-/* The cue that just landed. */
-.nb-strip > li[data-current="true"] {
-  border-color: rgba(127, 216, 164, 0.5);
-  transform: translateY(-3px);
-}
-/* The cue being compared against. */
-.nb-strip > li[data-target="true"] {
-  border-color: rgba(127, 216, 164, 0.5);
-  background: var(--nb-accent-dim);
-}
-
-.nb-mini {
-  display: grid;
-  width: 34px;
-  aspect-ratio: 1;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-}
-.nb-mini > span {
-  border-radius: 1.5px;
-  background: rgba(255, 255, 255, 0.08);
-}
-.nb-mini > span[data-on="true"] {
-  background: var(--nb-accent);
-}
-.nb-slot-letter {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.9rem;
-  font-weight: 600;
-  line-height: 1;
-}
-.nb-slot-index {
-  color: var(--nb-faint);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-}
-
-/* The bracket.
-   Spans from slot `--from` to slot `--from + --span`, measured in the strip's own
-   grid units. One slot is `(100% - (slots-1) * gap) / slots` wide, so the left
-   edge of slot n is `n * (slotWidth + gap)`. Written out rather than approximated,
-   because a bracket that points between two cues instead of at them would teach
-   the wrong rule. */
-.nb-bracket {
-  --slot: calc((100% - (var(--nb-slots) - 1) * var(--nb-gap)) / var(--nb-slots));
-  --step: calc(var(--slot) + var(--nb-gap));
-
-  position: absolute;
-  bottom: 0.55rem;
-  left: calc(0.85rem + var(--from) * var(--step) + var(--slot) / 2);
-  width: calc(var(--span) * var(--step));
-  height: 12px;
-  border-bottom: 1.5px solid var(--nb-accent);
-  border-left: 1.5px solid var(--nb-accent);
-  border-right: 1.5px solid var(--nb-accent);
-  border-radius: 0 0 4px 4px;
-  opacity: 0;
-  transition:
-    opacity 260ms ease,
-    left 320ms ease,
-    width 320ms ease;
-}
-.nb-bracket[data-showing="true"] {
-  opacity: 1;
-}
-.nb-bracket-label {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  padding: 0.1rem 0.4rem;
-  color: var(--nb-accent);
-  font-size: 0.62rem;
-  font-weight: 650;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  transform: translate(-50%, -0.15rem);
-}
-
-/* --- the answer keys ----------------------------------------------------- */
-
-.nb-answers {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.6rem;
-}
-
-/* The one rule of the game a film of it cannot demonstrate.
-   Nobody presses anything here, so every answer this scene can show is a correct one, and
-   "pressing everything scores worse than pressing nothing" is unshowable. It was a written
-   note in the column beside the scene; it belongs beside the two keys it is about, which
-   is here. Spanning both columns so it reads as a statement about the pair. */
-.nb-answer-cost {
-  grid-column: 1 / -1;
-  color: var(--nb-faint);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-align: center;
-  text-transform: uppercase;
-}
-.nb-answer {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--nb-line);
-  border-radius: 11px;
-  background: var(--nb-well);
-  transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    box-shadow 180ms ease;
-}
-.nb-answer[data-lit="true"] {
-  border-color: rgba(127, 216, 164, 0.55);
-  background: var(--nb-accent-dim);
-  box-shadow: 0 0 24px -8px rgba(127, 216, 164, 0.6);
-}
-.nb-answer kbd {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid var(--nb-line);
-  border-bottom-width: 2px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.07);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.72rem;
-  font-weight: 650;
-  transition: transform 90ms ease;
-}
-/* The key goes down when the answer is being given. */
-.nb-answer[data-lit="true"] kbd {
-  border-bottom-width: 1px;
-  transform: translateY(1px);
-}
-.nb-answer-name {
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-.nb-answer-verdict {
-  margin-left: auto;
-  min-width: 2.2em;
-  color: var(--nb-accent);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-align: right;
-  text-transform: uppercase;
-}
-
-/* --- caption ------------------------------------------------------------- */
-
-.nb-caption {
-  margin: 0;
-  min-height: 2.6em;
-  color: var(--nb-muted);
-  font-size: 0.86rem;
-  line-height: 1.5;
-  text-align: center;
-}
-.nb-caption strong {
-  color: var(--nb-ink);
-  font-weight: 650;
-}
-
-@media (max-width: 620px) {
-  .nb-stage {
-    flex-direction: column;
-    gap: 0.7rem;
-  }
-  .nb-voice strong {
-    font-size: 2.2rem;
-  }
-  .nb-answers {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ===========================================================================
    GRT Next Bus — "the wait is on the toolbar"
    ---------------------------------------------------------------------------
@@ -3740,281 +3498,6 @@ html.has-project-focus
   -webkit-font-smoothing: antialiased;
 }
 
-/* --- the browser ---------------------------------------------------------- */
-
-.gx-browser {
-  position: relative;
-  /* Above the road, which passes behind the window rather than in front of it. */
-  z-index: 2;
-  border: 1px solid var(--gx-chrome-line);
-  border-radius: 14px;
-  background: var(--gx-page);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 30px 66px -34px rgba(8, 26, 30, 0.45);
-}
-
-.gx-chrome {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 9px 13px;
-  border-bottom: 1px solid var(--gx-chrome-line);
-  border-radius: 13px 13px 0 0;
-  background: linear-gradient(var(--gx-chrome), color-mix(in srgb, var(--gx-chrome) 84%, #fff));
-}
-
-.gx-lights {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 6px;
-}
-
-.gx-lights i {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(16, 40, 44, 0.16);
-}
-
-.gx-tabs {
-  display: flex;
-  flex: 0 1 auto;
-  gap: 6px;
-  min-width: 0;
-}
-
-.gx-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  max-width: 168px;
-  padding: 7px 13px;
-  overflow: hidden;
-  border-radius: 8px 8px 0 0;
-  color: rgba(16, 40, 44, 0.5);
-  font-size: 11.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.gx-tab.is-active {
-  color: #16262c;
-  background: var(--gx-page);
-  box-shadow: 0 -1px 0 var(--gx-chrome-line) inset;
-}
-
-.gx-favicon {
-  width: 11px;
-  height: 11px;
-  flex: 0 0 11px;
-  border-radius: 3px;
-  background: rgba(16, 40, 44, 0.2);
-}
-
-.gx-favicon--cal {
-  background: #c26a15;
-}
-
-.gx-bar {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.gx-omni {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 7px 13px;
-  overflow: hidden;
-  border-radius: 999px;
-  color: rgba(16, 40, 44, 0.46);
-  background: color-mix(in srgb, #fff 78%, var(--gx-chrome));
-  box-shadow: 0 0 0 1px var(--gx-chrome-line) inset;
-  font-size: 11.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* The extension's own button. The only thing clicked in this scene, so it is the
-   only thing in the chrome with full contrast. */
-.gx-action {
-  position: relative;
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: #0f6a62;
-  transition: background 0.2s ease;
-}
-
-.gx-action[data-open="true"] {
-  background: color-mix(in srgb, #0f6a62 15%, transparent);
-}
-
-.gx-action .grt-mark,
-.gx-action .grt-mark svg {
-  width: 21px;
-  height: 21px;
-  flex: 0 0 21px;
-  border-radius: 0;
-}
-
-/* A ring while the badge is the only thing on screen doing anything. It stops
-   once the popup is open, where it would be pointing at old news. */
-.gx-action[data-live="true"]::before {
-  position: absolute;
-  border: 1.5px solid #0f6a62;
-  border-radius: 10px;
-  content: "";
-  inset: -3px;
-  opacity: 0;
-  animation: gx-ping 2.8s ease-out infinite;
-}
-
-@keyframes gx-ping {
-  0% {
-    opacity: 0.5;
-    transform: scale(0.86);
-  }
-  55%,
-  100% {
-    opacity: 0;
-    transform: scale(1.22);
-  }
-}
-
-.gx-badge {
-  position: absolute;
-  right: -4px;
-  bottom: -3px;
-  min-width: 18px;
-  padding: 0 3px;
-  border-radius: 5px;
-  color: #fff;
-  box-shadow: 0 0 0 1.5px var(--gx-chrome);
-  font-size: 9.5px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-  line-height: 15px;
-  text-align: center;
-  /* Remounted on every change — the element is keyed by its own text — so the
-     tick plays without the scene having to say when a minute passed. */
-  animation: gx-tick 0.5s ease-out;
-}
-
-@keyframes gx-tick {
-  from {
-    transform: translateY(-3px) scale(1.2);
-  }
-}
-
-/* --- the tab you had open ------------------------------------------------- */
-
-/* This carries the window's height, and it is why the popup needs no magic
-   number: six agenda rows of a fixed minimum are taller than any popup this
-   scene shows, and the popup simply overhangs if that ever stops being true. */
-.gx-page {
-  position: relative;
-  padding: 18px 20px 20px;
-  border-radius: 0 0 13px 13px;
-  overflow: hidden;
-}
-
-.gx-page-head {
-  margin: 0 0 12px;
-  color: rgba(16, 40, 44, 0.42);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.gx-page-head b {
-  color: rgba(16, 40, 44, 0.72);
-  font-weight: 750;
-}
-
-.gx-agenda {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* The row height is what keeps this column taller than the popup beside it. At 74px
-   the popup hung ~40px below the window and the bus leaving at the end of the loop
-   passed behind it, which looks like a clipping bug rather than like depth. */
-.gx-agenda li {
-  display: flex;
-  align-items: stretch;
-  gap: 14px;
-  min-height: 84px;
-  border-top: 1px solid rgba(16, 40, 44, 0.09);
-}
-
-.gx-agenda-time {
-  flex: 0 0 44px;
-  padding-top: 6px;
-  color: rgba(16, 40, 44, 0.34);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.gx-agenda-slot {
-  flex: 1;
-  min-width: 0;
-}
-
-/* The reason the countdown matters. Dimmed, because it is set dressing, but
-   legible, because "5:30" against a bus at "5:18 PM" is the whole stake. */
-.gx-agenda-event {
-  margin: 4px 0 6px;
-  padding: 9px 12px;
-  border-left: 3px solid #c26a15;
-  border-radius: 4px 7px 7px 4px;
-  color: color-mix(in srgb, #c26a15 78%, #16262c);
-  background: color-mix(in srgb, #c26a15 12%, transparent);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-/* --- the popup ------------------------------------------------------------ */
-
-.gx-popup {
-  position: absolute;
-  z-index: 3;
-  /* Clear of the chrome, not over it. The badge is the feature this project leads
-     with, and the first version of this pulled the popup up across the toolbar and
-     hid the very button it had just been opened from. */
-  top: 44px;
-  right: -26px;
-  width: 420px;
-  border-radius: 14px;
-  background: var(--surface-2);
-  box-shadow:
-    0 0 0 1px rgba(16, 40, 44, 0.09),
-    0 36px 72px -30px rgba(6, 20, 24, 0.5);
-  opacity: 0;
-  /* Grows out of its own button, which is where a popup comes from. */
-  transform: scale(0.965) translateY(-9px);
-  transform-origin: 84% 0;
-  transition:
-    opacity 0.2s ease,
-    transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
-  pointer-events: none;
-}
-
-.gx-popup[data-open="true"] {
-  opacity: 1;
-  transform: none;
-}
-
 /* --- the extension's own styles ------------------------------------------- */
 
 .grt {
@@ -4040,798 +3523,6 @@ html.has-project-focus
   --radius-md: 12px;
   --radius-sm: 9px;
   font-family: var(--font);
-}
-
-.grt-app {
-  padding: 0 14px 18px;
-  border-radius: 14px;
-  color: var(--text);
-  background:
-    radial-gradient(120% 60% at 100% 0%, var(--bg-glow) 0%, transparent 62%),
-    var(--bg);
-}
-
-.grt-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 0 12px;
-}
-
-.grt-brand {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.grt-brand p {
-  margin: 0;
-}
-
-.grt-mark,
-.grt-mark svg {
-  display: block;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
-  border-radius: 11px;
-  color: var(--accent);
-}
-
-.grt-eyebrow {
-  color: var(--accent);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.grt-title {
-  margin-top: 2px;
-  font-size: 21px;
-  font-weight: 750;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-}
-
-.grt-feed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 20px;
-  margin-bottom: 12px;
-  padding: 0 2px;
-}
-
-.grt-feed-state {
-  display: inline-flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--text-soft);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.grt-feed-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-
-.grt-feed-state.is-live {
-  color: var(--live);
-}
-
-.grt-feed-state.is-live .grt-feed-dot {
-  background: var(--live);
-  box-shadow: 0 0 0 3px var(--live-soft);
-  animation: grt-pulse 2.4s ease-in-out infinite;
-}
-
-@keyframes grt-pulse {
-  50% {
-    opacity: 0.45;
-  }
-}
-
-.grt-feed-detail {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  white-space: nowrap;
-}
-
-/* --- stop cards ----------------------------------------------------------- */
-
-.grt-stop-list {
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.grt-stop-card {
-  padding: 14px 14px 13px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  transition:
-    border-color 0.4s ease,
-    box-shadow 0.4s ease;
-}
-
-.grt-stop-card.is-nearest {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-}
-
-/* The card for the stop the bus has just reached. Not a colour change — the row
-   already went red on its own — just enough lift to tie it to the pole outside. */
-.grt-stop-card[data-hit="true"] {
-  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
-  box-shadow:
-    var(--shadow-card),
-    0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent);
-}
-
-.grt-stop-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.grt-stop-identity {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Wraps to two lines rather than truncating: a stop name is the one thing that
-   has to stay readable. */
-.grt-stop-name {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 750;
-  line-height: 1.32;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.grt-stop-meta {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 5px;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.grt-stop-tag {
-  padding: 2px 6px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-soft);
-  font-size: 9.5px;
-  font-weight: 800;
-}
-
-.grt-departures {
-  margin: 12px 0 0;
-  padding: 0;
-  border-top: 1px solid var(--border);
-  list-style: none;
-}
-
-/* Baseline alignment, not centring: the copy column is taller than the time
-   column, so matching first baselines keeps the headsign, the route number and
-   the countdown reading as one line across the row. */
-.grt-departure {
-  display: flex;
-  min-height: 54px;
-  align-items: baseline;
-  gap: 11px;
-  padding: 10px 0 0;
-}
-
-.grt-route-badge {
-  display: inline-flex;
-  min-width: 34px;
-  height: 24px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  border-radius: 7px;
-  color: var(--accent-contrast);
-  background: var(--accent);
-  font-size: 11.5px;
-  font-weight: 850;
-  letter-spacing: -0.01em;
-}
-
-.grt-departure-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.grt-headsign {
-  margin: 0;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Both of these keep their height when empty, so a row does not resize as live
-   information arrives and drops away. */
-.grt-departure-note,
-.grt-departure-then {
-  display: flex;
-  min-height: 16px;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0 0;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.35;
-  white-space: nowrap;
-}
-
-.grt-departure-then {
-  margin-top: 3px;
-}
-
-.grt-note-part {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.grt-note-sep {
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
-.grt-note-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--live);
-  font-weight: 750;
-}
-
-.grt-note-live::before {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  content: "";
-}
-
-.grt-note-late {
-  color: var(--warn);
-  font-weight: 700;
-}
-
-.grt-note-early {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.grt-then-label {
-  color: var(--text-muted);
-}
-
-.grt-then-time {
-  color: var(--text-soft);
-  font-variant-numeric: tabular-nums;
-  font-weight: 650;
-}
-
-.grt-departure-time {
-  flex: 0 0 auto;
-  text-align: right;
-}
-
-.grt-countdown {
-  display: block;
-  font-size: 17px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.25;
-  /* Keyed by its own text, so a minute passing is visible rather than inferred. */
-  animation: gx-count 0.45s ease-out;
-}
-
-@keyframes gx-count {
-  from {
-    opacity: 0.15;
-    transform: translateY(-4px);
-  }
-}
-
-.grt-is-soon {
-  color: var(--danger);
-}
-
-.grt-is-near {
-  color: var(--warn);
-}
-
-.grt-is-distant {
-  color: var(--text-soft);
-  font-size: 15px;
-  font-weight: 750;
-}
-
-.grt-clock {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* --- the notification ----------------------------------------------------- */
-
-/* --- the browser's notification bell -------------------------------------
-   The alert used to arrive with nothing in the chrome to have produced it, which
-   made the banner read as a card the page had decided to show. A bell that rings
-   on the same beat gives it an origin, and gives the scene a beat of "something
-   just happened" before you have read what. */
-.gx-bell {
-  position: relative;
-  display: inline-flex;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
-  align-items: center;
-  justify-content: center;
-  margin-left: 2px;
-  border-radius: 7px;
-  color: #7d8f8c;
-  transition:
-    color 0.3s ease,
-    background 0.3s ease;
-}
-.gx-bell svg {
-  width: 17px;
-  height: 17px;
-}
-.gx-bell[data-ringing="true"] {
-  color: #0f6a62;
-  background: #dcefec;
-  /* Two swings and out. A bell that keeps shaking for the rest of the scene stops
-     being an event and becomes a decoration. */
-  animation: gx-bell-ring 820ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 1 both;
-}
-.gx-bell-dot {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 6px;
-  height: 6px;
-  border: 1.5px solid #f4f7f6;
-  border-radius: 50%;
-  background: #c2352f;
-  opacity: 0;
-  transform: scale(0.4);
-  transition:
-    opacity 0.22s ease,
-    transform 0.32s cubic-bezier(0.2, 1.4, 0.3, 1);
-}
-.gx-bell[data-unread="true"] .gx-bell-dot {
-  opacity: 1;
-  transform: none;
-}
-@keyframes gx-bell-ring {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  12% {
-    transform: rotate(13deg);
-  }
-  28% {
-    transform: rotate(-11deg);
-  }
-  44% {
-    transform: rotate(8deg);
-  }
-  60% {
-    transform: rotate(-6deg);
-  }
-  78% {
-    transform: rotate(3deg);
-  }
-}
-
-/* Arrives from outside the frame, because that is where a system notification
-   comes from: not from the page, and not from anything the rider did. */
-.gx-alert {
-  position: absolute;
-  z-index: 8;
-  top: 54px;
-  right: -6.5vw;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  width: 352px;
-  padding: 14px 14px 15px;
-  border-radius: 13px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(16, 40, 44, 0.08),
-    0 30px 64px -26px rgba(8, 26, 30, 0.5);
-  opacity: 0;
-  transform: translateX(62px) scale(0.97);
-  transition:
-    opacity 0.3s ease,
-    transform 0.44s cubic-bezier(0.2, 0.9, 0.25, 1);
-}
-
-.gx-alert[data-in="true"] {
-  opacity: 1;
-  transform: none;
-}
-
-.gx-alert-icon {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: #0f6a62;
-  background: #e2f0ee;
-}
-
-.gx-alert-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.gx-alert-source {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 3px;
-  color: #7d8f8c;
-  font-size: 10.5px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.gx-alert-source small {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: none;
-}
-
-.gx-alert-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.gx-alert-copy p {
-  margin: 0;
-}
-
-.gx-alert-title {
-  color: #16262c;
-  font-size: 13.5px;
-  font-weight: 750;
-}
-
-.gx-alert-body {
-  margin-top: 3px;
-  overflow: hidden;
-  color: #486067;
-  font-size: 12px;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-}
-
-.gx-alert-context {
-  margin-top: 5px;
-  color: #6d8087;
-  font-size: 11px;
-}
-
-.gx-alert-close {
-  display: inline-flex;
-  flex: 0 0 auto;
-  color: rgba(16, 40, 44, 0.32);
-}
-
-.gx-alert-close svg {
-  width: 15px;
-  height: 15px;
-}
-
-/* --- the route ------------------------------------------------------------ */
-
-/* Runs out past both edges of the section, so the bus the countdown is counting
-   arrives from somewhere rather than from the border of a card. The band sits in
-   the space the caption's top margin reserves. */
-/* Wider than the viewport at any viewport, and centred on the stage.
-   This used to be `left: -34vw; right: -20vw`, which worked only while the stage grew
-   with the window. Once `.project-body` was given a measure the stage stopped growing
-   at about 1600px, so on a 2560px screen those overhangs no longer reached: the road
-   started 80px inside the left edge and stopped 50px short of the right one, and a
-   road with two visible ends is a drawn line rather than a street passing through.
-   Anchoring the width to the viewport instead keeps both ends off-screen at every
-   width, and because the pole and the bus are placed as percentages of this element,
-   their spacing scales with it rather than sliding off one end. */
-.gx-street {
-  position: absolute;
-  z-index: 1;
-  bottom: 46px;
-  left: 50%;
-  width: 148vw;
-  height: 94px;
-  margin-left: -74vw;
-}
-
-.gx-road {
-  position: absolute;
-  right: 0;
-  bottom: 30px;
-  left: 0;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--gx-road);
-}
-
-/* Lane markings, sliding left at the speed the traffic in the backdrop moves, so
-   the two read as the same road rather than as two drawings of one. */
-.gx-dashes {
-  position: absolute;
-  right: 0;
-  bottom: -11px;
-  left: 0;
-  height: 2px;
-  background: repeating-linear-gradient(
-    to right,
-    var(--gx-road) 0 22px,
-    transparent 22px 48px
-  );
-  opacity: 0.7;
-  animation: gx-dash-run 2.6s linear infinite;
-}
-
-@keyframes gx-dash-run {
-  to {
-    transform: translateX(-48px);
-  }
-}
-
-/* The stops behind yours. There are as many between the bus and the pole as the
-   card says there are, because both come from the same clock. */
-.gx-stop-tick {
-  position: absolute;
-  bottom: 33px;
-  width: 2px;
-  height: 13px;
-  border-radius: 1px;
-  background: color-mix(in srgb, var(--project-accent) 34%, transparent);
-  transition:
-    background 0.5s ease,
-    height 0.5s ease,
-    opacity 0.5s ease;
-}
-/* Behind the bus. The stops it has already called at are spent, so the ones left
-   between it and your pole are countable — which is the number the card claims. */
-.gx-stop-tick[data-passed="true"] {
-  height: 8px;
-  background: color-mix(in srgb, var(--project-accent) 14%, transparent);
-  opacity: 0.7;
-}
-
-/* The light thrown in front of it. Wide, soft and low-contrast: enough to say
-   which way the bus is going, not enough to look like night. */
-/* The in-frame labels, as transit signage.
-   This is the one section about a physical network with its own graphic language, so its
-   labels borrow it: a filled dark-green plate, white uppercase mono, wide tracking, almost
-   no corner radius. The same treatment as the destination sign on the front of a bus, and
-   as the route badges the popup is already full of. See `.speclayer` for the component.
-
-   `.gx-alert-spec` is in the same list because it is the same signage on the same scene's
-   label — it is only declared separately because that one is portalled to `document.body`
-   with the notification and cannot inherit anything from the pod. */
-.gx-specs,
-.gx-alert-spec {
-  --spec-ink: #f2fbf6;
-  --spec-paper: #145c40;
-  --spec-edge: rgba(255, 255, 255, 0.16);
-  --spec-gloss: rgba(255, 255, 255, 0.14);
-  --spec-dot: #145c40;
-  --spec-shadow: rgba(10, 34, 28, 0.5);
-  --spec-radius: 3px;
-  --spec-pad: 0.28rem 0.52rem;
-  --spec-font: var(--font-geist-mono), ui-monospace, monospace;
-  --spec-size: clamp(9px, 1vw, 10.5px);
-  --spec-weight: 700;
-  --spec-tracking: 0.09em;
-  --spec-case: uppercase;
-  --spec-lead: 16px;
-}
-
-.gx-beam {
-  position: absolute;
-  right: -6px;
-  bottom: 4px;
-  width: 210px;
-  height: 46px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, #ffd79a 34%, transparent),
-    color-mix(in srgb, #ffe6bd 14%, transparent) 46%,
-    transparent
-  );
-  clip-path: polygon(0 26%, 100% 0, 100% 100%, 0 74%);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(100%);
-  transition: opacity 0.6s ease;
-}
-/* Only while it is actually moving. A parked bus with its lights blazing at a stop
-   it has already reached is a bus that has not noticed it arrived. */
-.gx[data-open="true"] .gx-beam {
-  opacity: 0.85;
-}
-.gx[data-arrived="true"] .gx-beam,
-.gx[data-beat="gone"] .gx-beam {
-  opacity: 0.25;
-}
-
-.gx-pole {
-  position: absolute;
-  bottom: 30px;
-  height: 56px;
-}
-
-.gx-pole-mast {
-  display: block;
-  width: 3px;
-  height: 100%;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--project-accent) 62%, transparent);
-}
-
-.gx-pole-flag {
-  position: absolute;
-  top: 0;
-  left: 2px;
-  width: 27px;
-  height: 17px;
-  border-radius: 3px;
-  background: var(--project-accent);
-}
-
-/* To the right of the mast, where the bus does not cover it: the bus stops with
-   its nose at the pole and its body trailing back the way it came. */
-.gx-pole-label {
-  position: absolute;
-  bottom: 0;
-  left: 36px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  color: var(--project-ink);
-  font-size: 11px;
-  line-height: 1.25;
-  white-space: nowrap;
-}
-
-.gx-pole-label b {
-  font-weight: 700;
-}
-
-.gx-pole-label span {
-  color: var(--project-muted);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-.gx-pole[data-hit="true"] .gx-pole-flag {
-  animation: gx-pole-hit 1.2s ease-out;
-}
-
-@keyframes gx-pole-hit {
-  from {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--project-accent) 55%, transparent);
-  }
-  to {
-    box-shadow: 0 0 0 18px transparent;
-  }
-}
-
-/* `left` is the bus's *nose*, so it can pull up at the pole without covering the
-   name of the stop it has pulled up at. */
-.gx-bus-slot {
-  position: absolute;
-  bottom: 27px;
-  /* Interpolated across the beat rather than transitioned to the end of it.
-     `--bus-from` and `--bus-to` are the road positions at this beat's start and the next
-     one's, published by the pod; `--beat-t` is the fraction through the current beat, which
-     the storyboard writes onto the stage every frame without re-rendering anything.
-
-     This replaced `transition: left 1.5s`, which was the reported lag. A per-beat target
-     with a 1.5s transition on a 2,600ms beat means the bus drives for 1.5s and then stands
-     still for 1.1s — nine lurches with a pause after each. It was not slow, it kept
-     stopping, and no easing curve fixes a value that only exists at nine instants.
-
-     The 180ms that is left does a different job: it smooths the change of *speed* at each
-     beat boundary, since the simulated clock jumps unevenly and every segment therefore has
-     its own velocity. Retargeted each frame it low-passes the motion, which is what now
-     gives the arrival its brake and the departure its pull-away — the two things the
-     per-beat timing functions used to do by hand. */
-  left: calc((var(--bus-from, 0) + (var(--bus-to, 0) - var(--bus-from, 0)) * var(--beat-t, 0)) * 1%);
-  width: 138px;
-  transform: translateX(-100%);
-  transition: left 180ms linear;
-}
-
-.gx-bus {
-  position: relative;
-  display: block;
-}
-
-.gx-bus-body {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.gx-bus-shell {
-  fill: color-mix(in srgb, var(--project-accent) 88%, #0b2b2c);
-}
-
-.gx-bus-sign {
-  fill: color-mix(in srgb, #fff 22%, transparent);
-}
-
-.gx-bus-glass {
-  fill: color-mix(in srgb, #fff 78%, var(--project-accent));
-}
-
-.gx-bus-wheels {
-  fill: #1b2b2e;
-}
-
-/* The route number on the destination sign, which is the same number as the badge
-   in the card. */
-.gx-bus-route {
-  position: absolute;
-  top: 12.5%;
-  left: 7%;
-  width: 22.7%;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 850;
-  line-height: 19px;
-  text-align: center;
 }
 
 /* --- caption -------------------------------------------------------------- */
@@ -4877,783 +3568,6 @@ html.has-project-focus
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
-}
-
-/* --- the browser ---------------------------------------------------------- */
-
-.pp-browser {
-  position: relative;
-  /* A stacking context, explicitly.
-     Without one, `z-index: auto` here let the browser's inner layers — the popup
-     at 4, the outage wash at 2 — be compared against `.pp-spill` at 6 in a
-     shared ancestor context instead of against each other. The wash then painted
-     over the escaped cards that happened to land back across the frame, so three
-     of the seven saved pages went dark along with the browser they had just
-     escaped from. Confining them keeps the whole frame at 0, under the spill. */
-  z-index: 0;
-  isolation: isolate;
-  overflow: hidden;
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  background: var(--canvas);
-  box-shadow: var(--shadow);
-}
-
-/* The outage.
-   Done as an overlay, not as `filter` on the browser. A filter on the container
-   was the obvious first attempt and it was wrong: filters compose down the tree,
-   so desaturating the frame also desaturated the popup inside it — and the popup
-   staying lit while everything around it dies is the entire point of the shot.
-   An overlay only affects what paints beneath it, so the popup and the saved page
-   sit above it in full colour and become the only light in the frame. */
-.pp-drain {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  background: rgba(13, 15, 19, 0.88);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 640ms ease;
-}
-.pp[data-dead="true"] .pp-drain {
-  opacity: 1;
-}
-
-/* Draining the colour is a separate job from darkening, and it is done here, on
-   the chrome's own subtree.
-   `backdrop-filter: grayscale(1)` on the wash was tried first and produced a
-   subtle, expensive bug: Chromium promotes a backdrop-filtered element into its
-   own compositing layer, which reordered it against its siblings, and the saved-page
-   card at `z-index: 5` came out grey underneath a wash at `z-index: 2`. The one
-   card that has to look alive was the one thing being killed. A filter on a subtree
-   that contains no popup and no reader cannot have that problem. */
-.pp-chrome {
-  transition: filter 640ms ease;
-}
-.pp[data-dead="true"] .pp-chrome {
-  filter: grayscale(1) brightness(0.42);
-}
-
-.pp-chrome {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--hairline);
-  background: linear-gradient(#fafafc, #f1f1f4);
-}
-.pp-dots {
-  display: flex;
-  gap: 5px;
-}
-.pp-dots i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #d3d3d8;
-}
-.pp-omnibox {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: inset 0 0 0 1px var(--hairline);
-}
-.pp-lock {
-  flex: 0 0 auto;
-  font-size: 9px;
-  line-height: 1;
-}
-.pp-url {
-  overflow: hidden;
-  color: var(--ink-2);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pp[data-offline="true"] .pp-url {
-  color: var(--ink-3);
-  text-decoration: line-through;
-}
-
-/* The signal, and the moment it goes. */
-/* 17px was the honest size for a browser's own signal indicator and too small to be
-   the moment the scene turns on. Bumped, because the arcs going out one by one is the
-   cause of everything that follows. */
-.pp-wifi {
-  flex: 0 0 auto;
-  width: 24px;
-  color: var(--ink-2);
-}
-.pp-wifi svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.pp-wifi-arc,
-.pp-wifi-dot {
-  transition: opacity 200ms ease;
-}
-.pp-wifi-slash {
-  stroke: var(--alarm);
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  /* Drawn on, so the cut has a direction instead of appearing. */
-  stroke-dasharray: 26;
-  stroke-dashoffset: 26;
-  transition: stroke-dashoffset 380ms cubic-bezier(0.16, 0.8, 0.2, 1);
-}
-.pp[data-offline="true"] .pp-wifi {
-  color: var(--alarm);
-}
-/* The arcs drop outside-in, which is how a connection actually feels like it
-   fails: the far bars go first. */
-.pp[data-offline="true"] .pp-wifi-arc--3 {
-  opacity: 0;
-  transition-delay: 0ms;
-}
-.pp[data-offline="true"] .pp-wifi-arc--2 {
-  opacity: 0;
-  transition-delay: 110ms;
-}
-.pp[data-offline="true"] .pp-wifi-arc--1 {
-  opacity: 0;
-  transition-delay: 220ms;
-}
-.pp[data-offline="true"] .pp-wifi-slash {
-  stroke-dashoffset: 0;
-  transition-delay: 260ms;
-}
-
-.pp-toolbar {
-  position: relative;
-  display: grid;
-  flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  border-radius: 7px;
-  color: var(--ink-2);
-  transition:
-    background 220ms ease,
-    color 220ms ease,
-    transform 220ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-.pp-toolbar svg {
-  width: 15px;
-  height: 15px;
-}
-.pp[data-beat="reach"] .pp-toolbar,
-.pp[data-beat="open"] .pp-toolbar {
-  color: var(--accent);
-  background: var(--accent-soft);
-  transform: scale(1.08);
-}
-.pp-badge {
-  position: absolute;
-  right: -3px;
-  bottom: -2px;
-  min-width: 14px;
-  padding: 0 3px;
-  border: 1.5px solid #f5f5f7;
-  border-radius: 999px;
-  background: var(--good);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 14px;
-  text-align: center;
-  animation: pp-badge-in 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-@keyframes pp-badge-in {
-  from {
-    opacity: 0;
-    transform: scale(0.2);
-  }
-}
-
-/* --- the page, and its failure ------------------------------------------- */
-
-.pp-viewport {
-  position: relative;
-  height: 306px;
-  padding: 20px 22px;
-  background: var(--surface);
-}
-
-.pp-page {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  gap: 7px;
-  transition:
-    opacity 420ms ease,
-    transform 520ms ease;
-}
-.pp-page h4 {
-  max-width: 26ch;
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.pp-byline {
-  margin: -2px 0 4px;
-  color: var(--ink-3);
-  font-size: 8.5px;
-  letter-spacing: 0.09em;
-}
-.pp-line {
-  height: 6px;
-  flex: 0 0 auto;
-  border-radius: 3px;
-  background: #ececed;
-}
-.pp-figure {
-  height: 54px;
-  margin: 5px 0;
-  border-radius: 5px;
-  background:
-    repeating-linear-gradient(
-        -45deg,
-        rgba(0, 0, 0, 0.05) 0 6px,
-        transparent 6px 12px
-      ),
-    #f4f4f6;
-}
-/* Once the connection is gone the page is not dimmed, it is *absent*. Dimming
-   would say "still there, quieter"; this has to say "gone". */
-.pp[data-offline="true"] .pp-page {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-
-/* Above the wash, and styled for it: this is the browser's own dead-end screen,
-   so it is the one thing that should be legible in a frame gone dark. */
-.pp-crash {
-  position: absolute;
-  z-index: 3;
-  top: 26px;
-  left: 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 5px;
-  opacity: 0;
-  color: rgba(255, 255, 255, 0.4);
-  transition:
-    opacity 420ms ease,
-    transform 520ms ease;
-  transform: translateY(8px);
-}
-.pp[data-dead="true"] .pp-crash {
-  opacity: 1;
-  transform: none;
-}
-.pp-crash-glyph {
-  width: 34px;
-  color: rgba(255, 255, 255, 0.28);
-}
-.pp-crash-glyph svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.pp-crash strong {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 15px;
-  font-weight: 600;
-}
-.pp-crash span:last-child {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
-}
-
-/* --- pages leaving the building ------------------------------------------
-   Seven cards tear off the page, tumble out through the browser window, and come
-   to rest scattered across the section — over the project title, out past the
-   gutters, down into the copy. They do not come back. That is the argument: the
-   reading has left the browser, and is now somewhere the browser cannot lose it.
-
-   `.pp-spill` lives outside `.pp-browser`, for the plain reason that the browser
-   clips its own contents and these have to get out of it. The perspective the cards
-   tumble in comes from there too, so all seven look like they are in the same room.
-   There was once a shared `.demo-spill` base class for this; no demo ever applied
-   it, so it has been removed and each scene now sizes its own spill layer.
-
-   One keyframe, a per-card delay, three custom properties for the landing spot:
-   seven cards cost seven composited transforms and no JavaScript. */
-
-.pp-spill {
-  /* Stage coordinates matched to the popup's own position, so a card leaves the
-     Save button rather than the middle of a rectangle. */
-  --emit-right: 130px;
-  --emit-top: 150px;
-}
-
-/* The in-frame labels, in the same idiom as the extension.
-   PagePack's whole design is unashamedly Apple-flavoured — see the token set at the top of
-   this section — so its labels are fully rounded frosted pills with a hairline edge, the
-   shape that platform puts every transient status in. See `.speclayer` for the component
-   and `SPECS` in the pod for the two claims it carries and why there are only two. */
-.pp-specs {
-  --spec-ink: var(--ink);
-  --spec-paper: rgba(255, 255, 255, 0.82);
-  --spec-edge: rgba(0, 0, 0, 0.1);
-  --spec-gloss: rgba(255, 255, 255, 0.85);
-  --spec-dot: var(--accent);
-  --spec-shadow: rgba(0, 0, 0, 0.34);
-  --spec-radius: 999px;
-  --spec-pad: 0.28rem 0.68rem;
-  --spec-weight: 590;
-  --spec-lead: 18px;
-}
-/* The one place a blur is worth its cost: a translucent pill needs something behind it to
-   be translucent *against*, and both of these sit over a page of body text. */
-.pp-specs .spectag-text {
-  backdrop-filter: blur(8px) saturate(1.4);
-}
-.pp-flyer {
-  position: absolute;
-  top: var(--emit-top);
-  right: var(--emit-right);
-  display: flex;
-  width: 84px;
-  height: 104px;
-  flex-direction: column;
-  gap: 5px;
-  padding: 7px 8px 9px;
-  border: 1px solid rgba(0, 0, 0, 0.09);
-  border-radius: 7px;
-  background: #fff;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.1),
-    0 18px 40px -16px rgba(0, 0, 0, 0.5);
-  opacity: 0;
-  will-change: transform;
-}
-.pp-flyer-head {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
-}
-.pp-flyer-head i {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 auto;
-  border-radius: 2px;
-  background: var(--accent);
-}
-.pp-flyer-head span {
-  overflow: hidden;
-  color: var(--ink-2);
-  font-size: 6.5px;
-  font-weight: 650;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pp-flyer-bar {
-  height: 3px;
-  border-radius: 2px;
-  background: #e6e6e9;
-}
-.pp-flyer-bar:nth-child(4) {
-  width: 78%;
-}
-.pp-flyer-bar:last-child {
-  width: 52%;
-}
-
-/* Timed against the beats, not chosen for feel. Seven cards at 1900ms with a
-   235ms stagger means the last one settles as `finish` ends — 3310ms after the
-   press, which is exactly `press + read + collect + finish`. An earlier attempt
-   used 1500ms and a 165ms stagger, and the pages were all gone before the beat
-   was over, leaving the middle of the shot empty. */
-.pp-flyer[data-flying="true"] {
-  animation: pp-burst 1900ms cubic-bezier(0.22, 0.9, 0.24, 1) forwards;
-  animation-delay: calc(var(--order) * 235ms);
-}
-@keyframes pp-burst {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 0, 0) rotate(-14deg) scale(0.22);
-  }
-  8% {
-    opacity: 1;
-  }
-  /* Through the glass and toward the viewer. The positive Z is the whole trick:
-     it makes this a card coming out of a window rather than a sprite sliding
-     across one. */
-  44% {
-    transform:
-      translate3d(calc(var(--to-x) * 0.4), calc(var(--to-y) * 0.3 - 9vh), 220px)
-      rotate3d(1, 0.55, 0.22, 212deg)
-      scale(1.18);
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(var(--to-x), var(--to-y), 0) rotate(var(--rot)) scale(1);
-  }
-}
-
-/* When the connection dies, these are the only things that do not. Outlined and
-   lifted, so a glance at the dead frame finds them instead of it. */
-.pp-flyer[data-kept="true"] {
-  border-color: rgba(255, 255, 255, 0.42);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.15),
-    0 0 46px -10px rgba(255, 255, 255, 0.32),
-    0 22px 48px -18px rgba(0, 0, 0, 0.55);
-}
-
-/* --- the popup ------------------------------------------------------------ */
-
-.pp-popup {
-  position: absolute;
-  z-index: 4;
-  top: 10px;
-  right: 14px;
-  width: 232px;
-  overflow: hidden;
-  border: 1px solid var(--hairline);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: 0 22px 48px -18px rgba(0, 0, 0, 0.42);
-  opacity: 0;
-  transform: translateY(-8px) scale(0.96);
-  transform-origin: 88% 0;
-  transition:
-    opacity 240ms ease,
-    transform 340ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-.pp-popup[data-open="true"] {
-  opacity: 1;
-  transform: none;
-}
-/* It sits above the wash, so it keeps its colour for free. The glow is what turns
-   "not dimmed" into "the only thing still on". */
-.pp[data-dead="true"] .pp-popup {
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.16),
-    0 0 58px -6px rgba(120, 180, 255, 0.4),
-    0 22px 48px -18px rgba(0, 0, 0, 0.7);
-}
-
-.pp-popup-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--hairline);
-  background: var(--surface-2);
-}
-.pp-popup-mark {
-  width: 14px;
-  color: var(--accent);
-}
-.pp-popup-mark svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.pp-popup-head strong {
-  font-size: 11.5px;
-  font-weight: 650;
-}
-.pp-tabs {
-  display: flex;
-  margin-left: auto;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.05);
-}
-.pp-tabs span {
-  padding: 2px 7px;
-  border-radius: 5px;
-  color: var(--ink-3);
-  font-size: 9.5px;
-  font-weight: 600;
-  transition:
-    background 220ms ease,
-    color 220ms ease;
-}
-.pp-tabs span[data-on="true"] {
-  background: #fff;
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-}
-
-.pp-save,
-.pp-library {
-  padding: 11px 11px 12px;
-}
-.pp-target {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0 0 10px;
-}
-.pp-target-title {
-  overflow: hidden;
-  font-size: 11.5px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pp-target-host {
-  color: var(--ink-3);
-  font-size: 10px;
-}
-
-.pp-primary {
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 650;
-  transition:
-    transform 120ms ease,
-    filter 200ms ease;
-}
-/* `data-did` rather than `data-beat`, so the button dips when the pointer presses it
-   rather than when the beat containing that press starts. The two are 90ms apart — the
-   pointer settles before it clicks — and five frames is the whole width of what a click
-   looks like. See `usePressGate` and `CLICKS` in the demo. */
-.pp[data-did="press"] .pp-primary {
-  filter: brightness(0.86);
-  transform: scale(0.96);
-}
-.pp-options {
-  margin: 8px 0 0;
-  color: var(--ink-3);
-  font-size: 10px;
-  text-align: center;
-}
-
-.pp-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 11px 0 0;
-  padding-top: 10px;
-  border-top: 1px solid var(--hairline);
-  animation: pp-rise 260ms cubic-bezier(0.16, 0.8, 0.2, 1);
-}
-@keyframes pp-rise {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-}
-.pp-bar {
-  position: relative;
-  display: block;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
-}
-.pp-bar i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-}
-/* Indeterminate for a link-following save, because it genuinely does not know
-   its own total yet. The sliding bar is the honest shape of that. */
-.pp-bar[data-indeterminate="true"] i {
-  width: 42%;
-  animation: pp-slide 1250ms ease-in-out infinite;
-}
-@keyframes pp-slide {
-  0% {
-    transform: translateX(-105%);
-  }
-  100% {
-    transform: translateX(240%);
-  }
-}
-.pp-progress-label {
-  color: var(--ink-2);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* --- the library, after the lights go out -------------------------------- */
-
-.pp-library-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 8px;
-}
-.pp-library-head strong {
-  font-size: 11.5px;
-}
-.pp-library-head span {
-  color: var(--ink-3);
-  font-size: 9.5px;
-}
-.pp-shelf {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.pp-shelf li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 7px;
-  border-radius: 7px;
-  background: var(--surface-2);
-  animation: pp-land 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12) backwards;
-  animation-delay: calc(var(--order) * 80ms);
-  transition:
-    background 260ms ease,
-    box-shadow 260ms ease;
-}
-@keyframes pp-land {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-}
-/* The row the pointer is standing on, before it presses. A row that is about to be
-   clicked has to look like it, or the click reads as landing on the panel rather than on
-   the page — and the page is what the reader below is a copy of. */
-.pp-shelf li[data-aimed="true"] {
-  background: color-mix(in srgb, var(--accent-soft) 62%, var(--surface));
-  box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.18);
-}
-.pp-shelf li[data-open="true"] {
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.3);
-}
-.pp-shelf-title {
-  overflow: hidden;
-  font-size: 10.5px;
-  font-weight: 550;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pp-shelf-meta {
-  flex: 0 0 auto;
-  color: var(--ink-3);
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
-}
-.pp-offline-note {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 9px 0 0;
-  color: var(--good);
-  font-size: 9.5px;
-  font-weight: 600;
-}
-.pp-offline-note span {
-  font-size: 7px;
-}
-
-/* The saved page, reopened outside the window it came from.
-   Positioned in the spill layer and pushed left of the browser on purpose: the
-   frame behind it is dead, and a reading pane floating clear of it says so more
-   plainly than one tucked neatly inside the dead frame's borders. Deliberately
-   the brightest, largest thing on screen by this point — it is the payoff. */
-.pp-reader {
-  position: absolute;
-  z-index: 8;
-  bottom: 3vh;
-  left: -11vw;
-  display: flex;
-  width: min(300px, 74vw);
-  flex-direction: column;
-  gap: 7px;
-  padding: 14px 16px 17px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow:
-    0 0 70px -6px rgba(255, 255, 255, 0.3),
-    0 30px 66px -18px rgba(0, 0, 0, 0.45);
-  opacity: 0;
-  transform: translate3d(46px, 26px, 0) rotate(-5deg) scale(0.88);
-  transition:
-    opacity 420ms ease,
-    transform 640ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-.pp-reader[data-open="true"] {
-  opacity: 1;
-  transform: translate3d(0, 0, 90px) rotate(-1.5deg) scale(1);
-}
-.pp-reader-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 0 0 3px;
-}
-.pp-reader-head span {
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.35;
-}
-.pp-reader-head small {
-  flex: 0 0 auto;
-  color: var(--good);
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.pp-reader .pp-line {
-  background: #e9e9ec;
-}
-
-@media (max-width: 720px) {
-  .pp-viewport {
-    height: 268px;
-    padding: 14px 15px;
-  }
-  .pp-popup {
-    right: 8px;
-    width: 196px;
-  }
-  .pp-spill {
-    --emit-right: 104px;
-    --emit-top: 132px;
-  }
-  /* Smaller cards, and no scaling up mid-flight. At this width a card at 1.18
-     scale covers most of the browser it is supposed to be escaping from. The
-     landing spots need no override: they are in viewport units, so the spread
-     shrinks with the screen on its own. */
-  .pp-flyer {
-    width: 62px;
-    height: 78px;
-  }
-  .pp-reader {
-    left: -6vw;
-    bottom: -3vh;
-  }
 }
 
 /* ===========================================================================
@@ -5814,902 +3728,6 @@ html.has-project-focus
   -webkit-font-smoothing: antialiased;
 }
 
-.pdfx-stage {
-  position: relative;
-  border-radius: 14px;
-  background: var(--canvas);
-  padding: 14px;
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-
-/* --- the slide ------------------------------------------------------------ */
-
-.pdfx-slide {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  padding: clamp(1rem, 3vw, 2.2rem);
-  border-radius: 10px;
-  background: #fff;
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.07),
-    0 0 0 1px rgba(0, 0, 0, 0.05);
-}
-.pdfx-slide-rule {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 6px;
-  background: var(--accent);
-}
-.pdfx-slide h4 {
-  max-width: 22ch;
-  margin: 0 0 0.9rem;
-  color: var(--ink);
-  font-size: clamp(1rem, 2.3vw, 1.6rem);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-.pdfx-slide ul {
-  margin: 0;
-  padding-left: 1.1rem;
-  color: var(--ink-2);
-  font-size: clamp(0.72rem, 1.3vw, 0.95rem);
-  line-height: 1.7;
-  list-style: disc;
-}
-.pdfx-figure {
-  position: absolute;
-  right: clamp(1rem, 3vw, 2.2rem);
-  bottom: clamp(1rem, 3vw, 2.2rem);
-  width: min(46%, 300px);
-  color: var(--ink-3);
-}
-.pdfx-figure svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.pdfx-slide-number {
-  position: absolute;
-  bottom: clamp(0.6rem, 2vw, 1.2rem);
-  left: clamp(1rem, 3vw, 2.2rem);
-  color: var(--ink-3);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* --- the floating notes --------------------------------------------------- */
-
-.pdfx-notes {
-  position: absolute;
-  top: 26px;
-  right: 26px;
-  bottom: 26px;
-  z-index: 2;
-  display: flex;
-  width: min(360px, 46%);
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  opacity: 0;
-  box-shadow: var(--shadow-soft);
-  /* The card slides in from the right the first time, then never moves again. */
-  transform: translateX(16px);
-  transition:
-    opacity 300ms ease-out,
-    transform 420ms cubic-bezier(0.16, 0.86, 0.18, 1.12),
-    box-shadow 300ms ease-out,
-    border-color 300ms ease-out;
-}
-.pdfx-notes[data-present="true"] {
-  opacity: 0.26;
-  transform: none;
-}
-.pdfx-notes[data-awake="true"] {
-  border-color: var(--line-strong);
-  opacity: 1;
-  box-shadow: var(--shadow-float);
-}
-
-.pdfx-notes-backing {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--elevated);
-  backdrop-filter: blur(24px);
-}
-
-.pdfx-notes-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.6rem 0.85rem 0.5rem;
-  border-bottom: 1px solid var(--line);
-}
-.pdfx-notes-eyebrow {
-  color: var(--violet);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-/* The number itself, so the mechanism is legible and not just felt. */
-.pdfx-opacity {
-  color: var(--ink-3);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-.pdfx-notes-body {
-  min-height: 0;
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.85rem 1rem 1.1rem;
-  scrollbar-width: thin;
-}
-.pdfx-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 0.6rem;
-}
-.pdfx-chip {
-  padding: 0.12rem 0.42rem;
-  border-radius: 999px;
-  font-size: 9.5px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-}
-.pdfx-chip--violet {
-  background: var(--violet-soft);
-  color: var(--violet);
-}
-.pdfx-notes-body h5 {
-  margin: 0 0 0.4rem;
-  font-size: 13.5px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-}
-.pdfx-notes-body p {
-  margin: 0 0 0.6rem;
-  color: var(--ink-2);
-  font-size: 11.5px;
-  line-height: 1.55;
-}
-.pdfx-equation {
-  padding: 0.5rem 0.6rem;
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--ink) !important;
-  /* Serif italic for the variables, which is how maths is set, rather than the monospace
-     this used while it was a line of LaTeX source. See `RangeEquation` in the pod: the app
-     this is a film about renders with KaTeX, so printing `t_receive` was showing a visitor
-     the one place its output would look wrong. */
-  font-family: ui-serif, Georgia, "Times New Roman", serif;
-  font-size: 12.5px !important;
-  font-style: italic;
-  letter-spacing: 0.01em;
-  text-align: center;
-}
-/* Subscripts that do not push the line taller. `vertical-align: sub` adds leading on its
-   own, which in a card with a fixed reserve moves everything below it. */
-.pdfx-equation sub {
-  bottom: -0.22em;
-  font-size: 0.72em;
-  font-style: normal;
-  line-height: 0;
-  vertical-align: baseline;
-  position: relative;
-}
-.pdfx-sensitivity {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin: 0;
-}
-.pdfx-sensitivity > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.28rem 0;
-  border-bottom: 1px solid var(--line);
-}
-.pdfx-sensitivity dt {
-  color: var(--ink-2);
-  font-size: 10.5px;
-}
-.pdfx-sensitivity dd {
-  margin: 0;
-  font-size: 10.5px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-/* --- the act rail ---------------------------------------------------------
-   Four labels across the top, the current one lit and the finished ones ticked
-   down. Not navigation, and not clickable: it exists so that "this project has
-   four parts" is legible in the first second, rather than being something a
-   visitor discovers by watching a loop twice. */
-/* The in-frame labels, as marks made on a document.
-   This is a section about studying, so its labels are the thing a person does to a page
-   they are studying: a violet highlighter wash with violet ink, and no white plate. Read as
-   annotation rather than as interface, which is what the rest of this pod already looks
-   like — the notes overlay, the chips and the practice cards are all tinted washes.
-
-   They live inside `.pdfx-stage` rather than the pod, so their percentages are the same
-   coordinate space the phantom cursor uses; there is a long note in the pod about what went
-   wrong the one time something here was measured against the other box. */
-.pdfx-specs {
-  --spec-ink: #4c1d95;
-  --spec-paper: rgba(237, 228, 254, 0.95);
-  --spec-edge: rgba(109, 40, 217, 0.22);
-  --spec-gloss: rgba(255, 255, 255, 0.5);
-  --spec-dot: var(--violet);
-  --spec-shadow: rgba(76, 29, 149, 0.3);
-  --spec-radius: 4px;
-  --spec-pad: 0.24rem 0.52rem;
-  --spec-weight: 640;
-  --spec-lead: 16px;
-}
-
-.pdfx-acts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.pdfx-acts li {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--ink-3);
-  transition: color 320ms ease;
-}
-.pdfx-acts li[data-done="true"] {
-  color: var(--ink-3);
-}
-.pdfx-acts li[data-on="true"] {
-  color: var(--violet);
-}
-.pdfx-act-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.32;
-  transition:
-    opacity 320ms ease,
-    transform 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-.pdfx-acts li[data-done="true"] .pdfx-act-dot {
-  opacity: 0.7;
-}
-.pdfx-acts li[data-on="true"] .pdfx-act-dot {
-  opacity: 1;
-  transform: scale(1.5);
-}
-
-/* --- the split ------------------------------------------------------------
-   The slide keeps the whole stage for the overlay act and gives up a third of it
-   when a panel opens, which is what the real workspace does. Animating
-   `grid-template-columns` is the one layout property worth animating here: the
-   alternative is transforming the slide, which would scale its type. */
-.pdfx-stage {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 0fr;
-  gap: 0;
-  transition:
-    grid-template-columns 620ms cubic-bezier(0.22, 0.9, 0.24, 1),
-    gap 620ms cubic-bezier(0.22, 0.9, 0.24, 1);
-}
-.pdfx-stage[data-split="true"] {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
-  gap: 14px;
-}
-
-/* The satellite diagram is sized for a full-width slide, where it sits clear of
-   the bullets in the bottom-right corner. On a narrowed slide it crossed straight
-   through "Timing error → position error", so it shrinks and drops into the corner
-   for the acts that split the stage. It is only load-bearing in the first act,
-   where it is the thing the notes must not cover. */
-.pdfx-stage[data-split="true"] .pdfx-figure {
-  width: 38%;
-  opacity: 0.5;
-  transition:
-    width 620ms cubic-bezier(0.22, 0.9, 0.24, 1),
-    opacity 620ms ease;
-}
-
-/* --- the panel ------------------------------------------------------------ */
-.pdfx-panel {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 420ms ease;
-}
-.pdfx-panel[data-open="true"] {
-  opacity: 1;
-}
-.pdfx-panel-tabs {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--surface-2);
-}
-.pdfx-panel-tabs span {
-  padding: 3px 9px;
-  border-radius: 6px;
-  color: var(--ink-3);
-  font-size: 10.5px;
-  font-weight: 600;
-  transition:
-    background 260ms ease,
-    color 260ms ease;
-}
-.pdfx-panel-tabs span[data-on="true"] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* --- II. the tutor -------------------------------------------------------- */
-.pdfx-chat {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 8px;
-  /* Newest at the bottom, which is where a conversation grows. */
-  justify-content: flex-end;
-}
-.pdfx-bubble {
-  max-width: 88%;
-  margin: 0;
-  padding: 8px 11px;
-  border-radius: 14px;
-  font-size: 11.5px;
-  line-height: 1.55;
-  animation: pdfx-bubble-in 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-@keyframes pdfx-bubble-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-.pdfx-bubble--user {
-  align-self: flex-end;
-  background: var(--accent);
-  color: #fff;
-  border-bottom-right-radius: 5px;
-}
-.pdfx-bubble--bot {
-  align-self: flex-start;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  border-bottom-left-radius: 5px;
-}
-/* The app's own thinking state: three dots that bounce out of phase. */
-.pdfx-thinking {
-  display: flex;
-  gap: 4px;
-  padding: 11px 12px;
-}
-.pdfx-thinking i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: pdfx-bounce 900ms ease-in-out infinite;
-}
-.pdfx-thinking i:nth-child(2) {
-  animation-delay: 150ms;
-}
-.pdfx-thinking i:nth-child(3) {
-  animation-delay: 300ms;
-}
-@keyframes pdfx-bounce {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(-4px);
-  }
-}
-.pdfx-suggest {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 4px;
-}
-.pdfx-suggest span {
-  padding: 4px 8px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--ink-2);
-  font-size: 10px;
-  transition:
-    background 220ms ease,
-    border-color 220ms ease,
-    color 220ms ease;
-}
-.pdfx-suggest span[data-picked="true"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.pdfx-composer {
-  margin: 0;
-  padding: 8px 11px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-2);
-  color: var(--ink-3);
-  font-size: 11px;
-}
-
-/* --- III. the review set --------------------------------------------------
-   One panel, one set, three kinds of item. The header is the part that says so, and it
-   is the part the scene was missing: a progress line over a filter row that counts each
-   kind, straight out of `PracticePanel.tsx`. Without it the three cards are three
-   unrelated exercises, which is exactly how the rail used to describe them. */
-.pdfx-practice {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 9px;
-}
-.pdfx-practice-head {
-  flex: 0 0 auto;
-}
-.pdfx-practice-score {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 5px;
-  color: var(--ink);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-.pdfx-practice-all {
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: var(--good-soft);
-  color: var(--good);
-  font-size: 9.5px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-}
-.pdfx-progress {
-  display: block;
-  width: 130px;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--surface-2);
-}
-.pdfx-progress i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--violet);
-  transition: width 420ms var(--ease-out-soft);
-}
-
-/* The filter row, which is the sentence "a review set has three kinds of item" written
-   as a control rather than as prose. Each chip carries its kind's own tint, and those are
-   the same three tints the cards are drawn in — so the row is also the key. */
-.pdfx-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 7px;
-}
-.pdfx-filters span {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--ink-3);
-  font-size: 9.5px;
-  font-weight: 650;
-  letter-spacing: 0.03em;
-  opacity: 0.8;
-  transition:
-    background 260ms ease,
-    color 260ms ease,
-    opacity 260ms ease;
-}
-.pdfx-filters span b {
-  font-weight: 650;
-  opacity: 0.7;
-}
-/* The selected filter. It follows the card on screen, which is consistent rather than
-   decorative: filtering to one kind in the application shows one card of that kind, and
-   one card of that kind is what the frame shows. */
-.pdfx-filters span[data-on="true"] {
-  opacity: 1;
-}
-.pdfx-filters span.pdfx-chip--violet[data-on="true"] {
-  background: var(--violet);
-  color: #fff;
-}
-.pdfx-filters span.pdfx-chip--teal[data-on="true"] {
-  background: var(--teal);
-  color: #fff;
-}
-.pdfx-filters span.pdfx-chip--amber[data-on="true"] {
-  background: var(--amber);
-  color: #fff;
-}
-
-/* --- the cards -----------------------------------------------------------
-   The real cards are tinted by kind — violet for multiple choice, teal for matching,
-   amber for blanks — and the tint is a left edge rather than a fill, so the card still
-   reads as paper. */
-.pdfx-card {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 9px;
-  padding: 12px 13px 13px 15px;
-  border: 1px solid var(--line);
-  border-left-width: 3px;
-  border-radius: 12px;
-  background: var(--surface);
-  animation: pdfx-card-in 340ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-@keyframes pdfx-card-in {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-}
-.pdfx-card--violet {
-  border-left-color: var(--violet);
-}
-.pdfx-card--teal {
-  border-left-color: var(--teal);
-}
-.pdfx-card--amber {
-  border-left-color: var(--amber);
-}
-.pdfx-card-kicker {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  color: var(--ink-3);
-  font-size: 10px;
-}
-/* The matching game's own counter, right-aligned in the kicker row. It is the only thing
-   on screen that distinguishes six taps from one, which is what this scene was reported
-   for getting wrong. */
-.pdfx-card-count {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-}
-.pdfx-chip--teal {
-  background: var(--teal-soft);
-  color: var(--teal);
-}
-.pdfx-chip--amber {
-  background: var(--amber-soft);
-  color: var(--amber);
-}
-.pdfx-question {
-  margin: 0;
-  color: var(--ink);
-  font-size: 12.5px;
-  font-weight: 550;
-  line-height: 1.5;
-}
-
-.pdfx-options {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.pdfx-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  color: var(--ink);
-  font-size: 11.5px;
-  line-height: 1.45;
-  transition:
-    background 260ms ease,
-    border-color 260ms ease,
-    opacity 260ms ease;
-}
-.pdfx-option-letter {
-  display: grid;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  font-size: 9px;
-  font-weight: 700;
-}
-.pdfx-option[data-state="chosen"] {
-  border-color: var(--violet);
-  background: var(--violet-soft);
-}
-.pdfx-option[data-state="reveal"] {
-  border-color: var(--good);
-  background: var(--good-soft);
-}
-.pdfx-option[data-state="reveal"] .pdfx-option-letter {
-  border-color: var(--good);
-  background: var(--good);
-  color: #fff;
-}
-/* Everything else recedes once the answer is out, rather than disappearing. */
-.pdfx-option[data-state="dim"] {
-  opacity: 0.42;
-}
-.pdfx-verdict {
-  margin: 0;
-  color: var(--ink-2);
-  font-size: 11px;
-  line-height: 1.5;
-  animation: pdfx-bubble-in 300ms ease-out;
-}
-.pdfx-verdict strong {
-  color: var(--good);
-}
-
-/* --- matching ------------------------------------------------------------- */
-.pdfx-match {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 6px;
-}
-.pdfx-match ul {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.pdfx-match li {
-  position: relative;
-  padding: 7px 20px 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  color: var(--ink);
-  font-size: 10.5px;
-  line-height: 1.4;
-  transition:
-    background 300ms ease,
-    border-color 300ms ease,
-    color 300ms ease;
-}
-.pdfx-match li[data-matched="true"] {
-  border-color: var(--good);
-  background: var(--good-soft);
-}
-/* A term tapped and waiting for its definition. This is the state the scene had no way
-   of showing while the whole game was one beat, and it is half of what makes the six taps
-   legible as six: a cell lights, then a second cell locks it in.
-   The real game's `pickedConcept` styling: `border-teal bg-teal-soft`. */
-.pdfx-match li[data-held="true"] {
-  border-color: var(--teal);
-  background: color-mix(in srgb, var(--teal) 14%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 14%, transparent);
-}
-.pdfx-tick {
-  position: absolute;
-  top: 6px;
-  right: 7px;
-  color: var(--good);
-  font-size: 10px;
-  font-style: normal;
-  opacity: 0;
-  transform: scale(0.4);
-  transition:
-    opacity 260ms ease,
-    transform 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-.pdfx-match li[data-matched="true"] .pdfx-tick {
-  opacity: 1;
-  transform: none;
-}
-
-/* --- fill in the blank ----------------------------------------------------
-   The third kind, and the one that needs a person to produce an answer rather than
-   choose one. From `src/practice/ClozeCard.tsx`: a dashed blank that is itself the
-   reveal control, a field, a Check button, and "That is it" when the answer lands. */
-.pdfx-cloze {
-  margin: 0;
-  color: var(--ink);
-  font-size: 12px;
-  line-height: 2;
-}
-.pdfx-cloze-blank {
-  display: inline-block;
-  padding: 1px 7px;
-  border: 1px dashed color-mix(in srgb, var(--amber) 50%, transparent);
-  border-radius: 8px;
-  color: var(--amber);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  vertical-align: middle;
-}
-.pdfx-cloze-filled {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 8px;
-  background: var(--good-soft);
-  color: var(--good);
-  font-size: 11.5px;
-  font-weight: 650;
-  vertical-align: middle;
-  animation: pdfx-pop 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-@keyframes pdfx-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.82);
-  }
-}
-.pdfx-cloze-verdict {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 0;
-  color: var(--good);
-  font-size: 11px;
-  font-weight: 600;
-  animation: pdfx-bubble-in 300ms ease-out;
-}
-.pdfx-cloze-verdict i {
-  font-style: normal;
-}
-.pdfx-cloze-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.pdfx-field {
-  display: flex;
-  min-width: 0;
-  height: 26px;
-  flex: 1 1 auto;
-  align-items: center;
-  padding: 0 9px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--surface);
-  font-size: 11.5px;
-  transition:
-    border-color 220ms ease,
-    box-shadow 220ms ease;
-}
-/* Focused, because the pointer clicked into it. The application's focus ring. */
-.pdfx-field[data-typed="true"] {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-.pdfx-field em {
-  color: var(--ink-3);
-  font-style: normal;
-}
-/**
- * The typing.
- *
- * A `steps()` reveal of the answer's own width, with a caret riding the right edge. No
- * keystrokes are simulated and none need to be: the width *is* the typing, and expressing
- * it as one animation on one element means it costs nothing per frame and restarts by
- * remounting — which is what the `key` in the pod is for.
- *
- * `ch` units against the same monospace the field prints in, so the steps land on
- * character boundaries rather than part way through a glyph. The width comes from
- * `--chars`, which the pod publishes from the answer's own length: it was `11ch` here and
- * `steps(11)` below, which is the answer's length written down twice in a stylesheet that
- * cannot see the answer. The step count stays a literal on purpose — it only has to be
- * roughly one per character to read as typing, and being a few out is invisible.
- */
-.pdfx-typed {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  border-right: 1.5px solid var(--accent);
-  color: var(--ink);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  animation:
-    pdfx-type 620ms steps(11) both,
-    pdfx-caret 620ms steps(2, jump-none) infinite;
-}
-@keyframes pdfx-type {
-  from {
-    width: 0;
-  }
-  to {
-    width: calc(var(--chars, 11) * 1ch);
-  }
-}
-@keyframes pdfx-caret {
-  50% {
-    border-right-color: transparent;
-  }
-}
-.pdfx-check {
-  flex: 0 0 auto;
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--surface-2);
-  color: var(--ink);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-@media (max-width: 760px) {
-  /* One column: a 0.82fr panel beside a slide is unreadable at this width, and
-     the acts still read in sequence stacked. */
-  .pdfx-stage[data-split="true"] {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-  .pdfx-match {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .pdfx-notes {
-    top: 14px;
-    right: 14px;
-    bottom: 14px;
-    width: 58%;
-    border-radius: 14px;
-  }
-  .pdfx-notes-body {
-    padding: 0.6rem 0.7rem 0.8rem;
-  }
-  .pdfx-sensitivity {
-    display: none;
-  }
-}
-
 /* ===========================================================================
    Choir Practice
    ---------------------------------------------------------------------------
@@ -6730,220 +3748,6 @@ html.has-project-focus
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-}
-
-/* Tall enough for the application to fit inside it.
-   This was `aspect-ratio: 16 / 10`, which derived the height from the width and gave the
-   app 609px at the pod's 980px. The app needs about 850: its parts panel is a fixed side
-   column in the desktop layout that neither scrolls nor closes, so anything shorter pushes
-   it out of the body — 243px of overflow at 609, 392px at 460 — and the score is cut off
-   inside a frame that is itself cut off. An aspect ratio is the wrong rule for a box whose
-   contents have a minimum height and do not care about its width. */
-.choir-frame {
-  display: block;
-  width: 100%;
-  /* Follows the window, with a floor.
-     236px is what the section spends around this frame — the heading column is beside it
-     now, so that is padding, the stand's base and the footnote. Subtracting it means the
-     section lands just inside the window rather than just outside it: at 1080 the frame
-     takes 844 and the section 1077.
-     The 760px floor is the compromise the application forces. It needs about 850 before
-     its parts panel stops pushing out of the body, and on a 900px-tall laptop there is no
-     height that both fits the window and satisfies that. Given the choice, the app stays
-     intact and the section runs a little long — a cut-off score is the fault that was
-     reported, and a section you scroll is not. */
-  /* 860px flat, which is what the application needs before its parts panel pushes out of
-     its own body. Not a function of the window: a shorter frame does not make the section
-     fit — the heading band above it costs ~290px either way — it only cuts the score off
-     inside a frame that is already too short. Given the choice between an intact app in a
-     section you scroll a little, and a cut-off app in a section that fits, the app wins;
-     the cut-off score is the fault that was reported. */
-  height: 860px;
-  border: 0;
-  border-radius: 12px;
-  background: #000;
-  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.7);
-  /* Fades up rather than appearing, so a 1.6 MB application arriving does not
-     land as a jump-cut in the middle of a page that is otherwise composed. */
-  animation: choir-in 520ms ease-out;
-}
-@keyframes choir-in {
-  from {
-    opacity: 0;
-  }
-}
-
-/* Holds the space before the frame exists, at the same size, so nothing on the
-   page moves when it arrives. */
-.choir-holding {
-  display: grid;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  min-height: 520px;
-  place-items: center;
-  border-radius: 12px;
-  background: radial-gradient(120% 120% at 18% 0%, #16222a, #0a0e11 72%);
-}
-.choir-holding span {
-  width: 34px;
-  height: 3px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  animation: demo-shimmer 1.5s ease-in-out infinite;
-}
-
-/* The footnote row is gone. It printed a build path — `/demos/choir/` — at a visitor,
-   followed by the same instruction the shield gives and the same claim the invitation
-   above the frame already makes. */
-
-/* --- the scroll shield ----------------------------------------------------
-   Covers the frame until the visitor asks for it, so the wheel keeps belonging to the
-   page. See the comment at the markup for the trap this fixes.
-
-   Light enough to read the score through — this is a scrim, not a door. The gradient
-   is heavier at the bottom, where the cluster sits, so the controls have something to
-   be legible against without the engraving being dimmed where it matters. */
-.choir-shield {
-  position: absolute;
-  z-index: 5;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    to bottom,
-    rgba(6, 10, 14, 0.06) 0%,
-    rgba(6, 10, 14, 0.1) 52%,
-    rgba(6, 10, 14, 0.58) 100%
-  );
-  cursor: pointer;
-  opacity: 1;
-  transition:
-    opacity 260ms ease,
-    visibility 260ms;
-}
-/* Gone completely once engaged: `visibility` as well as opacity, so it stops
-   hit-testing and the app gets the wheel it was handed. */
-.choir-shield[data-engaged="true"] {
-  visibility: hidden;
-  opacity: 0;
-}
-
-/* The controls sit in their own layer above the scrim rather than inside it, so the
-   whole scrim stays one clean click target and the button is not a hole in it. */
-.choir-shield-controls {
-  position: absolute;
-  z-index: 6;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: flex;
-  justify-content: center;
-  padding: 0 1rem 1.1rem;
-  opacity: 1;
-  transition:
-    opacity 260ms ease,
-    visibility 260ms;
-}
-.choir-shield-controls[data-engaged="true"] {
-  visibility: hidden;
-  opacity: 0;
-}
-
-.choir-shield-cluster {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem 0.9rem;
-}
-
-.choir-shield-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  color: rgba(245, 248, 250, 0.9);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
-}
-.choir-shield-glyph {
-  display: inline-flex;
-  width: 16px;
-  height: 16px;
-  flex: none;
-}
-.choir-shield-glyph svg {
-  width: 100%;
-  height: 100%;
-}
-
-/* --- pointing at the pitch control ----------------------------------------
-   A label on a leader line, hung off the application's own microphone button.
-
-   This replaces a second microphone button that the pod carried itself, reading "Sing
-   into it / your browser will ask for the microphone". Both halves were wrong. Warning
-   a visitor that a browser is about to ask for permission is a site apologising for
-   something every site does, and it draws attention to the prompt rather than to the
-   feature. And a duplicate control means somebody who later finds the real one in the
-   transport has no way of knowing they are the same thing — a label teaches where a
-   feature lives, a button hides it.
-
-   `--cue-x` and `--cue-y` are the button's centre inside the frame, measured by
-   `findMicSpot` and given in the stand's coordinates. The label sits up and to the left
-   of it so it never covers the transport it is describing.
-
-   `pointer-events: none` throughout: the thing to click is underneath. */
-.choir-cue {
-  position: absolute;
-  z-index: 6;
-  top: var(--cue-y);
-  left: var(--cue-x);
-  display: flex;
-  align-items: center;
-  pointer-events: none;
-  /* Sits to the left of the button, vertically centred on it. */
-  transform: translate(calc(-100% - 14px), -50%);
-  animation: choir-cue-in 520ms cubic-bezier(0.16, 0.86, 0.18, 1.06) both;
-}
-
-.choir-cue b {
-  padding: 0.34rem 0.6rem;
-  border-radius: 8px;
-  color: #0d1a16;
-  background: rgba(232, 250, 240, 0.94);
-  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.8);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-
-/* The leader. Ends in a dot on the button rather than an arrowhead — an arrow at this
-   size reads as a chevron, and a dot reads as "this one". */
-.choir-cue-line {
-  position: relative;
-  display: block;
-  width: 26px;
-  height: 2px;
-  order: 2;
-  background: linear-gradient(90deg, rgba(232, 250, 240, 0.9), rgba(232, 250, 240, 0.5));
-}
-.choir-cue-line::after {
-  position: absolute;
-  top: 50%;
-  right: -3px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(232, 250, 240, 0.95);
-  content: "";
-  transform: translateY(-50%);
-}
-
-@keyframes choir-cue-in {
-  from {
-    opacity: 0;
-    transform: translate(calc(-100% - 2px), -50%);
-  }
 }
 
 /* There was going to be a second one of these on the parts mixer, carrying the deleted
@@ -6979,65 +3783,6 @@ html.has-project-focus
   left: 0;
   overflow: hidden;
   pointer-events: none;
-}
-
-/* --- GRT: a notification, in the corner of your actual window ------------- */
-.gx-os-alert {
-  position: absolute;
-  top: clamp(14px, 2.2vh, 26px);
-  right: clamp(14px, 1.6vw, 28px);
-  display: flex;
-  width: min(374px, calc(100vw - 32px));
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 14px 15px;
-  border-radius: 14px;
-  color: #12201f;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(16, 40, 44, 0.09),
-    0 34px 70px -24px rgba(8, 26, 30, 0.55);
-  /* Comes in the way the operating system's does: from off the right edge, fast,
-     with a small overshoot. */
-  animation: gx-os-in 460ms cubic-bezier(0.18, 1.1, 0.28, 1) both;
-}
-@keyframes gx-os-in {
-  from {
-    opacity: 0;
-    transform: translate3d(28px, -8px, 0) scale(0.96);
-  }
-}
-
-/* The claim that belongs to that card, hung on the card.
-   A zero-size point on the notification's left edge, halfway down it, which is all the
-   geometry a `SpecPlate` needs: the plate translates itself fully left of the point and
-   the pin's dot stays on it. So the label is correct at every window width, which is the
-   thing a percentage of the pod could never be — the notification is not in the pod.
-   See `ALERT_SPEC` in the scene for what was wrong before.
-   Delayed behind the card, because a label arriving with the thing it labels reads as part
-   of the notification rather than as an annotation of it. */
-.gx-alert-spec {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 0;
-  height: 0;
-  animation: gx-spec-in 300ms ease-out both;
-  animation-delay: 420ms;
-}
-@keyframes gx-spec-in {
-  from {
-    opacity: 0;
-  }
-}
-/* Narrow windows have no room to its left: the card is already `100vw - 32px` wide. The
-   same trade the layer makes at this width, where the labels stop pointing and become a
-   row of chips under the scene — except there is no row to join out here, so this one
-   goes. The bell in the pod's chrome still rings, and the notification still arrives. */
-@media (max-width: 760px) {
-  .gx-alert-spec {
-    display: none;
-  }
 }
 
 /* ===========================================================================
@@ -7643,37 +4388,12 @@ svg.bd-vehicle {
   color: var(--project-ink);
 }
 
-/* --- site footer ----------------------------------------------------------
-   The last thing on the page, deliberately plain. Everything above it is doing
-   something; this just tells you where to write and where the policies are. */
-.site-foot {
-  padding: clamp(2.5rem, 6vw, 4rem) 3vw clamp(2rem, 5vw, 3rem);
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 0.78rem;
-  text-align: center;
-}
-.site-foot p {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem 0.85rem;
-  margin: 0;
-}
-.site-foot a {
-  color: var(--muted);
-  text-decoration-color: rgba(22, 25, 23, 0.28);
-  text-decoration-line: underline;
-  text-underline-offset: 0.25em;
-}
-.site-foot a:hover {
-  color: var(--ink);
-  text-decoration-color: var(--ink);
-}
-.site-foot span[aria-hidden] {
-  opacity: 0.5;
-}
+/* The thin footer strip that used to close the page was replaced by the closing
+   section — see `app/closing.tsx` — which carries the same address and the same
+   policy index at a size that reads as an ending rather than as fine print. Its
+   styles are deleted rather than kept "in case": a rule for markup that does not
+   exist is a rule nobody can test, and this stylesheet has now lost three live
+   rules to selectors left behind by a deletion. */
 
 /* ===========================================================================
    The index in the hero, and the seven living marks in it
@@ -7729,10 +4449,115 @@ svg.bd-vehicle {
   border-top: 0;
 }
 
+/* --- the seven doors ------------------------------------------------------
+   Each row is a way into one of the six coloured rooms below, and until now it gave
+   no sign of that: seven identical rows in one beige box, and then you arrive
+   somewhere mint. The colour is the most useful thing a door can tell you before you
+   open it, so every row now carries its project's own — see `--accent-*` and the
+   `data-theme` written in `page.tsx`.
+
+   At rest it is a 3px edge, which is enough to make the card read as seven chapters
+   rather than seven lines. Under a pointer the edge widens, the whole row washes to a
+   trace of that colour, and the number and arrow take it outright. */
+.project-index a {
+  --row-accent: var(--muted);
+}
+.project-index a[data-theme="mint"] {
+  --row-accent: var(--accent-mint);
+}
+.project-index a[data-theme="paper"] {
+  --row-accent: var(--accent-paper);
+}
+.project-index a[data-theme="black"] {
+  --row-accent: var(--accent-black);
+}
+.project-index a[data-theme="white"] {
+  --row-accent: var(--accent-white);
+}
+.project-index a[data-theme="navy"] {
+  --row-accent: var(--accent-navy);
+}
+.project-index a[data-theme="forest"] {
+  --row-accent: var(--accent-forest);
+}
+
+.project-index a::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 7px;
+  background: var(--row-accent);
+  content: "";
+  opacity: 0.85;
+  transition:
+    width 260ms var(--ease-out-soft),
+    opacity 200ms ease;
+}
+
+/* The number takes the room's colour at rest too. The edge alone was a hairline at
+   the size the card is actually seen, and this is what makes the index read as
+   colour-coded from across the page rather than only under a pointer. Held back from
+   the full accent so seven saturated numerals do not compete with the seven marks,
+   which are the thing in this card worth looking at. */
+.project-index a .project-index-number {
+  color: color-mix(in srgb, var(--row-accent) 78%, var(--muted));
+}
+
+/* The row does not tint under the pointer, it *becomes* the room. A wash was the
+   careful version and it was too careful to notice on a card this size — the whole
+   point of colour-coding seven doors is lost if choosing one is a five per cent change
+   in background. Filling it outright also means the live mark inside is suddenly on
+   its own project's ground, which is the nearest this card can get to showing you
+   where the row goes. */
 .project-index a:hover,
 .project-index a:focus-visible {
-  padding-left: 1.35rem;
-  background: rgba(22, 25, 23, 0.05);
+  padding-left: 1.55rem;
+  background: var(--row-accent);
+  color: #fff;
+}
+
+.project-index a:hover::before,
+.project-index a:focus-visible::before {
+  width: 0;
+  opacity: 1;
+}
+
+.project-index a:hover .project-index-number,
+.project-index a:focus-visible .project-index-number,
+.project-index a:hover strong,
+.project-index a:focus-visible strong,
+.project-index a:hover .project-index-arrow,
+.project-index a:focus-visible .project-index-arrow {
+  color: #fff;
+}
+
+.project-index a:hover .project-index-number,
+.project-index a:focus-visible .project-index-number {
+  opacity: 0.75;
+}
+
+.project-index a:hover .project-index-arrow,
+.project-index a:focus-visible .project-index-arrow {
+  opacity: 1;
+}
+
+/* The mark keeps its own colours and needs separating from the ground it is now
+   sitting on, which is a saturated field rather than paper. */
+.project-index a:hover .imark-slot,
+.project-index a:focus-visible .imark-slot {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #fff 34%, transparent);
+}
+
+/* The mark leans in with the row. Its own animation keeps running underneath —
+   this is a transform on the slot, not on anything the scene is drawing. */
+.imark-slot {
+  transition: transform 260ms var(--ease-out-back);
+}
+.project-index a:hover .imark-slot,
+.project-index a:focus-visible .imark-slot {
+  transform: scale(1.12);
 }
 
 .project-index-number {
@@ -7740,11 +4565,13 @@ svg.bd-vehicle {
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+  transition: color 200ms ease;
   letter-spacing: 0.06em;
 }
 
 .project-index a strong {
   font-weight: 600;
+  transition: color 200ms ease;
   letter-spacing: -0.01em;
 }
 
@@ -8231,6 +5058,43 @@ svg.bd-vehicle {
 
 .closing-contact-links a:hover {
   text-decoration-color: currentColor;
+}
+
+/* --- the two notes under the address --------------------------------------
+   Set at a reading measure and away from the address rather than under it, so the
+   thing a visitor might act on stays the largest thing in the section and these stay
+   what they are: the last two sentences, for anyone still reading. Two columns where
+   there is room, because two short paragraphs stacked at the bottom of a long page
+   read as a paragraph nobody finished. */
+.closing-notes {
+  display: grid;
+  max-width: 62rem;
+  margin-top: clamp(2.2rem, 4vw, 3.2rem);
+  gap: clamp(1rem, 2.4vw, 2.2rem);
+  border-top: 1px solid var(--line);
+  padding-top: clamp(1.4rem, 2.6vw, 2rem);
+}
+
+@media (min-width: 780px) {
+  .closing-notes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.closing-notes p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.62;
+  text-wrap: pretty;
+}
+
+/* The one sentence in the section that is an invitation rather than a statement,
+   and it is the last one. It comes up to full ink as it is read past — nothing
+   flashy, just the page's own way of pointing without a pointer. */
+.closing.is-seen .closing-notes p:last-child {
+  color: var(--ink);
+  transition: color 900ms ease 700ms;
 }
 
 /* ===========================================================================
@@ -9287,153 +6151,6 @@ svg.bd-vehicle {
   opacity: 0.92;
 }
 
-#pagepack .pp-browser {
-  transition:
-    opacity 620ms ease,
-    transform 760ms cubic-bezier(0.22, 0.9, 0.24, 1);
-}
-
-#pagepack .pp[data-beat="read-offline"] .pp-browser,
-#pagepack .pp[data-beat="hold"] .pp-browser {
-  opacity: 0.24;
-  transform: translateY(-1.5rem) scale(0.88);
-}
-
-/* The selected saved page becomes the section's reading plane rather than one
-   more card beside a dead browser. */
-#pagepack .pp-reader {
-  z-index: 8;
-  bottom: -1.25rem;
-  left: 50%;
-  display: block;
-  width: min(900px, calc(100vw - 4rem));
-  padding: clamp(1.1rem, 2.4vw, 2rem);
-  border-radius: 16px;
-  opacity: 0;
-  transform: translate3d(-50%, 44px, 0) rotate(-1deg) scale(0.9);
-}
-
-#pagepack .pp-reader[data-open="true"] {
-  opacity: 1;
-  transform: translate3d(-50%, 0, 110px) rotate(0deg) scale(1);
-}
-
-#pagepack .pp-reader-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin: 0 0 1.1rem;
-  padding-bottom: 0.8rem;
-  border-bottom: 1px solid #e2e3e7;
-}
-
-#pagepack .pp-reader-head span {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: #24272d;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.1rem, 2.3vw, 1.7rem);
-  font-weight: 400;
-}
-
-#pagepack .pp-reader-head small,
-#pagepack .pp-reader-head b {
-  color: #25804d;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-#pagepack .pp-reader-head b {
-  padding: 0.28rem 0.52rem;
-  border-radius: 999px;
-  background: rgba(37, 128, 77, 0.1);
-}
-
-.pp-reader-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.38fr);
-  gap: clamp(1.2rem, 3vw, 2.6rem);
-}
-
-.pp-reader-document {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.48rem;
-}
-
-.pp-reader-byline {
-  margin: 0 0 0.25rem;
-  color: #777d87;
-  font-size: 0.58rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.pp-reader-document h4 {
-  margin: 0 0 0.45rem;
-  color: #24272d;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(0.9rem, 1.5vw, 1.15rem);
-  font-weight: 400;
-}
-
-.pp-reader-callout {
-  margin: 0.45rem 0;
-  padding: 0.7rem 0.8rem;
-  border-left: 3px solid #2d7fd2;
-  background: #f3f6fa;
-  color: #545b66;
-  font-size: 0.7rem;
-  line-height: 1.55;
-}
-
-.pp-reader-index {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding-left: 1rem;
-  border-left: 1px solid #e2e3e7;
-}
-
-.pp-reader-index > small {
-  margin-bottom: 0.2rem;
-  color: #898f98;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.52rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.pp-reader-index > span {
-  display: grid;
-  grid-template-columns: 1.8rem minmax(0, 1fr);
-  gap: 0.4rem;
-  padding: 0.38rem 0.45rem;
-  border-radius: 6px;
-  color: #6c727d;
-  font-size: 0.62rem;
-  line-height: 1.35;
-}
-
-.pp-reader-index > span[data-current="true"] {
-  background: rgba(11, 111, 214, 0.09);
-  color: #263647;
-}
-
-.pp-reader-index i {
-  color: #2d7fd2;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.55rem;
-  font-style: normal;
-}
-
 /* ------------------------------------------------------------------ decaf --- */
 
 #decaf.project {
@@ -10053,488 +6770,11 @@ svg.bd-vehicle {
   width: 100%;
 }
 
-.choir-rehearsal {
-  position: relative;
-  display: grid;
-  /* Follows the frame rather than setting a second, independent floor. 650px was set when
-     the frame's height came from an aspect ratio and could be shorter than the band it sat
-     in; the frame is now the tallest thing here by a distance. */
-  place-items: center;
-  perspective: 1400px;
-}
-
-.choir-stand {
-  position: relative;
-  z-index: 4;
-  width: min(86%, 980px);
-  transform: rotateX(1.2deg) translateY(-0.5rem);
-  transform-origin: bottom center;
-}
-
-.choir-frame,
-.choir-holding {
-  position: relative;
-  z-index: 2;
-  min-height: 540px;
-  border-radius: 8px 8px 4px 4px;
-  box-shadow:
-    0 0 0 1px rgba(18, 40, 33, 0.22),
-    0 34px 78px -38px rgba(13, 31, 25, 0.72);
-}
-
-.choir-stand-lip {
-  position: absolute;
-  z-index: 5;
-  right: -2%;
-  bottom: -10px;
-  left: -2%;
-  height: 22px;
-  border-radius: 4px 4px 10px 10px;
-  background: linear-gradient(#2c3934, #101715);
-  box-shadow: 0 12px 20px -10px rgba(8, 13, 11, 0.7);
-  pointer-events: none;
-}
-
-.choir-stand-base {
-  position: absolute;
-  z-index: 1;
-  bottom: 0;
-  left: 50%;
-  width: 17%;
-  height: 38%;
-  background: linear-gradient(90deg, transparent 44%, #202b27 44% 56%, transparent 56%);
-  transform: translateX(-50%);
-}
-
-.choir-stand-base::after {
-  position: absolute;
-  right: 8%;
-  bottom: 0;
-  left: 8%;
-  height: 12px;
-  border-radius: 50%;
-  background: #1c2723;
-  box-shadow: 0 12px 28px -10px rgba(8, 17, 14, 0.6);
-  content: "";
-}
-
-.choir-score-leaf {
-  position: absolute;
-  z-index: 2;
-  top: 14%;
-  display: flex;
-  width: clamp(180px, 24vw, 320px);
-  aspect-ratio: 0.72;
-  flex-direction: column;
-  justify-content: space-evenly;
-  padding: 8% 7%;
-  border: 1px solid rgba(30, 63, 53, 0.18);
-  border-radius: 4px;
-  background: rgba(252, 251, 242, 0.86);
-  box-shadow: 0 30px 72px -42px rgba(18, 43, 35, 0.68);
-  opacity: 0.2;
-  transition:
-    opacity 700ms ease,
-    transform 900ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-  pointer-events: none;
-}
-
-.choir-score-leaf--left {
-  left: -7%;
-  transform: translateX(3rem) rotate(-3deg) scale(0.9);
-}
-
-.choir-score-leaf--right {
-  right: -7%;
-  transform: translateX(-3rem) rotate(3deg) scale(0.9);
-}
-
-#choir-practice[data-scene-reached~="score"] .choir-score-leaf {
-  opacity: 0.94;
-}
-
-#choir-practice[data-scene-reached~="score"] .choir-score-leaf--left {
-  transform: translateX(0) rotate(-7deg) scale(1);
-}
-
-#choir-practice[data-scene-reached~="score"] .choir-score-leaf--right {
-  transform: translateX(0) rotate(7deg) scale(1);
-}
-
-.choir-score-leaf > small {
-  color: #47665d;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.55rem;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-
-.choir-score-system {
-  position: relative;
-  height: 48px;
-  background: repeating-linear-gradient(
-    180deg,
-    rgba(32, 65, 55, 0.28) 0 1px,
-    transparent 1px 10px
-  );
-}
-
-.choir-score-system i {
-  position: absolute;
-  color: #294d42;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.2rem;
-  font-style: normal;
-  line-height: 1;
-}
-
-.choir-score-system i:nth-child(1) {
-  top: 7px;
-  left: 9%;
-}
-
-.choir-score-system i:nth-child(2) {
-  top: -1px;
-  left: 28%;
-}
-
-.choir-score-system i:nth-child(3) {
-  top: 18px;
-  left: 49%;
-}
-
-.choir-score-system i:nth-child(4) {
-  top: 8px;
-  left: 69%;
-}
-
-.choir-score-system i:nth-child(5) {
-  top: 25px;
-  left: 86%;
-}
-
-.choir-part-cues {
-  position: absolute;
-  z-index: 5;
-  inset: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  pointer-events: none;
-}
-
-/* Each row is inked in its own voice's colour, which is the colour the application
-   engraves that part in on the canvas six inches away. `--part-color` is declared per row
-   in the markup from `PARTS`, which is a copy of the app's `PART_COLORS` — see the note
-   there, and the test that keeps the two in step.
-
-   These were all one mint: the section's accent, applied to four things the section is
-   asking you to tell apart from four differently-coloured lines in a score. Which is the
-   opposite of what a colour code is for. */
-.choir-part-cues li {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: var(--part-color, #31594d);
-  opacity: 0;
-  transition:
-    opacity 480ms ease,
-    transform 680ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-
-.choir-part-cues li:nth-child(1) {
-  top: 13%;
-  left: 0;
-  transform: translateX(-1rem);
-}
-
-.choir-part-cues li:nth-child(2) {
-  top: 35%;
-  right: 0;
-  flex-direction: row-reverse;
-  transform: translateX(1rem);
-}
-
-.choir-part-cues li:nth-child(3) {
-  top: 58%;
-  left: -1%;
-  transform: translateX(-1rem);
-}
-
-.choir-part-cues li:nth-child(4) {
-  top: 78%;
-  right: -1%;
-  flex-direction: row-reverse;
-  transform: translateX(1rem);
-}
-
-#choir-practice[data-scene-reached~="score"] .choir-part-cues li {
-  opacity: 0.76;
-  transform: none;
-  transition-delay: calc(var(--part) * 100ms);
-}
-
-/* --- the four rows, driven by the four voices -----------------------------
-   `--v-soprano` through `--v-bass` are written onto `.choir` by `tapVoices` in the pod,
-   from an analyser tapped onto the embedded app's master gain. They are a reading of the
-   real mix: press play and the row for whichever part is carrying the line brightens and
-   leans in, in time with the singing.
-
-   Each row picks up its own band as `--v` in the markup, so everything below is written
-   once against a generic variable. The fallback of 0 is what makes this inert when nothing
-   is playing and when the analyser could not be reached at all — which is the same
-   rendering the section had before any of this existed. Four `nth-child` rules used to do
-   that mapping here; declaring it where the row is built keeps the row's colour and its
-   band in one place, since both come from the same entry in `PARTS`.
-
-   Transitions are deliberately absent. The values already arrive smoothed, with a fast
-   attack and a slow release, and a CSS transition on top would be a second filter
-   fighting the first — the attacks are the part worth seeing and a transition is exactly
-   what rounds them off. */
-
-/* Brighter, and standing slightly proud of the page. `--part` is the row's index and
-   already sets the side each row sits on, so the lean has to be signed per row; rows 2
-   and 4 are on the right and lean the other way. */
-#choir-practice[data-scene-beat="singing"] .choir-part-cues li {
-  opacity: calc(0.72 + var(--v, 0) * 0.28);
-}
-#choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(odd) {
-  transform: translateX(calc(var(--v, 0) * 0.7rem));
-}
-#choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(even) {
-  transform: translateX(calc(var(--v, 0) * -0.7rem));
-}
-
-/* The disc is the loudest signal, so it carries the most of it: it swells and throws a
-   halo *in its own colour* at the top of its range. Relative colour syntax rather than
-   `color-mix` with a calculated percentage, because the alpha is the thing being driven
-   and `rgb(from …)` takes a plain `calc()` there. */
-#choir-practice[data-scene-beat="singing"] .choir-part-cues b {
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.62),
-    0 4px 14px -6px rgb(from var(--part-color) r g b / 0.55),
-    0 0 calc(8px + var(--v, 0) * 34px) rgb(from var(--part-color) r g b / calc(var(--v, 0) * 0.8));
-  transform: scale(calc(1 + var(--v, 0) * 0.18));
-}
-
-/* --- the disc ------------------------------------------------------------
-   1.8rem of pale mint with a hairline border, containing a letter at 0.8rem. Four of
-   them, all the same colour, at the edges of a 980px application. They were furniture.
-
-   They are the one thing in this section that says "there are four voices here and you
-   can hear them apart", so they are now the size and the colour of a thing that means
-   something: filled discs at 2.5rem in the part's own ink, white letters, and a level
-   ring around each one. */
-.choir-part-cues b {
-  position: relative;
-  display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--part-color, #31594d);
-  color: #fff;
-  box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.62),
-    0 4px 14px -6px rgb(from var(--part-color) r g b / 0.55);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 2px rgba(10, 30, 24, 0.35);
-}
-
-/* A ring around the disc that fills with that voice's level. The most information a
-   circle can carry without becoming a chart, and it is the part that makes the rack
-   entertaining rather than merely legible: four dials, moving apart, in four colours, in
-   time with four voices.
-
-   A conic gradient with the middle punched out. `mask` is what makes it a ring rather
-   than a pie — without it the fill sweeps across the disc and hides the letter. */
-.choir-part-cues b::before {
-  position: absolute;
-  inset: -5px;
-  border-radius: 50%;
-  background: conic-gradient(
-    var(--part-color, #31594d) calc(var(--v, 0) * 360deg),
-    rgba(255, 255, 255, 0.42) 0
-  );
-  content: "";
-  -webkit-mask: radial-gradient(circle, transparent 0 66%, #000 67%);
-  mask: radial-gradient(circle, transparent 0 66%, #000 67%);
-  opacity: 0.9;
-}
-
-.choir-part-cues span {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  /* Mixed toward the section's ink so that four hues chosen for a dark canvas stay
-     readable on pale mint paper. Tenor's #ff9800 is the one that needs it. */
-  color: color-mix(in srgb, var(--part-color, #31594d) 64%, #0d1f1a);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-/* --- the ripples ---------------------------------------------------------
-   Each row used to end in a horizontal level rule: a track with a fill, pointing at the
-   frame. It was reported as a line going into the music, which is what it was — a meter
-   aimed at the application, drawing the eye across the score it sits beside.
-
-   So the level went behind the frame instead. Each voice has an origin under its disc,
-   and `tapVoices` appends a ring into it every time that voice comes in; the ring
-   expands across the paper in the part's own colour and fades. The reading is the same
-   one the rule was making and the disc's dial still makes continuously — this is the
-   part that turns it into a room reacting rather than a chart being updated.
-
-   Behind the stand at z-index 1, under the acoustics arcs at 3. A ripple over the score
-   would be decoration drawn on top of a working application. */
-.choir-ripples {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  pointer-events: none;
-}
-
-/* Positioned to sit at the centre of each disc, so the rings look like they come off it.
-   The tops match `.choir-part-cues li`, plus 1.25rem for half a disc; the sides match
-   too, so a ripple from an odd row spreads rightward off the left edge and an even row
-   spreads leftward off the right. Kept here beside those rules rather than passed
-   through the markup, because these two things have to agree and this is where the
-   agreement is visible. */
-.choir-ripple-origin {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-.choir-ripple-origin:nth-child(1) {
-  top: calc(13% + 1.25rem);
-  left: 1.25rem;
-}
-.choir-ripple-origin:nth-child(2) {
-  top: calc(35% + 1.25rem);
-  right: 1.25rem;
-}
-.choir-ripple-origin:nth-child(3) {
-  top: calc(58% + 1.25rem);
-  left: calc(1.25rem - 1%);
-}
-.choir-ripple-origin:nth-child(4) {
-  top: calc(78% + 1.25rem);
-  right: calc(1.25rem - 1%);
-}
-
-/* One ring. Born at the disc, ends up `--reach` times 26rem across, which `tapVoices`
-   sets from how hard the voice came in.
-
-   `scale` on a centred, fixed-size box rather than an animated `width`/`height`, so the
-   whole thing runs on the compositor: four voices entering in close succession can put
-   half a dozen of these on screen at once and none of them should cost a layout. */
-.choir-ripple {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 30rem;
-  height: 30rem;
-  margin: -15rem 0 0 -15rem;
-  border: 2px solid var(--part-color, #31594d);
-  border-radius: 50%;
-  opacity: 0;
-  animation: choir-ripple 2600ms cubic-bezier(0.16, 0.72, 0.24, 1) forwards;
-  will-change: transform, opacity;
-}
-
-/* The opacity holds most of the way out rather than fading with the scale. Fading in
-   step with the expansion was measured at 0.05 by the time the ring was 400px across,
-   which meant the only visible part of the effect was a pulse around the disc — the
-   ripple crossing the paper, which is the whole point, was gone before it got there. */
-@keyframes choir-ripple {
-  0% {
-    opacity: 0;
-    transform: scale(0.05);
-  }
-  /* Visible almost at once: the ring reads as the voice arriving, and a ramp puts it a
-     beat late. */
-  10% {
-    opacity: 0.55;
-  }
-  62% {
-    opacity: 0.3;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(var(--reach, 1));
-  }
-}
-
-/* Nothing ripples for a visitor who has asked for stillness. The discs and their dials
-   still move, because those are a readout rather than motion for its own sake. */
-@media (prefers-reduced-motion: reduce) {
-  .choir-ripple {
-    display: none;
-  }
-}
-
-.choir-acoustics {
-  position: absolute;
-  z-index: 3;
-  inset: -4% -7% 0;
-  width: 114%;
-  height: 100%;
-  overflow: visible;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 900ms ease;
-}
-
-.choir-acoustics path {
-  fill: none;
-  stroke: rgba(36, 101, 81, 0.2);
-  stroke-width: 1.5;
-  stroke-dasharray: 5 12;
-  transform-origin: center bottom;
-  animation: choir-room-breathe 5.8s ease-in-out infinite alternate;
-}
-
-.choir-acoustics path:nth-child(2) {
-  animation-delay: -1.8s;
-}
-
-.choir-acoustics path:nth-child(3) {
-  animation-delay: -3.6s;
-}
-
-@keyframes choir-room-breathe {
-  to {
-    opacity: 0.38;
-    transform: scale(1.025);
-  }
-}
-
-/* The room, swelling with the singing.
-   `--v-all` is the loudest of the four bands. The arcs are already breathing on a 5.8s
-   loop of their own, which stands in for a room when nothing is happening; while the
-   choir is actually singing the stroke follows the mix instead, so the arcs read as
-   sound leaving the stand rather than as decoration that happens to move.
-
-   `stroke-width` and `stroke-opacity` rather than `transform` or `opacity`: the
-   keyframe animation already owns both of those on this element, and two things
-   animating one property is how you get an effect that silently does nothing. */
-#choir-practice[data-scene-beat="singing"] .choir-acoustics path {
-  stroke: rgba(36, 101, 81, calc(0.2 + var(--v-all, 0) * 0.5));
-  stroke-width: calc(1.5px + var(--v-all, 0) * 2.5px);
-  stroke-dasharray: 5 calc(12px - var(--v-all, 0) * 5px);
-}
-
-#choir-practice[data-scene-reached~="score"] .choir-acoustics {
-  opacity: 1;
-}
-
 /* --------------------------------------------------------------- responsive --- */
 
 @media (max-width: 900px) {
+
+
   #night-neutralizer.project,
   #pagepack.project,
   #decaf.project,
@@ -10579,48 +6819,18 @@ svg.bd-vehicle {
     opacity: 0.035;
   }
 
-  .choir-rehearsal {
-    min-height: 600px;
-  }
 
-  .choir-stand {
-    width: 92%;
-  }
-
-  .choir-score-leaf {
-    width: 190px;
-  }
-
-  .choir-part-cues span {
-    display: none;
-  }
 }
 
 @media (max-width: 700px) {
+
+
   .bd-night-waveform {
     gap: 4px;
   }
 
   .bd-night-seam small {
     display: none;
-  }
-
-  #pagepack .pp-reader {
-    bottom: -2rem;
-    width: calc(100vw - 2rem);
-    padding: 1rem;
-  }
-
-  .pp-reader-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pp-reader-index {
-    display: none;
-  }
-
-  .pp-reader-callout {
-    font-size: 0.62rem;
   }
 
   .bd-decaf-card {
@@ -10679,50 +6889,7 @@ svg.bd-vehicle {
     font-size: 0.46rem;
   }
 
-  .choir-rehearsal {
-    min-height: 540px;
-  }
 
-  .choir-stand {
-    width: 100%;
-  }
-
-  .choir-frame,
-  .choir-holding {
-    min-height: 480px;
-  }
-
-  .choir-score-leaf {
-    top: 20%;
-    width: 128px;
-    opacity: 0.12;
-  }
-
-  .choir-score-leaf--left {
-    left: -10%;
-  }
-
-  .choir-score-leaf--right {
-    right: -10%;
-  }
-
-  .choir-score-system i {
-    font-size: 0.85rem;
-  }
-
-  .choir-part-cues {
-    z-index: 6;
-  }
-
-  .choir-part-cues li:nth-child(1),
-  .choir-part-cues li:nth-child(3) {
-    left: -0.55rem;
-  }
-
-  .choir-part-cues li:nth-child(2),
-  .choir-part-cues li:nth-child(4) {
-    right: -0.55rem;
-  }
 }
 
 /* ===========================================================================
@@ -10749,96 +6916,10 @@ svg.bd-vehicle {
   position: relative;
 }
 
-/* The one remaining acoustic breath belongs only to the focused Choir section. */
-#choir-practice:not(.is-active) .choir-acoustics path:first-child {
-  animation-play-state: paused;
-}
-
 /* The expanded saved copy rises above PagePack's stage. Reserve that rise below
    the invitation instead of putting a paint-order mask over either element. */
 #pagepack .demo-surface {
   margin-top: clamp(1.25rem, 2vw, 1.5rem);
-}
-
-/* On a phone the wrapped reading plane is taller than the browser it overlays.
-   Let it replace that dead browser in normal flow, so its measured height—not a
-   guessed offset—keeps both the invitation above and the caption below clear. */
-@media (max-width: 700px) {
-  #pagepack .pp[data-beat="read-offline"] .pp-browser,
-  #pagepack .pp[data-beat="hold"] .pp-browser {
-    display: none;
-  }
-
-  #pagepack .pp[data-beat="read-offline"] .pp-reader[data-open="true"],
-  #pagepack .pp[data-beat="hold"] .pp-reader[data-open="true"] {
-    position: relative;
-    inset: auto;
-    left: 50%;
-  }
-}
-
-/* At narrow phone widths, the title and the absolute link row no longer fit side
-   by side. Return the links to document flow instead of squeezing or truncating
-   either editorial label. */
-/* This breakpoint held two rules and both of them were undoing the same thing: the
-   links' absolute position at 900px and the right padding at 660px that reserved room
-   for it. Both are gone at the source, so the corrections are gone with them. A patch
-   that only covers the last 440 pixels of a fault that starts at 900 is worse than none,
-   because it makes the fault look handled. */
-
-/* Keep the notification outside the browser, but inside the demo gutter. The old
-   viewport-relative overhang landed its close button exactly on the capture edge. */
-.gx-alert {
-  right: -1rem;
-}
-
-/* Chrome's real popup width stays intact; only surplus vertical air is tightened.
-   All three stops and both later departures remain visible without shrinking the
-   type or turning the sheet into a scroll position the film cannot communicate. */
-.gx-popup .grt-app {
-  padding-bottom: 11px;
-}
-
-.gx-popup .grt-topbar {
-  padding: 11px 0 8px;
-}
-
-.gx-popup .grt-feed {
-  margin-bottom: 8px;
-}
-
-.gx-popup .grt-stop-list {
-  gap: 8px;
-}
-
-.gx-popup .grt-stop-card {
-  padding: 10px 12px 9px;
-}
-
-.gx-popup .grt-stop-meta {
-  margin-top: 3px;
-}
-
-.gx-popup .grt-departures {
-  margin-top: 7px;
-}
-
-.gx-popup .grt-departure {
-  min-height: 46px;
-  gap: 8px;
-  padding-top: 7px;
-}
-
-.gx-popup .grt-departure-note,
-.gx-popup .grt-departure-then {
-  min-height: 14px;
-  gap: 5px;
-  margin-top: 2px;
-  line-height: 1.25;
-}
-
-.gx-popup .grt-departure-then {
-  margin-top: 1px;
 }
 
 /* ===========================================================================
@@ -10972,25 +7053,6 @@ svg.bd-vehicle {
   inset: -1.4rem -1.6rem;
 }
 
-/* One of these is left. Five scenes lost their per-beat caption because the captions were
-   paraphrasing the written notes beside them while the scene demonstrated the same claim a
-   third time — and the notes have since gone too, into the frames themselves. Choir's
-   footnote went the same way: it printed a build path at a visitor and then repeated the
-   invitation. N-Back keeps its caption because its subject is a rule rather than an
-   interface: what a visitor needs help with is which slot to look at *right now*, which
-   changes every beat and is the one thing a pinned label cannot say. */
-#n-back .nb-caption {
-  position: relative;
-  z-index: 12;
-  width: fit-content;
-  max-width: 100%;
-  align-self: center;
-  padding: 0.3rem 0.65rem;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--project-bg) 94%, transparent);
-  box-shadow: 0 0 18px 10px color-mix(in srgb, var(--project-bg) 72%, transparent);
-}
-
 /* --- keeping the copy column clear, without a line where it ends -----------
    Every drawn backdrop has to stay out of the band or column the editorial copy sits
    in: the stacked and offset compositions reserve their top band, the mirrored ones
@@ -11108,14 +7170,6 @@ svg.bd-vehicle {
 }
 .bd-note {
   will-change: auto;
-}
-
-/* Keep one slow acoustic breath; the other arcs remain visible and static. */
-.choir-acoustics path {
-  animation: none;
-}
-.choir-acoustics path:first-child {
-  animation: choir-room-breathe 7.2s ease-in-out infinite alternate;
 }
 
 .bd-choir-ledger {
@@ -11274,11 +7328,6 @@ svg.bd-vehicle {
   color: #c4d7ec;
   opacity: 0.8;
 }
-
-/* The burst has a compositor budget only while it is actually in flight. */
-.pp-flyer {
-  will-change: auto;
-}
 .pp:is(
     [data-beat="press"],
     [data-beat="read"],
@@ -11286,12 +7335,6 @@ svg.bd-vehicle {
     [data-beat="finish"]
   ) .pp-flyer {
   will-change: transform;
-}
-
-/* End the reading plane above the caption instead of painting through it. */
-#pagepack .pp-reader,
-#pagepack .pp-reader[data-open="true"] {
-  bottom: 4.35rem;
 }
 
 /* ------------------------------------------------------------------ decaf --- */
@@ -11486,11 +7529,6 @@ svg.bd-vehicle {
   transform: translateY(-0.25rem);
 }
 
-/* Two short pulses per cue; the keyed element remounts on the next cue. */
-.nb-wave i {
-  animation: nb-wave 720ms ease-in-out 2 both;
-}
-
 /* --------------------------------------------------------------- responsive --- */
 
 @media (max-width: 900px) {
@@ -11626,10 +7664,7 @@ svg.bd-vehicle {
 }
 
 @media (max-width: 700px) {
-  #pagepack .pp-reader,
-  #pagepack .pp-reader[data-open="true"] {
-    bottom: 4.8rem;
-  }
+
 
   .bd-night-waveform {
     right: 0.7rem;
@@ -11651,6 +7686,7 @@ svg.bd-vehicle {
   .bd-decaf-ladder i {
     width: 1.7rem;
   }
+
 }
 
 /* The backdrop notes, the choir's acoustic arcs, the n-back waveform and the Decaf
@@ -11810,8 +7846,58 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock {
     transform 320ms var(--ease-out-soft);
 }
 
+/* Each stop in its own project's colour, so the dock is a coloured spine rather than
+   seven grey numerals with one dot moving down it — and so the seven rooms you are
+   moving through are legible as a set while you are inside one of them. The same
+   `--accent-*` tokens and the same `data-theme` the hero index uses.
+
+   Muted well down at rest, because this sits over the page with no surface of its own
+   and has to stay quiet against six different backgrounds. The current stop is the one
+   that comes up to full strength. */
+.project-dock-links a[data-theme="mint"] {
+  --dock-accent: var(--accent-mint);
+}
+.project-dock-links a[data-theme="paper"] {
+  --dock-accent: var(--accent-paper);
+}
+.project-dock-links a[data-theme="black"] {
+  --dock-accent: var(--accent-black);
+}
+.project-dock-links a[data-theme="white"] {
+  --dock-accent: var(--accent-white);
+}
+.project-dock-links a[data-theme="navy"] {
+  --dock-accent: var(--accent-navy);
+}
+.project-dock-links a[data-theme="forest"] {
+  --dock-accent: var(--accent-forest);
+}
+
+.project-dock-links a {
+  color: color-mix(
+    in srgb,
+    var(--dock-accent, var(--focus-muted, var(--muted))) 52%,
+    color-mix(in srgb, var(--focus-muted, var(--muted)) 72%, transparent)
+  );
+}
+
 .project-dock-links a.is-current {
-  color: var(--focus-ink, var(--ink));
+  color: var(--dock-accent, var(--focus-ink, var(--ink)));
+}
+
+/* Hovering a stop shows you the colour of the room it leads to, which is the same
+   promise the hero index makes about the same seven destinations. Declared after the
+   shared hover rule further up so it wins on order rather than by being written more
+   specifically than it needs to be. */
+.project-dock-links a:hover,
+.project-dock-links a:focus-visible {
+  color: var(--dock-accent, var(--focus-ink, var(--ink)));
+}
+
+/* And the dot beside the current stop is that project's colour rather than the
+   ambient one, which is the same colour on the two sections that share a theme. */
+.project-dock-links a.is-current::after {
+  background: var(--dock-accent, var(--focus-accent, var(--ink)));
 }
 
 .project-dock-links a.is-current::after {
@@ -11856,6 +7942,124 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock {
   visibility: visible;
   transform: translate3d(0, -50%, 0);
   transition-delay: 0s;
+}
+
+/* --- the hold control -----------------------------------------------------
+   Last in the dock and separated from the run by a rule, the same way the home link
+   is separated at the top: seven numbered stops with an eighth thing under them read
+   as eight stops, and this one goes nowhere. See `MotionHold`. */
+.dock-hold {
+  position: relative;
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--focus-muted, var(--muted)) 34%, transparent);
+  border-radius: 50%;
+  margin-top: 0.42rem;
+  background: none;
+  color: color-mix(in srgb, var(--focus-muted, var(--muted)) 72%, transparent);
+  cursor: pointer;
+  place-items: center;
+  transition:
+    color 200ms ease,
+    border-color 200ms ease,
+    transform 220ms var(--ease-out-soft);
+}
+
+/* The ring is drawn at 1.35rem because the dock is a 2.1rem column and a button that
+   fills it reads as an eighth stop rather than as a different kind of thing. The thing
+   you press is bigger than the thing you see: measured on a phone the ring alone is a
+   21.6px target, under the 24px floor every other link on this page is padded to
+   clear. Same fix as those, in the only form available to a control whose drawn size
+   is the point. */
+.dock-hold::before {
+  position: absolute;
+  content: "";
+  inset: -0.55rem;
+}
+
+.dock-hold:hover,
+.dock-hold:focus-visible {
+  border-color: color-mix(in srgb, var(--focus-ink, var(--ink)) 40%, transparent);
+  color: var(--focus-ink, var(--ink));
+  transform: scale(1.08);
+}
+
+/* Held reads as engaged rather than as merely hovered, because it is a state
+   somebody chose and it stays chosen while they scroll away from the button. */
+.dock-hold[aria-pressed="true"] {
+  border-color: var(--focus-accent, var(--ink));
+  color: var(--focus-accent, var(--ink));
+}
+
+/* Two bars while the scenes run — press to hold — and a triangle once they are
+   held. Same shapes as the gallery's clip control, drawn the same way, so the page
+   has one vocabulary for "this moves". */
+.dock-hold span {
+  display: block;
+  width: 0.3rem;
+  height: 0.42rem;
+  border-right: 1.5px solid currentColor;
+  border-left: 1.5px solid currentColor;
+}
+
+.dock-hold[aria-pressed="true"] span {
+  width: 0;
+  height: 0;
+  border: 0.19rem solid transparent;
+  border-left: 0.3rem solid currentColor;
+  transform: translateX(0.08rem);
+}
+
+/* --- held -----------------------------------------------------------------
+   What the control does to everything that is not a storyboard.
+
+   The scenes stop because `useStoryboard` places their nominated still frame and
+   stops asking for animation frames — that is the meaningful half, and it is what
+   turns the page into a set of labelled diagrams rather than a set of freeze-frames.
+   Everything else that moves here moves by CSS keyframe and knows nothing about
+   beats: the drifting ambient backdrops, the seven living marks in the hero index,
+   the drop running down the descend cue, the ghost numbers. Somebody who has asked
+   for the motion to stop meant those too.
+
+   Paused rather than removed, and animations rather than transitions. Pausing holds
+   every shape where it is instead of snapping it to a resting pose nobody designed,
+   and leaving transitions alone is what keeps the button that did this — and every
+   hover and focus ring on the page — feeling like it still works.
+
+   Keyed on `is-held-settled`, which arrives a beat after `is-held` — see `SETTLE_MS`
+   in `demos/scene/hold.ts`. Stopping the clocks in the same instant as the cut caught
+   Decaf's rewards mid-drain and left them scattered over the heading; a scene with a
+   settled state has to be allowed to reach it.
+
+   The selector list is the off-screen gate's list, deliberately, and not `*`. A
+   universal pause was tried and it is wrong in a way that is worth recording, because
+   it looks fine until you scroll: entrances are animations too. Every section arrives
+   by a one-shot keyframe that starts at `opacity: 0` with `backwards` fill, so pausing
+   everything froze any section reached *while held* at the first frame of its own
+   entrance — PagePack and N-Back rendered as an empty coloured panel with a dock
+   beside it. What may be stopped is what loops; what must be allowed to finish is what
+   only ever runs once. */
+
+/* A held film is scrubbable — drag across a stage and the storyboard cranks through
+   its beats, see `useStoryboard`. The east-west cursor is the whole invitation: the
+   page never says "drag", it just stops looking like a film and starts looking like a
+   timeline the moment the scenes stop moving. */
+html.is-held .demo-surface {
+  cursor: ew-resize;
+  user-select: none;
+}
+html.is-held-settled .demo-host *,
+html.is-held-settled .demo-host *::before,
+html.is-held-settled .demo-host *::after,
+html.is-held-settled .project-ambience *,
+html.is-held-settled .project-foreground *,
+html.is-held-settled .hero .imark *,
+html.is-held-settled .hero .imark *::before,
+html.is-held-settled .hero .imark *::after,
+html.is-held-settled .hero-cue-line::after {
+  animation-play-state: paused !important;
 }
 
 /* The full visual treatment remains unchanged while visible. Away from the
@@ -11971,4 +8175,335 @@ html.has-visibility-gates:not(.is-hero-visible) .hero-cue-line::after {
   #grt-next-bus { --project-intrinsic-height: 1210px; }
   #night-neutralizer { --project-intrinsic-height: 1030px; }
   #n-back { --project-intrinsic-height: 1000px; }
+}
+
+/* ===========================================================================
+   The missing page
+   ---------------------------------------------------------------------------
+   A wrong address gets the same grammar as a real section: a number, a name, a
+   platform line, a scene. The scene is the argument — the phantom cursor that
+   operates every demo on the home page arrives here too, finds the one control,
+   presses it, and nothing mounts. Pure CSS on a server component: the one page
+   that must never be worth a client bundle is the wrong-address page.
+
+   Timed as one 8.5s cycle shared by four keyframe sets. The press lands at 38%,
+   the button dips at 38%, the chip answers at 46% — a conversation, not a loop
+   of independent decorations.
+   =========================================================================== */
+
+.nf {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  padding: clamp(1.2rem, 4vw, 3rem);
+}
+
+.nf-section {
+  position: relative;
+  width: min(46rem, 100%);
+  overflow: clip;
+  padding: clamp(1.6rem, 4vw, 3rem);
+}
+
+.nf-ghost-number {
+  position: absolute;
+  z-index: 0;
+  top: 46%;
+  right: -0.04em;
+  color: transparent;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(10rem, 34vw, 20rem);
+  font-weight: 400;
+  line-height: 0.7;
+  letter-spacing: -0.06em;
+  pointer-events: none;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--ink) 12%, transparent);
+  transform: translateY(-50%);
+}
+
+.nf-heading,
+.nf-window,
+.nf-links {
+  position: relative;
+  z-index: 1;
+}
+
+.nf-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.nf-number {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.nf-identity h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.4rem, 7vw, 3.6rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+}
+
+.nf-platform-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+}
+
+.nf-platform {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.nf-mode {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.38rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nf-summary {
+  max-width: 34rem;
+  margin-top: 1.1rem;
+}
+
+.nf-summary p {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.nf-summary small {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+/* --- the scene with nothing in it ----------------------------------------- */
+
+.nf-window {
+  margin-top: 1.6rem;
+}
+
+.nf-stage {
+  position: relative;
+  height: clamp(170px, 30vw, 230px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  /* The cursor's route is written in cqw/cqh so it scales with the stage
+     rather than with the element being moved. */
+  container-type: size;
+  background:
+    linear-gradient(170deg, color-mix(in srgb, var(--ink) 4%, transparent), transparent 60%),
+    color-mix(in srgb, var(--ink) 3%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 26%, transparent);
+}
+
+.nf-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  margin: -29px 0 0 -29px;
+  animation: nf-press 8.5s infinite;
+  background: var(--paper);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 14%, transparent);
+  cursor: default;
+}
+
+.nf-play-mark {
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 13px solid var(--ink);
+  margin-left: 3px;
+}
+
+/* The dip is the trackpad amount — barely anything — because that is how the
+   real scenes press, and this page is impersonating one. */
+@keyframes nf-press {
+  0%, 37%, 41%, 100% {
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 14%, transparent);
+    transform: none;
+  }
+  38%, 40% {
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--ink) 18%, transparent);
+    transform: translateY(1px) scale(0.96);
+  }
+}
+
+.nf-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  animation: nf-wander 8.5s cubic-bezier(0.33, 0, 0.15, 1) infinite;
+  pointer-events: none;
+}
+
+.nf-cursor svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+/* In from the right, over to the button, one press, a look around at the
+   empty room, and out the way it came. Percentages of 8.5s. The arrow's tip
+   sits about 5px into its 22px box, hence the small corrections that land the
+   tip on the control rather than beside it. */
+@keyframes nf-wander {
+  0% {
+    opacity: 0;
+    transform: translate(108cqw, 22cqh);
+  }
+  8% {
+    opacity: 1;
+  }
+  30%, 42% {
+    opacity: 1;
+    transform: translate(calc(50cqw - 3px), calc(50cqh - 1px));
+  }
+  38%, 40% {
+    transform: translate(calc(50cqw - 2px), calc(50cqh + 1px)) scale(0.9);
+  }
+  56% {
+    opacity: 1;
+    transform: translate(24cqw, 74cqh);
+  }
+  70%, 78% {
+    opacity: 1;
+    transform: translate(68cqw, 26cqh);
+  }
+  92%, 100% {
+    opacity: 0;
+    transform: translate(108cqw, 12cqh);
+  }
+}
+
+.nf-chip {
+  position: absolute;
+  top: calc(50% + 44px);
+  left: 50%;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  animation: nf-answer 8.5s ease infinite;
+  background: color-mix(in srgb, var(--paper) 86%, #fff);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  opacity: 0;
+  text-transform: uppercase;
+  transform: translate(-50%, 6px);
+  white-space: nowrap;
+}
+
+@keyframes nf-answer {
+  0%, 44% {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  46%, 88% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  94%, 100% {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
+/* --- the way back ---------------------------------------------------------- */
+
+.nf-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 1.7rem;
+}
+
+.nf-home {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding-block: 0.4rem;
+  font-weight: 600;
+}
+
+.nf-home::after {
+  position: absolute;
+  right: 0;
+  bottom: calc(0.4rem - 4px);
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(1);
+  transform-origin: left;
+  transition: transform 180ms ease;
+}
+
+.nf-home:hover::after {
+  transform: scaleX(0);
+  transform-origin: right;
+}
+
+.nf-dock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+}
+
+.nf-dock a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding-block: 0.3rem;
+  color: var(--muted);
+  transition: color 160ms ease;
+}
+
+.nf-dock a:hover {
+  color: var(--ink);
+}
+
+.nf-dock a span {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.68rem;
+}
+
+.nf-dock a strong {
+  font-size: 0.84rem;
+  font-weight: 600;
 }

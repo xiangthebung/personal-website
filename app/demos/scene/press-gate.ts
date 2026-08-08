@@ -62,7 +62,7 @@ export interface PressGate<Name extends string> {
 
 export function usePressGate<Name extends string>(
   beats: readonly Beat<Name>[],
-  { beat, index, run }: SceneState<Name>,
+  { beat, index, run, still }: SceneState<Name>,
   /** The beats whose visible change is caused by a click. See the note above. */
   clicks: ReadonlySet<Name>,
 ): PressGate<Name> {
@@ -78,8 +78,15 @@ export function usePressGate<Name extends string>(
   const onPress = useCallback(() => setPressed(token), [token]);
 
   /* `index > 0` because a click on the opening beat has no earlier beat to render as, and
-     a scene that opens on a click is not a scene anybody arrives in the middle of. */
-  const waiting = index > 0 && clicks.has(beat) && pressed !== token;
+     a scene that opens on a click is not a scene anybody arrives in the middle of.
+
+     And never while the frame is a still. The scenes hide the phantom cursor when `still`
+     is set — a hand frozen mid-reach reads as a fault — so on a held or scrubbed frame the
+     press this gate is waiting for can never arrive, and a click beat would render as the
+     beat before it forever. A still is not a moment in a gesture, it is a diagram of the
+     world after the gesture: if the frame shown is at or past the press, the press
+     happened. */
+  const waiting = !still && index > 0 && clicks.has(beat) && pressed !== token;
 
   return {
     did: waiting ? beats[index - 1].name : beat,

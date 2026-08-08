@@ -32,6 +32,7 @@ import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
+import "./demo.css";
 
 /** The project's letter set: eight consonants picked for not sounding alike. */
 const LETTERS = ["C", "H", "K", "L", "Q", "R", "S", "T"] as const;
