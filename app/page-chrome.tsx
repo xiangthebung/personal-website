@@ -642,6 +642,31 @@ export function ProjectFocusManager() {
       });
     });
 
+    /* The section you are standing in, kept at effect scope so the scene observer
+       below can re-apply its theme when the scene changes it mid-run. */
+    let currentActive: HTMLElement | null = null;
+
+    /**
+     * Writes a project's theme onto `:root` as the ambient colour.
+     *
+     * Read fresh from the section's computed style rather than from the `themes`
+     * map, because a scene can change its own theme while it runs. PagePack does:
+     * on the `cut` beat the section's `--project-bg` becomes its near-black
+     * `--pack-dark`, and the whole viewport has to follow — the body behind the
+     * section, the wash that tints the neighbours, and the dock all read these
+     * variables. Reading once at mount left the page lavender while the section
+     * went black, which is the reported fault: the top and bottom of the screen
+     * stayed light around a dark section.
+     */
+    const applyTheme = (project: HTMLElement) => {
+      const style = getComputedStyle(project);
+      const read = (name: string) => style.getPropertyValue(name).trim();
+      root.style.setProperty("--ambient-bg", read("--project-bg"));
+      root.style.setProperty("--focus-accent", read("--project-accent"));
+      root.style.setProperty("--focus-ink", read("--project-ink"));
+      root.style.setProperty("--focus-muted", read("--project-muted"));
+    };
+
     /**
      * Picks the project the viewer is standing in: mostly-visible and closest to
      * the middle of the screen. One pass with one box measurement per project --
@@ -679,6 +704,7 @@ export function ProjectFocusManager() {
       const activeProject = active;
       const activeIndex = projects.indexOf(activeProject);
       root.classList.add("has-project-in-view");
+      currentActive = activeProject;
 
       projects.forEach((project, index) => {
         project.classList.toggle("is-active", project === activeProject);
@@ -720,10 +746,7 @@ export function ProjectFocusManager() {
        */
       const theme = themes.get(activeProject);
       if (theme) {
-        root.style.setProperty("--ambient-bg", theme.bg);
-        root.style.setProperty("--focus-accent", theme.accent);
-        root.style.setProperty("--focus-ink", theme.ink);
-        root.style.setProperty("--focus-muted", theme.muted);
+        applyTheme(activeProject);
       }
     };
 
@@ -741,6 +764,27 @@ export function ProjectFocusManager() {
     );
 
     projects.forEach((project) => observer.observe(project));
+
+    /* A scene can change its own theme while it runs — PagePack's `cut` beat turns
+       the section near-black — and the ambient colour has to follow, or the page
+       behind the section stays light while the section goes dark. The scene
+       publishes its progress as `data-scene-reached` on the section (see
+       `useSectionBeat`), so watch that attribute on the active project and re-apply
+       its theme when it changes. Reading the computed style on each change is cheap
+       here: it fires a handful of times per scene, not per frame. */
+    const sceneThemeObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.target !== currentActive) continue;
+        applyTheme(currentActive);
+        break;
+      }
+    });
+    projects.forEach((project) =>
+      sceneThemeObserver.observe(project, {
+        attributes: true,
+        attributeFilter: ["data-scene-reached"],
+      }),
+    );
 
     // Hero index marks are useful only while the index can be seen. This class
     // pauses their CSS timelines once the hero leaves, instead of letting nineteen
@@ -812,6 +856,7 @@ export function ProjectFocusManager() {
 
     return () => {
       observer.disconnect();
+      sceneThemeObserver.disconnect();
       heroObserver?.disconnect();
       arrivals.disconnect();
       root.classList.remove(
