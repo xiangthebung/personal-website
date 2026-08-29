@@ -5156,14 +5156,23 @@ svg.bd-vehicle {
   }
 }
 
-/* The glyph is the only saturated thing here, which is exactly how the app draws it. */
+/* The glyph is the only saturated thing here, which is exactly how the app draws it.
+   Sized at 13px rather than 10: the mark is about 26px tall, and at 10px on a near-black
+   ground the row read as an empty dark box next to nine marks that read as something.
+   Half the height is the point where the shape arrives before the colour does. */
 .imark--totem .imark-glyph {
-  top: calc(50% - 5px);
-  left: calc(50% - 5px);
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  background: #ab39e8;
+  top: calc(50% - 6.5px);
+  left: calc(50% - 6.5px);
+  width: 13px;
+  height: 13px;
+  border-radius: 2.5px;
+  /* One property drives the fill and the bloom, so the hue cycle below cannot leave a
+     violet glow around a green glyph. The app draws each totem with a soft same-hue
+     bloom, and at this size the bloom does more work than the shape — it is what lifts
+     the glyph off a near-black ground without making it bigger still. */
+  color: #ab39e8;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor;
   animation: imark-glyph 6700ms var(--ease-out-soft) infinite;
 }
 
@@ -5175,15 +5184,15 @@ svg.bd-vehicle {
   }
   44% {
     opacity: 1;
-    background: #ab39e8;
+    color: #ab39e8;
     transform: scale(1) rotate(90deg);
   }
   70% {
-    background: #10cb68;
+    color: #10cb68;
   }
   88% {
     opacity: 1;
-    background: #ff2d55;
+    color: #ff2d55;
     transform: scale(1) rotate(180deg);
   }
   100% {
