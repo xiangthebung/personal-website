@@ -39,10 +39,22 @@ export function minutesUntil(timeMs: number, now = Date.now()): number {
   return Math.max(0, Math.floor((timeMs - now) / 60_000));
 }
 
-/** Short badge text for the toolbar icon. */
+/**
+ * Short badge text for the toolbar icon.
+ *
+ * `Due` rather than `now`: for a Pro rider the badge and the card's countdown
+ * are on screen together, and two different words for the same moment read as
+ * two different facts.
+ *
+ * This copy said `now`, and the scene showed both words at once. On the `due`
+ * beat the closest stop's card reads `Due`, through `formatCountdown`, while the
+ * toolbar badge two inches above it read `now` — for the same bus, at the same
+ * instant, off the same simulated clock. That is precisely the disagreement the
+ * comment above was written about, staged.
+ */
 export function formatBadge(timeMs: number, now = Date.now()): string {
   const minutes = minutesUntil(timeMs, now);
-  if (minutes < 1) return "now";
+  if (minutes < 1) return "Due";
   if (minutes < 60) return String(minutes);
   const hours = Math.floor(minutes / 60);
   return hours < 10 ? `${hours}h` : "9h+";

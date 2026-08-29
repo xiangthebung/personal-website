@@ -21,6 +21,24 @@
  * page into a stack, the connection dying, and the stack surviving it.
  */
 
+/**
+ * The one colour this scene has to get from the extension rather than from the page.
+ *
+ * `paintActionBadge` in `background.js` paints the toolbar badge in exactly two colours,
+ * and they are the whole of how the two modes are told apart at badge size: `#0a84ff`
+ * while a save is running, `#b85c5c` while "save as I browse" is collecting. There is no
+ * state in which it is green.
+ *
+ * It was `var(--good)`, which is `#1f8f4e` — a page-level token meaning "this went well",
+ * shared with every other section. Repointing it would have been the wrong repair twice
+ * over: it is not this scene's to move, and the badge is not making a value judgement, it
+ * is reporting which of two jobs is running. So the blue is its own token, named after the
+ * mode it belongs to, declared and used here.
+ */
+.pp {
+  --pp-badge-save: #0a84ff;
+}
+
 /* --- the browser ---------------------------------------------------------- */
 
 .pp-browser {
@@ -105,9 +123,23 @@
 }
 
 .pp-lock {
+  display: flex;
+  width: 11px;
+  height: 11px;
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
   font-size: 9px;
   line-height: 1;
+}
+
+/* The extension's own mark, for the beats after the redirect: the tab is at a
+   `chrome-extension://` address by then, and a padlock is a claim about a site's
+   certificate that an extension page does not make. */
+.pp-lock svg {
+  width: 11px;
+  height: 11px;
+  color: var(--accent);
 }
 
 .pp-url {
@@ -121,6 +153,14 @@
 .pp[data-offline="true"] .pp-url {
   color: var(--ink-3);
   text-decoration: line-through;
+}
+
+/* Struck through is what a URL that could not be reached looks like. The reader's own
+   address was reached — it is on the disk — so the strike comes off when the redirect
+   lands, and it is the one part of the dead chrome that reads as working. */
+.pp[data-restored="true"] .pp-url {
+  color: var(--ink-2);
+  text-decoration: none;
 }
 
 /* The signal, and the moment it goes. */
@@ -204,7 +244,7 @@
   padding: 0 3px;
   border: 1.5px solid #f5f5f7;
   border-radius: 999px;
-  background: var(--good);
+  background: var(--pp-badge-save);
   color: #fff;
   font-size: 9px;
   font-weight: 700;
@@ -300,6 +340,129 @@
 .pp-crash-glyph {
   width: 34px;
   color: rgba(255, 255, 255, 0.28);
+}
+
+/* Wiped, not faded. The redirect is a navigation: the failed load is replaced in the same
+   tab, so the error leaves upward and out of the frame the way a page that has been
+   navigated away from does, rather than dissolving in place like a dismissed notice. */
+.pp[data-restored="true"] .pp-crash {
+  opacity: 0;
+  transform: translateY(-14px);
+  transition:
+    opacity 260ms ease,
+    transform 320ms cubic-bezier(0.4, 0, 0.9, 0.4);
+}
+
+/* --- what the error was replaced by --------------------------------------
+   `viewer.html`, in the tab that just failed. Above the outage wash and in full colour for
+   the same reason the popup is: it is the only thing in this window that still works, and
+   the shot is a dead frame with one lit thing in it. Filling the viewport because a tab is
+   what it was given — this is not a panel that opened over the page, it *is* the page. */
+
+.pp-restored {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  inset: 0;
+  background: var(--surface);
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition:
+    opacity 300ms ease 120ms,
+    transform 420ms cubic-bezier(0.16, 0.86, 0.18, 1.12) 120ms;
+}
+
+.pp[data-restored="true"] .pp-restored {
+  opacity: 1;
+  transform: none;
+}
+
+/* The reader's own bar, from `#reader-bar` in `viewer.html`: back to the Library, the
+   title over the page's short URL, the page position, and the live page. */
+.pp-restored-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 11px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-2);
+}
+
+.pp-restored-back,
+.pp-restored-count,
+.pp-restored-online {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ink-2);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.pp-restored-online {
+  margin-left: auto;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.pp-restored-identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pp-restored-identity strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-restored-identity span {
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 8.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* `#reader-loading`, which is what a save paints while it is being read off the device.
+   Centred in the space the page is about to take, so the page does not jump when it
+   arrives. */
+.pp-restored-loading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  text-align: center;
+}
+
+.pp-restored-loading strong {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pp-restored-loading span {
+  color: var(--ink-3);
+  font-size: 10px;
+}
+
+.pp-restored-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
+  padding: 22px 26px;
 }
 
 /* --- pages leaving the building ------------------------------------------
@@ -623,16 +786,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.pp-offline-note {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 9px 0 0;
-  color: var(--good);
-  font-size: 9.5px;
-  font-weight: 600;
-}
-
 /* The saved page, reopened outside the window it came from.
    Positioned in the spill layer and pushed left of the browser on purpose: the
    frame behind it is dead, and a reading pane floating clear of it says so more
@@ -771,16 +924,6 @@
   text-transform: uppercase;
 }
 
-.pp-reader-callout {
-  margin: 0.45rem 0;
-  padding: 0.7rem 0.8rem;
-  border-left: 3px solid #2d7fd2;
-  background: #f3f6fa;
-  color: #545b66;
-  font-size: 0.7rem;
-  line-height: 1.55;
-}
-
 .pp-reader-index {
   display: flex;
   min-width: 0;
@@ -803,10 +946,6 @@
 
     .pp-reader-index {
       display: none;
-    }
-
-    .pp-reader-callout {
-      font-size: 0.62rem;
     }
 }
 
@@ -994,23 +1133,21 @@
   box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.3);
 }
 
-.pp-offline-note span {
-  font-size: 7px;
-}
-
 .pp-reader-head span {
   font-size: 12px;
   font-weight: 650;
   line-height: 1.35;
 }
 
+/* The page's own address, as `shortReaderUrl` prints it. It was an uppercase green stamp
+   reading "SAVED COPY · NO NETWORK REQUEST" — a string the extension does not contain,
+   set in the one colour on the page that means "verified". A URL is neither a verdict nor
+   an acronym, so it is quiet, lower case and left as typed. */
 .pp-reader-head small {
   flex: 0 0 auto;
-  color: var(--good);
+  color: var(--ink-3);
   font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 
 #pagepack .pp-reader-head span {
@@ -1025,18 +1162,21 @@
 
 #pagepack .pp-reader-head small,
 #pagepack .pp-reader-head b {
-  color: #25804d;
+  color: #6c727d;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
+/* `1 of 7`, from `#reader-page-label`. The chip it sits in is the reader's own page
+   button; it was a green "OFFLINE" pill, which is a mood rather than a control. */
 #pagepack .pp-reader-head b {
-  padding: 0.28rem 0.52rem;
+  padding: 0.3rem 0.6rem;
   border-radius: 999px;
-  background: rgba(37, 128, 77, 0.1);
+  background: rgba(20, 24, 32, 0.06);
+  font-variant-numeric: tabular-nums;
 }
 
 .pp-reader-document h4 {

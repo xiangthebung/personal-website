@@ -243,7 +243,22 @@
      with, and the first version of this pulled the popup up across the toolbar and
      hid the very button it had just been opened from. */
   top: 44px;
-  right: -26px;
+  /*
+   * Inside the window it belongs to.
+   *
+   * This was `-26px`, which hung the panel 25px past the right edge of its own browser
+   * frame — measured at 1440 by `scripts/spec-anchors.mjs`, which reported the popup at
+   * x 54.7–102.9% of a layer whose browser ends at 100%. Chrome does not do that. A
+   * browser-action popup is a window Chrome puts under the button and clamps to the
+   * browser it came from; there is no arrangement in which it spills onto the desktop.
+   * A panel breaking its own frame reads as a drawing of a popup rather than a popup,
+   * which is the one thing this reconstruction cannot afford — the frame is what says
+   * "this is a browser", and everything inside it borrows that.
+   *
+   * 10px rather than 0: Chrome leaves a hairline of window either side, and a panel flush
+   * to the edge reads as a sidebar.
+   */
+  right: 10px;
   width: 420px;
   border-radius: 14px;
   background: var(--surface-2);
@@ -253,7 +268,10 @@
   opacity: 0;
   /* Grows out of its own button, which is where a popup comes from. */
   transform: scale(0.965) translateY(-9px);
-  transform-origin: 84% 0;
+  /* Re-measured with the panel. The button's centre is at 803px of an 872px browser and
+     the popup now spans 442–862, putting its origin at 86% of its own width — so it still
+     grows out of the control that was pressed rather than out of a corner. */
+  transform-origin: 86% 0;
   transition:
     opacity 0.2s ease,
     transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);

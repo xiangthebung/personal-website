@@ -261,12 +261,21 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/pagepack-extension",
     demo: "pagepack",
     well: "light",
-    /* This scene narrates itself better than any other on the page: the popup says
-       "Reading this page…", the badge lands on seven, the library head prints the page
-       count and the total, the crash screen says ERR_INTERNET_DISCONNECTED, and the reader
-       is stamped "saved copy · no network request". Two of the three notes were restating
-       those. The two claims the frame genuinely could not make — what got saved, and that
-       the save followed the links — are labels on the popup and on the cards. */
+    /* This scene narrates itself better than any other on the page, and every string and
+       colour it prints is now one the extension actually produces: the popup says "Reading
+       this page…", the toolbar badge counts up to seven in the blue `paintActionBadge`
+       paints a save, the library row reads "7 pages · 1.6 MB · 29 Aug" from `packMeta`, and
+       the reader opens with "Opening your save…" over "Reading it from this device."
+
+       It used to stamp the reader "saved copy · no network request" and foot the library
+       with "Opens with no connection". Neither string exists anywhere in the extension —
+       they were the scene making the product's claims in the product's voice, which is the
+       one voice a reconstruction may not borrow. Both are gone; the claims they were making
+       are pinned labels now, which is where a claim on this page belongs.
+
+       Four of those labels. Two on the save — what got saved, and that it followed the
+       links. Two on the outage: that the saved copy is what opens when the load fails, and
+       what it costs to read it. */
   },
   {
     id: "grt-next-bus",
@@ -280,16 +289,24 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/grt-bus-time",
     demo: "grt-next-bus",
     well: "light",
-    /* Three claims the scene can now make that it could not before, all of them earned by
-       tests rather than asserted: the countdown survives the service worker being killed,
-       the extension falls back to the published timetable when the live feed dies, and it
-       reaches no server of ours. The "2 min late" in the popup is not invented either —
-       measured against the live feed, 670 rows read exactly that on the day it was staged. */
     /* The scene was always full of numbers and short of a reason to care about any of
        them — a badge counting down, a notification and three stop rows are evidence, and
-       the claims they were evidence for were in this list. All three are labels now, each
-       arriving on the beat its evidence does: on the badge, on the bell, on the row that
-       says a bus is running two minutes late. */
+       the claims they were evidence for used to be in a written list here. They are labels
+       now, each arriving on the beat its evidence does: on the badge, on the notification,
+       on the row that says a bus is running two minutes late, and on the row that says
+       which stop is closest and how far.
+
+       The alert's label carries the lead time rather than the word "before", because the
+       card it hangs on prints "7 in 5 min" and the five is `DEFAULT_ALERT_LEAD_MINUTES`
+       rather than a number someone liked. The "2 min late" is not invented either —
+       measured against the live feed, 670 rows read exactly that on the day it was staged.
+
+       The claim this project would most like to make is that the countdown survives Chrome
+       killing the service worker, which `tests/background-lifecycle.test.mjs` checks by
+       restarting the worker and asking the new generation what the badge says. It is not a
+       label, and cannot be: a teardown has no interface, so there is no frame that contains
+       the evidence. A label pinned to a picture that does not show its subject is the thing
+       this whole arrangement exists to prevent. */
   },
   /* The three that arrived after the page had settled into seven, inserted here rather
      than appended. Appending would have put them after N-Back, and N-Back is last on

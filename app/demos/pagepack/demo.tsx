@@ -9,22 +9,31 @@
  *
  *   a page is open, the cursor reaches for the toolbar, Save is pressed, and the
  *   page tears itself off into cards that fly out of the button into a stack;
- *   then the connection dies, the tab collapses into a browser error, the colour
- *   drains out of everything — and the stack is still there, still lit, still
- *   readable.
+ *   then the connection dies, Chrome's own error screen starts to come up — and
+ *   never arrives, because PagePack takes the tab and opens the saved copy in it.
+ *
+ * That last move is the product, and the scene used to get it backwards. It staged
+ * `ERR_INTERNET_DISCONNECTED` as a screen PagePack shows you and then offered a
+ * library beside it, which reads as "here is a crash, and separately here is a
+ * consolation". What the extension actually does is listen on
+ * `webNavigation.onErrorOccurred`, recognise a saved URL that has just failed to
+ * load, and redirect the tab to the saved copy — so the dead end is the one thing
+ * you do not reach. See `maybeRedirectOffline` in `background.js`.
  *
  * The order matters. Showing the library first and the outage second would be a
- * feature tour. Showing the outage first and the library surviving it is an
- * argument, and the visitor gets to feel the moment where everything else on their
- * screen would have stopped working.
+ * feature tour. Showing the outage first and the save catching it is an argument,
+ * and the visitor gets to feel the moment where everything else on their screen
+ * would have stopped working.
  *
  * What is real here and what is staged. The progress vocabulary is real: every
  * label under the bar comes from `captureProgressMessage`, copied out of the
  * extension's service worker, including the rule that a link-following save cannot
- * show a percentage. The chunk sizes and the file counts are the extension's own
- * units. Everything else — the browser frame, the flying cards, the outage — is
- * theatre, and the section says so rather than claiming this is the extension
- * running in the page.
+ * show a percentage. So is the toolbar badge — text and colour both, through
+ * `captureBadgeText` and `paintActionBadge` — the library row's `pages · size · date`
+ * from `packMeta`, and the two lines the reader paints while a save opens. The chunk
+ * sizes and the file counts are the extension's own units. Everything else — the
+ * browser frame, the flying cards, the outage — is theatre, and the section says so
+ * rather than claiming this is the extension running in the page.
  */
 
 import { useEffect, useRef } from "react";
@@ -50,6 +59,7 @@ type BeatName =
   | "finish"
   | "cut"
   | "dead"
+  | "caught"
   | "aim-library"
   | "reveal"
   | "aim-page"
@@ -79,8 +89,10 @@ type BeatName =
  * from it, so moving any of them keeps the cards landing on `finish` rather than
  * stranding them mid-air or parking them early.
  *
- * 17.6s now. `reveal` and `hold` went up to clear the floor a line of caption needs;
- * see `MIN_CAPTION_MS` in the storyboard hook and the groupings in `CAPTION`.
+ * 20.1s now, and the extra second went to the reversal rather than to the film. `dead`
+ * lost 700ms and `caught` was added: the browser's error screen is no longer a
+ * destination the scene rests on, it is a thing that starts to happen and is taken
+ * away. See the notes on those two beats.
  */
 const BEATS: readonly Beat<BeatName>[] = [
   // The establishing shot: a browser, a page, a toolbar nobody has looked at yet.
@@ -107,7 +119,31 @@ const BEATS: readonly Beat<BeatName>[] = [
   // A cut. Long enough for the signal arcs to drop outside-in and the slash to draw
   // across them — 640ms of transition in the stylesheet — and no longer.
   { name: "cut", ms: 800 },
-  { name: "dead", ms: 1900 },
+  /**
+   * Chrome's dead end, and it is deliberately the shortest look in the film.
+   *
+   * This was 1900ms of the browser's error screen sitting there, which staged
+   * `ERR_INTERNET_DISCONNECTED` as something PagePack shows you. It is not: the screen
+   * is Chrome's own, and `webNavigation.onErrorOccurred` in `background.js` catches a
+   * saved URL failing to load and sends the tab to the saved copy instead. The product
+   * is not "here is a crash screen and also a library". It is that you do not arrive at
+   * the crash screen.
+   *
+   * So the error gets long enough to be recognised and not long enough to settle — the
+   * stylesheet's 420ms fade means roughly three quarters of a second at full strength —
+   * and then `caught` takes it away.
+   */
+  { name: "dead", ms: 1200 },
+  /**
+   * The redirect landing: the error is wiped and PagePack's reader has the tab.
+   *
+   * `maybeRedirectOffline` calls `chrome.tabs.update(tabId, { url: offlineReaderUrl(match) })`,
+   * so what replaces the error is `viewer.html`, in the same tab, at a
+   * `chrome-extension://` address — which is why the omnibox changes here as well as
+   * the page. The two lines it paints first are the reader's own:
+   * "Opening your save…" over "Reading it from this device."
+   */
+  { name: "caught", ms: 1600 },
   /**
    * The two beats that used to be one, and the reason is a reported one.
    *
@@ -229,6 +265,55 @@ const CAPTURED = [
 
 const TOTAL_BYTES = CAPTURED.reduce((sum, page) => sum + page.bytes, 0);
 
+/**
+ * The day the pack was saved, as the Library prints it.
+ *
+ * `packMeta` in `popup.js` joins `plural(pages, "page")`, `formatBytes(stats.bytes)` and
+ * `formatDate(pack.savedAt)` with ` · `, so a row reads `7 pages · 1.6 MB · 29 Aug`. Only
+ * the date is authored: the other two are computed from `CAPTURED` above.
+ *
+ * A literal rather than a real `Intl.DateTimeFormat` call, and that is not laziness.
+ * `formatDate` passes `undefined` as its locale, so the string it produces depends on
+ * whoever is asking — which on this page means the server render and the client render can
+ * disagree, and a hydration mismatch is a worse bug than a fixed date in a staged film.
+ */
+const SAVED_ON = "29 Aug";
+
+/**
+ * The saved page's address as the reader prints it, from `shortReaderUrl` in `viewer.js`:
+ * hostname with any `www.` removed, then the path with a trailing slash stripped.
+ *
+ * The same string the omnibox shows before the connection drops, which is the point of
+ * having it in both places — the tab is at `viewer.html` afterwards, and this is how the
+ * reader says which page it is a copy of.
+ */
+const READER_URL = "lamport.azurewebsites.net/pubs/byz.html";
+
+/**
+ * The toolbar badge during a save, from `captureBadgeText` in `background.js`.
+ *
+ * ```
+ * if (!following || !(Number(pages) > 0)) return CAPTURE_WORKING_BADGE;
+ * return Number(pages) > 99 ? "99+" : String(Number(pages));
+ * ```
+ *
+ * This scene stages a save at one level of links — the popup's own Options line says so —
+ * which is `following`, so the badge counts. The dot is not a different mode: it is what a
+ * counting badge shows before its first page has landed, which is why `read` still has one
+ * and `collect` does not.
+ *
+ * The colour belongs to the same function's caller and is the correction that brought this
+ * comment into being. `paintActionBadge` sets `#0a84ff` for a capture and `#b85c5c` for a
+ * "save as I browse" collection; there is no state in which it is green, and this badge was
+ * painted `--good`. See `--pp-badge-save` in the stylesheet.
+ */
+const CAPTURE_WORKING_BADGE = "•";
+
+function captureBadgeText(pages: number): string {
+  if (!(pages > 0)) return CAPTURE_WORKING_BADGE;
+  return pages > 99 ? "99+" : String(pages);
+}
+
 /** Files discovered across the first `pages` pages of the pack. */
 const filesThrough = (pages: number) =>
   CAPTURED.slice(0, pages).reduce((sum, page) => sum + page.files, 0);
@@ -339,23 +424,33 @@ const SCATTER = [
  */
 
 /**
- * The two things this scene does that it cannot show.
+ * The four things this scene does that it cannot show, two to a half.
  *
- * Only two, and that is the point of counting them. This scene is unusually good at
- * narrating itself already — the popup prints "Reading this page…" and a page count, the
- * badge lands on seven, the library head says "7 pages · 1.6 MB", the crash screen says
- * `ERR_INTERNET_DISCONNECTED` and the reader is stamped "saved copy · no network request".
- * Three of those were being restated by the written notes beside it, which is how the
- * section came to have five layers of prose about one save.
+ * This scene is unusually good at narrating itself — the popup prints "Reading this page…"
+ * and a page count, the badge counts up to seven in the blue a save is painted in, the
+ * library row says "7 pages · 1.6 MB · 29 Aug", and the reader paints "Opening your save…"
+ * over "Reading it from this device." Every one of those is a string or a colour the
+ * extension actually produces, which is the only reason the frame is allowed to print
+ * them, so nothing here restates one.
  *
- * What genuinely is not on screen: *what* got saved, and that the save followed the
- * links. A progress bar reading "Saving assets…" does not say "text, styles, images and
- * fonts", and seven cards flying out of a button does not say they are the pages this one
- * links to rather than seven copies of it.
+ * The save half: *what* got saved, and that the save followed the links. A progress bar
+ * does not say "text, styles, images and fonts", and seven cards flying out of a button
+ * does not say they are the pages this one links to rather than seven copies of it. Both
+ * leave at the cut — the browser they are pinned to fades to a quarter opacity later, see
+ * `#pagepack .pp[data-beat="read-offline"] .pp-browser`, and a label hanging over a ghost
+ * is a label about nothing.
  *
- * Both leave at the cut. The browser they are pinned to fades to a quarter opacity two
- * beats later — see `#pagepack .pp[data-beat="read-offline"] .pp-browser` — and a label
- * hanging over a ghost is a label about nothing.
+ * The outage half: what just happened to the error screen, and what it costs to read what
+ * replaced it. Neither is visible, and the second one is invisible by definition — a
+ * request that is never made leaves nothing on screen to point at. It is on the page at
+ * all because it is now measured rather than asserted: `tests/offline-network.test.mjs`
+ * renders a real pack in a real Chromium under the policy read out of `manifest.json` and
+ * counts the requests, from both capture paths, and gets none. Until this week that was a
+ * claim the extension could not have passed for a followed page.
+ *
+ * The last one arrives on `read-offline`, which is the still. That is deliberate: the hold
+ * control cuts every scene to the frame carrying its argument, and this one used to cut to
+ * a frame with no label on it at all, because both of the labels it had left at the cut.
  */
 const SPECS: readonly SpecTag<BeatName>[] = [
   /* "Text, styles, images, fonts" was a list of the four things the code captures, which is
@@ -393,6 +488,34 @@ const SPECS: readonly SpecTag<BeatName>[] = [
     side: "left",
     until: "cut",
   },
+  /* On the thing that replaced the error, reading out of the window's left edge into the
+     dark half of the section. Inside the tab it would be a white pill on a white page; out
+     here the frame is drained to near black and a frosted plate is the most legible thing
+     in it, which is the same reasoning the flying cards' outline follows.
+
+     It leaves on `read-offline`, with the browser it is pinned to. */
+  {
+    at: "caught",
+    text: "The saved copy opens instead",
+    x: 26,
+    y: 62,
+    anchor: "restored",
+    grip: "left",
+    side: "left",
+    until: "read-offline",
+  },
+  /* And the one the still is held on. Pinned to the reading plane's left edge rather than
+     to a coordinate: that panel is 900px wide at this width and a third of that on a phone,
+     so the only stable thing about its edge is that it is measurable. */
+  {
+    at: "read-offline",
+    text: "Reading a save makes zero network requests",
+    x: 26,
+    y: 54,
+    anchor: "reader",
+    grip: "left",
+    side: "left",
+  },
 ];
 
 /** The Save button they come out of, in the pod's own percentages. */
@@ -405,6 +528,20 @@ const SPEC_ORIGIN = { x: 82, y: 38 };
  * the burst is in the air, so the middle of the pack is what is actually on screen.
  */
 const COLLECT_PAGES_DONE = 3;
+
+/**
+ * How many pages of the pack have landed by a given beat.
+ *
+ * One source for two readouts that have to agree: the progress line under the bar and the
+ * count on the toolbar badge. They are published by different parts of the extension —
+ * `publishProgress` four times a second, `setCaptureBadgePages` once per page — but they
+ * are counting the same pages, so a frame where the label says "Page 4 of 7" and the badge
+ * says something else is a frame the extension cannot produce.
+ */
+function pagesSavedBy(beat: BeatName): number {
+  if (beat === "collect") return COLLECT_PAGES_DONE;
+  return beat === "finish" ? CAPTURED.length : 0;
+}
 
 /**
  * The real label for a beat, through the extension's own formatter.
@@ -435,8 +572,7 @@ const COLLECT_PAGES_DONE = 3;
 function labelFor(beat: BeatName): string {
   const phase: CapturePhase =
     beat === "read" ? "reading" : beat === "finish" ? "finishing" : "assets";
-  const pagesDone =
-    beat === "collect" ? COLLECT_PAGES_DONE : beat === "finish" ? CAPTURED.length : 0;
+  const pagesDone = pagesSavedBy(beat);
   return captureProgressMessage({
     phase,
     pagesDone,
@@ -573,6 +709,13 @@ export function PagePackDemo() {
   const flying = reached >= at("press");
   const offline = index >= at("cut");
   const dead = index >= at("dead");
+  /* The redirect. From here the tab is not a failed page, it is `viewer.html` — which is
+     why the omnibox changes with the viewport rather than after it. */
+  const restored = index >= at("caught");
+  /* The reader's own first frame, and only its first frame: the two lines in
+     `#reader-loading` are painted while the pack is read off the device and are gone by the
+     next beat, exactly as they are in the extension. */
+  const opening = beat === "caught";
   /* Both of these open one beat after the pointer has arrived on the control that opens
      them, which is the fix for "the library tab gets clicked before the mouse actually
      gets there" and for the reader unfolding with nothing having been pressed. See the
@@ -598,11 +741,13 @@ export function PagePackDemo() {
       data-lap={run}
       data-offline={offline}
       data-dead={dead}
+      data-restored={restored}
       role="img"
       aria-label={
         "A browser with a page open. PagePack saves the page and six pages linked " +
-        "from it, the connection then drops and the browser cannot load anything, " +
-        "and the saved pages are still readable from the extension's library."
+        "from it. The connection then drops, the browser's own no-internet screen " +
+        "begins to appear and is replaced by the saved copy of the same page, and the " +
+        "rest of the pack is still readable from the extension's library."
       }
     >
       {/* ---------------------------------------------------------------- browser */}
@@ -619,11 +764,33 @@ export function PagePackDemo() {
             <i />
           </span>
 
+          {/* The tab's address, and it changes twice.
+              The redirect is a navigation — `chrome.tabs.update(tabId, { url: … })` — so
+              once PagePack has caught the failure the tab is at the extension's own
+              `viewer.html`, and the omnibox is where a visitor can see that it was the
+              extension rather than the site that answered. The id is elided because a
+              32-character extension id at 11px is noise; the scheme and the file are the
+              part that carries the fact. */}
           <span className="pp-omnibox">
             <span className="pp-lock" aria-hidden="true">
-              {offline ? "⚠" : "🔒"}
+              {restored ? (
+                <svg viewBox="0 0 24 24">
+                  <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                    <path d="M5 4.5h9l5 5v10H5z" />
+                    <path d="M14 4.5v5h5" />
+                  </g>
+                </svg>
+              ) : offline ? (
+                "⚠"
+              ) : (
+                "🔒"
+              )}
             </span>
-            <span className="pp-url">lamport.azurewebsites.net/pubs/byz.html</span>
+            <span className="pp-url">
+              {restored
+                ? "chrome-extension://…/viewer.html"
+                : READER_URL}
+            </span>
           </span>
 
           {/* The signal. Its own element so the cut can be a single class flip. */}
@@ -648,9 +815,14 @@ export function PagePackDemo() {
                 </g>
               </svg>
             </span>
-            {index >= at("finish") && !offline && (
-              <span className="pp-badge" aria-hidden="true">
-                {CAPTURED.length}
+            {/* Up for exactly as long as the save is: `setCaptureBadge(true, …)` runs when
+                the capture starts and the `finally` clears it when the pack is written, so
+                the badge is gone by the time the connection drops. Keyed by its own text
+                so each change pops rather than silently swapping a digit — the count
+                moving is the liveness signal the dot could not give. */}
+            {reached >= at("press") && !offline && (
+              <span className="pp-badge" key={captureBadgeText(pagesSavedBy(beat))} aria-hidden="true">
+                {captureBadgeText(pagesSavedBy(beat))}
               </span>
             )}
           </span>
@@ -670,7 +842,9 @@ export function PagePackDemo() {
             ))}
           </article>
 
-          {/* The browser's own failure, which is the whole reason the product exists. */}
+          {/* The browser's own failure, which is the whole reason the product exists — and
+              which is Chrome's screen, not PagePack's. It rises on `dead` and is wiped on
+              `caught`; see the stylesheet. */}
           <div className="pp-crash" aria-hidden="true">
             <span className="pp-crash-glyph">
               <svg viewBox="0 0 24 24">
@@ -683,6 +857,41 @@ export function PagePackDemo() {
             </span>
             <strong>No internet</strong>
             <span>ERR_INTERNET_DISCONNECTED</span>
+          </div>
+
+          {/* ---------------------------------------------------------- the catch
+              What `onErrorOccurred` puts in the tab instead: `viewer.html`, at the page
+              that just failed to load. It is the same tab, which is the part that makes
+              this the product rather than a consolation prize — nothing was opened, nothing
+              was chosen, the dead end simply did not arrive.
+
+              Two frames of it. The reader paints `#reader-loading` first, and those two
+              lines are the extension's own; the bar and the page follow on the next beat.
+              The bar is the real one: back to the Library, the title over the page's own
+              short URL, `1 of 7`, and the live page one click away. */}
+          <div className="pp-restored" data-spec-anchor="restored" aria-hidden="true">
+            <div className="pp-restored-bar">
+              <span className="pp-restored-back">‹ Library</span>
+              <span className="pp-restored-identity">
+                <strong>{CAPTURED[0].title}</strong>
+                <span>{READER_URL}</span>
+              </span>
+              <span className="pp-restored-count">{`1 of ${CAPTURED.length}`}</span>
+              <span className="pp-restored-online">Open online</span>
+            </div>
+
+            {opening ? (
+              <p className="pp-restored-loading">
+                <strong>Opening your save…</strong>
+                <span>Reading it from this device.</span>
+              </p>
+            ) : (
+              <div className="pp-restored-page">
+                {[96, 88, 100, 74, 92, 81].map((width, line) => (
+                  <span className="pp-line" key={line} style={{ width: `${width}%` }} />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ------------------------------------------------------------- popup */}
@@ -707,9 +916,13 @@ export function PagePackDemo() {
 
             {libraryOpen ? (
               <div className="pp-library">
+                {/* `packMeta` joins the page count, the size and the save date with ` · `,
+                    and drops the count when a pack holds one page. Seven, so it stays. */}
                 <p className="pp-library-head">
                   <strong>1 pack</strong>
-                  <span>{`${CAPTURED.length} pages · ${formatBytes(TOTAL_BYTES)}`}</span>
+                  <span>
+                    {`${CAPTURED.length} pages · ${formatBytes(TOTAL_BYTES)} · ${SAVED_ON}`}
+                  </span>
                 </p>
                 <ul className="pp-shelf">
                   {CAPTURED.slice(0, 4).map((page, order) => (
@@ -727,9 +940,11 @@ export function PagePackDemo() {
                     </li>
                   ))}
                 </ul>
-                <p className="pp-offline-note">
-                  <span aria-hidden="true">●</span> Opens with no connection
-                </p>
+                {/* There was a green foot here reading "Opens with no connection". The
+                    popup does not say that anywhere, and the claim it was making is the
+                    label pinned to the reading plane below — so it was an invented string
+                    in the extension's voice restating something the scene already proves.
+                    Same fault as the reader's stamp, one panel over. */}
               </div>
             ) : (
               <div className="pp-save">
@@ -808,33 +1023,48 @@ export function PagePackDemo() {
 
         {/* One of them comes back and opens — out here, not in the frame. The
             browser is dead; the reading is not. */}
-        <div className="pp-reader" data-open={reading}>
+        {/* The reader's own bar, at reading size.
+            It used to be stamped "saved copy · no network request" over an "offline" pill,
+            and neither string exists anywhere in the extension — they were the scene
+            asserting the product's claim in the product's voice, which is the one voice a
+            reconstruction may not borrow. What the real bar carries is a way back to the
+            Library, the page title over `shortReaderUrl(page.url)`, and `1 of 7` from
+            `#reader-page-label`. The claim it was making is now a label, pinned to this
+            panel, where a claim on this page belongs. */}
+        <div className="pp-reader" data-spec-anchor="reader" data-open={reading}>
           <header className="pp-reader-head">
             <span>
-              <small>saved copy · no network request</small>
-              The Byzantine Generals Problem
+              <small>{READER_URL}</small>
+              {CAPTURED[0].title}
             </span>
-            <b>offline</b>
+            <b>{`1 of ${CAPTURED.length}`}</b>
           </header>
           <div className="pp-reader-layout">
             <article className="pp-reader-document">
               <p className="pp-reader-byline">
                 Leslie Lamport · Robert Shostak · Marshall Pease
               </p>
-              <h4>Reaching agreement in the presence of faults</h4>
+              {/* A section head, not another paper's title. It read "Reaching agreement in
+                  the presence of faults", which is page 02 of the pack — printed as the
+                  body of the page the bar and the index both say is page 01.
+
+                  The bordered callout that used to sit below it is gone with the stamp
+                  above, and for the same reason: it was a sentence in the saved document's
+                  voice explaining that saved documents are served from the pack. The claim
+                  is a label now, pinned to this panel. */}
+              <h4>The problem, informally</h4>
               {[100, 94, 88, 97, 72, 91, 84].map((width, line) => (
                 <span className="pp-line" key={line} style={{ width: `${width}%` }} />
               ))}
-              <p className="pp-reader-callout">
-                The saved HTML, styles, figures and linked pages are served from the
-                pack after the connection is gone.
-              </p>
               {[96, 78, 89].map((width, line) => (
                 <span className="pp-line" key={`tail-${line}`} style={{ width: `${width}%` }} />
               ))}
             </article>
+            {/* `Pages in this save` is the reader's own label for this list — the
+                `aria-label` on `#reader-page-menu`. "Pack contents" was a phrase this
+                scene made up for it. */}
             <aside className="pp-reader-index">
-              <small>pack contents</small>
+              <small>Pages in this save</small>
               {CAPTURED.slice(0, 5).map((page, order) => (
                 <span key={page.title} data-current={order === 0}>
                   <i>{String(order + 1).padStart(2, "0")}</i>

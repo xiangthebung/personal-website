@@ -197,11 +197,17 @@ const STOPS: readonly StopCard[] = [
   },
 ];
 
-/** The lead time an alert fires at, from the extension's own defaults. */
+/**
+ * The lead time an alert fires at: `DEFAULT_ALERT_LEAD_MINUTES` in `src/types.ts`, which
+ * `getAlertSettings` in `src/storage.ts` falls back to when a rider has not chosen one.
+ *
+ * It sets the notification's own headline — "7 in 5 min" — and now the label hanging off
+ * it as well. See `ALERT_SPEC`.
+ */
 const ALERT_LEAD_MINUTES = 5;
 
 /**
- * The three things the extension does, on the three things doing them.
+ * The four things the extension does, on the four things doing them.
  *
  * This scene has always been full of numbers and short of a reason to care about any of
  * them. A badge counting down, a notification and three stop rows are all *evidence*, and
@@ -212,8 +218,20 @@ const ALERT_LEAD_MINUTES = 5;
  *
  * So each claim is pinned to its evidence and arrives on the beat the evidence does.
  *
- * Two of the three are here. The third is the alert's, and it is not a coordinate on this
- * pod at all — see `ALERT_SPEC` below.
+ * Three of the four are here. The fourth is the alert's, and it is not a coordinate on
+ * this pod at all — see `ALERT_SPEC` below.
+ *
+ * What is deliberately not here, and it is the most distinctive thing this project does:
+ * the countdown surviving Chrome tearing the service worker down. `tests/background-
+ * lifecycle.test.mjs` restarts the worker between assertions and asks the new generation
+ * what the badge says — a real check of the way MV3 actually breaks things, since anything
+ * kept in a module variable is gone when the next alarm boots a fresh generation.
+ *
+ * The scene cannot show it. A teardown has no interface: Chrome tells a rider nothing, and
+ * the frame where the badge counts down with the popup shut is evidence of the popup being
+ * shut, not of the worker being dead. The only way to label it would be to draw a piece of
+ * browser UI that does not exist, and a claim pinned to invented evidence is worse than a
+ * claim left off — it is the exact failure this component was built to prevent.
  */
 const SPECS: readonly SpecTag<BeatName>[] = [
   /* On the toolbar button, reading leftward because there is nothing to the right of it.
@@ -238,36 +256,57 @@ const SPECS: readonly SpecTag<BeatName>[] = [
     side: "left",
     until: "open",
   },
-  /* Anchored on the popup's own left edge and reading away from it, rather than on the
-     "2 min late" text it is about. Sitting on the row meant sitting on top of two lines of
-     it — the whole panel is 420px of dense type and there is no gap inside it big enough
-     for a label. Pointing at the edge of the card costs a little precision and covers
-     nothing. Stays to the end: the popup does not move again, and this is the claim worth
-     leaving up.
+  /* The claim the popup is evidence for, on the line that is the evidence.
+     It hangs off the popup's left edge and reads away from it rather than sitting on the
+     "2 min late" text: the panel is 420px of dense type and there is no gap inside it big
+     enough for a plate, so pointing at the edge of the card costs a little precision and
+     covers nothing.
 
-     The y was 43, which photographed as pointing at the popup's edge halfway down it — a
-     blank inch of panel between two stop cards. It is 22 now, which is the line the claim
-     is actually about: the closest stop's `Live · 2 min late · 5 stops away`, in the one
-     card the popup highlights. Same edge, same distance from the type, a hundred and sixty
-     pixels further up and pointing at the evidence.
+     It was pinned at `y: 22` with `axis: "x"` — the x measured off the popup, the height
+     chosen by hand and commented as landing on the closest stop's `Live · 2 min late · 5
+     stops away`. Photographed, it did not. `scripts/spec-anchors.mjs` put the dot at 22% of
+     a 776px layer while card one's meta row runs 20.5–22.1% and its live note runs
+     26.3–28.1% — so the label about real-time positions was pointing at `Stop 1123 ·
+     Closest · 320 m`, about forty pixels high, and had been since the height was authored.
 
-     It read "Real positions, so late reads late", which is a sentence explaining its own
-     joke. What it was reaching for has an ordinary name that every transit app on a phone
-     already uses, and a visitor knows what it means without being walked through the
-     consequence. */
-  /* Anchored on the popup's measured left edge and its own chosen height — `axis: "x"`.
-     The edge is a fact about a 420px panel hanging off a button in a `minmax(0, 1fr)`
-     column, so it moves with the window; the height is the choice described above, and
-     the line it names is not a box the popup can be asked for. */
+     A hand-set percentage is what drifted, so it is not a hand-set percentage any more. The
+     note row is an element and it is named; both axes come off it, and the standoff back out
+     to the popup's edge is `nudge.x`. That number is the card's own indent — the app's 14px
+     padding, the card's 12px, the 34px route badge and the 8px gap between them, all fixed
+     pixels in a fixed-width panel — rather than a fraction of anything that moves. */
   {
     at: "stops",
     text: "Real-time bus tracking",
-    x: 54,
-    y: 22,
-    anchor: "popup",
+    x: 50,
+    y: 27,
+    anchor: "nearest-note",
     grip: "left",
-    axis: "x",
     side: "left",
+    nudge: { x: -68 },
+  },
+  /* And what paid for the `Closest` tag and the 320 m beside it.
+     Location is the one thing this extension asks for that a rider has a reason to think
+     twice about, and the answer is checkable: `src/geo.ts` reads a position only after an
+     explicit opt-in, caches it locally so the service worker can order stops without waking
+     the GPS, and hands it to `chooseNearestSavedStop` — there is no reverse geocode, no
+     analytics, and nothing that takes a coordinate off the device. Revoking consent deletes
+     the cached position. `tests/documented-truth.test.mjs` fails if the code writes a
+     storage key the privacy policy does not name.
+
+     Pinned to the meta row because that row is what location produced — the tag saying this
+     is the nearest of three saved stops, and how far it is. A claim about where a coordinate
+     goes has nothing of its own to point at, so it points at the only thing on screen that
+     could not exist without one. Same standoff, two paddings shorter: this row starts at the
+     card's content edge with no route badge in front of it. */
+  {
+    at: "stops",
+    text: "Your location never leaves the device",
+    x: 50,
+    y: 21,
+    anchor: "nearest-meta",
+    grip: "left",
+    side: "left",
+    nudge: { x: -26 },
   },
 ];
 
@@ -287,8 +326,15 @@ const SPECS: readonly SpecTag<BeatName>[] = [
  * in a different stacking context on the other side of the page. So the plate hangs off
  * the notification instead — see `SpecPlate`, and `.gx-alert-spec` for the two lines of
  * geometry that put it against the card's left edge at any window width.
+ *
+ * It read "Alerts you before the bus arrives", which is a promise with no size to it — every
+ * transit app alerts you before the bus arrives, and a rider's question is how long before.
+ * The card it is pinned to answers that in its own headline: "7 in 5 min". So the label says
+ * the number too, and the number is checkable rather than chosen — `ALERT_LEAD_MINUTES`
+ * above is `DEFAULT_ALERT_LEAD_MINUTES` from `src/types.ts`, and the same constant is what
+ * decides when `background.ts` actually fires.
  */
-const ALERT_SPEC = "Alerts you before the bus arrives";
+const ALERT_SPEC = "Alerts you 5 minutes before";
 
 /** The extension's toolbar button, in the pod's own percentages. */
 const SPEC_ORIGIN = { x: 91.5, y: 4.5 };
@@ -680,7 +726,15 @@ export function GrtNextBusDemo() {
                     <div className="grt-stop-head">
                       <div className="grt-stop-identity">
                         <p className="grt-stop-name">{stop.name}</p>
-                        <div className="grt-stop-meta">
+                        {/* The row location produced: the `Closest` tag and the distance
+                            both come out of `chooseNearestSavedStop`, which is why the
+                            label about location hangs off this line and not off the
+                            countdown. Named only on the closest card — it is the only one
+                            the claim is about. */}
+                        <div
+                          className="grt-stop-meta"
+                          data-spec-anchor={stop.closest ? "nearest-meta" : undefined}
+                        >
                           <span>Stop {stop.code}</span>
                           {stop.closest && <span className="grt-stop-tag">Closest</span>}
                           {stop.meters !== undefined && (
@@ -700,7 +754,13 @@ export function GrtNextBusDemo() {
                         </span>
                         <div className="grt-departure-copy">
                           <p className="grt-headsign">{stop.headsign}</p>
-                          <p className="grt-departure-note">
+                          {/* `Live · 2 min late · 5 stops away`. Named, because the
+                              transit label is about this line and a percentage of the layer
+                              could not keep hold of it — see `SPECS`. */}
+                          <p
+                            className="grt-departure-note"
+                            data-spec-anchor={stop.closest ? "nearest-note" : undefined}
+                          >
                             {stop.live && (
                               <span className="grt-note-live">Live</span>
                             )}
