@@ -1,24 +1,1411 @@
-/* PLACEHOLDER — replaced when the real scene is written.
+/*
+ * 2FA Paster's own styles, loaded with its chunk.
+ *
+ * Everything here needs one of the scene's own `tfa-` classes as an ancestor, which
+ * is the rule that decides what may live in a lazily-loaded stylesheet: these
+ * elements do not exist until the chunk mounts, so the sheet cannot be late for
+ * them. The section around the scene — the violet room, the entrance veil, the ghost
+ * number — is server-rendered and is styled from `globals.css` for the opposite
+ * reason.
+ *
+ * ---------------------------------------------------------------------------
+ * 2FA Paster — "which code, and where it may not go"
+ *
+ * A payment confirmation with a saved card on it, and the extension answering two
+ * questions about it at once: which of the two codes in the inbox belongs to this
+ * page, and which of the things on the page it must not touch.
+ *
+ * The palette is `popup.css`'s, unchanged: ground #f4f3f8, cards #ffffff, accent
+ * violet #5b45e0, text #1d1d1f, success #1b7a3a, warning #8a5300, 14px card radius,
+ * 11px control radius, two very soft shadows and no borders anywhere. The website in
+ * the frame gets a cooler grey ground of its own so that the popup, which is the
+ * only warm-grey object in the picture, reads as sitting on top of a different piece
+ * of software rather than as part of it.
+ *
+ * The one loud thing is the code, in both the places it appears: 34px in the popup,
+ * where `popup.css` sets it, and 26px in the six boxes it lands in. Everything else
+ * in this scene is 11 to 14px, which is what the real interface is.
+ */
 
-   `width: 100%` is not cosmetic here. A stage that shrinks to its content is narrower
-   than the well, and `useSectionFocused` gates on a coverage test the narrow box fails —
-   so the storyboard never starts and the scene sits on beat one forever. Measured: a
-   centred grid gave a 49px stage in a 1440px viewport and `drive-site.mjs` reported the
-   scene never completing a lap. Every real scene here fills its well. */
+/* --- the pod -------------------------------------------------------------- */
+
 .tfa {
+  --tfa-font:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --tfa-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* popup.css, verbatim. */
+  --tfa-bg: #f4f3f8;
+  --tfa-surface: #ffffff;
+  --tfa-text: #1d1d1f;
+  --tfa-secondary: #4a4a52;
+  --tfa-tertiary: #6a6a74;
+  --tfa-separator: rgba(60, 60, 67, 0.14);
+  --tfa-accent: #5b45e0;
+  --tfa-accent-text: #4a37c4;
+  --tfa-accent-soft: rgba(91, 69, 224, 0.1);
+  --tfa-success: #1b7a3a;
+  --tfa-success-soft: rgba(27, 122, 58, 0.1);
+  --tfa-warn: #8a5300;
+  --tfa-warn-soft: rgba(180, 110, 0, 0.1);
+  --tfa-card-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 6px 16px rgba(0, 0, 0, 0.04);
+  --tfa-radius: 14px;
+  --tfa-control: 11px;
+
+  /* The outline `content.js` puts on every field it writes to, which is the one
+     colour in this scene that is not the popup's. */
+  --tfa-fill: #6d5bff;
+
+  /* The website the extension is working on, and the browser around it. Cooler than
+     the extension's own ground on purpose — see the note at the top of the file. */
+  --tfa-site: #edecf3;
+  --tfa-chrome: #e2e0ea;
+  --tfa-line: rgba(29, 29, 31, 0.12);
+
+  /* The flight. Six digits leave one point — the code in the mail row — and land in
+     six boxes, so each one's start offset is that point less its own box, and the
+     difference between two boxes is the pitch of the row. Both the payment column
+     and the mail strip are pinned to the left edge of a pod whose width is capped,
+     so this vector is the same at every width the labels are measured at.
+     Measured rather than guessed: see `scripts/beat-shot.mjs`. */
+  --tfa-fly-x: 443px;
+  --tfa-fly-y: 311px;
+  --tfa-step: 64px;
+
   position: relative;
-  display: grid;
-  place-items: center;
   width: 100%;
-  min-height: 360px;
-  border-radius: 14px;
-  background: #f4f3f8;
-  color: #1d1d1f;
+  /* Close to the width this was composed at. The `stacked` composition gives the
+     scene a 1180px measure at every window size the page has a layout for, so the
+     pod is the same size at 1440 and at 2560 and only shrinks below about 1200. */
+  max-width: 1080px;
+  color: var(--tfa-text);
+  font-family: var(--tfa-font);
+  -webkit-font-smoothing: antialiased;
 }
 
-.tfa-placeholder {
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
+/* --- the browser ---------------------------------------------------------- */
+
+.tfa-browser {
+  position: relative;
+  z-index: 2;
+  border: 1px solid var(--tfa-line);
+  border-radius: var(--tfa-radius);
+  background: var(--tfa-site);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 30px 66px -34px rgba(31, 22, 74, 0.42);
+}
+
+.tfa-chrome {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--tfa-line);
+  border-radius: 13px 13px 0 0;
+  background: linear-gradient(
+    var(--tfa-chrome),
+    color-mix(in srgb, var(--tfa-chrome) 82%, #fff)
+  );
+}
+
+.tfa-lights {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+.tfa-lights i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(29, 29, 31, 0.16);
+}
+
+.tfa-tabs {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+  gap: 6px;
+}
+
+.tfa-tab {
+  display: inline-flex;
+  max-width: 190px;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+  padding: 7px 13px;
+  border-radius: 8px 8px 0 0;
+  color: rgba(29, 29, 31, 0.48);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tfa-tab.is-active {
+  color: var(--tfa-text);
+  background: var(--tfa-site);
+  box-shadow: 0 -1px 0 var(--tfa-line) inset;
+}
+
+.tfa-favicon {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border-radius: 3px;
+  background: rgba(29, 29, 31, 0.18);
+}
+.tfa-favicon--pay {
+  background: #3f7f6a;
+}
+
+.tfa-bar {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.tfa-omni {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding: 7px 13px;
+  border-radius: 999px;
+  color: rgba(29, 29, 31, 0.5);
+  background: color-mix(in srgb, #fff 80%, var(--tfa-chrome));
+  box-shadow: 0 0 0 1px var(--tfa-line) inset;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The extension's own button. The only thing pressed by a hand in this scene, and
+   the point every label flies out of. */
+.tfa-action {
+  position: relative;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--tfa-accent);
+  transition: background 0.2s ease;
+}
+
+.tfa-action[data-open="true"] {
+  background: var(--tfa-accent-soft);
+}
+
+/* `popup.css` strokes the card and fills the three dots. Filling both, which is
+   what this did first, collapses the mark into a solid violet lozenge with nothing
+   legible in it — at 22px that is the difference between a recognisable icon and a
+   blob. */
+.tfa-action-mark svg {
+  display: block;
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+.tfa-action-mark circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+.tfa-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  min-width: 18px;
+  padding: 0 3px;
+  border-radius: 5px;
+  color: #fff;
+  box-shadow: 0 0 0 1.5px var(--tfa-chrome);
+  font-family: var(--tfa-font);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  /* Remounted whenever the glyph changes — the element is keyed by its own text — so
+     the tick plays without the scene tracking when the status moved on. */
+  animation: tfa-tick 0.42s ease-out;
+}
+
+/* `background.js` sets both of these, with these colours: violet while it is looking
+   in Gmail, green once a code is actually in the page. */
+.tfa-badge[data-glyph="…"] {
+  background: #5b45e0;
+}
+.tfa-badge[data-glyph="✓"] {
+  background: #1b8a3a;
+}
+.tfa-badge[data-glyph="none"] {
+  display: none;
+}
+
+@keyframes tfa-tick {
+  from {
+    transform: translateY(-3px) scale(1.22);
+  }
+}
+
+/* --- the page in the window ------------------------------------------------ */
+
+.tfa-page {
+  position: relative;
+  display: flex;
+  /* Stretch, so the order rail is the height of the page rather than a card
+     floating in the top-right corner of it. The first version reserved the popup's
+     height and left the right two thirds of the window empty for six of the seven
+     beats, which read as a broken layout rather than as a checkout. A right-hand
+     rail running the full height of the form is what a checkout actually looks
+     like, and it is also exactly the shape the popup lands on. */
+  align-items: stretch;
+  gap: 26px;
+  /* The popup is the tallest thing that can be in here and it arrives last, so the
+     page reserves its height from the first frame. Without it the window grows by
+     150px on the final beat and every measured label under it moves. Measured
+     against the popup: 578px of panel, hung from the top of the page area, plus
+     enough clearance that it does not hang out of the bottom of the window — which
+     it did, by 21px, when this number was guessed instead. */
+  min-height: 592px;
+  padding: 26px;
+  border-radius: 0 0 13px 13px;
+}
+
+.tfa-column {
+  position: relative;
+  display: flex;
+  width: 430px;
+  flex: 0 0 430px;
+  flex-direction: column;
+  align-self: flex-start;
+}
+
+/* --- the payment form ------------------------------------------------------ */
+
+.tfa-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px 22px 22px;
+  border-radius: var(--tfa-radius);
+  background: var(--tfa-surface);
+  box-shadow: var(--tfa-card-shadow);
+}
+
+.tfa-pay-head {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.tfa-pay-sub {
+  margin: -8px 0 0;
+  color: var(--tfa-tertiary);
+  font-size: 12px;
+}
+
+.tfa-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--tfa-control);
+  background: #f6f6fa;
+}
+
+.tfa-card-face {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tfa-card-face span {
+  display: grid;
+  gap: 1px;
+}
+.tfa-card-face b {
+  font-size: 12.5px;
+  font-weight: 620;
+}
+.tfa-card-face small {
+  color: var(--tfa-tertiary);
+  font-size: 11px;
+}
+
+.tfa-card-chip {
+  width: 26px;
+  height: 18px;
+  flex: 0 0 26px;
+  border-radius: 4px;
+  background: linear-gradient(150deg, #8b7bff, #3a1fc4);
+}
+
+/* The control the never-press list is about. It is inside the form on purpose:
+   `submitButton` only ever considers what is in the same form as the field it
+   filled, so a destructive control anywhere else is not a test of anything. */
+.tfa-danger {
+  color: #b3261e;
+  font-size: 11.5px;
+  font-weight: 620;
+  transition:
+    color 0.3s ease,
+    opacity 0.3s ease;
+}
+
+.tfa-danger[data-skipped="true"] {
+  color: var(--tfa-tertiary);
+  opacity: 0.62;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.tfa-field {
+  display: grid;
+  gap: 6px;
+}
+
+.tfa-field-label {
+  color: var(--tfa-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* The card's security code. Drawn as a sibling of the six boxes below it, at the
+   same left edge and in the same shape, because the whole point is that one of them
+   is written to and the other is not — and a difference is only readable against a
+   likeness. */
+.tfa-cvv {
+  display: inline-flex;
+  width: 92px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 9px;
+  background: #f2f2f6;
+  box-shadow: 0 0 0 1px var(--tfa-separator) inset;
+  transition:
+    box-shadow 0.3s ease,
+    opacity 0.3s ease;
+}
+.tfa-cvv i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(29, 29, 31, 0.28);
+}
+
+/* Passed over. A dashed edge in the warning tone the extension uses for "this is
+   something you should look at", and no fill of any kind. */
+.tfa-cvv[data-skipped="true"] {
+  background: var(--tfa-warn-soft);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tfa-warn) 34%, transparent) inset;
+}
+
+.tfa-rule {
+  height: 1px;
+  margin: 2px 0;
+  background: var(--tfa-separator);
+}
+
+.tfa-otp-head {
+  margin: 0;
+  color: var(--tfa-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tfa-boxes {
+  display: flex;
+  gap: 10px;
+}
+
+.tfa-box {
+  position: relative;
+  display: grid;
+  width: 54px;
+  height: 62px;
+  flex: 0 0 54px;
+  place-items: center;
+  border-radius: 9px;
+  background: #f2f2f6;
+  box-shadow: 0 0 0 1px var(--tfa-separator) inset;
+  transition: box-shadow 0.24s ease;
+}
+
+/* `content.js` writes `outline: 2px solid #6d5bff` onto every field it fills and
+   lifts it again after 1200ms. It is left up here, because the last frame of this
+   scene has to work as a diagram of it and a diagram cannot rely on having been
+   watched. */
+.tfa[data-filled="true"] .tfa-box {
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--tfa-fill) inset;
+}
+
+.tfa-digit {
+  color: var(--tfa-text);
+  font-family: var(--tfa-mono);
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0;
+  /* Where this digit sits in the row, so the six of them can share one start point:
+     the offset from the code in the mail below to *this* box is the offset to the
+     first box less this box's share of the row's pitch. */
+  translate: calc(var(--tfa-fly-x) - var(--tfa-i) * var(--tfa-step)) var(--tfa-fly-y);
+  scale: 0.58;
+  transition:
+    translate 620ms cubic-bezier(0.2, 0.82, 0.24, 1),
+    scale 620ms cubic-bezier(0.2, 0.82, 0.24, 1),
+    opacity 200ms ease;
+  transition-delay: calc(var(--tfa-i) * 82ms);
+}
+
+.tfa[data-filled="true"] .tfa-digit {
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+}
+
+.tfa-submit {
+  display: grid;
+  min-height: 44px;
+  place-items: center;
+  border-radius: var(--tfa-control);
+  background: #2f6f4f;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 640;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.3s ease;
+}
+
+/* Pressed by the extension, not by a hand — so it wears the extension's colour
+   rather than a pointer ring. `SUBMIT_TEXT` matches `confirm\w*`, and this is also
+   the form's declared submit button, which is as unambiguous as this gets. */
+.tfa-submit[data-pressed="true"] {
+  background: #255a40;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tfa-fill) 30%, transparent);
+}
+
+/* --- what the page says afterwards ----------------------------------------- */
+
+/* Out of the column's flow. `showToast` draws this `position: fixed`, so it costs
+   the page no height in the real thing either — and here that matters twice, because
+   the window's height is reserved from the tallest thing in it and a toast that
+   arrives on the sixth beat must not be one of them. */
+.tfa-toast {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  max-width: 300px;
+  padding: 12px 14px;
+  border-radius: 13px;
+  background: var(--tfa-surface);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.09),
+    0 12px 32px rgba(0, 0, 0, 0.16);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.tfa[data-submitted="true"] .tfa-toast {
+  opacity: 1;
+  transform: none;
+}
+
+.tfa-toast-mark {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: #1b8a3a;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.tfa-toast-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.tfa-toast-copy b {
+  font-size: 13px;
+  font-weight: 640;
+}
+.tfa-toast-copy small {
+  color: var(--tfa-tertiary);
+  font-size: 12px;
+}
+
+/* --- the rest of the page --------------------------------------------------- */
+
+.tfa-summary {
+  display: flex;
+  width: 300px;
+  flex: 0 0 300px;
+  flex-direction: column;
+  margin-left: auto;
+  padding: 18px 20px 20px;
+  border-radius: var(--tfa-radius);
+  background: var(--tfa-surface);
+  box-shadow: var(--tfa-card-shadow);
+}
+
+.tfa-summary-head {
+  margin: 0 0 10px;
+  color: var(--tfa-tertiary);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.tfa-summary-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tfa-summary-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  color: var(--tfa-secondary);
+  font-size: 12.5px;
+}
+.tfa-summary-list li > span:first-child {
+  display: grid;
+  gap: 1px;
+}
+.tfa-summary-list b {
+  font-weight: 500;
+}
+.tfa-summary-list small {
+  color: var(--tfa-tertiary);
+  font-size: 11px;
+}
+
+/* Where the page thinks it has got to. Ticks for what is done, a hollow ring for
+   what is not. */
+.tfa-steps {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tfa-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tfa-tertiary);
+  font-size: 12px;
+}
+.tfa-steps li::before {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.2px currentColor inset;
+  content: "";
+  font-size: 9px;
+}
+.tfa-steps li[data-done="true"] {
+  color: var(--tfa-success);
+}
+.tfa-steps li[data-done="true"]::before {
+  background: var(--tfa-success);
+  box-shadow: none;
+  color: #fff;
+  content: "✓";
+}
+
+.tfa-summary-total {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--tfa-separator);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.tfa-summary-block {
+  margin: 18px 0 0;
+}
+.tfa-summary-block dt {
+  color: var(--tfa-tertiary);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.tfa-summary-block dd {
+  margin: 4px 0 0;
+  color: var(--tfa-secondary);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* Pushed to the foot of the rail, which is what makes the rail a full-height
+   column rather than a card with a hole under it. It is also the line that says
+   why this page is asking for a code at all. */
+.tfa-summary-foot {
+  margin: 24px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--tfa-separator);
+  color: var(--tfa-tertiary);
+  font-size: 11.5px;
+  line-height: 1.5;
+  margin-top: auto;
+}
+
+/* --- the keypress ----------------------------------------------------------- */
+
+/* Drawn for the one beat it happens on, in the corridor between the page's two
+   columns — which is empty then, and is where the labels about the fill arrive two
+   beats later. A keypress has no picture of its own and this one does the whole
+   job, so it is worth drawing rather than implying. */
+.tfa-keys {
+  position: absolute;
+  top: 44%;
+  left: 512px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.24s ease;
+}
+
+.tfa[data-beat="press"] .tfa-keys {
+  opacity: 1;
+}
+
+.tfa-key {
+  padding: 10px 13px;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--tfa-secondary);
+  box-shadow:
+    0 0 0 1px var(--tfa-line) inset,
+    0 2px 0 rgba(29, 29, 31, 0.14),
+    0 8px 20px -12px rgba(31, 22, 74, 0.6);
+  font-family: var(--tfa-font);
+  font-size: 13px;
+  font-weight: 640;
+  line-height: 1;
+}
+
+/* Down, then up, once — the element only exists on this beat, so a keyframe runs
+   exactly as often as the thing it is drawing happens. */
+.tfa[data-beat="press"] .tfa-key {
+  animation: tfa-press 460ms cubic-bezier(0.3, 0.9, 0.3, 1) 220ms both;
+}
+.tfa[data-beat="press"] .tfa-key:nth-child(2) {
+  animation-delay: 260ms;
+}
+.tfa[data-beat="press"] .tfa-key:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+@keyframes tfa-press {
+  0% {
+    transform: none;
+  }
+  38% {
+    transform: translateY(3px);
+    box-shadow:
+      0 0 0 1px var(--tfa-accent) inset,
+      0 0 0 rgba(29, 29, 31, 0.14);
+    color: var(--tfa-accent-text);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* --- the popup -------------------------------------------------------------- */
+
+.tfa-pop {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  right: -14px;
+  width: 380px;
+  border-radius: var(--tfa-radius);
+  background: var(--tfa-bg);
+  box-shadow:
+    0 0 0 1px rgba(29, 29, 31, 0.08),
+    0 36px 72px -30px rgba(24, 16, 60, 0.5);
+  opacity: 0;
+  /* Grows out of its own button, which is where a popup comes from. */
+  transform: scale(0.965) translateY(-9px);
+  transform-origin: 86% 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none;
+}
+
+.tfa-pop[data-open="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.tfa-pop-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 12px;
+}
+
+.tfa-pop-brand {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(150deg, #8b7bff, #3a1fc4);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(58, 31, 196, 0.28);
+}
+.tfa-pop-brand svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+.tfa-pop-brand circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+.tfa-pop-name {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+.tfa-pop-name b {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.tfa-pop-name small {
+  color: var(--tfa-tertiary);
+  font-size: 12px;
+}
+
+.tfa-pop-gear svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: var(--tfa-tertiary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.tfa-pop-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.tfa-target {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: var(--tfa-radius);
+  background: var(--tfa-surface);
+  box-shadow: var(--tfa-card-shadow);
+}
+
+.tfa-target-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--tfa-accent-soft);
+  color: var(--tfa-accent-text);
+}
+.tfa-target-mark svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.tfa-target-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.tfa-target-copy b {
+  font-size: 13px;
+  font-weight: 620;
+}
+.tfa-target-copy small {
+  color: var(--tfa-tertiary);
+  font-size: 12px;
+}
+.tfa-target-copy small.is-found {
+  color: var(--tfa-success);
+}
+
+.tfa-primary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: var(--tfa-control);
+  background: var(--tfa-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 640;
+}
+
+/* The accelerator on the button itself, the way a menu shows one. It was a grey line
+   in the footer, which is nowhere anybody looks for the fastest way to use this. */
+.tfa-shortcut {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 620;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.tfa-code-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--tfa-radius);
+  background: var(--tfa-surface);
+  box-shadow: var(--tfa-card-shadow);
+}
+
+/* The hero object, at the size `popup.css` sets it. */
+.tfa-code {
+  display: block;
+  padding: 4px 0 2px;
+  color: var(--tfa-text);
+  font-family: var(--tfa-mono);
+  font-size: 34px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.tfa-code-source {
+  margin: 0;
+  color: var(--tfa-tertiary);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Said out loud only when it is worth saying. This is the `is-match` branch: the
+   mail demonstrably came from the site in front of you. */
+.tfa-origin {
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: var(--tfa-control);
+  background: var(--tfa-success-soft);
+  color: var(--tfa-success);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.tfa-code-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.tfa-code-actions span {
+  display: grid;
+  min-height: 34px;
+  place-items: center;
+  border: 1px solid var(--tfa-separator);
+  border-radius: var(--tfa-control);
+  color: var(--tfa-accent-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tfa-why {
+  border-top: 1px solid var(--tfa-separator);
+}
+
+.tfa-why-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 2px 2px;
+  color: var(--tfa-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tfa-why-value {
+  flex: 1;
+  color: var(--tfa-tertiary);
+  font-weight: 400;
+  text-align: right;
+}
+
+.tfa-chevron {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-right: 1.6px solid var(--tfa-tertiary);
+  border-bottom: 1.6px solid var(--tfa-tertiary);
+}
+
+/* Open, because the disclosure is the reason this scene has a last beat at all. */
+.tfa-why .tfa-chevron {
+  transform: rotate(-135deg);
+}
+
+.tfa-why-list {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 8px 2px 2px;
+  color: var(--tfa-tertiary);
+  font-size: 12px;
+  list-style: none;
+}
+.tfa-why-list li {
+  padding-left: 12px;
+  text-indent: -12px;
+}
+.tfa-why-list li::before {
+  content: "· ";
+}
+
+.tfa-history {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: var(--tfa-radius);
+  background: var(--tfa-surface);
+  box-shadow: var(--tfa-card-shadow);
+  color: var(--tfa-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.tfa-history-count {
+  flex: 1;
+  color: var(--tfa-tertiary);
+  font-weight: 400;
+  text-align: right;
+}
+
+/* Collapsed: the chevron points the other way from the open one above it. */
+.tfa-history .tfa-chevron {
+  transform: rotate(45deg);
+}
+
+/* --- the inbox -------------------------------------------------------------- */
+
+/* Below the window rather than inside it, because that is where the mail actually
+   is: another tab, or another window, or a phone — somewhere the whole point is
+   that you do not have to go. */
+.tfa-inbox {
+  position: relative;
+  margin-top: 24px;
+}
+
+/* The empty inbox, before anything lands in it.
+   The rows hold their space from the first frame so that nothing under them moves
+   when they arrive — but two invisible rows are indistinguishable from a hole in
+   the page, and the first beat is 2.4 seconds of one. A faint well says "this is a
+   container and there is nothing in it", which is the true state of affairs, and it
+   goes when the mail turns up. */
+.tfa-inbox::before {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-width: 560px;
+  border-radius: var(--tfa-radius);
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(29, 29, 31, 0.06);
+  content: "";
+  opacity: 1;
+  transition: opacity 0.34s ease;
+}
+
+.tfa[data-landed="true"] .tfa-inbox::before {
+  opacity: 0;
+}
+
+.tfa-inbox-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 8px;
+  color: color-mix(in srgb, var(--tfa-text) 52%, transparent);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tfa-inbox-mark svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.tfa-mail {
+  display: grid;
+  max-width: 560px;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tfa-mail-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--tfa-radius);
+  background: var(--tfa-surface);
+  box-shadow: var(--tfa-card-shadow);
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.34s ease,
+    transform 0.34s cubic-bezier(0.2, 0.86, 0.24, 1),
+    box-shadow 0.34s ease;
+}
+
+/* Arriving, one after the other. Two mails landing at the same instant is one event;
+   two landing a moment apart is the situation this project exists for. */
+.tfa[data-landed="true"] .tfa-mail-row {
+  opacity: 1;
+  transform: none;
+}
+.tfa[data-landed="true"] .tfa-mail-row:nth-child(2) {
+  transition-delay: 420ms;
+}
+
+.tfa-avatar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+}
+.tfa-avatar[data-who="chosen"] {
+  background: linear-gradient(150deg, #8b7bff, #3a1fc4);
+}
+.tfa-avatar[data-who="rival"] {
+  background: linear-gradient(150deg, #7f8a99, #47505c);
+}
+
+.tfa-mail-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+
+.tfa-mail-from {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.tfa-mail-from b {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.tfa-mail-from small {
+  overflow: hidden;
+  color: var(--tfa-tertiary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
+.tfa-mail-subject {
+  margin: 0;
+  overflow: hidden;
+  color: var(--tfa-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tfa-mail-snippet {
+  margin: 0;
+  overflow: hidden;
+  color: var(--tfa-tertiary);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tfa-mail-side {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 2px;
+}
+
+.tfa-mail-code {
+  font-family: var(--tfa-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  transition: color 0.3s ease;
+}
+
+.tfa-mail-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(29, 29, 31, 0.07);
+  color: var(--tfa-tertiary);
+  font-size: 10.5px;
+  font-weight: 650;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.tfa-mail-age {
+  color: var(--tfa-tertiary);
+  font-size: 10.5px;
+}
+
+/* The decision, drawn. One row is tied to the site in front of you and keeps its
+   code; the other is identifiably from another company and is removed from
+   consideration entirely rather than merely outscored, which is what `findBestCode`
+   does the moment any message matches the site. */
+.tfa[data-picked="true"] .tfa-mail-tag {
+  opacity: 1;
+}
+
+.tfa[data-picked="true"] .tfa-mail-row[data-state="chosen"] {
+  box-shadow:
+    0 0 0 2px var(--tfa-accent) inset,
+    0 2px 6px rgba(31, 22, 74, 0.09),
+    0 10px 26px -14px rgba(31, 22, 74, 0.36);
+}
+.tfa[data-picked="true"] .tfa-mail-row[data-state="chosen"] .tfa-mail-tag {
+  background: var(--tfa-accent-soft);
+  color: var(--tfa-accent-text);
+}
+.tfa[data-picked="true"] .tfa-mail-row[data-state="chosen"] .tfa-mail-code {
+  color: var(--tfa-accent-text);
+}
+
+.tfa[data-picked="true"] .tfa-mail-row[data-state="rival"] {
   opacity: 0.5;
+}
+.tfa[data-picked="true"] .tfa-mail-row[data-state="rival"] .tfa-mail-code {
+  color: var(--tfa-tertiary);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+/* --- the labels ------------------------------------------------------------- */
+
+/* The theming contract is shape, type and lead as well as colour: four pieces of
+   software should not annotate themselves identically. This one takes the popup's
+   own furniture — a white card, 14px radii scaled down, one violet accent and a
+   very soft shadow — which is the least this scene could get away with and the most
+   honest, because the thing being annotated is that interface.
+   Deliberately small: three of these read rightward across a 260px corridor between
+   the payment column and the popup, and a plate that reaches past it lands on the
+   reasoning it is standing next to. */
+.tfa-specs {
+  --spec-ink: #1d1d1f;
+  --spec-paper: rgba(255, 255, 255, 0.97);
+  --spec-edge: rgba(29, 29, 31, 0.1);
+  --spec-gloss: rgba(255, 255, 255, 0.8);
+  --spec-dot: #5b45e0;
+  --spec-shadow: rgba(24, 16, 60, 0.4);
+  --spec-radius: 9px;
+  --spec-pad: 0.3rem 0.55rem;
+  --spec-size: clamp(9.5px, 0.95vw, 10.5px);
+  --spec-weight: 620;
+  --spec-tracking: 0.005em;
+  --spec-lead: 16px;
+}
+
+/* --- narrow --------------------------------------------------------------- */
+
+/* The composition in this scene is three zones across — the form, a corridor, and
+   the popup — and the corridor is not decoration: it is where three of the five
+   labels stand, and they are only correct because they have room to stand there.
+   Measured, it needs about 1040px of window. Below that the popup lands on the six
+   boxes it is supposed to be explaining, and two plates land on the popup: a label
+   covering its own evidence, which is the one thing this component must never do.
+   Photographed at 860px before this rule existed, and it was as bad as it sounds.
+
+   So below 1040 the zones stack rather than shrink. The form keeps its width and
+   the popup takes its turn underneath it, both pinned to the left, which leaves the
+   right of the page as a gutter the labels can still point across. Nothing has to
+   move to a coordinate it was not measured at, because every label is anchored to an
+   element rather than to a percentage. */
+@media (max-width: 1040px) {
+  /* Set dressing, and the first thing that can go when there is no room. */
+  .tfa-summary {
+    display: none;
+  }
+  /* The chord stood in the corridor, and there is no corridor. It is a drawing of
+     something the film has already shown happening; the six digits landing is the
+     part that cannot be lost. */
+  .tfa-keys {
+    display: none;
+  }
+
+  .tfa-page {
+    display: grid;
+    justify-items: start;
+    gap: 18px;
+    /* Nothing to reserve any more: the popup is in the flow below the form rather
+       than hanging over it, so the page is as tall as what is in it. */
+    min-height: 0;
+    padding: 22px;
+  }
+
+  .tfa-column {
+    align-self: start;
+  }
+
+  /* Back into the flow with everything else. Absolute here would have it lying over
+     the popup that is now underneath it. */
+  .tfa-toast {
+    position: static;
+    align-self: flex-end;
+    margin-top: 14px;
+  }
+
+  /* Open from the first frame, at these widths, and that is a deliberate trade.
+     A panel that appears on the last beat would add 578px to the page as it arrived,
+     which on a narrow screen means the section growing under somebody who is reading
+     it. Reserving the space instead leaves a hole where the panel will be, which is
+     worse. So the popup is simply present — which is the extension's other real
+     path: open the popup, press its button, watch the code arrive in it. */
+  .tfa-pop {
+    position: static;
+    width: 380px;
+    max-width: 100%;
+    opacity: 1;
+    transform: none;
+  }
+
+  /* What is *not* present is the answer. The code card and the recent list keep
+     their space and stay out of sight until the popup has actually been asked for a
+     code, which is the popup's own state before its button is pressed — the film
+     would otherwise print the code it is about to find on the first frame. */
+  .tfa-pop .tfa-code-card,
+  .tfa-pop .tfa-history {
+    visibility: hidden;
+  }
+  .tfa[data-open="true"] .tfa-pop .tfa-code-card,
+  .tfa[data-open="true"] .tfa-pop .tfa-history {
+    visibility: visible;
+  }
+}
+
+/* Under 760px the label layer stops being a layer and falls back into this column as
+   a wrapped row of chips — see `.speclayer` in globals.css. The pointing is what is
+   lost; the reading is not. Everything here is about giving it a column to fall into
+   that still makes sense. */
+@media (max-width: 760px) {
+  .tfa-page {
+    padding: 16px;
+    justify-items: stretch;
+  }
+  .tfa-column {
+    width: auto;
+    flex: 1 1 auto;
+  }
+  .tfa-pop {
+    width: auto;
+  }
+  .tfa-box {
+    width: 44px;
+    height: 52px;
+    flex: 0 0 44px;
+  }
+  .tfa-digit {
+    font-size: 24px;
+  }
+  /* The flight goes with the layout it was measured in. At this width the mail strip
+     is most of a thousand pixels below the form and off to one side of it, so a digit
+     crossing that distance reads as a stray element rather than as a code arriving.
+     They rise a short way into their boxes instead, keeping the stagger — which is
+     the part that reads as a code being entered rather than pasted. */
+  .tfa {
+    --tfa-fly-x: 0px;
+    --tfa-fly-y: 34px;
+    --tfa-step: 0px;
+  }
+  .tfa-mail-snippet {
+    display: none;
+  }
 }

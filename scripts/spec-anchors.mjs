@@ -118,7 +118,59 @@ const SCENES = [
     beats: ["resting", "pick"],
     want: [".pdfx-notes", ".pdfx-slide", ".pdfx-panel", ".pdfx-figure", ".pdfx-stage"],
   },
+  /* The three added with the eighth, ninth and tenth projects. A scene absent from this
+     list is not skipped loudly — it reports nothing and the run exits clean, which reads
+     exactly like a pass. That is the worst failure mode a review tool can have, and it is
+     why `--all` below refuses to run when a scene directory has no entry here. */
+  {
+    id: "two-factor-paster",
+    beats: ["pick", "why"],
+    want: [
+      ".tfa-pay",
+      ".tfa-boxes",
+      ".tfa-cvv",
+      ".tfa-danger",
+      ".tfa-pop",
+      ".tfa-mail-row",
+      ".tfa-browser",
+    ],
+  },
+  {
+    id: "totem",
+    beats: ["hide", "drill"],
+    want: [".tot-phone", ".tot-list", ".tot-glyph", ".tot-switch"],
+  },
+  {
+    id: "byte-budget",
+    beats: ["measured", "warn"],
+    want: [".bb-popup", ".bb-bar", ".bb-site", ".bb-browser"],
+  },
 ];
+
+/**
+ * Every scene directory must appear in `SCENES` above.
+ *
+ * Added after `two-factor-paster` was built and this tool reported nothing about it and
+ * exited zero — indistinguishable, from the outside, from a scene whose anchors are all
+ * correct. A review tool that goes quiet when it does not know about something is worse
+ * than one that is missing, because it is trusted.
+ */
+async function assertEverySceneListed() {
+  const { readdir } = await import("node:fs/promises");
+  const dirs = (await readdir(path.join(root, "app", "demos"), { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory() && entry.name !== "scene")
+    .map((entry) => entry.name);
+  const listed = new Set(SCENES.map((scene) => scene.id));
+  const missing = dirs.filter((dir) => !listed.has(dir));
+  if (missing.length) {
+    console.error(
+      `spec-anchors knows nothing about: ${missing.join(", ")}.\n` +
+        `Add an entry to SCENES, or this tool will keep passing without looking at them.`,
+    );
+    process.exit(1);
+  }
+}
+await assertEverySceneListed();
 
 /* ---------------------------------- server --------------------------------- */
 

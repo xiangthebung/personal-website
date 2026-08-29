@@ -1099,7 +1099,31 @@ test("a scene's own styles live with the scene, not in globals.css", async () =>
      actually being styled — carries one of these is scene furniture and belongs in
      that scene's stylesheet. Section furniture (`.project-*`, the veil, the ambience)
      is server-rendered and correctly stays here however it is qualified. */
-  const SCENE = /\.(nb|gx|pp|pdfx|choir|dc|nn)-[\w-]+$/;
+  /* `tfa`, `tot` and `bb` are the three added when the page went from seven projects to
+     ten, and their absence is the reason this list is now derived rather than typed. A
+     prefix missing from here does not weaken the check, it *removes* it for that scene —
+     a `.tfa-*` rule could have been dropped into `globals.css` and nothing would have
+     said a word, which is precisely the failure this test exists to make loud. */
+  const SCENE = /\.(nb|gx|pp|pdfx|choir|dc|nn|tfa|tot|bb)-[\w-]+$/;
+
+  /* And a guard on the guard: every scene directory must have its prefix represented
+     above. This is what stops the eleventh project from silently opting out. */
+  const sceneDirs = (
+    await readdir(new URL("../app/demos/", import.meta.url), { withFileTypes: true })
+  )
+    .filter((entry) => entry.isDirectory() && entry.name !== "scene")
+    .map((entry) => entry.name);
+  const prefixes = SCENE.source.match(/\(([^)]+)\)/)[1].split("|");
+  for (const dir of sceneDirs) {
+    const css = await read(`../app/demos/${dir}/demo.css`);
+    /* The scene's own prefix, read out of its stylesheet: the first class it declares. */
+    const own = css.match(/^\.([a-z]+)-?[\w-]*\s*\{/m)?.[1];
+    assert.ok(
+      own && prefixes.includes(own),
+      `app/demos/${dir}/demo.css uses the prefix "${own}", which is not in this test's ` +
+        `SCENE pattern — so a "${own}-" rule leaking into globals.css would go unnoticed`,
+    );
+  }
 
   const offenders = [];
   for (const [, prelude] of globals.matchAll(/(^|\})\s*([^{}@][^{}]*?)\{/g)) {
