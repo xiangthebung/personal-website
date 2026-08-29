@@ -58,11 +58,12 @@ export type DemoId =
 /**
  * Where the heading, the scene and the facts sit.
  *
- * Four compositions rather than seven, assigned so that no two neighbours share
+ * Four compositions across ten sections, assigned so that no two neighbours share
  * one. That is the only constraint worth enforcing: a visitor never notices a
  * repeat, because any two sections using the same arrangement are four thousand
- * pixels apart. Seven bespoke layouts would have been seven things to maintain for
- * an effect nobody can perceive.
+ * pixels apart. Ten bespoke layouts would have been ten things to maintain for
+ * an effect nobody can perceive — and the ratio only got better when three
+ * projects were added and the number of compositions did not have to move.
  */
 export type Stage = "beside" | "beside-flip" | "stacked" | "offset";
 
@@ -152,26 +153,34 @@ const projectData: Project[] = [
   {
     id: "choir-practice",
     /**
-     * `beside`, not `stacked`, and the reason is arithmetic rather than taste.
+     * `stacked`, and the reason changed completely without the answer changing.
      *
-     * This is the one section holding a real application, and the application has a floor:
-     * its parts panel is a fixed side column in the desktop layout, it does not scroll, and
-     * it cannot be closed at desktop widths — so below about 850px of height the app
-     * overflows its own frame and the score gets cut off. Measured: 243px of overflow at
-     * 609px tall, 392px at 460px tall.
+     * What this note used to say was that the application was broken at the sizes `beside`
+     * would give it: its parts panel was a fixed 300px column that could not be closed
+     * above 900px wide and did not scroll, so a short frame cut the score off — 243px of
+     * overflow at 609px tall, 392px at 460px — and below the app's own `max-width: 899px`
+     * breakpoint that column became a modal dialog covering the score completely. `beside`
+     * was tried, narrowed the frame to 801px, and was photographed unusable.
      *
-     * It also needs at least 900px of *width*: the app's own stylesheet switches at
-     * `max-width: 899px` and turns that side column into a modal dialog that covers the
-     * score completely.
+     * None of that is true any more. The application was audited and both defects were
+     * fixed at the source: the panel is a non-modal `<dialog open>` in its own grid track,
+     * closable at every width, and the track collapses when it is shut. Measured over
+     * there, the score covered by an open panel went from 83% to 0% and the play button
+     * became hit-testable. The vendored copy here is that version.
      *
-     * `beside` was tried, because a heading in a column beside the pod costs nothing
-     * vertical and brought the section from 1110px to 972px. It also narrowed the frame to
-     * 801px, under the app's breakpoint, and the section rendered with a full-width Parts
-     * dialog over the music. Photographed, and unusable.
+     * So this is now a composition decision rather than a workaround, and it lands in the
+     * same place for a plainer reason. `beside` still narrows the frame to about 801px,
+     * which is still under the app's breakpoint — and under it the panel is no longer a
+     * dialog over the music but a block *beneath* it, capped at `min(46dvh, 360px)`. In a
+     * frame this tall that is 360px taken from a score that is the entire point of the
+     * section. The app is composed for its desktop layout; the section should show it in
+     * that layout.
      *
-     * So the heading stays in a band above and the pod keeps its full 980px. The height is
-     * bought back by giving the frame the height the app actually needs, and by deleting
-     * the footnote that used to sit under it.
+     * The heading therefore stays in a band above, the pod keeps its full width, and the
+     * height is bought back by giving the frame the height the app actually needs.
+     *
+     * If this is ever revisited: the thing to measure is not whether `beside` fits, but
+     * how much of the score survives at 801px with the panel stacked under it.
      */
     stage: "stacked",
     number: "01",
@@ -384,10 +393,12 @@ const projectData: Project[] = [
        of each other, which is a compressor flattening a soundtrack and is not what this
        software does. */
   },
-  /* Last on purpose. It is the hardest section to arrive at cold — the other six
-     describe a problem you have had, and this one has to teach a rule before its
-     scene means anything — so it reads better as the thing you find at the end than
-     as the third thing you are asked to understand. */
+  /* Last on purpose, and it stayed last when three more projects arrived rather than
+     being pushed along by them. It is the hardest section to arrive at cold — the other
+     nine describe a problem you have already had, and this one has to teach a rule before
+     its scene means anything — so it reads better as the thing you find at the end than
+     as the third thing you are asked to understand. That is also why the three new
+     sections were inserted above it instead of appended after it. */
   {
     id: "n-back",
     stage: "beside-flip",
