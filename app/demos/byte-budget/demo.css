@@ -1,8 +1,15 @@
-/* PLACEHOLDER — replaced when the real scene is written. */
+/* PLACEHOLDER — replaced when the real scene is written.
+
+   `width: 100%` is not cosmetic here. A stage that shrinks to its content is narrower
+   than the well, and `useSectionFocused` gates on a coverage test the narrow box fails —
+   so the storyboard never starts and the scene sits on beat one forever. Measured: a
+   centred grid gave a 49px stage in a 1440px viewport and `drive-site.mjs` reported the
+   scene never completing a lap. Every real scene here fills its well. */
 .bb {
   position: relative;
   display: grid;
   place-items: center;
+  width: 100%;
   min-height: 360px;
   border-radius: 14px;
   background: #f2f6f6;

@@ -38,14 +38,18 @@ export function TotemDemo() {
   const onScreen = useOnScreen(stageRef);
   const focused = useSectionFocused(stageRef);
   const running = useSceneRun(focused, onScreen);
-  const { beat } = useStoryboard(BEATS, {
+  const { beat, run } = useStoryboard(BEATS, {
     running,
     stage: stageRef,
     stillBeat: "fill",
   });
 
   return (
-    <div className="tot" ref={stageRef} data-beat={beat}>
+    /* Both, and `data-lap` is not optional: `scripts/drive-site.mjs` reads
+       `dataset.lap` to tell a scene that is looping from one stuck on its first
+       beat. A scene that publishes only `data-beat` fails the driver while
+       looking perfectly alive on screen. */
+    <div className="tot" ref={stageRef} data-beat={beat} data-lap={run}>
       <div className="tot-placeholder">Totem</div>
       <SpecTags beats={BEATS} beat={beat} tags={SPECS} className="tot-specs" />
     </div>
