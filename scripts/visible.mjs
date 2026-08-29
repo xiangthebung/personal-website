@@ -128,11 +128,18 @@ const CHECKS = [
     required: false,
     note: "must be on top of the frame, which is the point of it",
   },
-  /* The subtitle this used to check for is gone — a line of film dialogue printed to
-     demonstrate that you cannot hear it, on a page with no sound. The meter carries the
-     volume half of the argument now, so it is the thing worth checking, and it is
-     `required`: it is the only element on the page that says the explosion and the
-     whisper share a setting. */
+  /* This comment described a scene that no longer exists, twice over, and both halves
+     were already stale before the audio rebuild: the printed line of dialogue is not gone
+     — it is the loudness channel, and `frame.tsx` explains why deleting it was the
+     original mistake — and the two panels do not "share a setting" any more. Each carries
+     its own volume dial, at 30% and 12%, because the whole claim is that the treated side
+     needs less of it.
+
+     What is checked here is the dB reading on the `whisper` beat, and it is `required`
+     for a sharper reason than before: that beat is the one frame where nothing visibly
+     differs between the panels except the two dials and this number. If the reading is
+     occluded, the frame reads as two identical pictures and the scene's central claim —
+     same line, same size, less volume — has nothing carrying it. */
   {
     label: "night volume cue",
     section: "night-neutralizer",

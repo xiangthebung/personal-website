@@ -227,7 +227,15 @@ function NightBackdrop() {
             style={{ "--wave": height, "--sample": index } as React.CSSProperties}
           />
         ))}
-        <b>limiter ceiling</b>
+        {/* `soft clip`, not `limiter ceiling`, and the rename is about a collision rather
+            than accuracy — both were true of the extension. The scene in front of this
+            draws its own line across two meters, and that line is explicitly *not* the
+            limiter's ceiling: it is the part of the scale you do not want to be in, and
+            the note on `CEILING` in the pod says so at length. Two lines a few hundred
+            pixels apart, both labelled as a ceiling, meaning different things, is a
+            reader's problem rather than a writer's. This one names the mechanism it
+            belongs to — `core/soft-clip.ts` — and the other keeps the plain meaning. */}
+        <b>soft clip</b>
       </span>
 
       {/* The extension stands down until night; the room now carries that rule at

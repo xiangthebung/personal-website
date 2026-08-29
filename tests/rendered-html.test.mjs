@@ -689,78 +689,284 @@ test("every in-frame label stays up long enough to read", async () => {
 });
 
 /**
- * Night Neutralizer's audio half still shows something, on a page with no audio.
+ * Reads the Night Neutralizer pod's `SOUND` table out of its source.
  *
- * This is the one claim on the site that cannot be demonstrated in the medium it is about,
- * and the scene has now failed at it once: an earlier version reasoned that a printed line
- * of dialogue reads the same whispered or shouted, concluded the audio half was unshowable,
- * and deleted the line. It is showable — the size of the line is the channel — and this
- * test exists because that is a subtle enough idea to be "simplified" away again by
- * somebody tidying up a table of magic numbers.
+ * Source parsing rather than importing, for the same reason as the caption tests: the pod
+ * is a `"use client"` module and this is a node test. The parser is strict, so a table that
+ * changes shape fails loudly here instead of quietly checking nothing.
  *
- * What it checks is the argument, not the implementation. Untreated, a whisper and an
- * explosion must be wildly different sizes. Treated, they must be close. That gap closing
- * is the compressor, and it is the only reason the numbers are what they are.
+ * `name: { say: "…", film: n, before: { db: "…", loud: n }, after: { db: "…", loud: n } },`
  */
-test("the Night Neutralizer scene prints its soundtrack at the size it sounds", async () => {
+async function nightSoundTable() {
   const source = await read("../app/demos/night-neutralizer/demo.tsx");
 
   const block = source.match(/const SOUND: Record<BeatName[^>]*>\s*=\s*\{([\s\S]*?)\n\};/);
   assert.ok(block, "could not find the SOUND table");
 
-  /** `name: { say: "…", before: { db: "…", loud: n }, after: { db: "…", loud: n } },` */
   const rows = new Map();
   for (const row of block[1].matchAll(
-    /^\s{2}([a-z-]+): \{\s*say: "([^"]*)",\s*before: \{ db: "([^"]*)", loud: ([\d.]+) \},\s*after: \{ db: "([^"]*)", loud: ([\d.]+) \},?\s*\},$/gm,
+    /^\s{2}([a-z-]+): \{\s*say: "([^"]*)",\s*film: (-?[\d.]+),\s*before: \{ db: "([^"]*)", loud: ([\d.]+) \},\s*after: \{ db: "([^"]*)", loud: ([\d.]+) \},?\s*\},$/gm,
   )) {
     rows.set(row[1], {
       say: row[2],
-      before: { db: row[3], loud: Number(row[4]) },
-      after: { db: row[5], loud: Number(row[6]) },
+      film: Number(row[3]),
+      before: { db: row[4], loud: Number(row[5]) },
+      after: { db: row[6], loud: Number(row[7]) },
     });
   }
   assert.ok(rows.size >= 6, `parsed only ${rows.size} SOUND rows; the table shape changed`);
+
+  const number = (name) => {
+    const found = source.match(new RegExp(`^const ${name} = (-?[\\d.]+);$`, "m"));
+    assert.ok(found, `the pod no longer declares ${name} where this test looks for it`);
+    return Number(found[1]);
+  };
+
+  return {
+    rows,
+    strength: number("STRENGTH"),
+    beforeVolume: number("BEFORE_VOLUME"),
+    afterVolume: number("AFTER_VOLUME"),
+  };
+}
+
+/**
+ * Imports the vendored `core/` as running code.
+ *
+ * Everything else in this file compares sources as text, and for the pods that is right —
+ * they are client modules full of JSX. The core is not: it is plain TypeScript with no
+ * React and no imports outside itself, and the question being asked of it here ("what does
+ * this function actually return") cannot be answered by reading it. So it gets transpiled
+ * and imported.
+ *
+ * Through `typescript`, which is a direct devDependency of this repo, rather than through
+ * a bundler that only happens to be installed underneath one. No type checking — `tsc
+ * --noEmit` already runs over these files — just the types stripped, relative specifiers
+ * given the extension node needs, and a `package.json` so the output is treated as ESM.
+ */
+async function loadNightCore() {
+  const { mkdtemp, rm, writeFile } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { default: nodePath } = await import("node:path");
+  const { pathToFileURL } = await import("node:url");
+  const { default: ts } = await import("typescript");
+
+  const from = new URL("../app/demos/night-neutralizer/core/", import.meta.url);
+  const dir = await mkdtemp(nodePath.join(tmpdir(), "nn-core-"));
+  try {
+    await writeFile(nodePath.join(dir, "package.json"), '{"type":"module"}');
+    for (const name of (await readdir(from)).filter((file) => file.endsWith(".ts"))) {
+      const { outputText } = ts.transpileModule(await read(`${from.href}${name}`), {
+        compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+      });
+      await writeFile(
+        nodePath.join(dir, name.replace(/\.ts$/, ".js")),
+        outputText.replace(/(\bfrom\s+["'])(\.\/[^"']+)(["'])/g, "$1$2.js$3"),
+      );
+    }
+    const load = (file) => import(pathToFileURL(nodePath.join(dir, file)).href);
+    return { ...(await load("readings.js")), ...(await load("strength.js")) };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Night Neutralizer's audio half still shows something, on a page with no audio.
+ *
+ * This is the one claim on the site that cannot be demonstrated in the medium it is about,
+ * and the scene has now failed at it twice, in opposite directions.
+ *
+ * The first failure was giving up: an earlier version reasoned that a printed line of
+ * dialogue reads the same whispered or shouted, concluded the audio half was unshowable,
+ * and deleted the line. That was wrong — the size of the line is the channel — and half of
+ * what this test is for is stopping somebody tidying a table of magic numbers away again.
+ *
+ * The second failure was this test's own doing. It used to assert that once treated, the
+ * whisper and the explosion land within a factor of two of each other, on the grounds that
+ * "the levelling is what this scene exists to show". The extension does no such levelling.
+ * It lifts quiet material by 8 dB and leaves peaks where they are, so the gap closes from
+ * 45 dB to 37 and nothing lands anywhere near anything else. The table had been written to
+ * satisfy the assertion, the assertion had been written from the same misreading, and the
+ * two agreed with each other for a year.
+ *
+ * So what is asserted now is the argument the software can actually support, and every part
+ * of it that is a measurement is taken from `core/` rather than from a memory of it:
+ *
+ *   · untreated, a whisper and an explosion are wildly far apart — the problem;
+ *   · the extension lifts the whisper and does *not* pull the explosion down;
+ *   · which buys a lower volume setting, and at that setting the whispered line is exactly
+ *     as audible while the explosion arrives meaningfully quieter — the product.
+ */
+test("the Night Neutralizer scene still prints what the extension actually does", async () => {
+  const { rows, strength, beforeVolume, afterVolume } = await nightSoundTable();
+  const core = await loadNightCore();
 
   const whisper = rows.get("whisper");
   const boom = rows.get("boom");
   assert.ok(whisper?.say, "the whispered line is gone; the audio half has nothing to show");
   assert.ok(boom?.say, "the explosion has no printed line");
 
-  /* Untreated, the two have to be far apart or there is no problem being described. The
-     printed size is `0.5rem + loud * 2rem`, so a 4x spread in `loud` is roughly a 4x spread
-     on screen. */
+  /* The scene's premises, restated here so that a table quietly re-based onto different
+     reference levels — which is how the last drift started — fails rather than passes. */
+  assert.equal(whisper.film, core.QUIET_DB, "the whisper is no longer the core's quiet level");
+  assert.equal(boom.film, core.LOUD_DB, "the explosion is no longer the core's loud level");
+
+  /* What the extension does to each beat, from the extension. `nightEq` is `true` because
+     that is what the pod's own footer quotes, and the two have to be the same setting or
+     the panels and the line underneath them describe different software. */
+  const params = core.mapAudioStrength(strength, true);
+  const through = (film) => core.audioTransferDb(params, film);
+  const lift = core.audioEffect(strength, true).liftDb;
+
+  /* THE CLAIM THIS EXISTS TO POLICE. The whisper comes up; the peak does not come down.
+     If that ever stops being true of `core/`, this fails and the scene gets rewritten —
+     which is the opposite of what happened last time, when the scene was rewritten and
+     the core was left alone. */
+  assert.ok(lift >= 4, `the extension lifts quiet material by only ${lift.toFixed(1)} dB`);
+  assert.ok(
+    Math.abs(through(core.LOUD_DB) - core.LOUD_DB) < 2,
+    `a full-scale peak now comes out at ${through(core.LOUD_DB).toFixed(2)} dB. The scene is ` +
+      `drawn on the premise that the extension does not move loud material; if it has ` +
+      `started to, the panels are describing software that no longer exists.`,
+  );
+
+  /* `HTMLMediaElement.volume` is a linear amplitude gain, so the distance between the two
+     dials is a dB figure — and it has to be the lift, or the whispered line does not land
+     in the same place on both panels and the frame stops being true. */
+  const volumeDb = (percent) => 20 * Math.log10(percent / 100);
+  const drop = volumeDb(beforeVolume) - volumeDb(afterVolume);
+  assert.ok(
+    Math.abs(drop - lift) <= 0.5,
+    `the two volume dials are ${drop.toFixed(2)} dB apart but the extension lifts quiet ` +
+      `material by ${lift.toFixed(2)} dB. The treated panel is turned down by the wrong ` +
+      `amount, so its whispered line no longer lands where the untreated one does.`,
+  );
+
+  /* Every printed reading, derived. `db` is the level as it arrives in the room, on one
+     scale for both panels with 0 dB at the untreated peak, so the untreated column is the
+     film's own level and the treated column is that level through the chain and then
+     through the lower volume. `loud` is the same figure as a fraction, loudness halving
+     every 10 dB. This is the check that did not exist, and its absence is the whole
+     reason the table drifted: nothing here ever compared these strings to `core/`. */
+  const top = core.LOUD_DB + volumeDb(beforeVolume);
+  const heard = {
+    before: (film) => film + volumeDb(beforeVolume) - top,
+    after: (film) => through(film) + volumeDb(afterVolume) - top,
+  };
+  const reading = (db) => `${Math.round(db) < 0 ? "−" : ""}${Math.abs(Math.round(db))} dB`;
+
+  for (const [name, row] of rows) {
+    for (const side of ["before", "after"]) {
+      const { db, loud } = row[side];
+      const level = heard[side](row.film);
+
+      if (db !== "") {
+        // A real figure with a unit, and a U+2212 minus rather than a hyphen.
+        assert.match(db, /^−?\d+ dB$/, `${name}.${side} reads "${db}", which is not a level`);
+        assert.equal(
+          db,
+          reading(level),
+          `${name}.${side} prints "${db}", but a ${row.film} dBFS beat through the extension ` +
+            `at ${side === "before" ? beforeVolume : afterVolume}% volume arrives at ` +
+            `${level.toFixed(2)} dB. Fix the table, not this test.`,
+        );
+      }
+      assert.ok(
+        Math.abs(loud - Math.min(1, 2 ** (level / 10))) <= 0.005,
+        `${name}.${side} draws itself at ${loud}, but ${level.toFixed(2)} dB is ` +
+          `${Math.min(1, 2 ** (level / 10)).toFixed(3)} on the scale the rest of the table uses`,
+      );
+    }
+  }
+
+  /* THE PROBLEM. Untreated, the two have to be far apart or there is nothing being
+     complained about. The printed size is `0.5rem + loud * 2rem`, so a 4x spread in `loud`
+     is roughly a 4x spread on screen. */
   assert.ok(
     boom.before.loud / whisper.before.loud >= 4,
     `untreated, the explosion is only ${(boom.before.loud / whisper.before.loud).toFixed(1)}x ` +
       `the whisper — not enough of a gap to read as a problem`,
   );
-  /* Treated, they have to be close, because that is the product. */
+
+  /* THE PRODUCT, and the replacement for the assertion that used to be wrong here. Not
+     "the two lines converge" — they do not, and no setting of this extension makes them.
+     What the treated panel buys is a lower volume at which the dialogue is unchanged and
+     the explosion is not, and both halves of that have to be on screen. */
   assert.ok(
-    boom.after.loud / whisper.after.loud <= 2,
-    `treated, the explosion is still ${(boom.after.loud / whisper.after.loud).toFixed(1)}x the ` +
-      `whisper — the levelling is what this scene exists to show`,
+    Math.abs(heard.after(whisper.film) - heard.before(whisper.film)) <= 1,
+    `the whispered line lands ${heard.after(whisper.film).toFixed(1)} dB on the treated panel ` +
+      `against ${heard.before(whisper.film).toFixed(1)} on the untreated one. Landing in the ` +
+      `same place is the promise — you turned the volume down and did not lose the dialogue.`,
   );
-  // And the quiet part has to come up rather than the loud one merely coming down.
-  assert.ok(whisper.after.loud > whisper.before.loud, "the whisper is not lifted at all");
-  assert.ok(boom.after.loud < boom.before.loud, "the explosion is not brought down at all");
+  assert.ok(
+    heard.before(boom.film) - heard.after(boom.film) >= 6,
+    `the explosion arrives only ` +
+      `${(heard.before(boom.film) - heard.after(boom.film)).toFixed(1)} dB lower on the ` +
+      `treated panel, which is not enough of a difference to be worth a scene`,
+  );
+  assert.ok(
+    boom.before.loud / boom.after.loud >= 1.4,
+    `the two explosions are drawn at ${boom.before.loud} and ${boom.after.loud}, which is ` +
+      `too close to read as a difference on a silent page`,
+  );
 
-  // Every reading is a real figure with a unit, not a bare number.
-  for (const [name, row] of rows) {
-    for (const side of ["before", "after"]) {
-      const { db } = row[side];
-      if (db !== "") {
-        assert.match(db, /^−?\d+ dB$/, `${name}.${side} reads "${db}", which is not a level`);
-      }
-    }
-  }
-
-  // The size channel has to actually be wired to the printed line.
+  /* And the size channel has to actually be wired to the printed line, or every number
+     above is arithmetic nobody can see. */
   const css = await readAppCss();
   assert.match(
     css.replace(/\/\*[\s\S]*?\*\//g, " "),
     /\.nn-say\s*\{[\s\S]*?font-size:[^;]*var\(--loud/,
     ".nn-say no longer sizes itself from --loud, so the loudness channel is gone",
   );
+});
+
+/**
+ * The pod's footer quotes the extension's own account of itself, at the settings the
+ * panels above it are drawn at.
+ *
+ * Source rather than rendered HTML, and not by preference: the pods are `lazy()` in the
+ * demo registry, so none of this markup exists until a browser mounts it. `scripts/
+ * visible.mjs` is where that side is covered.
+ *
+ * Two things worth holding. The `nightEq` argument, because the test above derives every
+ * reading in `SOUND` on the assumption that it is on, and a scene whose panels and whose
+ * footer describe two different settings is the exact failure this pair of tests exists
+ * for. And that both of the sentences `describeAudioEffect` returns reach the page: the
+ * second is the loud-to-quiet gap, which is the single figure the audio half is built on,
+ * and it went unprinted for as long as the scene was claiming something else.
+ */
+test("the Night Neutralizer footer quotes the extension at the settings the scene runs", async () => {
+  const [source, { strength }, core] = await Promise.all([
+    read("../app/demos/night-neutralizer/demo.tsx"),
+    nightSoundTable(),
+    loadNightCore(),
+  ]);
+
+  const audio = source.match(/const \[(\w+), (\w+)\] = describeAudioEffect\(STRENGTH, (\w+)\);/);
+  assert.ok(audio, "the pod no longer takes both readings from describeAudioEffect");
+  const [, liftName, gapName, nightEq] = audio;
+  assert.equal(
+    nightEq,
+    "true",
+    "the footer quotes the extension with the night EQ off while the panels are drawn " +
+      "with it on; the two halves of the scene now describe different settings",
+  );
+
+  const spec = source.match(/<p className="nn-spec"[^>]*>([\s\S]*?)<\/p>/);
+  assert.ok(spec, "the pod no longer has a spec line");
+  for (const name of ["STRENGTH", "VIDEO_READING", liftName, gapName]) {
+    assert.ok(
+      spec[1].includes(`{${name}}`),
+      `the spec line no longer prints ${name}, so the extension's own figure for it is ` +
+        `nowhere on the page`,
+    );
+  }
+
+  // And what those names resolve to at this strength is a figure, not an empty string.
+  const [lift, gap] = core.describeAudioEffect(strength, true);
+  assert.match(lift, /Quiet parts \+\d+ dB/, `the core reports the lift as "${lift}"`);
+  assert.match(gap, /gap −\d+ dB/, `the core reports the gap as "${gap}"`);
 });
 
 /**

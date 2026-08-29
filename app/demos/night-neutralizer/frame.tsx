@@ -98,10 +98,22 @@ export function NightFrame({
    *
    * That conclusion was wrong, and the way out is the one every silent medium uses. Set
    * the whisper at ten pixels and the explosion at forty and the page has a loudness
-   * channel — one a reader interprets instantly and without being taught. Which also
-   * makes the product visible in a way no meter does: on the untreated side the two go
-   * from 10px to 40px, and on the treated side they sit at 23px and 28px. That gap
-   * closing *is* the compressor, drawn at a size you cannot miss.
+   * channel — one a reader interprets instantly and without being taught.
+   *
+   * What that channel is *for* was got wrong once, and this comment was where the error
+   * outlived its correction. It used to end: on the treated side the two sit at 23px and
+   * 28px, and "that gap closing *is* the compressor". It is not, and the extension does
+   * not do it. Measured from the vendored core at the default strength, a full-scale peak
+   * comes out at −0.09 dB and at maximum strength at −1.2 — it never meaningfully touches
+   * loud material. It lifts the quiet by about 8 dB, and the gap closes from 45 dB to 37,
+   * which is a real effect and a much smaller one than two lines meeting in the middle.
+   *
+   * So the size channel is not the argument any more; it is the evidence the argument
+   * acts on. The whispered line is the *same* size in both panels, over volume dials
+   * reading 30% and 12% — the constant being held is the promise — and the explosion is
+   * 40px against 26px because the right-hand panel is genuinely playing quieter. See the
+   * note on `SOUND` in `demo.tsx`, and the test that now derives every printed reading
+   * from `describeAudioEffect` so this cannot drift again.
    */
   say,
   /** 0 to 1. Drives the size, the weight and the opacity of the line above. */

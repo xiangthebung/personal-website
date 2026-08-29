@@ -30,7 +30,6 @@
  * links to, it should be deleted rather than softened.
  */
 
-/** Which demo component a section mounts. */
 /**
  * Which demo component a section mounts.
  *
@@ -353,15 +352,19 @@ const projectData: Project[] = [
     number: "06",
     name: "Night Neutralizer",
     platform: "Chrome extension",
-    /* Both lines were rewritten because the pair had drifted into describing the product
-       twice. "Watch things at night without the volume war" is a benefit, and "turn the
-       screen down and dark scenes vanish" is a mechanism dressed as a problem — it asks the
-       reader to picture an adjustment they have not made yet in order to understand why they
-       would not want to make it.
-       The problem is much more ordinary than that, and everybody who watches anything late
-       has had it: you spend the film with a hand on the remote. So the headline says what
-       the extension does to the film, and the reason says what you are doing instead. */
-    headline: "Dark scenes brighter, loud scenes quieter, automatically.",
+    /* The reason line has been right for a while: everybody who watches anything late has
+       spent the film with a hand on the remote.
+       The headline had not. It read "Dark scenes brighter, loud scenes quieter,
+       automatically", and the second of those three is something this extension does not
+       do. Measured from its own core at the default strength, a full-scale peak comes out
+       at −0.09 dB; at maximum strength it comes out at −1.2. It never meaningfully touches
+       loud material. What it does is lift the quiet by 8 dB, which closes the gap, which is
+       what lets you run the whole thing lower.
+       So the headline is the two knobs now rather than the two halves of the signal. It is
+       what the software is for, it survives contact with the measurements, and it is the
+       same sentence the scene below it acts out: one panel at 30% volume, one at 12%, the
+       same line of dialogue audible in both. */
+    headline: "Turn the screen and the volume down without losing the film.",
     why: "Watching anything late means riding the volume and brightness for two hours: dialogue you can't hear, then a bang that wakes the house.",
     theme: "navy",
     source: "https://github.com/xiangthebung/night-neutralizer",
@@ -370,13 +373,16 @@ const projectData: Project[] = [
     /* "The same shot, twice" was the last invitation to go and it was the one doing the most
        work: two dark rectangles side by side could be two different shots, and the entire
        comparison depends on them being one. It is a chip in the pod's own rig now, beside a
-       brightness dial and a volume dial that visibly never move — which answers the
-       objection the line could only assert.
+       brightness dial that visibly never moves — which answers the objection the line could
+       only assert.
        The three notes went the same way, into four pairs of verdicts under the two panels:
-       dark scenes brighter, quiet parts louder, loud parts quieter, nothing to adjust. And
-       the audio half is legible on a silent page because the soundtrack is printed at the
-       size it sounds — a whisper at ten pixels, an explosion at forty, and both of them
-       landing within five pixels of each other once the extension has them. */
+       dark scenes brighter, the dialogue audible for less volume, the bang therefore lower,
+       nothing to adjust. And the audio half is legible on a silent page because the
+       soundtrack is printed at the size it arrives at — the whispered line the same size in
+       both panels, over volume dials reading 30% and 12%, and the explosion at forty pixels
+       against twenty-six. The version before it drew both lines landing within five pixels
+       of each other, which is a compressor flattening a soundtrack and is not what this
+       software does. */
   },
   /* Last on purpose. It is the hardest section to arrive at cold — the other six
      describe a problem you have had, and this one has to teach a rule before its

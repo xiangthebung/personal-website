@@ -32,16 +32,19 @@
 }
 
 /* --- the rig: what is fixed about the comparison --------------------------
-   Three statements true of every frame, so they sit outside the film rather than
-   changing inside it: one shot shown twice, a stream of the kind that defeats other
-   extensions, and a display brightness that does not move.
+   Two statements true of every frame, so they sit outside the film rather than
+   changing inside it: one shot shown twice, and a display brightness that does not move.
 
    The dial is doing real argumentative work. The natural objection to a side-by-side
    like this is that the right panel has simply been turned up — and the answer is
    structural (both panels share `--exposure`; the only asymmetry in the document is
    one `url(#nn-tone-curve)` in a filter chain) which is exactly the kind of answer a
    picture cannot give. A number that visibly sits still while the panels visibly stop
-   matching gives it. */
+   matching gives it.
+
+   The volume dial that used to sit beside it is in the panel labels now, at two different
+   settings. Freezing it made the audio argument one-variable, and this product's promise
+   is two: the dialogue and what it costs you in volume. */
 .nn-rig {
   display: flex;
   flex-wrap: wrap;
@@ -114,6 +117,20 @@
   font-size: 0.64rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+}
+
+/* The volume dial, inside a panel's label row rather than up in the rig.
+   `margin-right: auto` keeps the level reading hard against the right edge, so the two
+   panels' readings stay in the same column as each other however wide the label is. The
+   label row is uppercase and widely tracked; a dial set that way reads as a heading
+   rather than as an instrument, so it opts out of both. */
+.nn-label .nn-dial {
+  margin-right: auto;
+  margin-left: 0.75rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
 }
 /* A "set once, never touched" caption used to close this plate. It told the reader what to
    conclude from a pair of dials they can watch not moving, which the verdict pair under the
@@ -284,13 +301,16 @@
    could not be shown, deleted the line, and left a bar meter to carry it alone.
 
    The conclusion assumed the words were the only channel. They are not: `--loud` is the
-   level from 0 to 1, and it sets the size. A whisper at 0.08 renders around 10px; an
+   level from 0 to 1, and it sets the size. A whisper at 0.04 renders around 9px; an
    explosion at 1 renders around 40px. Loudness becomes something a reader sees, with
    nothing to learn first.
 
-   And it demonstrates the compressor better than any meter. Untreated the two lines are
-   10px and 40px; treated they are 23px and 28px. A four-fold difference collapsing to a
-   slight one *is* the product, at a scale nobody can miss.
+   What it is drawing is what arrives in the room, not what leaves the extension, because
+   the two panels are playing at two different volumes — see `SOUND` in the pod. So the
+   whispered line is the same size on both (that is the promise: it costs 8 dB less volume
+   to hear) and the explosion is 40px against 26px (that is what the 8 dB buys you when the
+   bang lands). It used to read 23px against 28px, which was drawing a compressor that
+   flattens a soundtrack. This one does not do that, and the measurements say so.
 
    Opacity rides along, so a quiet line is also faint — two channels saying one thing,
    which is what makes it read instantly rather than after a moment's thought.
@@ -421,9 +441,9 @@
 }
 
 /* --- meters ---------------------------------------------------------------
-   Not an audio graph. The shape of what the compressor does, which is the part
-   worth showing: the untreated side runs out of headroom and the treated side
-   is held under a ceiling with room left above it. */
+   Not an audio graph. What is arriving in the room on each side, at that panel's own
+   volume setting — which is why the untreated one pins into the red when the blast lands
+   and the treated one, eight decibels lower, stops a segment short of it. */
 
 .nn-meter {
   position: relative;
@@ -461,7 +481,7 @@
 .nn-meter .nn-seg {
   background: #6fd3a8;
 }
-/* Everything above the limiter's ceiling, which only the untreated side reaches.
+/* The red band, which only the untreated side reaches once the blast lands.
    Qualified by `.nn-meter` so it outranks the rule above rather than losing a
    specificity fight to it — as the first version did, silently, leaving a meter
    that pinned at maximum in reassuring green. */
@@ -470,12 +490,14 @@
   box-shadow: 0 0 5px rgba(255, 107, 95, 0.7);
 }
 
+/* Where the red band starts, on both meters. It was on the treated one only, which meant
+   the line was drawn on the panel that never crosses it and missing from the panel that
+   does — so the one frame it exists for could not be read. `CEILING` in the demo is the
+   same number, and there is a note there on what it does and does not mean. */
 .nn-ceiling {
   position: absolute;
   right: -3px;
   left: -3px;
-  /* Above the ninth of fourteen segments: the limiter's working ceiling, and the
-     point from which segments turn red. `CEILING` in the demo is the same number. */
   bottom: calc(9 / 14 * 100%);
   height: 1px;
   background: rgba(111, 211, 168, 0.8);
@@ -492,9 +514,13 @@
    what changed; a reader who wants to know by how much should not have to open the
    repository.
 
+   It prints both of the sentences `describeAudioEffect` returns rather than only the
+   first. The gap between quiet and loud is the figure this scene is built on, and it was
+   the one the extension's own account of itself did not get to state.
+
    `.nn-caption` and the volume row that used to be here are both gone. The row held a
-   seven-bar meter and a label reading "explosion · same volume", which is now two dials in
-   the rig that visibly never move and a decibel figure on each panel. */
+   seven-bar meter and a label reading "explosion · same volume", which is now a volume
+   dial and a decibel figure on each panel. */
 .nn-spec {
   margin: 0;
   min-height: 1.4em;
@@ -509,11 +535,16 @@
   .nn-split {
     grid-template-columns: 1fr;
   }
+  /* Title, volume dial and level reading in one row is more than a phone can hold at this
+     tracking, so the row wraps: name and dial on the first line, reading on the second,
+     rather than the dial's eight steps squeezing the reading off the edge. */
   .nn-label {
+    flex-wrap: wrap;
     font-size: 0.62rem;
   }
-  /* The two dials are wider than a phone, so they wrap rather than forcing the whole plate
-     to overflow. */
+  .nn-label .nn-dial {
+    margin-left: 0;
+  }
   .nn-dials {
     flex-wrap: wrap;
     justify-content: center;
