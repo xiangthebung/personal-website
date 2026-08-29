@@ -20,7 +20,7 @@ rewritten from scratch, and one did not exist yet. Nothing failed, so nobody
 noticed.
 
 So each project section mounts a **scene** instead: a short film of the software
-doing the thing it exists to do, driven by a storyboard of timed beats. Six are
+doing the thing it exists to do, driven by a storyboard of timed beats. Nine are
 staged reconstructions. Choir Practice is the actual application, vendored into
 `public/demos/choir/` and driven by the pod that frames it.
 
@@ -71,8 +71,8 @@ The split rule is about *when the element exists*, not about who the styles feel
 they belong to:
 
 - **The scene's own furniture** — anything that needs one of its `nb-`/`gx-`/`pp-`/
-  `pdfx-`/`choir-`/`dc-`/`nn-` classes as an ancestor to match at all — goes in
-  `demo.css`. Those elements do not exist until the chunk mounts, so the stylesheet
+  `pdfx-`/`choir-`/`dc-`/`nn-`/`tfa-`/`tot-`/`bb-` classes as an ancestor to match at
+  all — goes in `demo.css`. Those elements do not exist until the chunk mounts, so the stylesheet
   cannot be late.
 - **The section around it** — the ambient wash, the entrance veil, the ghost number,
   anything on `.project-*` — stays in `globals.css`. The section is server-rendered
@@ -86,7 +86,7 @@ Two tests hold the line: one refuses scene-internal selectors in `globals.css`, 
 refuses a `@keyframes` block in any stylesheet other than the one that plays it. The
 move was verified by fingerprinting the computed style of every element in every
 section at three viewport widths, before and after — 4,431 elements, zero differences.
-It also took 48K off the render-blocking stylesheet, which is now split across seven
+It also took 48K off the render-blocking stylesheet, which is now split across ten
 files that arrive with the scenes that need them.
 
 ### How a scene works
@@ -95,7 +95,7 @@ files that arrive with the scenes that need them.
 writes the current beat onto the stage as `data-beat`, plus the fraction through it
 as `--beat-t` — every frame, on the DOM node, without a React render. Continuous
 motion is CSS's job. React re-renders once per beat, not once per frame, which is
-what lets seven scenes share a page without making a laptop fan audible.
+what lets ten scenes share a page without making a laptop fan audible.
 
 A scene never runs off screen, and restarts from the top rather than resuming: a
 vignette caught halfway makes no sense to somebody who just arrived.
@@ -126,7 +126,7 @@ lost; the reading is not.
 **This site does not honour `prefers-reduced-motion`, on purpose. It gives you a
 button instead.**
 
-The seven scenes are the content, not decoration wrapped around it. The page's
+The ten scenes are the content, not decoration wrapped around it. The page's
 whole claim is that each project is running on it, so a visitor who cannot see the
 scenes move is left reading captions about motion that never arrives — a worse page
 than the one the media query exists to protect them from.
@@ -135,18 +135,18 @@ The setting also fires for the wrong people here. Windows turns `reduce` on from
 places nobody associates with animation: performance options, battery savers, and
 remote desktop sessions. Most machines reporting it never asked for it.
 
-So motion control is a control: the ring at the foot of the dock, beneath the seven
+So motion control is a control: the ring at the foot of the dock, beneath the ten
 numbers. `app/demos/scene/hold.ts` holds one boolean and a set of subscribers —
-the scenes are seven independently lazy chunks with no common ancestor short of a
+the scenes are ten independently lazy chunks with no common ancestor short of a
 server component, so a context would mean making the page a client component to
 share a boolean.
 
 **Held is not paused**, and that is the whole design. Pausing stops each scene
-wherever it happens to be, which for six of the seven is a transitional frame that
+wherever it happens to be, which for nine of the ten is a transitional frame that
 argues nothing — a cursor halfway to a button, a card mid-flight. Held reads the
 `stillBeat` every scene has always declared, cuts to the frame that carries its
 argument, and leaves every accumulated in-frame label pinned to its evidence. The
-page stops being seven films and becomes seven labelled diagrams: Decaf's feed
+page stops being ten films and becomes ten labelled diagrams: Decaf's feed
 under its notice card, PagePack's pack being read with the network down, Night
 Neutralizer's explosion blown out on one side and levelled on the other.
 
@@ -214,6 +214,7 @@ Review tooling, none of it part of CI:
 | `node scripts/drive-site.mjs` | Loads the built site in real Chromium, scrolls to every pod, checks each scene advances and loops, and fails on any console error. `--shots` writes screenshots. |
 | `node scripts/beat-shot.mjs <id> [width] [beat…]` | Photographs one section whole, at a chosen width, on chosen beats. The main tool for judging a scene. |
 | `node scripts/visible.mjs` | Checks that things which must be legible are not occluded. |
+| `node scripts/dock-fit.mjs` | Whether the whole dock — ten numerals and the hold ring — fits the viewport at four real window heights. Written when the page went from seven projects to ten, because the rail got 43% taller against the same window and the failure would have been silent: the last project and the motion control simply unreachable on a short laptop screen. Measured at 250px in a 660px window, so there is room, but there is now a command that says so. |
 | `node scripts/dead-css.mjs` | Class names in the stylesheet with no literal match in the source. |
 | `node scripts/dangling-selectors.mjs` | Selector lists the browser dropped. |
 

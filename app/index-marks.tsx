@@ -1,16 +1,16 @@
 /**
  * A small living mark per project, for the index in the hero.
  *
- * The hero says all seven things are running on this page, and until now the
+ * The hero says all ten things are running on this page, and until now the
  * index under it was a list of names in a box — the one element on the page that
- * could have been lifted from any other site. These are the seven scenes in
+ * could have been lifted from any other site. These are the ten scenes in
  * miniature, so the claim is already true in the first viewport instead of being
  * a promise the visitor has to scroll to collect.
  *
  * Rules they all follow:
  *
  *   - No canvas, no client component, no timers. Every mark is a handful of
- *     divs animated by CSS keyframes in `globals.css`, which means seven of them
+ *     divs animated by CSS keyframes in `globals.css`, which means ten of them
  *     run at once for the cost of compositing and the server renders them whole.
  *   - Each is a *sign* of its project, not a claim about it. The abstraction is
  *     the point: a mark that tried to be a screenshot at 44px would only be an
@@ -18,7 +18,7 @@
  *   - Decorative, so `aria-hidden`. The link's own text carries the meaning, and
  *     a screen reader gets the name and number with nothing spelled out at it.
  *   - Anything that repeats is timed to be prime-ish against its neighbours, so
- *     the seven never fall into step and start looking like one animation.
+ *     the ten never fall into step and start looking like one animation.
  *
  * `prefers-reduced-motion` stops all of them dead in the stylesheet; each mark is
  * composed so its resting frame still reads as the right shape.

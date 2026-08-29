@@ -3,11 +3,15 @@
 /**
  * Loads a demo's code when its section nears the viewport, and not before.
  *
- * Seven running applications on one page is a real cost, not a theoretical one:
+ * Ten running applications on one page is a real cost, not a theoretical one:
  * one of them drives a requestAnimationFrame loop that reads pixels back off a
  * canvas every frame, and another is an entire embedded web app. Shipping all of
  * that in the initial bundle would make the hero wait for code the visitor may
  * never scroll to.
+ *
+ * The argument only got stronger when the page went from seven to ten. Nothing
+ * about the mechanism had to change, which is the point of having had it: a
+ * project is a directory and a line in the registry below.
  *
  * So each demo is a separate chunk, requested 300px before it is needed. The
  * demos themselves are responsible for going idle when scrolled away — that is
