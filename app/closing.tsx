@@ -53,7 +53,7 @@ export function Closing() {
             through.
           </p>
           <p>
-            Six of the scenes above are reconstructions, built out of the same
+            Nine of the scenes above are reconstructions, built out of the same
             moving parts as the software rather than filmed off a screen. Choir
             Practice is the application itself. And any of them will stop on the
             single frame that carries its point, if you find the way to ask —

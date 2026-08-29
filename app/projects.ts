@@ -31,6 +31,19 @@
  */
 
 /** Which demo component a section mounts. */
+/**
+ * Which demo component a section mounts.
+ *
+ * `two-factor-paster` rather than `2fa-paster`, and that is not a style preference. The
+ * id is also the section's DOM id, and six of the review scripts locate a section with
+ * `page.locator(`#${id}`)` — a CSS selector, where an identifier may not begin with a
+ * digit. `#2fa-paster` throws rather than missing, so the failure would have been
+ * `drive-site`, `beat-shot`, `film-strip`, `click-order`, `immersion` and `presence` all
+ * breaking at once on a page that rendered perfectly.
+ *
+ * There is precedent either way: an id here has never had to match its repository. Choir
+ * Practice lives in `satb-practice` and GRT Next Bus in `grt-bus-time`.
+ */
 export type DemoId =
   | "night-neutralizer"
   | "grt-next-bus"
@@ -38,7 +51,10 @@ export type DemoId =
   | "pagepack"
   | "decaf"
   | "pdf-explainer"
-  | "choir-practice";
+  | "choir-practice"
+  | "two-factor-paster"
+  | "totem"
+  | "byte-budget";
 
 /**
  * Where the heading, the scene and the facts sit.
@@ -72,7 +88,25 @@ export type Project = {
    * moving scene, which is the thing this page has been removing all along.
    */
   why?: string;
-  theme: "paper" | "mint" | "black" | "white" | "navy" | "forest";
+  /**
+   * Which of the rooms this section is.
+   *
+   * The first six names describe colours none of them has had for a long time — `black`
+   * is a cornflower blue and `white` is a lilac — and they are kept because renaming them
+   * would touch the stylesheet in about forty places to change nothing a visitor sees.
+   * The three added with the eighth, ninth and tenth projects are named for the colour
+   * they actually are, which is the convention worth having going forward.
+   */
+  theme:
+    | "paper"
+    | "mint"
+    | "black"
+    | "white"
+    | "navy"
+    | "forest"
+    | "violet"
+    | "rose"
+    | "amber";
   source: string;
   live?: string;
   demo: DemoId;
@@ -165,7 +199,13 @@ const projectData: Project[] = [
     number: "02",
     name: "Decaf",
     platform: "Chrome extension",
-    status: "Work in progress",
+    /* The "Work in progress" label is gone, and it went because the work finished rather
+       than because the label got tired. What was actually unfinished was a class of bug
+       rather than a feature: the exemption that stops a puzzle board being mistaken for a
+       row of notification badges was gated on a route pattern that existed for one of the
+       twelve sites, so the same LinkedIn board was safe at `/games/` and had a cell blanked
+       at `/puzzles/`. Every test covering it used a `/games/` URL, so all of them passed.
+       Unambiguous evidence — a board the site names itself — is honoured everywhere now. */
     headline: "Make social media boring on purpose.",
     why: "Blocking a site makes you want it. Dullness doesn't.",
     theme: "paper",
@@ -232,11 +272,80 @@ const projectData: Project[] = [
     source: "https://github.com/xiangthebung/grt-bus-time",
     demo: "grt-next-bus",
     well: "light",
+    /* Three claims the scene can now make that it could not before, all of them earned by
+       tests rather than asserted: the countdown survives the service worker being killed,
+       the extension falls back to the published timetable when the live feed dies, and it
+       reaches no server of ours. The "2 min late" in the popup is not invented either —
+       measured against the live feed, 670 rows read exactly that on the day it was staged. */
     /* The scene was always full of numbers and short of a reason to care about any of
        them — a badge counting down, a notification and three stop rows are evidence, and
        the claims they were evidence for were in this list. All three are labels now, each
        arriving on the beat its evidence does: on the badge, on the bell, on the row that
        says a bus is running two minutes late. */
+  },
+  /* The three that arrived after the page had settled into seven, inserted here rather
+     than appended. Appending would have put them after N-Back, and N-Back is last on
+     purpose — see the note below it. Inserting also means no existing section changes its
+     composition: the four `stage` variants still alternate so that no two neighbours
+     share one, which is the only rule this ordering has. */
+  {
+    id: "two-factor-paster",
+    stage: "stacked",
+    number: "06",
+    name: "2FA Paster",
+    platform: "Chrome extension",
+    headline: "Takes the code out of your email and types it into the form.",
+    why: "The code expires while you are still switching tabs to find the message it came in.",
+    theme: "violet",
+    source: "https://github.com/xiangthebung/2fa-paster",
+    demo: "two-factor-paster",
+    well: "light",
+    /* `stacked`, because the thing worth watching is a form being filled in and a form is
+       wide. The claim this scene has that no competitor of it does is that the extension
+       shows its reasoning — the popup carries a "Why this one" disclosure listing the
+       signals it scored — so the scene has something to point at when it says it picked
+       the right code out of several.
+       The safety half is the other reason this is not just a convenience: it refuses card
+       security-code fields, and it refuses to press a button that would delete an account. */
+  },
+  {
+    id: "totem",
+    stage: "beside-flip",
+    number: "07",
+    name: "Totem",
+    platform: "iOS, Android and web",
+    headline: "A todo list that hides its own words behind symbols you learn.",
+    why: "A list you skim without reading is a list you have stopped noticing.",
+    theme: "rose",
+    source: "https://github.com/xiangthebung/totem",
+    demo: "totem",
+    /* The only dark well among the three new sections, and the app earns it: it is drawn
+       near-black so that the totems are the only saturated things on screen. A pale recess
+       behind a phone that dark would put a halo round the one idea the scene is about. */
+    well: "dark",
+    /* The one project here that is not a browser, which is worth something on a page of
+       nine that are. It is also the only scene with a sound to show and no way to play it —
+       the same problem Night Neutralizer solved by printing its soundtrack at the size it
+       sounds. Totem's own design answers it: colour picks the pitch and object picks the
+       timbre, so what you see and what you hear are the same two facts twice. */
+  },
+  {
+    id: "byte-budget",
+    stage: "offset",
+    number: "08",
+    name: "Byte Budget",
+    platform: "Chrome extension",
+    headline: "What each site costs you in data, and a cap it cannot go past.",
+    why: "On a metered connection you find out what the browsing cost after you have spent it.",
+    theme: "amber",
+    source: "https://github.com/xiangthebung/byte-budget",
+    demo: "byte-budget",
+    well: "light",
+    /* The interesting claim is not the measuring, which every data-usage tool says it does.
+       It is that this one says how much of each figure it actually measured rather than
+       inferred, and marks the inferred part in amber — which is where this section's colour
+       comes from. A tool that admits the parts it is guessing at is the whole argument, and
+       it is checkable: `measuredShare` is computed and threaded end to end. */
   },
   {
     id: "night-neutralizer",
@@ -311,6 +420,9 @@ export const projectMotifs: Record<string, { label: string; mark: string }> = {
   decaf: { label: "colour off", mark: "B/W" },
   "pdf-explainer": { label: "slide over slide", mark: "▱" },
   "choir-practice": { label: "four voices", mark: "♪" },
+  "two-factor-paster": { label: "one keypress", mark: "••••••" },
+  totem: { label: "names hidden", mark: "◆" },
+  "byte-budget": { label: "measured, not guessed", mark: "▮▮▯" },
 };
 
 export const funMedia = [

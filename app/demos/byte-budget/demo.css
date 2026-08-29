@@ -1,0 +1,17 @@
+/* PLACEHOLDER — replaced when the real scene is written. */
+.bb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  border-radius: 14px;
+  background: #f2f6f6;
+  color: #16262c;
+}
+
+.bb-placeholder {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}

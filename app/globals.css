@@ -600,6 +600,13 @@ html.has-project-focus body {
   --accent-white: #7b4fc8;
   --accent-navy: #3378aa;
   --accent-forest: #4f8b5d;
+  /* The three rooms added when the page went from seven projects to ten. Each is the
+     accent the software itself uses, rather than a colour picked to fill a gap in the
+     wheel: 2FA Paster's popup is violet, Byte Budget marks an inferred figure in amber,
+     and Totem's brightest hue is a crimson. */
+  --accent-violet: #5b45e0;
+  --accent-rose: #b8365a;
+  --accent-amber: #9c5406;
 }
 
 /* Give each project its own color atmosphere while keeping text contrast high.
@@ -686,6 +693,50 @@ html.has-project-focus body {
     radial-gradient(circle at 80% 20%, rgba(235, 186, 77, 0.3), transparent 29%),
     radial-gradient(circle at 14% 84%, rgba(77, 151, 100, 0.26), transparent 34%),
     linear-gradient(140deg, #dcefc7 0%, var(--project-bg) 58%, #a6cf99 100%);
+}
+
+/* The three added with 2FA Paster, Totem and Byte Budget.
+   `--project-muted` was solved the same way the six above were, and the method matters
+   more than the values: it is the *lightest* value of the theme's own hue, at the same
+   ~20% saturation the others carry, that clears 4.6:1 against the DARKEST stop of its own
+   gradient — the worst case rather than the average. Measured: violet 4.65, rose 4.66,
+   amber 4.66, against the existing six's 4.61 to 4.66. Headings run 5.9 to 6.4.
+   That tone is not decoration: it sets the `why` line, which is the one sentence stating
+   the problem each project exists for. */
+.project.project--violet {
+  --project-bg: #cdc4f5;
+  --project-ink: #2e2660;
+  --project-muted: #433e5e;
+  --project-line: rgba(46, 38, 96, 0.16);
+  --project-accent: var(--accent-violet);
+  background:
+    radial-gradient(circle at 82% 22%, rgba(122, 96, 232, 0.28), transparent 30%),
+    radial-gradient(circle at 14% 84%, rgba(96, 138, 224, 0.24), transparent 34%),
+    linear-gradient(136deg, #e2dcff 0%, var(--project-bg) 57%, #b3a9e8 100%);
+}
+
+.project.project--rose {
+  --project-bg: #f3bfc6;
+  --project-ink: #57202f;
+  --project-muted: #583a42;
+  --project-line: rgba(87, 32, 47, 0.16);
+  --project-accent: var(--accent-rose);
+  background:
+    radial-gradient(circle at 18% 24%, rgba(224, 122, 152, 0.26), transparent 30%),
+    radial-gradient(circle at 84% 80%, rgba(214, 138, 96, 0.24), transparent 34%),
+    linear-gradient(138deg, #fbdce0 0%, var(--project-bg) 56%, #e0a0ab 100%);
+}
+
+.project.project--amber {
+  --project-bg: #f0d29b;
+  --project-ink: #4a3213;
+  --project-muted: #56483a;
+  --project-line: rgba(74, 50, 19, 0.16);
+  --project-accent: var(--accent-amber);
+  background:
+    radial-gradient(circle at 80% 20%, rgba(216, 150, 62, 0.3), transparent 29%),
+    radial-gradient(circle at 14% 84%, rgba(150, 168, 110, 0.24), transparent 34%),
+    linear-gradient(140deg, #fbebc8 0%, var(--project-bg) 58%, #dcb877 100%);
 }
 
 .project::before {
@@ -2856,6 +2907,87 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
   }
 }
 
+/* The three rooms added with the eighth, ninth and tenth projects.
+   Each is one drifting wash, like the six above it, and each is timed prime-ish against
+   its neighbours so the page never falls into step — the same rule the hero index marks
+   follow. The keyframes sit here rather than in a scene's `demo.css` because the rule
+   playing them is on `.project-ambience`, which is server-rendered and on screen long
+   before any chunk is fetched. Two of N-Back's entrance keyframes were once moved into
+   its chunk for being named `nb-…`, and the entrance silently stopped running. */
+
+/* 2FA Paster: something arriving, on its own, while you wait for it. */
+.project--violet > .project-ambience::before {
+  inset: -18%;
+  background: radial-gradient(
+    circle at 50% 42%,
+    color-mix(in srgb, var(--project-accent) 16%, transparent),
+    transparent 58%
+  );
+  animation: violet-arrive 11s ease-in-out infinite;
+}
+
+@keyframes violet-arrive {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(2%) scale(0.88);
+  }
+
+  38% {
+    opacity: 0.95;
+    transform: translateY(-1%) scale(1.04);
+  }
+}
+
+/* Totem: a slow bloom, the way the glyphs carry a same-hue glow. */
+.project--rose > .project-ambience::before {
+  inset: -24%;
+  background: radial-gradient(
+    circle at 38% 56%,
+    color-mix(in srgb, var(--project-accent) 14%, transparent),
+    transparent 60%
+  );
+  animation: rose-bloom 13s ease-in-out infinite;
+}
+
+@keyframes rose-bloom {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.86) rotate(-2deg);
+  }
+
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08) rotate(2deg);
+  }
+}
+
+/* Byte Budget: a level that fills and falls back, which is what a budget does. */
+.project--amber > .project-ambience::before {
+  inset: -16%;
+  background: linear-gradient(
+    100deg,
+    transparent 8%,
+    color-mix(in srgb, var(--project-accent) 15%, transparent) 46%,
+    transparent 84%
+  );
+  animation: amber-fill 17s ease-in-out infinite;
+}
+
+@keyframes amber-fill {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: translateX(-9%);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: translateX(9%);
+  }
+}
+
 @media (max-width: 900px) {
 }
 
@@ -4480,6 +4612,15 @@ svg.bd-vehicle {
 .project-index a[data-theme="forest"] {
   --row-accent: var(--accent-forest);
 }
+.project-index a[data-theme="violet"] {
+  --row-accent: var(--accent-violet);
+}
+.project-index a[data-theme="rose"] {
+  --row-accent: var(--accent-rose);
+}
+.project-index a[data-theme="amber"] {
+  --row-accent: var(--accent-amber);
+}
 
 .project-index a::before {
   position: absolute;
@@ -4945,6 +5086,161 @@ svg.bd-vehicle {
   90%,
   100% {
     transform: scaleY(1);
+  }
+}
+
+/* --- 08 2FA Paster: six boxes, and the code landing in them --------------- */
+
+.imark--tfa {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  align-content: center;
+  gap: 2px;
+  padding: 0 3px;
+  background: rgba(91, 69, 224, 0.08);
+}
+
+/* Grid children need this back: `.imark > *` makes every direct child absolute, which
+   takes it straight out of the grid. Same reason `.imark--nback .imark-cell` does it. */
+.imark--tfa .imark-digit {
+  position: relative;
+  height: 11px;
+  border-radius: 1.5px;
+  background: rgba(91, 69, 224, 0.16);
+  animation: imark-digit 5300ms var(--ease-out-soft) infinite;
+  /* One after another, left to right, the way a filled code reads. */
+  animation-delay: calc(var(--step) * 130ms);
+}
+
+@keyframes imark-digit {
+  0%,
+  8% {
+    background: rgba(91, 69, 224, 0.16);
+  }
+  20%,
+  76% {
+    background: #5b45e0;
+  }
+  92%,
+  100% {
+    background: rgba(91, 69, 224, 0.16);
+  }
+}
+
+/* --- 09 Totem: the word goes, the symbol stands in for it ----------------- */
+
+.imark--totem {
+  background: #0b0b10;
+}
+
+.imark--totem .imark-word {
+  top: calc(50% - 1px);
+  right: 8px;
+  left: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(245, 245, 248, 0.5);
+  animation: imark-word 6700ms var(--ease-out-soft) infinite;
+}
+
+@keyframes imark-word {
+  0%,
+  14% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  36%,
+  100% {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+}
+
+/* The glyph is the only saturated thing here, which is exactly how the app draws it. */
+.imark--totem .imark-glyph {
+  top: calc(50% - 5px);
+  left: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #ab39e8;
+  animation: imark-glyph 6700ms var(--ease-out-soft) infinite;
+}
+
+@keyframes imark-glyph {
+  0%,
+  22% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0deg);
+  }
+  44% {
+    opacity: 1;
+    background: #ab39e8;
+    transform: scale(1) rotate(90deg);
+  }
+  70% {
+    background: #10cb68;
+  }
+  88% {
+    opacity: 1;
+    background: #ff2d55;
+    transform: scale(1) rotate(180deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.4) rotate(180deg);
+  }
+}
+
+/* --- 10 Byte Budget: measured, inferred, and the cap it stops at ---------- */
+
+.imark--bytes {
+  background: rgba(156, 84, 6, 0.08);
+}
+
+.imark--bytes .imark-cap {
+  top: 30%;
+  right: 5px;
+  bottom: 30%;
+  width: 1.5px;
+  border-radius: 1px;
+  background: rgba(74, 50, 19, 0.45);
+}
+
+.imark--bytes .imark-measured,
+.imark--bytes .imark-inferred {
+  top: calc(50% - 3px);
+  left: 5px;
+  height: 6px;
+  border-radius: 3px;
+  transform-origin: left;
+  animation: imark-bytes 7300ms var(--ease-out-soft) infinite;
+}
+
+.imark--bytes .imark-measured {
+  width: 22px;
+  background: #0f6a62;
+}
+
+/* The tail the extension is not certain of, in the amber it marks that with. Offset by
+   the measured bar's own width so the two read as one bar in two parts. */
+.imark--bytes .imark-inferred {
+  left: 27px;
+  width: 8px;
+  background: #c07a1a;
+  animation-delay: 240ms;
+}
+
+@keyframes imark-bytes {
+  0% {
+    transform: scaleX(0);
+  }
+  46%,
+  78% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0);
   }
 }
 
@@ -7871,6 +8167,15 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock {
 }
 .project-dock-links a[data-theme="forest"] {
   --dock-accent: var(--accent-forest);
+}
+.project-dock-links a[data-theme="violet"] {
+  --dock-accent: var(--accent-violet);
+}
+.project-dock-links a[data-theme="rose"] {
+  --dock-accent: var(--accent-rose);
+}
+.project-dock-links a[data-theme="amber"] {
+  --dock-accent: var(--accent-amber);
 }
 
 .project-dock-links a {

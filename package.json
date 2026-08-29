@@ -2,7 +2,7 @@
   "name": "personal-website",
   "version": "1.0.0",
   "private": true,
-  "description": "Xiang Li's portfolio: seven side projects, each running on the page as a self-driving scene.",
+  "description": "Xiang Li's portfolio: ten side projects, each running on the page as a self-driving scene.",
   "engines": {
     "node": ">=22.13.0"
   },

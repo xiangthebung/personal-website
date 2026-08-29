@@ -1,0 +1,17 @@
+/* PLACEHOLDER — replaced when the real scene is written. */
+.tot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  border-radius: 14px;
+  background: #0b0b10;
+  color: #f5f5f8;
+}
+
+.tot-placeholder {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}

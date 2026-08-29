@@ -1,6 +1,6 @@
 # Xiang Li — portfolio
 
-Seven side projects, each running on the page as a self-driving scene.
+Ten side projects, each running on the page as a self-driving scene.
 
 Live at [personal-website.xiangli3625.workers.dev](https://personal-website.xiangli3625.workers.dev/).
 

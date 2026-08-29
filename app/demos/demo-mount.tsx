@@ -46,6 +46,13 @@ const registry: Record<DemoId, LazyExoticComponent<ComponentType>> = {
   "choir-practice": lazy(() =>
     import("./choir-practice/demo").then((m) => ({ default: m.ChoirPracticeDemo })),
   ),
+  "two-factor-paster": lazy(() =>
+    import("./two-factor-paster/demo").then((m) => ({ default: m.TwoFactorPasterDemo })),
+  ),
+  totem: lazy(() => import("./totem/demo").then((m) => ({ default: m.TotemDemo }))),
+  "byte-budget": lazy(() =>
+    import("./byte-budget/demo").then((m) => ({ default: m.ByteBudgetDemo })),
+  ),
 };
 
 /** Reserves the demo's rough height so nothing jumps when the chunk lands. */

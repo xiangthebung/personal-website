@@ -120,6 +120,42 @@ function NightMark() {
   );
 }
 
+/** 2FA Paster: six boxes, and the code landing in them one at a time. */
+function PasterMark() {
+  return (
+    <span className="imark imark--tfa">
+      {[0, 1, 2, 3, 4, 5].map((box) => (
+        <span className="imark-digit" key={box} style={step(box)} />
+      ))}
+    </span>
+  );
+}
+
+/** Totem: the word going, and the symbol that has to stand in for it. */
+function TotemMark() {
+  return (
+    <span className="imark imark--totem">
+      <span className="imark-word" />
+      <span className="imark-glyph" />
+    </span>
+  );
+}
+
+/**
+ * Byte Budget: a bar filling toward a cap, with its last stretch in the amber the
+ * extension itself uses for a figure it inferred rather than measured. The two-tone bar
+ * is the product's actual argument, at 44px.
+ */
+function BytesMark() {
+  return (
+    <span className="imark imark--bytes">
+      <span className="imark-cap" />
+      <span className="imark-measured" />
+      <span className="imark-inferred" />
+    </span>
+  );
+}
+
 const MARKS: Record<string, () => React.JSX.Element> = {
   "choir-practice": ChoirMark,
   decaf: DecafMark,
@@ -128,6 +164,9 @@ const MARKS: Record<string, () => React.JSX.Element> = {
   "grt-next-bus": GrtMark,
   "n-back": NbackMark,
   "night-neutralizer": NightMark,
+  "two-factor-paster": PasterMark,
+  totem: TotemMark,
+  "byte-budget": BytesMark,
 };
 
 export function IndexMark({ project }: { project: string }) {

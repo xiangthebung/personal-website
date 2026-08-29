@@ -86,6 +86,9 @@ test("server-renders every project", async () => {
     ["Decaf", "decaf"],
     ["PDF Explainer", "pdf-explainer"],
     ["Choir Practice", "choir-practice"],
+    ["2FA Paster", "two-factor-paster"],
+    ["Totem", "totem"],
+    ["Byte Budget", "byte-budget"],
   ]) {
     assert.match(html, new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing ${name}`);
     assert.match(html, new RegExp(`id="${id}"`), `missing section #${id}`);
@@ -123,10 +126,28 @@ test("the demo registry covers every project, and every demo module exists", asy
 
   // `\r?` throughout: this repository checks out with CRLF endings, and `$` in
   // JavaScript multiline mode matches before `\n` but not before `\r`.
-  const declared = [...projectsSource.matchAll(/^\s*\|\s*"([a-z-]+)";?\r?$/gm)].map((m) => m[1]);
+  /* `[a-z0-9-]`, not `[a-z-]`. An id may carry a digit, and the narrower class was a way
+     for this check to go quiet rather than fail: a union member the pattern could not read
+     was simply never collected, and the loop below then verified everything except it. */
+  /* Scoped to the `DemoId` declaration rather than run over the whole file. Unscoped, this
+     pattern reads *any* multi-line string union, and `Project["theme"]` is one — so the
+     count came out as demos plus themes and the check failed for a reason that had nothing
+     to do with the registry. A parser this test relies on has to be told what to read. */
+  const union = projectsSource.slice(projectsSource.indexOf("export type DemoId ="));
+  const demoIdBlock = union.slice(0, union.indexOf(";") + 1);
   assert.ok(
-    declared.length >= 7,
-    `expected the DemoId union to list every demo, found ${declared.length}`,
+    demoIdBlock.startsWith("export type DemoId ="),
+    "the DemoId union is no longer declared where this test looks for it",
+  );
+  const declared = [...demoIdBlock.matchAll(/^\s*\|\s*"([a-z0-9-]+)";?\r?$/gm)].map((m) => m[1]);
+  /* Exactly as many as `projectData` declares, rather than "at least seven". A `>=` cannot
+     tell a missing union member from one this parser failed to read, which is the single
+     failure a registry check exists to catch. */
+  const declaredIds = [...projectsSource.matchAll(/^\s{4}id: "([^"]+)",\r?$/gm)].map((m) => m[1]);
+  assert.equal(
+    declared.length,
+    declaredIds.length,
+    `the DemoId union lists ${declared.length} demos but projectData declares ${declaredIds.length}`,
   );
 
   for (const id of declared) {
@@ -374,7 +395,7 @@ test("no caption goes by faster than it can be read", async () => {
      too, into the frames, as the pinned labels the test below checks. Discovered rather
      than listed, so removing or restoring a caption map does not need this test edited to
      keep meaning something. */
-  const all = ["choir-practice", "decaf", "grt-next-bus", "n-back", "night-neutralizer", "pagepack", "pdf-explainer"];
+  const all = ["byte-budget", "choir-practice", "decaf", "grt-next-bus", "n-back", "night-neutralizer", "pagepack", "pdf-explainer", "totem", "two-factor-paster"];
   const scenes = [];
   for (const scene of all) {
     const source = await read(`../app/demos/${scene}/demo.tsx`);
@@ -461,7 +482,16 @@ test("no caption goes by faster than it can be read", async () => {
  * needs words again, delete its entry here and say why in the commit.
  */
 test("the scenes without captions have not grown them back", async () => {
-  for (const scene of ["decaf", "grt-next-bus", "night-neutralizer", "pagepack", "pdf-explainer"]) {
+  for (const scene of [
+    "byte-budget",
+    "decaf",
+    "grt-next-bus",
+    "night-neutralizer",
+    "pagepack",
+    "pdf-explainer",
+    "totem",
+    "two-factor-paster",
+  ]) {
     const source = await read(`../app/demos/${scene}/demo.tsx`);
     assert.doesNotMatch(
       source,
@@ -572,6 +602,7 @@ test("every in-frame label stays up long enough to read", async () => {
   const WORD_LIMIT = 7;
 
   const all = [
+    "byte-budget",
     "choir-practice",
     "decaf",
     "grt-next-bus",
@@ -579,6 +610,8 @@ test("every in-frame label stays up long enough to read", async () => {
     "night-neutralizer",
     "pagepack",
     "pdf-explainer",
+    "totem",
+    "two-factor-paster",
   ];
   let checked = 0;
 
@@ -1022,7 +1055,7 @@ test("the index in the hero previews every project rather than listing it", asyn
   const ids = [...(await read("../app/projects.ts")).matchAll(/^\s{4}id: "([^"]+)",$/gm)].map(
     (match) => match[1],
   );
-  assert.equal(ids.length, 7, "projects.ts no longer declares seven ids");
+  assert.equal(ids.length, 10, "projects.ts no longer declares ten ids");
 
   /* The hero says all seven are running on this page. If a project is added and
      nobody draws it a mark, that sentence quietly stops being true and the index

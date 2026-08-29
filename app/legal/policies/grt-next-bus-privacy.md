@@ -28,24 +28,34 @@ In the Pro build, the service worker needs a position to keep the toolbar countd
 
 ## What is stored, and where
 
+This is the complete list. Each entry names the key the extension writes under, so that what is claimed here can be checked against the source — `tests/documented-truth.test.mjs` fails if the code writes a key this section does not mention.
+
 `chrome.storage.sync` — synchronised through your Google account if Chrome Sync is on:
 
-- your saved stops: stop id, stop code, stop name, route and inferred/selected destination, alert preferences, display order
-- your settings: how many departures to show per stop, theme, and similar preferences
+- `savedStops` — your saved stops: stop id, stop code, stop name, route and inferred/selected destination, alert preferences, display order
+- `settings` — how many departures to show per stop, theme, and whether the closest stop is listed first
+- ExtensionPay also keeps its own record of your subscription here, in the Pro build only. See "Payments" below.
 
 Because this uses `chrome.storage.sync`, a list of the stops you travel from is part of your Chrome sync data, like a bookmark would be. If you would rather it were not, turn off extension syncing in Chrome's settings; the extension keeps working.
 
 `chrome.storage.local`:
 
-- your last known position and its accuracy, as described above
-- the location consent flag
-- alert bookkeeping, so the same bus is not announced twice
-- the last-known Pro entitlement and when it was checked, so a brief payment-service outage does not remove access immediately
+- `lastLocation` — your last known position and its accuracy, as described above
+- `locationConsent` — the location consent flag
+- `alertState` — which trip was last announced at each stop, so the same bus is not announced twice
+- `paymentAccess` — the last-known Pro entitlement and when it was checked, so a brief payment-service outage does not remove access immediately
+- `tickPeriodMinutes` — how often the background countdown was last asked to refresh, so a browser restart does not leave an old cadence in place
 
 `chrome.storage.session` — memory-only, discarded when Chrome exits:
 
-- which saved stop is currently treated as closest
-- when a background location attempt was last made, so the cooldown survives a service worker restart
+- `nearestStopChoice` — which saved stop is currently treated as closest
+- `locationAttemptAt` — when a background location attempt was last made, so the cooldown survives a service worker restart
+- `badgeMinutes` — how many minutes the toolbar countdown last showed, so a restarted service worker knows whether a bus is close enough to poll for
+- `paidAccess` — a short-lived copy of the entitlement above, so a worker that restarts every thirty seconds does not re-ask the payment provider every time
+
+`localStorage`:
+
+- `grt-theme` — the theme you chose, mirrored out of `chrome.storage.sync` so the popup can paint the right colours on the first frame instead of flashing white. It records the choice, not your system's colour scheme.
 
 IndexedDB (database `grt-next-bus`):
 

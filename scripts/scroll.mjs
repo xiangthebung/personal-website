@@ -26,7 +26,12 @@ import path from "node:path";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const PORT = 4371;
+/* Overridable so several of these can run at once — three scenes being built in
+ * parallel git worktrees would otherwise all try to serve a preview on the same
+ * port, and the second and third would fail for a reason that looks nothing like
+ * the real one. The default is unchanged, so nothing that called this before has
+ * to change now. */
+const PORT = Number(process.env.PREVIEW_PORT ?? 4371);
 const BASE = `http://localhost:${PORT}`;
 
 const server = spawn(

@@ -25,7 +25,12 @@ if (!demo) {
   process.exit(1);
 }
 const headed = process.argv.includes("--headed");
-const PORT = 4322;
+/* Overridable so several of these can run at once — three scenes being built in
+ * parallel git worktrees would otherwise all try to serve a preview on the same
+ * port, and the second and third would fail for a reason that looks nothing like
+ * the real one. The default is unchanged, so nothing that called this before has
+ * to change now. */
+const PORT = Number(process.env.PREVIEW_PORT ?? 4322);
 const BASE = `http://localhost:${PORT}`;
 const outDir = path.join(root, "outputs", "film", demo);
 

@@ -223,14 +223,25 @@ export function mapVideoStrength(strength: number): VideoParams {
     bypass: false,
     blackLift: lerp(0, 0.075, s),
     shadowGamma: lerp(1, 1.95, s),
-    kneeStart: lerp(0.88, 0.42, s),
-    highlightCompression: lerp(0, 0.35, s),
+    // Both of these are fractions of the range the curve still has after
+    // exposure, not of full scale. Exposure is what makes a bright scene
+    // *darker*; the shoulder only softens the top of whatever is left, so it
+    // stays up in the highlights where glare lives. A knee low enough to reach
+    // into the mid-tones flattens the part of the picture the viewer is
+    // actually looking at, which reads as washed out rather than dimmed.
+    kneeStart: lerp(0.9, 0.6, s),
+    highlightCompression: lerp(0, 0.22, s),
     exposure: 1,
     saturation: lerp(1, 1.18, s),
     adapt: {
       enabled: true,
       targetLuma: 0.34,
-      minExposure: lerp(1, 0.65, s),
+      // How far the exposure servo is allowed to dim a scene that is over the
+      // light budget. This is the ceiling on the whole effect for bright
+      // content: at the previous 0.65 the strongest possible response to a
+      // blazing daylight scene was -35%, and at the default strength -15%,
+      // which is not enough to read as "it got darker".
+      minExposure: lerp(1, 0.5, s),
       maxExposure: 1,
       dimTau: 0.3,
       recoverTau: 1.6,
@@ -259,25 +270,15 @@ export function mapStrength(strength: number, nightEq = false): ProcessingParams
   };
 }
 
-/** Strength that actually reaches the audio chain, honouring the link toggle. */
-export function audioStrengthOf(settings: Settings): number {
-  return settings.linked ? settings.strength : settings.audioStrength;
-}
-
-/** Strength that actually reaches the tone curve, honouring the link toggle. */
-export function videoStrengthOf(settings: Settings): number {
-  return settings.linked ? settings.strength : settings.videoStrength;
-}
-
 /**
  * The whole settings object in one call. Everything that drives the engines
- * goes through here, so the link toggle and the EQ switch cannot be honoured in
+ * goes through here, so the sound group's own switches cannot be honoured in
  * one place and forgotten in another.
  */
 export function mapSettings(settings: Settings): ProcessingParams {
   return {
-    audio: mapAudioStrength(audioStrengthOf(settings), settings.nightEq),
-    video: mapVideoStrength(videoStrengthOf(settings)),
+    audio: mapAudioStrength(settings.audioStrength, settings.nightEq),
+    video: mapVideoStrength(settings.videoStrength),
   };
 }
 

@@ -54,7 +54,12 @@ const only = words[0];
 const onlyBeat = words[1];
 const WIDTH = sizes[0] ?? 1440;
 const HEIGHT = sizes[1] ?? 900;
-const PORT = 4371;
+/* Overridable so several of these can run at once — three scenes being built in
+ * parallel git worktrees would otherwise all try to serve a preview on the same
+ * port, and the second and third would fail for a reason that looks nothing like
+ * the real one. The default is unchanged, so nothing that called this before has
+ * to change now. */
+const PORT = Number(process.env.PREVIEW_PORT ?? 4371);
 const BASE = `http://localhost:${PORT}`;
 
 /**

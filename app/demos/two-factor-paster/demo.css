@@ -1,0 +1,17 @@
+/* PLACEHOLDER — replaced when the real scene is written. */
+.tfa {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  border-radius: 14px;
+  background: #f4f3f8;
+  color: #1d1d1f;
+}
+
+.tfa-placeholder {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}

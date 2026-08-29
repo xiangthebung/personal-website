@@ -36,7 +36,12 @@ const shotDir = path.join(root, "outputs", "site");
 
 const headed = process.argv.includes("--headed");
 const wantShots = process.argv.includes("--shots");
-const PORT = 4319;
+/* Overridable so several of these can run at once — three scenes being built in
+ * parallel git worktrees would otherwise all try to serve a preview on the same
+ * port, and the second and third would fail for a reason that looks nothing like
+ * the real one. The default is unchanged, so nothing that called this before has
+ * to change now. */
+const PORT = Number(process.env.PREVIEW_PORT ?? 4319);
 // `localhost`, not `127.0.0.1`: vite preview binds v6 loopback only by default.
 const BASE = `http://localhost:${PORT}`;
 
