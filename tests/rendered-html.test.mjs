@@ -501,15 +501,16 @@ test("PagePack's copied vocabulary still matches the extension", async (t) => {
  *
  * KNOWN DRIFT, RECORDED RATHER THAN HIDDEN.
  *
- * Three files are behind their originals as this is written, and they are listed by name
- * below with what they are behind. They are exempted so that this test reports the state of
- * the copy instead of failing on a backlog it cannot fix by itself — refreshing a running
- * application is a decision, not a test's business. Every other file is held exactly, which
- * is roughly twenty of them, including the two the pod reaches into.
+ * `BEHIND` is empty, and that is the state to keep it in. It exists because three files
+ * were a whole upstream commit behind when this test was written, and exempting them let
+ * the test report the state of the copy instead of failing on a backlog it could not fix
+ * by itself — refreshing a running application is a decision, not a test's business. The
+ * decision was taken the same day and the three were refreshed, so every file here is now
+ * held exactly.
  *
- * If you refresh the copy, delete the entry — and the last block here fails if you forget,
- * because an allowlist entry left behind after its file was fixed silently stops guarding
- * that file, which is the failure mode of every allowlist.
+ * If you ever add an entry, delete it again when you refresh that file — the last block
+ * fails if you forget, because an allowlist entry left behind after its file was fixed
+ * silently stops guarding that file, which is the failure mode of every allowlist.
  */
 test("the vendored Choir app is still the app it was copied from", async (t) => {
   const siblingRoot = "../../satb-practice/public/";
@@ -522,11 +523,7 @@ test("the vendored Choir app is still the app it was copied from", async (t) => 
    * Files known to be behind, and what they are behind. Each is a whole upstream commit
    * that has not been pulled into the copy, not an edit made here.
    */
-  const BEHIND = new Map([
-    ["index.html", "the link-preview meta block added by satb-practice ab62252"],
-    ["js/app.js", "the shortcut/focus fix in satb-practice's keydown handler"],
-    ["css/styles.css", "the sheet scroll-padding fix from satb-practice 6e51991"],
-  ]);
+  const BEHIND = new Map();
 
   /** This site's own note about the copy. It has no counterpart over there. */
   const LOCAL_ONLY = new Set(["README.md"]);
@@ -1733,7 +1730,7 @@ async function copyOrigins() {
 
 test("every extension that needs a policy has one, reachable and rendered", async () => {
   const registry = await policyRegistry();
-  assert.equal(registry.length, 9, `expected nine policies, found ${registry.length}`);
+  assert.equal(registry.length, 10, `expected ten policies, found ${registry.length}`);
 
   const index = await renderPath("/legal");
   assert.equal(index.status, 200, "/legal did not render");
@@ -1805,7 +1802,7 @@ test("the home page links to the policies of the projects that have them", async
 
 test("the published policies still match the originals in the project repos", async (t) => {
   const origins = await copyOrigins();
-  assert.equal(origins.size, 9, "the README table no longer lists every copy");
+  assert.equal(origins.size, 10, "the README table no longer lists every copy");
 
   let compared = 0;
   for (const [copy, original] of origins) {

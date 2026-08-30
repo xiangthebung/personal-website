@@ -48,6 +48,7 @@ app/
   index-marks.tsx     a live miniature of every scene, for the hero index
   closing.tsx         the address, and the last two sentences
   globals.css         the page: chassis, theming, hero, gallery, sections
+  site-chrome.css     the skip link, which must paint before globals.css loads
   demos/
     demo-mount.tsx    lazy registry, one chunk per scene
     scene/            the shared runtime: storyboard, hold, phantom cursor,
@@ -56,7 +57,9 @@ app/
   legal/              privacy policies and terms, vendored from each project
 tests/                node:test against the built Cloudflare worker
 scripts/              screenshot and audit tooling (see below)
-worker/               the Cloudflare entry point
+build/                the Vite plugin that writes dist/client/_headers
+worker/               the Cloudflare entry point, and the security headers
+                      every response leaves through
 ```
 
 ### Where a style belongs
@@ -124,8 +127,13 @@ lost; the reading is not.
 
 ## Motion
 
-**This site does not honour `prefers-reduced-motion`, on purpose. It gives you a
-button instead.**
+**`prefers-reduced-motion` decides where you arrive, not where you stay.** A
+machine reporting `reduce` lands on the still frames, with the button that gives
+the motion back sitting there, pressed.
+
+For a long time the setting was not honoured at all, on purpose, and the argument
+below is why. What changed is that the button now exists, which was the condition
+the old note set for its own reversal.
 
 The ten scenes are the content, not decoration wrapped around it. The page's
 whole claim is that each project is running on it, so a visitor who cannot see the
@@ -177,9 +185,20 @@ Two details that are not obvious and were both found by looking:
   too, so a universal `animation-play-state: paused` froze any section reached
   while held at the first frame of its own arrival — an empty coloured panel.
 
-What was removed when the media query went, if it is ever wanted back: four
-`@media (prefers-reduced-motion: reduce)` blocks in `app/globals.css`, including a
-blanket one that flattened every animation and transition.
+**And the setting is read once.** `adoptReducedMotionPreference` in `hold.ts` runs
+on the first client commit, presses the button, and never listens again — so it
+cannot overrule a visitor who then presses it back. It only ever moves toward
+held, and the server still renders as running, because a page rendered on
+Cloudflare has no idea what anybody's machine asks for. The 1.6s settle is skipped
+for that landing: the wait exists to let a *running* page come to rest, and making
+somebody who asked for less motion watch 1.6 seconds of it first would honour and
+disregard the setting in the same breath.
+
+There is still no `@media (prefers-reduced-motion: reduce)` block in
+`app/globals.css`, and that is deliberate rather than left over. The state a
+`reduce` visitor gets is `html.is-held` and `html.is-held-settled` — the same two
+classes the button writes, styled in one place. A media query would be a second
+definition of that state, reached by a route the visitor cannot leave.
 
 ## Tests
 
@@ -218,9 +237,19 @@ Review tooling, none of it part of CI:
 | `node scripts/dock-fit.mjs` | Whether the whole dock — ten numerals and the hold ring — fits the viewport at four real window heights. Written when the page went from seven projects to ten, because the rail got 43% taller against the same window and the failure would have been silent: the last project and the motion control simply unreachable on a short laptop screen. Measured at 250px in a 660px window, so there is room, but there is now a command that says so. |
 | `node scripts/dead-css.mjs` | Class names in the stylesheet with no literal match in the source. |
 | `node scripts/dangling-selectors.mjs` | Selector lists the browser dropped. |
+| `node scripts/security-headers.mjs` | Whether the six headers are on the wire for a document, a static asset, a media file and the framed choir document — and whether anything on any page is blocked by the policy. Listens for `securitypolicyviolation` rather than trusting that a build which passed is a page that works. |
 
 ## Deployment
 
 Cloudflare Workers, via `vinext` and `@cloudflare/vite-plugin`. `npm run build`
 produces `dist/server/index.js` — the worker the tests import directly — and the
 client bundle beside it.
+
+It also writes `dist/client/_headers`, and that file is generated rather than
+checked in for a reason worth knowing. Wrapping the worker puts the security
+headers on documents and on nothing else: Cloudflare's asset handler answers
+`/assets/`, `/demos/` and `/fun/` before the worker ever runs, so the stylesheet —
+frequently the first response a browser reads — went out bare. The plugin in
+`build/` generates `_headers` from the same module the worker imports, so the two
+cannot disagree, and carries vinext's own immutable-cache rule forward because
+vinext only writes that file when it is absent.

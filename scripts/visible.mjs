@@ -465,7 +465,21 @@ for (const check of CHECKS) {
   }
   if (check.beat) {
     const reached = await waitForBeat(check.beat.section, check.beat.name);
-    if (!reached) console.log(`  ${check.label}: never reached beat "${check.beat.name}"`);
+    if (!reached) {
+      /* This used to print a lower-case note and carry on measuring, which meant the
+         script went on to probe whatever frame happened to be showing and could report
+         `ok` for an element it had never actually looked at — a check that passes while
+         checking nothing, which is the one failure this file exists to prevent.
+
+         A beat that never arrives is not a flake to note in passing. Either the scene
+         stalled, or the storyboard was renamed underneath this list and the check has
+         been pointed at nothing since. Both are worth stopping for, and neither is
+         visible in output that ends "everything required is visible". */
+      console.log(`FAIL  ${check.label.padEnd(20)} never reached beat "${check.beat.name}"`);
+      if (check.note) console.log(`      note: ${check.note}`);
+      if (check.required) failures += 1;
+      continue;
+    }
     /* A beat boundary is the worst moment to measure. Entrances on this page run 300
        to 500ms, so sampling the instant `data-beat` flips catches things at the
        opacity they are animating *from* and reports them as invisible. The first pass
@@ -538,4 +552,21 @@ console.log(
 
 await browser.close();
 await stop();
+
+/* The status goes on `process.exitCode` first, and that is the whole point of these
+   three lines rather than a flourish.
+
+   This used to be only the `setTimeout` below — and `.unref()` means that timer is
+   explicitly allowed not to keep the process alive. With nothing else pending, node
+   reached the end of the script and exited 0 before it ever fired. So this file could
+   print `FAIL`, print `1 required element a visitor cannot see`, and hand back success:
+   every caller, every future CI job and every `&&` chain would have read it as a pass.
+   Verified by pointing a required check at a beat that does not exist.
+
+   `exitCode` is what node uses when it exits on its own, so the status is correct from
+   here on whichever of the two paths runs. The timer stays because the preview server
+   can leave a socket open past `stop()`, and 1200ms of grace is cheaper than a hang —
+   it is now a backstop for a process that will not close, not the thing that decides
+   whether this passed. */
+process.exitCode = failures ? 1 : 0;
 setTimeout(() => process.exit(failures ? 1 : 0), 1200).unref();

@@ -221,7 +221,7 @@ a:hover .external-arrow {
 }
 
 /* The index's own rules live in one block near the end of this file, next to the
-   seven marks they arrange. What used to be here was a second, earlier definition
+   ten marks they arrange. What used to be here was a second, earlier definition
    of the same component -- a three-column grid, a pill radius, a translucent
    panel -- and with both present the cascade decided the component rather than
    either author doing it. */
@@ -584,7 +584,7 @@ html.has-project-focus body {
     var(--project-bg);
 }
 
-/* The seven rooms' signature colours, named once.
+/* The nine rooms' signature colours, named once.
 
    They used to be six literals buried one per theme block, which was fine while the
    only thing that wanted a project's colour was the project. The hero index wants them
@@ -1771,7 +1771,7 @@ html.has-project-focus body {
 
 @media (max-width: 900px) {
   /* Every variant collapses to the same single column. The compositions exist to
-     stop seven sections looking alike on a wide screen; on a narrow one there is
+     stop ten sections looking alike on a wide screen; on a narrow one there is
      only one arrangement available and pretending otherwise just makes the
      heading and the scene fight over 380px. */
   .project[data-stage] .project-body,
@@ -2618,7 +2618,7 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
    drifting colour fields fill a screen and then stop, flat, all the way across.
    `.project-seam` deals with the paper; this deals with what is drawn on it.
 
-   A mask rather than a shorter gradient inside each theme, because there are seven
+   A mask rather than a shorter gradient inside each theme, because there are nine
    themes and four of them draw real markup — a road, a manuscript, an orbit diagram,
    a cable — and none of those can be asked to fade themselves out at the edges. A
    mask on the layer fades whatever the layer painted, including the parts of it that
@@ -3842,8 +3842,8 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
   color: var(--project-accent);
 }
 
-/* Only the section being read animates. Seven backdrops running at once is a
-   cost paid for six things nobody is looking at. */
+/* Only the section being read animates. Ten backdrops running at once is a
+   cost paid for nine things nobody is looking at. */
 .project:not(.is-active) .bd * {
   animation-play-state: paused !important;
 }
@@ -4157,27 +4157,39 @@ svg.bd-vehicle {
 }
 
 /* ===========================================================================
-   Motion — and why there is no `prefers-reduced-motion` block
+   Motion — and why the media query is a landing rather than a rule
    ---------------------------------------------------------------------------
-   There used to be one here, blanket, flattening every animation and delay on
-   the page. It has been removed on purpose, and the reasoning is worth keeping
-   next to the gap it left. See README, "Motion", for the same note.
+   There is still no `prefers-reduced-motion` block in this file, and that is
+   deliberate. What used to be here was a blanket one, flattening every animation
+   and delay on the page. See README, "Motion", for the same note.
 
-   The seven scenes are not decoration around the content. They are the content:
+   The ten scenes are not decoration around the content. They are the content:
    the page's claim is that each project is running on it, and a visitor who
    cannot see them is reading captions about motion that never arrives. What the
    media query produced for that visitor was not a calmer version of this page,
-   it was a broken one.
+   it was a broken one — and there was nothing on the page that could give the
+   motion back.
 
-   The population it was firing for is also not the one it was written for.
-   Windows turns `reduce` on from places nobody connects to animation — the
-   performance options, a battery saver, a remote desktop session — so most
-   machines reporting it here never asked.
+   The population it fires for is also not the one it was written for. Windows
+   turns `reduce` on from places nobody connects to animation — the performance
+   options, a battery saver, a remote desktop session — so most machines
+   reporting it here never asked.
 
-   If this needs to come back it should come back as a control on the page that a
-   visitor can find and press, not as an ambient setting read behind their back.
-   The seam is already there: every scene nominates the one frame that carries
-   its argument, via `stillBeat` in `useStoryboard`.
+   The condition this note set for its return has been met. The control is the
+   ring at the foot of the dock, `.dock-hold`, and the seam it uses is the one
+   named here: every scene nominates the frame that carries its argument, via
+   `stillBeat`. So the setting is honoured now, and honoured as a *starting
+   position* — `adoptReducedMotionPreference` in `app/demos/scene/hold.ts` reads
+   it once, on the first client commit, and presses the button. A machine
+   reporting `reduce` lands on ten still frames with every label pinned to its
+   evidence and the control sitting there, pressed, saying what it does.
+
+   Which is why there is still no block here. The state a `reduce` visitor gets
+   is `html.is-held` and `html.is-held-settled` — the same two classes the button
+   writes, styled in one place further down this file, under "held". A media
+   query would be a second definition of that state, reached by a route the
+   visitor cannot leave. Read once, never listened to: the setting decides where
+   you arrive, the button decides where you stay.
    =========================================================================== */
 
 /* ===========================================================================
@@ -4427,15 +4439,15 @@ svg.bd-vehicle {
    rules to selectors left behind by a deletion. */
 
 /* ===========================================================================
-   The index in the hero, and the seven living marks in it
+   The index in the hero, and the ten living marks in it
    ---------------------------------------------------------------------------
-   The hero claims all seven projects are running on this page. The index used to
+   The hero claims all ten projects are running on this page. The index used to
    be seven names in a rounded box, which is the one element here that could have
    come from anywhere. Each row now carries its scene in miniature.
 
    Every mark is divs and keyframes. No canvas, no client component, no timers:
-   seven of these run at once for the cost of compositing, and the server sends
-   them down finished. Durations are deliberately co-prime-ish so the seven never
+   ten of these run at once for the cost of compositing, and the server sends
+   them down finished. Durations are deliberately co-prime-ish so the ten never
    fall into step with each other and start reading as one animation.
    =========================================================================== */
 
@@ -4480,15 +4492,15 @@ svg.bd-vehicle {
   border-top: 0;
 }
 
-/* --- the seven doors ------------------------------------------------------
-   Each row is a way into one of the six coloured rooms below, and until now it gave
+/* --- the ten doors ------------------------------------------------------
+   Each row is a way into one of the nine coloured rooms below, and until now it gave
    no sign of that: seven identical rows in one beige box, and then you arrive
    somewhere mint. The colour is the most useful thing a door can tell you before you
    open it, so every row now carries its project's own — see `--accent-*` and the
    `data-theme` written in `page.tsx`.
 
-   At rest it is a 3px edge, which is enough to make the card read as seven chapters
-   rather than seven lines. Under a pointer the edge widens, the whole row washes to a
+   At rest it is a 3px edge, which is enough to make the card read as ten chapters
+   rather than ten lines. Under a pointer the edge widens, the whole row washes to a
    trace of that colour, and the number and arrow take it outright. */
 .project-index a {
   --row-accent: var(--muted);
@@ -4538,7 +4550,7 @@ svg.bd-vehicle {
 /* The number takes the room's colour at rest too. The edge alone was a hairline at
    the size the card is actually seen, and this is what makes the index read as
    colour-coded from across the page rather than only under a pointer. Held back from
-   the full accent so seven saturated numerals do not compete with the seven marks,
+   the full accent so ten saturated numerals do not compete with the ten marks,
    which are the thing in this card worth looking at. */
 .project-index a .project-index-number {
   color: color-mix(in srgb, var(--row-accent) 78%, var(--muted));
@@ -4546,7 +4558,7 @@ svg.bd-vehicle {
 
 /* The row does not tint under the pointer, it *becomes* the room. A wash was the
    careful version and it was too careful to notice on a card this size — the whole
-   point of colour-coding seven doors is lost if choosing one is a five per cent change
+   point of colour-coding ten doors is lost if choosing one is a five per cent change
    in background. Filling it outright also means the live mark inside is suddenly on
    its own project's ground, which is the nearest this card can get to showing you
    where the row goes. */
@@ -4653,7 +4665,7 @@ svg.bd-vehicle {
   height: 100%;
   overflow: hidden;
   border-radius: 4px;
-  /* Every mark is composited on its own layer. Without this the seven of them
+  /* Every mark is composited on its own layer. Without this the ten of them
      repaint the frosted panel behind them on every frame. */
   isolation: isolate;
   contain: strict;
@@ -7900,7 +7912,7 @@ svg.bd-vehicle {
 /* --------------------------------------------------------------- responsive --- */
 
 @media (max-width: 900px) {
-  /* Every composition becomes one column here, so all seven backdrops reserve the
+  /* Every composition becomes one column here, so all ten backdrops reserve the
      complete editorial band rather than pretending a side gutter still exists.
 
      A mask, not a clip, for the reason set out where the wide reservations live: a clip
@@ -8102,7 +8114,7 @@ svg.bd-vehicle {
    project run and the measured intrinsic sizes used by content-visibility.
    =========================================================================== */
 
-/* A quiet route through the seven-section run, visible only after the hero leaves and
+/* A quiet route through the ten-section run, visible only after the hero leaves and
    while at least one project intersects the viewport.
 
    It has no surface. It used to be a dark glass pill — `rgba(12,15,14,0.6)` behind a
@@ -8111,7 +8123,7 @@ svg.bd-vehicle {
    it, and a slab of frosted charcoal floating over Decaf's lavender is the visual
    language of a phone's control centre rather than of anything else here.
 
-   Nothing replaced it. The rail is now seven numbers drawn straight onto the section
+   Nothing replaced it. The rail is now ten numbers drawn straight onto the section
    they are sitting over, which is what the rest of the page does with everything.
 
    That only works because the ink comes from the section. `--focus-ink`, `--focus-muted`
@@ -8177,7 +8189,7 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock {
 }
 
 /* Separated from the run by a rule rather than by a gap, because it is a different
-   kind of destination and seven digits with an eighth thing above them read as eight
+   kind of destination and ten digits with an eleventh thing above them read as eleven
    stops. */
 .project-dock-home {
   padding-bottom: 0.45rem;
@@ -8215,7 +8227,7 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock {
 }
 
 /* Each stop in its own project's colour, so the dock is a coloured spine rather than
-   seven grey numerals with one dot moving down it — and so the seven rooms you are
+   ten grey numerals with one dot moving down it — and so the nine rooms you are
    moving through are legible as a set while you are inside one of them. The same
    `--accent-*` tokens and the same `data-theme` the hero index uses.
 
@@ -8263,7 +8275,7 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock {
 }
 
 /* Hovering a stop shows you the colour of the room it leads to, which is the same
-   promise the hero index makes about the same seven destinations. Declared after the
+   promise the hero index makes about the same ten destinations. Declared after the
    shared hover rule further up so it wins on order rather than by being written more
    specifically than it needs to be. */
 .project-dock-links a:hover,
@@ -8323,8 +8335,8 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock {
 
 /* --- the hold control -----------------------------------------------------
    Last in the dock and separated from the run by a rule, the same way the home link
-   is separated at the top: seven numbered stops with an eighth thing under them read
-   as eight stops, and this one goes nowhere. See `MotionHold`. */
+   is separated at the top: ten numbered stops with an eleventh thing under them read
+   as eleven stops, and this one goes nowhere. See `MotionHold`. */
 .dock-hold {
   position: relative;
   display: grid;
@@ -8396,7 +8408,7 @@ html.has-project-in-view:not(.is-hero-visible) .project-dock {
    stops asking for animation frames — that is the meaningful half, and it is what
    turns the page into a set of labelled diagrams rather than a set of freeze-frames.
    Everything else that moves here moves by CSS keyframe and knows nothing about
-   beats: the drifting ambient backdrops, the seven living marks in the hero index,
+   beats: the drifting ambient backdrops, the ten living marks in the hero index,
    the drop running down the descend cue, the ghost numbers. Somebody who has asked
    for the motion to stop meant those too.
 

@@ -362,4 +362,14 @@ console.log(
 
 await browser.close();
 await stop();
+/* `process.exitCode` first, and the timer only as a backstop.
+
+   `.unref()` says that timer must not keep the process alive, so with nothing else
+   pending node reaches the end of this script and exits 0 before it fires. Every one
+   of these review scripts had that shape, which meant any of them could print its
+   failures and still hand back success — and a caller, a CI step or an `&&` chain
+   would read that as a pass. Found in `visible.mjs` by pointing a required check at a
+   beat that does not exist: it printed FAIL and exited 0. `exitCode` is what node uses
+   when it exits on its own, so the status is right on whichever path runs. */
+process.exitCode = failures ? 1 : 0;
 setTimeout(() => process.exit(failures ? 1 : 0), 1200).unref();
