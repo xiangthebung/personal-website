@@ -1,24 +1,1337 @@
-/* PLACEHOLDER — replaced when the real scene is written.
+/*
+ * Byte Budget — "the figure, and how much of it was measured"
+ *
+ * Two prefixes, and the split is not cosmetic. Everything under `bbx-` is what the
+ * product looks like and is taken from the extension's own `app.css` and `popup.css`;
+ * everything under `bb-` exists only to stage it — the browser, the page, the track
+ * under the window, the notification. When the popup changes, one of those two halves
+ * needs editing and the other does not.
+ *
+ * Three colours carry the whole argument and none of them is decoration:
+ *
+ *   teal   `#0f6a62`  the accent, and here the part of a figure that was measured
+ *   amber  `#9c5406`  `--estimate`: a figure the size model supplied rather than one
+ *                     anything observed. This is the colour this section of the page
+ *                     is named after.
+ *   green  `#17784b`  `--saved`: bytes something prevented from being spent.
+ *
+ * Every text-on-background pair below is held to the same bar the extension holds
+ * itself to. `--estimate` was moved from `#a95d10` to `#9c5406` in the extension for
+ * exactly that reason: at 11px on `--estimate-soft` the old value measured 4.40:1, and
+ * every figure that colour carries is one the product is admitting is modelled — which
+ * makes it the last thing that should be hard to read.
+ */
 
-   `width: 100%` is not cosmetic here. A stage that shrinks to its content is narrower
-   than the well, and `useSectionFocused` gates on a coverage test the narrow box fails —
-   so the storyboard never starts and the scene sits on beat one forever. Measured: a
-   centred grid gave a 49px stage in a 1440px viewport and `drive-site.mjs` reported the
-   scene never completing a lap. Every real scene here fills its well. */
 .bb {
+  /* The extension's own tokens, from `src/app.css`. */
+  --bg: #f2f6f6;
+  --bg-glow: #dceceb;
+  --surface: #ffffff;
+  --surface-2: #eef4f4;
+  --surface-3: #e3eded;
+  --border: #dde6e7;
+  --border-strong: #c9d7d8;
+  --text: #16262c;
+  --text-soft: #486067;
+  --text-muted: #556a71;
+  --accent: #0f6a62;
+  --accent-soft: #e2f0ee;
+  --saved: #17784b;
+  --saved-soft: #e6f4ec;
+  --estimate: #9c5406;
+  --estimate-soft: #fdf0e2;
+  --danger: #b6382f;
+  --bar-track: #e3eded;
+  --shadow-card: 0 1px 2px rgba(18, 44, 48, 0.05), 0 6px 20px rgba(18, 44, 48, 0.05);
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 9px;
+
+  /* The scene's own. */
+  --bb-font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bb-chrome: #eef1f2;
+  --bb-chrome-line: rgba(16, 40, 44, 0.13);
+  --bb-page: #fbfcfc;
+
+  /* The two ends of the current move, written by the scene each beat and interpolated
+     below with `--beat-t`. Declared here so the rules that read them have a value on
+     the server render, before the storyboard has written anything. */
+  --used-from: 0;
+  --used-to: 0;
+  --seam-from: 0;
+  --seam-to: 0;
+  --ghost-from: 0;
+  --ghost-to: 0;
+
   position: relative;
-  display: grid;
-  place-items: center;
   width: 100%;
-  min-height: 360px;
-  border-radius: 14px;
-  background: #f2f6f6;
-  color: #16262c;
+  /* Close to the 900px this was composed at. Wider and the browser's page grows into a
+     thousand-pixel video player with the extension reduced to one badge in the corner,
+     which reads as a section about a streaming site. */
+  max-width: 940px;
+  /* The track is absolutely positioned against the bottom of this box, so the room it
+     needs belongs here rather than being a side effect of a margin somewhere else. The
+     figure is not only the track's own height: the two label plates that read upward out
+     of it need a clear band above the ticks, and that band has to sit below the popup,
+     which overhangs the window. Three things share this space and it is the last of them
+     that sets the number. */
+  padding-bottom: 260px;
+  color: var(--text);
+  font-family: var(--bb-font);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
 }
 
-.bb-placeholder {
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
+/* --- the browser ---------------------------------------------------------- */
+
+.bb-browser {
+  position: relative;
+  /* Above the track, which passes behind the window rather than in front of it. */
+  z-index: 2;
+  border: 1px solid var(--bb-chrome-line);
+  border-radius: 14px;
+  background: var(--bb-page);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 30px 66px -34px rgba(8, 26, 30, 0.45);
+}
+
+.bb-chrome {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--bb-chrome-line);
+  border-radius: 13px 13px 0 0;
+  background: linear-gradient(var(--bb-chrome), color-mix(in srgb, var(--bb-chrome) 84%, #fff));
+}
+
+.bb-lights {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.bb-lights i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(16, 40, 44, 0.17);
+}
+
+.bb-tabs {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bb-tab {
+  display: inline-flex;
+  max-width: 176px;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  color: rgba(16, 40, 44, 0.5);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bb-tab.is-active {
+  color: var(--text);
+  background: var(--bb-page);
+  box-shadow: 0 -1px 0 var(--bb-chrome-line) inset;
+}
+
+.bb-favicon {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 11px;
+  border-radius: 3px;
+  background: rgba(16, 40, 44, 0.2);
+}
+
+.bb-favicon--watch {
+  background: var(--danger);
+}
+
+.bb-bar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bb-omni {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  color: rgba(16, 40, 44, 0.46);
+  background: color-mix(in srgb, #fff 78%, var(--bb-chrome));
+  box-shadow: 0 0 0 1px var(--bb-chrome-line) inset;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The extension's own button: the only thing clicked in this scene, so the only thing
+   in the chrome at full contrast. */
+.bb-action {
+  position: relative;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--accent);
+  transition: background 0.2s ease;
+}
+
+.bb-action[data-open="true"] {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+/* A ring while the badge is the only thing on screen doing anything. It stops once the
+   popup is open, where it would be pointing at old news. */
+.bb-action[data-live="true"]::before {
+  position: absolute;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  content: "";
+  inset: -3px;
+  opacity: 0;
+  animation: bb-ping 2600ms ease-out infinite;
+}
+
+@keyframes bb-ping {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.94);
+  }
+  55%,
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+.bb-mark {
+  display: block;
+  width: 19px;
+  height: 19px;
+}
+
+.bb-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* `#0f6a62` on white, from `background.ts`. Four characters at the outside, because
+   Chrome truncates a longer badge to something unreadable rather than shrinking it. */
+.bb-badge {
+  position: absolute;
+  right: -7px;
+  bottom: -4px;
+  min-width: 26px;
+  padding: 1px 3px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  text-align: center;
+  animation: bb-badge-in 320ms ease-out;
+}
+
+@keyframes bb-badge-in {
+  from {
+    transform: translateY(-2px) scale(0.86);
+  }
+}
+
+/* --- the page the bytes are being spent on -------------------------------- */
+
+.bb-page {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  gap: 18px;
+  padding: 16px 18px 20px;
+  border-radius: 0 0 13px 13px;
+  overflow: hidden;
+}
+
+.bb-page-main {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.bb-player {
+  position: relative;
+  height: 268px;
+  border-radius: 10px;
+  background:
+    radial-gradient(120% 90% at 26% 18%, #34505c, #12222a 62%),
+    #12222a;
+  transition: background 0.6s ease;
+}
+
+/* The limit is biting, so the segments stopped arriving. Not a picture of an error —
+   the player simply has nothing more to play, which is what a refused range request
+   looks like from the page's side, and the banner beside it is why it says so. */
+.bb-player[data-stopped="true"] {
+  background: #1b2a30;
+}
+
+.bb-player-art {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background:
+    linear-gradient(transparent 52%, rgba(6, 16, 20, 0.55)),
+    repeating-linear-gradient(
+      104deg,
+      rgba(255, 255, 255, 0.05) 0 22px,
+      rgba(255, 255, 255, 0) 22px 58px
+    );
+  transition: opacity 0.6s ease;
+}
+
+.bb-player[data-stopped="true"] .bb-player-art {
+  opacity: 0.25;
+}
+
+.bb-player-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 999px;
+  color: #16262c;
+  background: rgba(255, 255, 255, 0.9);
+  transform: translate(-50%, -50%);
+  transition: opacity 0.5s ease;
+}
+
+.bb-player-play svg {
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+}
+
+.bb-player[data-stopped="true"] .bb-player-play {
+  opacity: 0.3;
+}
+
+.bb-player-scrub {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  left: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.bb-player-scrub i {
+  display: block;
+  width: 34%;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--danger);
+  transition: width 0.8s ease;
+}
+
+/* It stops where it stopped. A scrub that keeps advancing under a player with nothing
+   to play would be the one thing in this frame arguing against the frame. */
+.bb-player[data-stopped="true"] .bb-player-scrub i {
+  width: 41%;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.bb-page-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.bb-page-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.bb-page-meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.bb-next {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bb-next li {
+  display: flex;
+  gap: 9px;
+}
+
+.bb-next-thumb {
+  width: 74px;
+  height: 42px;
+  flex: 0 0 74px;
+  border-radius: 6px;
+  background: linear-gradient(150deg, #35505c, #16272e);
+}
+
+.bb-next-copy {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 5px;
+  padding-top: 1px;
+}
+
+.bb-next-copy b {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A second line of a title nobody has to be able to read. Type set at 11px and then
+   filled with words would be a second thing competing with the figures this scene is
+   about; a rule is the honest amount of detail for scenery. */
+.bb-next-copy i {
+  display: block;
+  width: 62%;
+  height: 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+/* --- the extension's banner, inside the page ------------------------------ */
+
+/*
+ * The real one is a closed shadow root at `top: 12px; right: 12px` of the viewport, so
+ * a page's own stylesheet cannot restyle it. Here it is at the top left, because the
+ * right is where the popup is and a card drawn under another card is a card nobody
+ * reads. Everything else is the banner's own: `#12262b`, the amber dot, 320px, 12px
+ * radius, and the two buttons it offers.
+ */
+.bb-notice {
+  position: absolute;
+  top: 28px;
+  left: 30px;
+  z-index: 4;
+  max-width: 320px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: #12262b;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.34);
+  color: #e9f1f2;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  animation: bb-rise 180ms ease-out both;
+}
+
+@keyframes bb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.bb-notice-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.bb-notice-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: #e0a057;
+}
+
+.bb-notice-headline {
+  margin: 0;
+  font-weight: 650;
+}
+
+.bb-notice-detail {
+  margin: 3px 0 0;
+  color: #b6c7cb;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.bb-notice-close {
+  margin-left: auto;
+  color: #8ea1a8;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.bb-notice-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.bb-notice-actions span {
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  color: #d7e5e7;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* --- the popup ------------------------------------------------------------ */
+
+.bb-popup {
+  position: absolute;
+  z-index: 5;
+  /* Clear of the chrome, not over it: the badge is what the first half of this scene is
+     about, and a popup pulled up across the toolbar hides the button it came out of. */
+  top: 44px;
+  /* Inside the window, not hanging off it. This was `-34px`, which put the popup's right
+     edge at 103.3% of a browser that ends at 100% — measured with `spec-anchors.mjs`,
+     which is also how the same fault was found in GRT's popup on the same day. Chrome
+     anchors a popup under its toolbar button and shifts it left to stay inside the
+     window; it never overhangs. 10px in from the edge is where the button sits. */
+  right: 10px;
+  width: 420px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow:
+    0 0 0 1px rgba(16, 40, 44, 0.09),
+    0 36px 72px -30px rgba(6, 20, 24, 0.5);
+  opacity: 0;
+  /* Grows out of its own button, which is where a popup comes from. */
+  transform: scale(0.965) translateY(-9px);
+  transform-origin: 86% 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none;
+}
+
+.bb-popup[data-open="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.bbx {
+  font-family: var(--bb-font);
+}
+
+.bbx-app {
+  padding: 0 13px 12px;
+  border-radius: 14px;
+  color: var(--text);
+  background:
+    radial-gradient(120% 60% at 100% 0%, var(--bg-glow) 0%, transparent 62%),
+    var(--bg);
+}
+
+.bbx-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 8px;
+}
+
+.bbx-headline {
+  min-width: 0;
+}
+
+/*
+ * One line's worth of height whether or not there is a verdict to put in it. The real
+ * popup reserves it for the same reason: the line comes and goes as the period changes,
+ * and everything below it stepped up and down by a row each time.
+ */
+.bbx-pace {
+  margin: 0;
+  min-height: 1lh;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.bbx-pace[data-tone="up"] {
+  color: var(--danger);
+}
+
+.bbx-pace[data-tone="down"] {
+  color: var(--saved);
+}
+
+.bbx-total {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 2px 0 0;
+}
+
+.bbx-total-value {
+  font-size: 30px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.bbx-total-unit {
+  color: var(--text-soft);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.bbx-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.bbx-actions i {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.bbx-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  padding: 4px 2px 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* The one caveat in the panel, and the only thing in it wearing the estimate colour. */
+.bbx-flag {
+  color: var(--estimate);
+  font-weight: 600;
+}
+
+/* --- the limit card ------------------------------------------------------- */
+
+.bbx-limit {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.bbx-limit[data-state="over"] {
+  border-color: color-mix(in srgb, var(--danger) 42%, var(--border));
+}
+
+.bbx-limit-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bbx-limit-heading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.bbx-limit-status {
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.bbx-limit[data-state="over"] .bbx-limit-status {
+  color: var(--danger);
+}
+
+.bbx-limit-scope,
+.bbx-limit-line,
+.bbx-limit-consequence,
+.bbx-limit-prevented {
+  margin: 0;
+}
+
+.bbx-limit-scope {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.bbx-limit-line {
+  color: var(--text);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bbx-limit-consequence {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* Green, because these are bytes something prevented — and with a tilde, because a
+   refused request was never dispatched and so has no size anything measured. */
+.bbx-limit-prevented {
+  color: var(--saved);
+  font-size: 11.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the site list -------------------------------------------------------- */
+
+.bbx-sites {
+  margin-top: 8px;
+  padding: 10px 12px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.bbx-sites-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bbx-sites-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.bbx-sites-note {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.bbx-sites-expand {
+  margin: 5px 0 0;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.bbx-site-list {
+  display: grid;
+  gap: 1px;
+  margin: 5px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bbx-site {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.bbx-site-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 5px;
+  background: var(--surface-3);
+}
+
+/* Requests that belonged to no tab have no favicon to show, and inventing one would be
+   claiming they came from a website. */
+.bbx-site-icon[data-reserved="true"] {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--surface-3) 0 3px,
+    var(--surface-2) 3px 6px
+  );
+}
+
+.bbx-site-main {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 4px;
+}
+
+.bbx-site-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.bbx-site-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bbx-site-tag {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  opacity: 0.5;
+}
+
+.bbx-site-bar {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bar-track);
+}
+
+.bbx-site-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.7s ease;
+}
+
+.bbx-site-figures {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 1px;
+  text-align: right;
+}
+
+.bbx-site-bytes {
+  font-size: 11.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.bbx-site-share {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* --- the allowance, drawn ------------------------------------------------- */
+
+/*
+ * This is the scene's own instrument, not a screen the extension has. It exists because
+ * the popup states the split in a sentence and a sentence is the one thing that cannot
+ * show a proportion — the panel says "31% of this is estimated" and this says which 31%,
+ * at the size it actually is, against the cap it is being spent towards.
+ *
+ * Everything on it is the same arithmetic the panel prints. The fill is the day, the
+ * seam is `measuredShare`, the ticks are `ALERT_THRESHOLDS`, and the dashed run past the
+ * cap is `saved` — so the two can disagree only if the arithmetic does.
+ */
+.bb-track {
+  /* The interpolation, declared here rather than on the fill, because the two figures
+     under the rail have to stand under the runs they name — so the legend reads `--seam`
+     as well. `--beat-t` is written onto the stage every frame without a React render, so
+     the bar is a continuous function of scene time rather than a value at seven instants
+     with a transition guessing between them. A single figure per beat and a 1.5s
+     transition gives a bar that drives for a second and then stands still for two, which
+     reads as stalling rather than as filling. */
+  --t: var(--beat-t, 0);
+  --used: calc(var(--used-from) + (var(--used-to) - var(--used-from)) * var(--t));
+  --seam: calc(var(--seam-from) + (var(--seam-to) - var(--seam-from)) * var(--t));
+  --ghost: calc(var(--ghost-from) + (var(--ghost-to) - var(--ghost-from)) * var(--t));
+
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: 44px;
+  left: 0;
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  /*
+   * The instrument gets a face, and that is a contrast repair rather than a flourish.
+   *
+   * Everything printed on this band is set in the extension's own tokens, and those are
+   * verified against the extension's own grounds — `#f2f6f6` and white. Laid straight onto
+   * the section, they were sitting on its amber wash instead, which is a mid-tone: measured
+   * off the render, `79.2 MB estimated` came out at 3.05:1 and not one figure on the track
+   * cleared 4.5. Every one of them is a number the section exists to make an argument with,
+   * and the amber ones are the argument.
+   *
+   * Darkening the type would have fixed the ratio and broken the point — `#9c5406` is not a
+   * decorative choice, it is the colour this product marks an inferred figure with, and a
+   * scene that prints it in some other brown is a scene claiming a look it does not have.
+   * So the ground moves instead of the ink, back to the one the ink was designed against.
+   * Worst pair afterwards: 5.2:1.
+   */
+  background: var(--bg);
+  box-shadow: var(--shadow-card);
+}
+
+/* Left, not right. The tick captions sit in this same band and the right-hand one is the
+   cap's, so a right-aligned line here landed on top of `100%` — which is one of the three
+   numbers the label beside it is pointing at. */
+.bb-track-head {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.bb-rail {
+  position: relative;
+  height: 26px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent) inset;
+}
+
+.bb-fill {
+  position: absolute;
+  inset: 0;
+}
+
+.bb-measured,
+.bb-inferred {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 5px;
+}
+
+.bb-measured {
+  left: 0;
+  width: calc(var(--seam) * 1%);
+  background: var(--accent);
+}
+
+/*
+ * The part nothing observed, in the colour the product marks that with everywhere else.
+ * It sits at the leading edge rather than at the start, which is the same order the
+ * miniature in the page's index draws it in and the right one: the certain part is what
+ * the figure rests on, and the uncertainty is what it is carrying.
+ */
+.bb-inferred {
+  left: calc(var(--seam) * 1%);
+  width: calc((var(--used) - var(--seam)) * 1%);
+  background: var(--estimate);
+}
+
+/* The beat the argument is on: the two runs part company, and each gets its own end
+   caps so they read as two quantities rather than as one bar with a stripe. */
+.bb[data-beat="split"] .bb-inferred {
+  transform: translateX(9px);
+  transition: transform 640ms cubic-bezier(0.2, 0.86, 0.24, 1);
+}
+
+/*
+ * Where the traffic would have gone. Drawn from the fill's own leading edge, so what the
+ * eye compares is a dashed run that grew against a solid one that did not move an inch.
+ */
+.bb-refused {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: calc(var(--used) * 1%);
+  width: calc((var(--ghost) - var(--used)) * 1%);
+  border: 1.5px dashed var(--saved);
+  border-radius: 5px;
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--saved) 15%, transparent) 0 5px,
+    transparent 5px 11px
+  );
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.bb[data-refusing="true"] .bb-refused {
+  opacity: 1;
+}
+
+/* Knocked out of the hatch rather than laid over it. Measured on the render, `0 B` on the
+   striped field came to 4.32:1 — the one figure in this scene that is a whole claim on its
+   own, sitting under AA because of a texture behind it. On its own patch of the card it is
+   5.04:1, and the hatch still reads either side of it. */
+.bb-refused b {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--saved);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.bb-ticks {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+}
+
+/*
+ * Two pixels wide, and that is load-bearing rather than a detail. `SpecTags` measures the
+ * element a label names and skips any box with a zero width or height — so a tick drawn as
+ * a zero-width element with a child line is invisible to the measurement, and the label
+ * about the thresholds silently fell back to its hand-typed coordinate. Nothing errors
+ * when that happens; the plate simply sits near the right place at one window width and
+ * near the wrong one at every other.
+ */
+.bb-tick {
+  position: absolute;
+  top: -17px;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+}
+
+/* Pale with a dark hairline round it, because this line has to be legible against three
+   different grounds: the empty track, the teal run and the amber one. A single dark line
+   disappeared under the fill, which is exactly where the two lit thresholds are. */
+.bb-tick i {
+  position: absolute;
+  top: 17px;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 0 1px rgba(12, 32, 38, 0.22);
+  transition: background 0.4s ease;
+}
+
+.bb-tick b {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+  transition: color 0.4s ease;
+}
+
+/* A threshold the day has passed. The ladder lighting in order is the whole of what the
+   label beside it is claiming, so it has to be legible in a still — which is why the
+   change is carried by the caption, on the pale ground where there is contrast to spend,
+   and not by the line, which is over the fill where there is not. */
+.bb-tick[data-lit="true"] b {
+  color: var(--estimate);
+}
+
+.bb-tick[data-lit="true"] b::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: -9px;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--estimate);
+}
+
+/* The cap is not a warning, it is the end of the allowance. */
+.bb-tick[data-cap="true"] b {
+  color: var(--text-soft);
+}
+
+.bb-tick[data-cap="true"][data-lit="true"] b {
+  color: var(--danger);
+}
+
+.bb-tick[data-cap="true"][data-lit="true"] b::before {
+  background: var(--danger);
+}
+
+/*
+ * Each figure stands under the run it names, rather than at the two ends of a flex row.
+ * Space-between put "79.2 MB estimated" hard against the right edge of the track, past
+ * the cap and past the end of the very run it was naming — so the eye paired it with the
+ * empty stretch of allowance instead of with the amber. It is placed from `--seam` now,
+ * which is the same number that draws the boundary, so the two cannot drift apart.
+ */
+.bb-legend {
+  position: relative;
+  height: 34px;
+}
+
+.bb-figure {
+  position: absolute;
+  top: 0;
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  min-width: 0;
+}
+
+.bb-figure--measured {
+  left: 0;
+}
+
+.bb-figure--inferred {
+  left: calc(var(--seam) * 1%);
+  padding-left: 10px;
+}
+
+.bb-figure b {
+  font-size: 12.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.bb-figure span {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.bb-figure--measured b {
+  color: var(--accent);
+}
+
+.bb-figure--inferred b {
+  color: var(--estimate);
+}
+
+/* --- the alert, on the visitor's own screen ------------------------------- */
+
+.bb-os-alert {
+  position: absolute;
+  top: clamp(14px, 3vh, 34px);
+  right: clamp(14px, 2.4vw, 40px);
+  display: flex;
+  width: min(378px, calc(100vw - 28px));
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 15px;
+  border: 1px solid rgba(16, 40, 44, 0.1);
+  border-radius: 14px;
+  background: #fbfdfd;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 26px 60px -24px rgba(6, 20, 24, 0.5);
+  color: var(--text);
+  font-family: var(--bb-font);
+  animation: bb-alert-in 300ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes bb-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.bb-alert-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.bb-alert-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.bb-alert-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.bb-alert-source {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.bb-alert-source small {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.bb-alert-title {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.bb-alert-body {
+  margin: 2px 0 0;
+  color: var(--text-soft);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+}
+
+.bb-alert-close {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+
+.bb-alert-close svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+
+/* --- the in-frame labels -------------------------------------------------- */
+
+/*
+ * As instrument type: a pale plate, near-black tabular text, a hair of tracking, and a
+ * long thin lead. This is a section about reading a figure off a scale, and the labels
+ * are the printing on that scale — nothing like GRT's transit signage or PagePack's
+ * frosted pills, which is the whole point of the theming contract.
+ */
+.bb-specs {
+  --spec-ink: #16262c;
+  --spec-paper: rgba(255, 255, 255, 0.97);
+  --spec-edge: rgba(16, 38, 44, 0.16);
+  --spec-gloss: rgba(255, 255, 255, 0.7);
+  --spec-dot: #9c5406;
+  --spec-shadow: rgba(10, 34, 28, 0.36);
+  --spec-radius: 4px;
+  --spec-pad: 0.3rem 0.58rem;
+  --spec-font: var(--bb-font);
+  --spec-size: clamp(10px, 1.05vw, 11.5px);
+  --spec-weight: 650;
+  --spec-tracking: 0.005em;
+  --spec-case: none;
+  --spec-lead: 20px;
+}
+
+/* --- narrow ---------------------------------------------------------------
+   Below 760px the label layer stops being a layer and falls into the column as a wrapped
+   row of chips, which is `globals.css`'s doing. What has to happen here is make room for
+   it, and that is a bigger change than it sounds: the track is positioned against the
+   bottom of the stage, so a static layer arriving after the browser lands on top of it,
+   and the popup — which is wider than the window at this size — reaches all the way down
+   over both. Photographed at 700px, the frame was a popup and nothing else: no bar, no
+   ticks, no chips. The scene's whole argument is the bar.
+
+   So at this width the pod stops overlaying and starts stacking. The track joins the flow
+   under the browser and the chips follow it, which is the same trade the label layer is
+   making one level up — the pointing is lost, the reading is not. */
+@media (max-width: 760px) {
+  .bb {
+    display: grid;
+    gap: 14px;
+    padding-bottom: 0;
+    font-size: 12px;
+  }
+
+  /* Both columns of the page go, and the popup covers what is left of it anyway. A 232px
+     sidebar out of 606px of window is a third of the frame spent on scenery. */
+  .bb-page {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px 12px 16px;
+  }
+
+  .bb-next {
+    display: none;
+  }
+
+  .bb-player {
+    height: 148px;
+  }
+
+  .bb-popup {
+    top: 38px;
+    right: -8px;
+    left: -8px;
+    width: auto;
+  }
+
+  /* The panel has to end inside the window it hangs off, or it covers the bar below.
+     The list is the tallest block in it and the only one carrying no claim the labels
+     do not also carry. */
+  .bbx-sites {
+    display: none;
+  }
+
+  .bb-notice {
+    top: 16px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+  }
+
+  .bb-track {
+    position: static;
+  }
+
+  .bb-legend {
+    height: 38px;
+  }
+
+  .bb-figure b {
+    font-size: 12px;
+  }
+
+  .bb-figure span {
+    font-size: 10px;
+  }
 }

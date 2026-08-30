@@ -137,13 +137,27 @@ const SCENES = [
   },
   {
     id: "totem",
-    beats: ["hide", "drill"],
+    beats: ["hidden", "ask"],
     want: [".tot-phone", ".tot-list", ".tot-glyph", ".tot-switch"],
   },
   {
     id: "byte-budget",
-    beats: ["measured", "warn"],
-    want: [".bb-popup", ".bb-bar", ".bb-site", ".bb-browser"],
+    /* `split` is the still. `refuse` is where the dashed run past the cap grows, which is
+       the one anchor whose box changes size all beat — the case that placed a plate from
+       where the run *starts* and put it over its neighbour. */
+    beats: ["warn", "refuse", "split"],
+    want: [
+      ".bb-rail",
+      ".bb-refused",
+      ".bb-tick",
+      ".bb-popup",
+      ".bb-legend",
+      ".bb-figure",
+      /* Not an anchor for any label — measured so the popup can be compared against the
+         window it hangs off. A Chrome popup is clamped inside its own window, and GRT's
+         was found overhanging by 25px exactly this way. */
+      ".bb-browser",
+    ],
   },
 ];
 
@@ -156,16 +170,34 @@ const SCENES = [
  * than one that is missing, because it is trusted.
  */
 async function assertEverySceneListed() {
-  const { readdir } = await import("node:fs/promises");
+  const { readdir, readFile } = await import("node:fs/promises");
   const dirs = (await readdir(path.join(root, "app", "demos"), { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && entry.name !== "scene")
     .map((entry) => entry.name);
   const listed = new Set(SCENES.map((scene) => scene.id));
-  const missing = dirs.filter((dir) => !listed.has(dir));
+
+  const missing = [];
+  for (const dir of dirs) {
+    if (listed.has(dir)) continue;
+    /* Only scenes that actually pin a label to a measured element need an entry. Three
+       legitimately do not: Choir Practice frames a real application and annotates it from
+       outside, N-Back's chips sit beside the board rather than on it, and Night
+       Neutralizer labels its two panels through a `VERDICT` table because they stack on a
+       narrow screen and a percentage would land in the wrong one. Requiring an entry from
+       them would mean inventing anchors to satisfy a checker, which is how a checker
+       starts costing more than it catches. */
+    const source = await readFile(path.join(root, "app", "demos", dir, "demo.tsx"), "utf8");
+    if (source.includes("data-spec-anchor")) missing.push(dir);
+  }
+
   if (missing.length) {
     console.error(
-      `spec-anchors knows nothing about: ${missing.join(", ")}.\n` +
-        `Add an entry to SCENES, or this tool will keep passing without looking at them.`,
+      `spec-anchors knows nothing about: ${missing.join(", ")} — and ${
+        missing.length === 1 ? "it declares" : "they declare"
+      } data-spec-anchor, so ${missing.length === 1 ? "it has" : "they have"} plates that ` +
+        `could be landing on the wrong thing.\n` +
+        `Add an entry to SCENES. Without one this tool reports nothing and exits zero, ` +
+        `which reads exactly like a pass.`,
     );
     process.exit(1);
   }
