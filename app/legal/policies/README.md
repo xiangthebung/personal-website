@@ -11,6 +11,9 @@ repository of the project it belongs to, next to the code it describes:
 | `grt-next-bus-terms.md` | `grt-bus-time/TERMS_OF_SALE.md` |
 | `night-neutralizer-privacy.md` | `night-neutralizer/PRIVACY_POLICY.md` |
 | `decaf-privacy.md` | `Decaf/PRIVACY_POLICY.md` |
+| `two-factor-paster-privacy.md` | `2fa paster/PRIVACY_POLICY.md` |
+| `byte-budget-privacy.md` | `Network data tracker/PRIVACY_POLICY.md` |
+| `byte-budget-terms.md` | `Network data tracker/TERMS_OF_SALE.md` |
 
 They are copied rather than read from the sibling checkout because this site
 deploys on its own, without those repositories present.

@@ -8,12 +8,15 @@
  * what it is called, and where its original can be read.
  */
 
+import byteBudgetPrivacy from "./policies/byte-budget-privacy.md?raw";
+import byteBudgetTerms from "./policies/byte-budget-terms.md?raw";
 import decafPrivacy from "./policies/decaf-privacy.md?raw";
 import grtPrivacy from "./policies/grt-next-bus-privacy.md?raw";
 import grtTerms from "./policies/grt-next-bus-terms.md?raw";
 import nightPrivacy from "./policies/night-neutralizer-privacy.md?raw";
 import pagepackPrivacy from "./policies/pagepack-privacy.md?raw";
 import pagepackTerms from "./policies/pagepack-terms.md?raw";
+import twoFactorPasterPrivacy from "./policies/two-factor-paster-privacy.md?raw";
 
 export type PolicyKind = "privacy" | "terms";
 
@@ -41,9 +44,50 @@ const REPOS = {
   grt: "https://github.com/xiangthebung/grt-bus-time/blob/main",
   night: "https://github.com/xiangthebung/night-neutralizer/blob/main",
   decaf: "https://github.com/xiangthebung/Decaf/blob/main",
+  paster: "https://github.com/xiangthebung/2fa-paster/blob/main",
+  /* `master`, not `main` — this is the one repository in the set whose default branch is
+     not `main`, and a blob URL on the wrong branch is a 404 nobody notices until somebody
+     clicks it. */
+  bytes: "https://github.com/xiangthebung/byte-budget/blob/master",
 };
 
 export const policies: Policy[] = [
+  {
+    slug: "two-factor-paster/privacy",
+    project: "two-factor-paster",
+    projectName: "2FA Paster",
+    kind: "privacy",
+    label: "2FA Paster privacy policy",
+    summary:
+      "The one that reads your mail. Two readers, seeing different amounts, and the default is the one that needs no account and sees least.",
+    original: `${REPOS.paster}/PRIVACY_POLICY.md`,
+    copy: "policies/two-factor-paster-privacy.md",
+    markdown: twoFactorPasterPrivacy,
+  },
+  {
+    slug: "byte-budget/privacy",
+    project: "byte-budget",
+    projectName: "Byte Budget",
+    kind: "privacy",
+    label: "Byte Budget privacy policy",
+    summary:
+      "An extension that sees every request the browser makes, and keeps the record of them in the browser profile. The interesting part is what a page-load row deliberately does not store.",
+    original: `${REPOS.bytes}/PRIVACY_POLICY.md`,
+    copy: "policies/byte-budget-privacy.md",
+    markdown: byteBudgetPrivacy,
+  },
+  {
+    slug: "byte-budget/terms",
+    project: "byte-budget",
+    projectName: "Byte Budget",
+    kind: "terms",
+    label: "Byte Budget Plus subscription terms",
+    summary:
+      "What Plus adds, who is actually selling it, and how to cancel. Google is not the seller.",
+    original: `${REPOS.bytes}/TERMS_OF_SALE.md`,
+    copy: "policies/byte-budget-terms.md",
+    markdown: byteBudgetTerms,
+  },
   {
     slug: "pagepack/privacy",
     project: "pagepack",

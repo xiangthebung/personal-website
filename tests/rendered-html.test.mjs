@@ -1186,7 +1186,7 @@ async function copyOrigins() {
 
 test("every extension that needs a policy has one, reachable and rendered", async () => {
   const registry = await policyRegistry();
-  assert.equal(registry.length, 6, `expected six policies, found ${registry.length}`);
+  assert.equal(registry.length, 9, `expected nine policies, found ${registry.length}`);
 
   const index = await renderPath("/legal");
   assert.equal(index.status, 200, "/legal did not render");
@@ -1237,6 +1237,9 @@ test("the home page links to the policies of the projects that have them", async
     "grt-next-bus/terms",
     "night-neutralizer/privacy",
     "decaf/privacy",
+    "two-factor-paster/privacy",
+    "byte-budget/privacy",
+    "byte-budget/terms",
   ]) {
     assert.match(html, new RegExp(`/legal/${slug}`), `home page does not link /legal/${slug}`);
   }
@@ -1255,7 +1258,7 @@ test("the home page links to the policies of the projects that have them", async
 
 test("the published policies still match the originals in the project repos", async (t) => {
   const origins = await copyOrigins();
-  assert.equal(origins.size, 6, "the README table no longer lists every copy");
+  assert.equal(origins.size, 9, "the README table no longer lists every copy");
 
   let compared = 0;
   for (const [copy, original] of origins) {

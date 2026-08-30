@@ -25,7 +25,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -357,14 +357,20 @@ async function main() {
   await shows(page.locator("h1"), "legal index renders");
   await shot("09-legal-index");
 
-  for (const slug of [
-    "pagepack/privacy",
-    "pagepack/terms",
-    "grt-next-bus/privacy",
-    "grt-next-bus/terms",
-    "night-neutralizer/privacy",
-    "decaf/privacy",
-  ]) {
+  /* Read out of the registry rather than typed here. This list was six slugs long while
+     the site published nine, so the three newest legal pages — the ones most likely to be
+     broken — were the three this driver never opened, and it said "site drives clean"
+     either way. A hardcoded list of the things to check is a list that stops covering the
+     thing it was written for. */
+  const legalSlugs = [
+    ...(await readFile(new URL("../app/legal/policies.ts", import.meta.url), "utf8")).matchAll(
+      /^\s{4}slug: "([^"]+)",$/gm,
+    ),
+  ].map((match) => match[1]);
+  if (legalSlugs.length < 6) {
+    bad(`only ${legalSlugs.length} policy slugs parsed out of policies.ts`);
+  }
+  for (const slug of legalSlugs) {
     await page.goto(`${BASE}/legal/${slug}`, { waitUntil: "load" });
     const body = page.locator(".legal-body");
     if (!(await shows(body, `/legal/${slug} renders`))) continue;
