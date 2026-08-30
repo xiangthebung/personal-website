@@ -11,9 +11,9 @@ jobs:
     name: typecheck + lint + rendered HTML
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -35,9 +35,9 @@ jobs:
     name: the page, driven in Chromium
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -48,10 +48,11 @@ jobs:
 
       - run: npm run build
 
-      # Seven of the eight sections are self-running scenes, and a scene can
-      # server-render perfectly and then throw on its first frame. This walks all
-      # of them and fails on a console error, a failed request, a scene that stops
-      # advancing, or one that cannot finish a loop in 24 seconds.
+      # Nine of the ten sections are self-running reconstructions and the tenth is
+      # the choir app itself, and a scene can server-render perfectly and then throw
+      # on its first frame. This walks all of them, and the /legal pages, and fails
+      # on a console error, a failed request, a scene that stops advancing, or one
+      # that cannot finish a loop in 24 seconds.
       - run: node scripts/drive-site.mjs --shots
 
       # Every layout hole this page has had opened above 1600px, because it was
@@ -67,7 +68,15 @@ jobs:
 
       - run: node scripts/find-mojibake.mjs
 
-      - uses: actions/upload-artifact@v4
+      # The security headers, on the wire rather than in the source. `npm test`
+      # checks the values; only a browser shows that they reach a static asset --
+      # Cloudflare answers those without invoking the worker, so this is what would
+      # catch the stylesheet and the client bundle going out bare -- and that nothing
+      # on the page is blocked by the policy they carry. A blocked script fails
+      # neither a build nor drive-site.
+      - run: node scripts/security-headers.mjs
+
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: page-screenshots

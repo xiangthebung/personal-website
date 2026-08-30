@@ -16,6 +16,7 @@ import grtTerms from "./policies/grt-next-bus-terms.md?raw";
 import nightPrivacy from "./policies/night-neutralizer-privacy.md?raw";
 import pagepackPrivacy from "./policies/pagepack-privacy.md?raw";
 import pagepackTerms from "./policies/pagepack-terms.md?raw";
+import totemPrivacy from "./policies/totem-privacy.md?raw";
 import twoFactorPasterPrivacy from "./policies/two-factor-paster-privacy.md?raw";
 
 export type PolicyKind = "privacy" | "terms";
@@ -45,6 +46,7 @@ const REPOS = {
   night: "https://github.com/xiangthebung/night-neutralizer/blob/main",
   decaf: "https://github.com/xiangthebung/Decaf/blob/main",
   paster: "https://github.com/xiangthebung/2fa-paster/blob/main",
+  totem: "https://github.com/xiangthebung/totem/blob/main",
   /* `master`, not `main` — this is the one repository in the set whose default branch is
      not `main`, and a blob URL on the wrong branch is a 404 nobody notices until somebody
      clicks it. */
@@ -158,6 +160,26 @@ export const policies: Policy[] = [
     original: `${REPOS.night}/PRIVACY_POLICY.md`,
     copy: "policies/night-neutralizer-privacy.md",
     markdown: nightPrivacy,
+  },
+  /* The only one here that is not a Chrome extension, and the reason it is published is
+     the same reason the extensions are: Apple and Google both require a policy at a URL
+     before an app that asks for the microphone can be listed.
+
+     Outside the object, not inside it, and that is not formatting. Two of the tests read
+     this array with a regular expression anchored on `{` followed by `slug:`, so an entry
+     that opens with a comment is an entry those tests do not see — it was written that way
+     first, and the policy count they assert stayed correct by not counting this one. */
+  {
+    slug: "totem/privacy",
+    project: "totem",
+    projectName: "Totem",
+    kind: "privacy",
+    label: "Totem privacy policy",
+    summary:
+      "The one that asks for a microphone. A spoken hint is written into the app's own sandbox and there is nothing in the app that could send it anywhere — and the interesting part is what happens to that file when you delete the task.",
+    original: `${REPOS.totem}/PRIVACY_POLICY.md`,
+    copy: "policies/totem-privacy.md",
+    markdown: totemPrivacy,
   },
 ];
 

@@ -1,6 +1,7 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
 import hostingConfig from "./.openai/hosting.json";
+import { securityHeadersFile } from "./build/security-headers-vite-plugin";
 import { sites } from "./build/sites-vite-plugin";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
@@ -55,6 +56,8 @@ export default defineConfig(async () => {
     plugins: [
       vinext(),
       sites(),
+      /* After vinext, which writes `dist/client/_headers` only when it is absent. */
+      securityHeadersFile(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         config: localBindingConfig,

@@ -14,7 +14,42 @@ import { projects } from "./projects";
  * Server component, CSS-only motion — the one page that must never be worth
  * a client bundle is the wrong-address page.
  */
+
+/**
+ * How many projects there are, in words.
+ *
+ * This line used to be typed: "Seven projects live here, numbered 01 to 07",
+ * with the dock immediately below it listing ten of them. One screen
+ * contradicting itself is the exact failure the rest of this site is built to
+ * refuse, so the count is now read from the same array the dock is rendered
+ * from and cannot say anything the dock does not.
+ *
+ * Spelled where there is a word for it, because this page is written rather
+ * than printed. Past the table it falls back to the digits — a wrong word is a
+ * lie, and a bare numeral is only a change of register.
+ */
+const NUMBER_WORDS = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+];
+
+const spell = (count: number) => NUMBER_WORDS[count] ?? String(count);
+
 export default function NotFound() {
+  const first = projects[0].number;
+  const last = projects[projects.length - 1].number;
+
   return (
     <main className="nf">
       <section className="nf-section" aria-labelledby="nf-title">
@@ -39,8 +74,8 @@ export default function NotFound() {
           <div className="nf-summary">
             <p>The address you followed isn&rsquo;t running on this site.</p>
             <small>
-              Seven projects live here, numbered 01 to 07. This wasn&rsquo;t one
-              of them.
+              There are {spell(projects.length)} projects here, numbered {first}{" "}
+              to {last}. This wasn&rsquo;t one of them.
             </small>
           </div>
         </div>

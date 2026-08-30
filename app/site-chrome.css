@@ -1,0 +1,63 @@
+/* ===========================================================================
+   Site chrome that is not part of any room
+   ---------------------------------------------------------------------------
+   A second render-blocking stylesheet, imported beside `globals.css` in
+   `app/layout.tsx`. It is not a chunk and it is not a scene: the rule in the
+   README is about *when the element exists*, and the element this file styles is
+   the first thing in the document on every route, server-rendered, present before
+   any chunk is fetched. Loading it late would flash exactly the way styling a
+   section from a scene's chunk flashes.
+
+   It is its own file rather than more of `globals.css` because it belongs to no
+   room. `globals.css` is the page — chassis, theming, hero, gallery, sections —
+   and this is the furniture around the page, which is a different thing to go
+   looking for.
+   =========================================================================== */
+
+/* --- skip to content ------------------------------------------------------
+   `<main>` opens with the dock: eleven links and a button before the first word
+   of the page. That is a fine shape for a mouse, which never touches any of them,
+   and it is twelve stops in front of a keyboard on every visit.
+
+   Off screen rather than `display: none` or `visibility: hidden`, because both of
+   those take an element out of the tab order, which would make this a link nobody
+   can reach — the failure mode of most skip links. It is always in the document
+   and always focusable; it is only ever translated out of sight.
+
+   `:focus-visible` rather than `:focus`, so a click that happens to land on it
+   does not throw a bar across the top of the page for a mouse user who will never
+   need it.
+
+   Above `.vlayer` (70), which is the highest thing on the page. Anything a
+   visitor is being invited to press has to be pressable. */
+.skip-link {
+  position: fixed;
+  z-index: 80;
+  top: 0.85rem;
+  left: 0.85rem;
+  padding: 0.6rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 12px 28px rgba(22, 25, 23, 0.18);
+  color: var(--ink);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  /* Far enough to clear the shadow as well as the box. */
+  transform: translateY(calc(-100% - 2.5rem));
+  transition: transform 200ms var(--ease-out-soft);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* The landing. `tabindex="-1"` is what makes the jump move focus rather than only
+   scroll, and a container that is focusable only because something pointed at it
+   should not then draw the page's 3px focus ring around a full-height hero. The
+   scroll is the feedback; the ring belongs to things you can operate. */
+[data-skip-target]:focus {
+  outline: none;
+}

@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
+/* The page furniture that belongs to no room — currently the skip link. Beside
+   globals.css rather than inside it, and render-blocking like it, because the
+   element it styles is the first thing in the document on every route. */
+import "./site-chrome.css";
 
 /**
  * One sentence, so a share of this link is not a title and a photograph with
@@ -11,11 +15,21 @@ import "./globals.css";
  * The page does not print counts any more, and a search result should not be the
  * one place left that does — so it names the projects instead, which is what
  * someone reading a search result wants to know.
+ *
+ * Every number in it was wrong for a while, which is the worst place on the site
+ * for that to happen: this string is the meta description, the `og:description`
+ * and the `twitter:description`, so it is the sentence a stranger reads before
+ * they have seen anything the page could correct it with. It said seven projects,
+ * four Chrome extensions and one choir app while `projects.ts` held ten, six and
+ * one. Counted against that file today: six Chrome extensions, three things that
+ * run in a browser tab — Choir Practice, PDF Explainer and N-Back — and Totem,
+ * which is iOS, Android and web. If a project is added, this sentence is part of
+ * adding it.
  */
 const DESCRIPTION =
-  `Seven side projects, each running on the page as a self-driving scene: ` +
-  `a choir rehearsal app, four Chrome extensions, a PDF study workspace and an ` +
-  `n-back game.`;
+  `Ten side projects, each running on the page as a self-driving scene: ` +
+  `six Chrome extensions, a choir rehearsal app, a PDF study workspace, an ` +
+  `n-back game and a todo list kept in symbols.`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
