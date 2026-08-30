@@ -3511,22 +3511,22 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
 /* ===========================================================================
    GRT Next Bus — "the wait is on the toolbar"
    ---------------------------------------------------------------------------
-   Two things share this block: the extension's popup, whose tokens and card
-   layout are its own, and the scene around it — a browser, a notification, and a
-   route line that runs out past both edges of the section with the bus on it.
+   All that is left here is the stage box itself — the width the scene is composed
+   at, and the band of clear space the road runs in. Both are facts about the
+   *section*, which is server-rendered and on screen long before the scene's chunk
+   is fetched, so they cannot wait for `demos/grt-next-bus/demo.css`.
 
-   The scene classes are `gx-`, the popup's are `grt-`, and the split is not
-   cosmetic: everything under `grt-` is what the product looks like and is copied
-   from its stylesheet, while everything under `gx-` exists only to stage it. When
-   the extension's popup changes, one of those two halves needs editing and the
-   other does not.
+   Everything else went to that file, including the popup's own palette. It used to
+   sit here as a `.grt` token block, mint-tinted to match the section it is drawn
+   inside — which was the scene making the product look like the site. The
+   extension's palette is neutral Maps greys and the copy in `demo.css` is those
+   values, scoped to `.gx-popup` so the token names can stay the ones
+   `grt-bus-time/src/popup.css` uses.
 
-   The popup deliberately overhangs its window — up under the toolbar, out past
-   the right edge, and past the bottom. Chrome does not do that. It is here
-   because a 420px panel drawn politely inside a 930px frame is the composition
-   that made this the weakest pod on the page, and because the overhang removes a
-   fragile dependency: the window's height comes from the page behind it, and the
-   popup can be any height it likes without a magic number having to track it.
+   The scene's classes were `gx-` and the popup's were `grt-`. They are all `gx-`
+   now, which is the rule the rest of the page follows and the one the prefix test
+   derives its list from; the split those two prefixes marked is still there, as the
+   two halves of `demo.css`, and its header says where the line falls.
 
    What used to be here as well: a light/dark token pair with a three-way theme
    switcher, a stop search with an add-a-stop picker, and an empty state. All of
@@ -3557,35 +3557,6 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
   font-family: var(--gx-font);
   -webkit-font-smoothing: antialiased;
 }
-
-/* --- the extension's own styles ------------------------------------------- */
-
-.grt {
-  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --bg: #f2f6f6;
-  --bg-glow: #dceceb;
-  --surface: #ffffff;
-  --surface-2: #eef4f4;
-  --border: #dde6e7;
-  --border-strong: #c9d7d8;
-  --text: #16262c;
-  --text-soft: #486067;
-  --text-muted: #6d8087;
-  --accent: #0f6a62;
-  --accent-soft: #e2f0ee;
-  --accent-contrast: #ffffff;
-  --live: #17784b;
-  --live-soft: #e6f4ec;
-  --warn: #a95d10;
-  --danger: #b6382f;
-  --shadow-card: 0 1px 2px rgba(18, 44, 48, 0.05), 0 6px 20px rgba(18, 44, 48, 0.05);
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 9px;
-  font-family: var(--font);
-}
-
-/* --- caption -------------------------------------------------------------- */
 
 /* The road dashes, the live badge pulse and the feed dot used to stop here for
    `prefers-reduced-motion`. They no longer do — see "Motion" further down. */
@@ -8531,7 +8502,9 @@ html.has-visibility-gates:not(.is-hero-visible) .hero-cue-line::after {
 }
 
 #grt-next-bus {
-  --project-intrinsic-height: 980px;
+  /* Measured, not guessed: 1010px at 1440, after the pod's browser window grew to
+     clear a popup whose first row now opens in place. */
+  --project-intrinsic-height: 1010px;
 }
 
 @supports (content-visibility: auto) {
@@ -8545,7 +8518,7 @@ html.has-visibility-gates:not(.is-hero-visible) .hero-cue-line::after {
   #decaf { --project-intrinsic-height: 720px; }
   #pdf-explainer { --project-intrinsic-height: 730px; }
   #pagepack { --project-intrinsic-height: 700px; }
-  #grt-next-bus { --project-intrinsic-height: 1140px; }
+  #grt-next-bus { --project-intrinsic-height: 1225px; }
   #night-neutralizer { --project-intrinsic-height: 690px; }
   #n-back { --project-intrinsic-height: 870px; }
 }
@@ -8578,7 +8551,7 @@ html.has-visibility-gates:not(.is-hero-visible) .hero-cue-line::after {
   #decaf { --project-intrinsic-height: 790px; }
   #pdf-explainer { --project-intrinsic-height: 590px; }
   #pagepack { --project-intrinsic-height: 745px; }
-  #grt-next-bus { --project-intrinsic-height: 1210px; }
+  #grt-next-bus { --project-intrinsic-height: 1240px; }
   #night-neutralizer { --project-intrinsic-height: 1030px; }
   #n-back { --project-intrinsic-height: 1000px; }
 }

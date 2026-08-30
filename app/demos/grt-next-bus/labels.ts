@@ -1,73 +1,98 @@
 /**
- * The two label helpers that lived in the extension's `popup.ts`, copied so the demo's
- * rows read exactly like the real ones.
+ * The one label helper that lives inside the extension's `popup.ts`, lifted out so
+ * the demo's rows read like the real ones.
  *
- * The interesting rule is the swap at the one-hour mark: inside the hour a rider
- * wants a countdown, past it they want a clock time, so the primary and secondary
- * lines trade places. The colour thresholds are part of the same decision — two
- * minutes is red because you are not going to make it, seven is amber because you
- * might have to move.
+ * VENDORED. `TimeLabels` and `departureLabels` below are copied from
+ * `grt-bus-time/src/popup.ts` at `ce8c4d2` — the file was last redrawn by
+ * `353b821 Redraw the popup as a list of rows that open in place` — and the bodies
+ * are unchanged. The one adaptation is visibility: over there both are module-
+ * private, because nothing outside `popup.ts` needs them. Here they are exported so
+ * `demo.tsx` can import them. Nothing else differs — and that is checked rather than
+ * asserted: "the GRT copies are still copies of the extension" in
+ * `tests/rendered-html.test.mjs` strips the `export` keywords and requires the rest to
+ * appear in `popup.ts` verbatim. It skips when the sibling checkout is absent.
  *
- * READ THIS BEFORE TRUSTING THE PARAGRAPH ABOVE.
+ * What is deliberately NOT here. `popup.ts` builds its rows out of DOM nodes —
+ * `routeBadge`, `departureNoteNodes`, `renderLaterDepartures` — and a function that
+ * returns an `HTMLElement` cannot be copied into a React scene. Those are not
+ * re-expressed here under new names either, because a helper this file invents is a
+ * helper nobody can diff. The scene renders their markup as JSX instead and says so
+ * at each one. `shortTimeLabel`, which this file used to export, is gone for the
+ * plainest reason available: it does not exist upstream any more. Later departures
+ * are plain clock times now.
  *
- * "Copied so the demo's rows read exactly like the real ones" was true when it was
- * written and is not true now, which makes it the most dangerous kind of comment on this
- * page: one that tells you not to check. The extension was rewritten — see
- * `353b821 Redraw the popup as a list of rows that open in place` in `grt-bus-time` —
- * and this file did not follow it. What has diverged, measured against that repository:
+ * THE RULES THIS FILE ENCODES
  *
- *   - `departureLabels` changed shape entirely, to `{ countdown, clock, className }`.
- *   - It gained an overdue branch off `delaySec`, and a day prefix.
- *   - **The amber threshold moved from seven minutes to five.** The sentence above still
- *     says seven, and seven is what this file does.
- *   - `shortTimeLabel` no longer exists over there at all; later departures are clock
- *     times now.
+ * The countdown and the clock have fixed roles, and they do not swap. The clock time
+ * is the stable schedule and the countdown is the quick urgency cue, so a row keeps
+ * its reading order as a departure crosses the one-hour boundary. (An earlier design
+ * traded the two lines' places at that boundary. The row changed shape while you were
+ * looking at it.)
  *
- * `format.ts` beside this one is closer but not clean either: `routeBadgeColor` returns
- * the real ION blue for 300-series and *nothing* for 200-series, selecting a neutral chip,
- * where this scene still paints an invented family tint the extension deleted for being
- * "a badge colour that matches nothing on the bus, the sign or the timetable".
+ * The colour thresholds are two minutes and five. Two minutes is red because you are
+ * not going to make it. The next five are green — not amber — because you still can,
+ * which is the same reading Google Maps' station page gives the number. Anything
+ * further away is neutral ink, and past the hour the countdown grows a word ("in 1 hr
+ * 20 min"), stops being a glance, and steps back down to body size. The class names
+ * `is-soon`, `is-near` and `is-distant` carry those three states to the stylesheet.
  *
- * None of that is dishonesty in the scene — every number it shows is derived from one
- * simulated clock through these functions, so the frame is internally consistent. It is
- * that the popup being reconstructed is one version behind the popup that exists. Fixing
- * it properly is a scene rebuild rather than a leaf-value patch: resyncing
- * `departureLabels` alone would turn the payoff frame from `Due` into `2 min late`, and
- * the neutral route chip is a restyle of `.grt-route-badge`.
+ * A live bus past its own predicted instant shows the delay instead of "Due". That is
+ * the overdue branch, and it is the honest reading: `formatOverdueDelay` in
+ * `format.ts` refuses the case where the prediction is still in the future, so a bus
+ * can be late to the timetable and still have a future arrival without this claiming
+ * otherwise.
  *
- * Whoever picks this up: the honest end state is either a rebuilt scene against the row
- * list, or these two files renamed to say plainly that they are a snapshot of a previous
- * design. What must not happen is this comment going back to claiming they match.
+ * A departure on a later service day is prefixed with its weekday, which is why
+ * `time.ts` is vendored beside this.
  */
 
-import { formatClock, formatCountdown, minutesUntil } from "./format";
+import {
+  formatClock,
+  formatCountdown,
+  formatOverdueDelay,
+  formatWeekday,
+  minutesUntil,
+} from "./format";
+import { serviceDateKey } from "./time";
 
 export interface TimeLabels {
-  primary: string;
-  secondary: string;
+  countdown: string;
+  clock: string;
   className: string;
 }
 
-export function departureLabels(timeMs: number, now = Date.now()): TimeLabels {
+/**
+ * Clock time is the stable schedule; the countdown is the quick urgency cue.
+ * Keeping those roles fixed prevents the row from changing its reading order
+ * as a departure crosses the one-hour boundary.
+ *
+ * When a live bus is past its predicted time, the countdown shows the delay
+ * instead of "Due" — that is more honest and useful at a glance.
+ */
+export function departureLabels(timeMs: number, delaySec?: number, now = Date.now()): TimeLabels {
   const minutes = minutesUntil(timeMs, now);
+  const dayPrefix =
+    serviceDateKey(timeMs) === serviceDateKey(now) ? "" : `${formatWeekday(timeMs)} `;
+  const clock = `${dayPrefix}${formatClock(timeMs)}`;
   if (minutes < 60) {
+    const overdue =
+      delaySec === undefined ? undefined : formatOverdueDelay(timeMs, delaySec, now);
+    if (overdue) {
+      return {
+        countdown: overdue,
+        clock,
+        className: "countdown is-soon",
+      };
+    }
     return {
-      primary: formatCountdown(timeMs, now),
-      secondary: formatClock(timeMs),
-      className: `countdown${minutes <= 2 ? " is-soon" : minutes <= 7 ? " is-near" : ""}`,
+      countdown: formatCountdown(timeMs, now),
+      clock,
+      className: `countdown${minutes <= 2 ? " is-soon" : minutes <= 5 ? " is-near" : ""}`,
     };
   }
   return {
-    primary: formatClock(timeMs),
-    secondary: minutes >= 90 ? `in ${Math.floor(minutes / 60)} hr` : `in ${minutes} min`,
+    countdown: `in ${formatCountdown(timeMs, now)}`,
+    clock,
     className: "countdown is-distant",
   };
-}
-
-/** Follow-up times use a quieter, lower-case vocabulary than the headline. */
-export function shortTimeLabel(timeMs: number, now = Date.now()): string {
-  const minutes = minutesUntil(timeMs, now);
-  if (minutes < 1) return "due";
-  if (minutes < 60) return `${minutes} min`;
-  return formatClock(timeMs);
 }

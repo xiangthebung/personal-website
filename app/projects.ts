@@ -290,16 +290,29 @@ const projectData: Project[] = [
     demo: "grt-next-bus",
     well: "light",
     /* The scene was always full of numbers and short of a reason to care about any of
-       them — a badge counting down, a notification and three stop rows are evidence, and
-       the claims they were evidence for used to be in a written list here. They are labels
-       now, each arriving on the beat its evidence does: on the badge, on the notification,
-       on the row that says a bus is running two minutes late, and on the row that says
-       which stop is closest and how far.
+       them — a badge counting down, a notification and three rows of departures are
+       evidence, and the claims they were evidence for used to be in a written list here.
+       They are labels now, each arriving on the beat its evidence does: on the badge, on
+       the notification, on the note that says a bus is running two minutes late, and on
+       the line of later times an opened row reveals.
+
+       There were five. The fifth said "Your location never leaves the device" and it is
+       gone, because the thing it pointed at is: the popup was redrawn as a list of rows
+       that open in place, and the `Stop 1123 · Closest · 320 m` line the label hung off
+       does not exist any more. The closest stop is signalled by being hoisted to the top
+       with its card outlined and its reorder grip locked, and that is all. The claim is
+       still true and still checkable in the repository — `src/geo.ts` reads a position
+       only after an explicit opt-in and nothing takes a coordinate off the device — but a
+       claim pinned to a 1px outline is a claim pinned to nothing, and this section may
+       only say what its scene shows.
 
        The alert's label carries the lead time rather than the word "before", because the
        card it hangs on prints "7 in 5 min" and the five is `DEFAULT_ALERT_LEAD_MINUTES`
        rather than a number someone liked. The "2 min late" is not invented either —
        measured against the live feed, 670 rows read exactly that on the day it was staged.
+       It now appears twice over, in the two places the extension puts it: in the note
+       while the bus is still coming, and in the countdown column itself once its predicted
+       time has passed, where it replaces "Due".
 
        The claim this project would most like to make is that the countdown survives Chrome
        killing the service worker, which `tests/background-lifecycle.test.mjs` checks by

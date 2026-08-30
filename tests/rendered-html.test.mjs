@@ -222,6 +222,82 @@ test("ported logic has not drifted from the extension it came from", async (t) =
   }
 });
 
+/**
+ * The same check for GRT Next Bus, and it is here because that copy did drift.
+ *
+ * `app/demos/grt-next-bus/format.ts` and `labels.ts` were headed "copied so the demo's
+ * rows read exactly like the real ones", and by the time anybody looked they were a
+ * whole design behind: the extension had been redrawn as a list of rows that open in
+ * place, `departureLabels` had changed shape and moved its amber threshold from seven
+ * minutes to five, `shortTimeLabel` had been deleted over there, and `routeBadgeColor`
+ * still painted invented per-family tints the extension had removed for matching
+ * "nothing on the bus, the sign or the timetable". Every build passed the whole time.
+ *
+ * A comment saying a file is a copy is the most dangerous kind of comment there is,
+ * because it tells the next reader not to check. So this checks. The two whole-file
+ * copies are compared byte for byte with their vendoring banner removed, and the block
+ * lifted out of `popup.ts` is required to appear in `popup.ts` verbatim.
+ */
+test("the GRT copies are still copies of the extension", async (t) => {
+  const siblingRoot = "../../grt-bus-time/src/";
+  if (!(await exists(siblingRoot))) {
+    t.skip("grt-bus-time checkout not present");
+    return;
+  }
+
+  const normalise = (source) => source.replace(/\r\n/g, "\n");
+  /** Drops the leading `VENDORED —` banner, which is the only local addition. */
+  const withoutBanner = (source) => normalise(source).replace(/^\/\*\*[\s\S]*?\*\/\n\n/, "");
+
+  for (const file of ["format.ts", "time.ts"]) {
+    const [mine, theirs] = await Promise.all([
+      read(`../app/demos/grt-next-bus/${file}`),
+      read(`${siblingRoot}${file}`),
+    ]);
+    assert.match(
+      normalise(mine),
+      /^\/\*\*\n \* VENDORED/,
+      `${file} has lost the banner saying where it came from`,
+    );
+    assert.equal(
+      withoutBanner(mine),
+      normalise(theirs),
+      `${file} has drifted from the extension; recopy it rather than editing in place`,
+    );
+  }
+
+  /*
+   * `departureLabels` is not a file over there — it lives inside `popup.ts`, private to
+   * it. The copy here exports it, which is the one declared adaptation, so `export` is
+   * what gets stripped before the comparison and nothing else is allowed to differ.
+   */
+  const [labels, popup] = await Promise.all([
+    read("../app/demos/grt-next-bus/labels.ts"),
+    read(`${siblingRoot}popup.ts`),
+  ]);
+  const lifted = normalise(labels)
+    .slice(normalise(labels).indexOf("export interface TimeLabels"))
+    .replace(/^export /gm, "")
+    .trimEnd();
+  assert.ok(lifted.length > 500, "labels.ts no longer holds the block it claims to copy");
+  assert.ok(
+    normalise(popup).includes(lifted),
+    "labels.ts no longer matches `departureLabels` in the extension's popup.ts; recopy it",
+  );
+
+  /* And the helper the redraw deleted has not crept back. It was still exported here
+     for months after it stopped existing over there.
+
+     Comments stripped first, for the same reason the caption test strips them: the file
+     header records *why* that function is gone and naturally names it, and a check that
+     cannot tell a declaration from a sentence about one would forbid writing the sentence. */
+  assert.doesNotMatch(
+    normalise(labels).replace(/\/\*[\s\S]*?\*\//g, " "),
+    /shortTimeLabel/,
+    "shortTimeLabel is back, and upstream has none",
+  );
+});
+
 test("demos that run a loop stop running it off screen", async () => {
   for (const id of ["night-neutralizer", "n-back", "grt-next-bus", "choir-practice"]) {
     const source = await read(`../app/demos/${id}/demo.tsx`);

@@ -102,14 +102,22 @@ const SCENES = [
   },
   {
     id: "grt-next-bus",
-    beats: ["street", "stops"],
+    /* `later` as well as the two the labels arrive on, because the third label is
+       pinned inside a panel that is animating open — a `grid-template-rows` 0fr→1fr
+       — and a plate placed from a box that is still growing is placed wrong. This is
+       the beat after the press, where it has finished. */
+    beats: ["street", "stops", "later"],
     want: [
       ".gx-action",
       ".gx-badge",
       ".gx-popup",
-      ".grt-stop-card",
-      ".grt-stop-live",
-      ".grt-stop-name",
+      ".gx-stop-card",
+      ".gx-stop-name",
+      ".gx-service-row",
+      ".gx-departure-note",
+      ".gx-row-when",
+      ".gx-service-later",
+      ".gx-detail-inner",
       ".gx-browser",
     ],
   },

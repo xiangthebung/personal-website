@@ -1,11 +1,12 @@
 /**
- * The one constant `format.ts` needs from the extension's `types.ts`.
+ * The one constant the two vendored files need from the extension's `types.ts`.
  *
- * `format.ts` is copied verbatim so the countdown text on this page is exactly
- * the countdown text in the popup — including the fact that it says `Due` and not
- * `now` when a bus is at the stop. Rather than copy 300 lines of unrelated GTFS
- * shapes to satisfy one import, the module keeps its import path and this file
- * supplies the value.
+ * `format.ts` and `time.ts` beside this one are verbatim copies, so they keep their
+ * import path — `from "./types"` — and this supplies the value rather than dragging
+ * across three hundred lines of GTFS index shapes to satisfy one import. That is the
+ * whole of the adaptation, and it is why those two can stay diffable.
+ *
+ * The value itself is copied too: `AGENCY_TIME_ZONE` in `grt-bus-time/src/types.ts`.
  */
 
 /**

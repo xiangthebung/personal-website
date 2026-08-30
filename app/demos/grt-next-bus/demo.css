@@ -19,9 +19,34 @@
  *
  * A calendar week with a browser around it, and the extension answering the only
  * question that matters from the toolbar: how long until the next one.
+ *
+ * TWO HALVES, ONE PREFIX
+ *
+ * Everything here is `gx-`, which is the rule the whole page follows and what
+ * `tests/rendered-html.test.mjs` derives its legal prefix set from. But the file is
+ * still two halves, and the split is the thing to know before editing it:
+ *
+ *   THE STAGE — the browser, the chrome, the calendar behind it, the notification,
+ *   the road and the bus. Invented for this page. Nothing over in `grt-bus-time`
+ *   corresponds to any of it.
+ *
+ *   THE POPUP — everything from `.gx-popup` down to `.gx-route-badge`. Every class
+ *   name in that half is the extension's own class name with `gx-` in front of it
+ *   (`.service-row` → `.gx-service-row`), and the values are the ones in
+ *   `grt-bus-time/src/popup.css`: Material 3 roles, the neutral Maps greys, the 72px
+ *   row, the 40px chip, the 0fr→1fr disclosure. So a change to the popup lands in
+ *   exactly one of these two halves, and it is findable by name.
+ *
+ * This used to be a `gx-`/`grt-` split doing the same job, and the halves have not
+ * moved — only the prefix has. What did move is what the popup half *is*: it was a
+ * reconstruction of the stack-of-cards design the extension had before
+ * `353b821 Redraw the popup as a list of rows that open in place`, kept long enough
+ * that the file it was copied from had been rewritten twice underneath it.
  */
 
-/* --- the browser ---------------------------------------------------------- */
+/* ==========================================================================
+   THE STAGE — the browser
+   ========================================================================== */
 
 .gx-browser {
   position: relative;
@@ -112,8 +137,8 @@
   white-space: nowrap;
 }
 
-/* The extension's own button. The only thing clicked in this scene, so it is the
-   only thing in the chrome with full contrast. */
+/* The extension's own button. The first of the two things clicked in this scene, so
+   it is the only thing in the chrome with full contrast. */
 .gx-action {
   position: relative;
   display: inline-flex;
@@ -180,445 +205,7 @@
   }
 }
 
-/* --- the tab you had open ------------------------------------------------- */
-
-/* This carries the window's height, and it is why the popup needs no magic
-   number: six agenda rows of a fixed minimum are taller than any popup this
-   scene shows, and the popup simply overhangs if that ever stops being true. */
-.gx-page {
-  position: relative;
-  padding: 18px 20px 20px;
-  border-radius: 0 0 13px 13px;
-  overflow: hidden;
-}
-
-.gx-page-head {
-  margin: 0 0 12px;
-  color: rgba(16, 40, 44, 0.42);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.gx-agenda {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.gx-agenda-time {
-  flex: 0 0 44px;
-  padding-top: 6px;
-  color: rgba(16, 40, 44, 0.34);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-}
-
-.gx-agenda-slot {
-  flex: 1;
-  min-width: 0;
-}
-
-/* The reason the countdown matters. Dimmed, because it is set dressing, but
-   legible, because "5:30" against a bus at "5:18 PM" is the whole stake. */
-.gx-agenda-event {
-  margin: 4px 0 6px;
-  padding: 9px 12px;
-  border-left: 3px solid #c26a15;
-  border-radius: 4px 7px 7px 4px;
-  color: color-mix(in srgb, #c26a15 78%, #16262c);
-  background: color-mix(in srgb, #c26a15 12%, transparent);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-/* --- the popup ------------------------------------------------------------ */
-
-.gx-popup {
-  position: absolute;
-  z-index: 3;
-  /* Clear of the chrome, not over it. The badge is the feature this project leads
-     with, and the first version of this pulled the popup up across the toolbar and
-     hid the very button it had just been opened from. */
-  top: 44px;
-  /*
-   * Inside the window it belongs to.
-   *
-   * This was `-26px`, which hung the panel 25px past the right edge of its own browser
-   * frame — measured at 1440 by `scripts/spec-anchors.mjs`, which reported the popup at
-   * x 54.7–102.9% of a layer whose browser ends at 100%. Chrome does not do that. A
-   * browser-action popup is a window Chrome puts under the button and clamps to the
-   * browser it came from; there is no arrangement in which it spills onto the desktop.
-   * A panel breaking its own frame reads as a drawing of a popup rather than a popup,
-   * which is the one thing this reconstruction cannot afford — the frame is what says
-   * "this is a browser", and everything inside it borrows that.
-   *
-   * 10px rather than 0: Chrome leaves a hairline of window either side, and a panel flush
-   * to the edge reads as a sidebar.
-   */
-  right: 10px;
-  width: 420px;
-  border-radius: 14px;
-  background: var(--surface-2);
-  box-shadow:
-    0 0 0 1px rgba(16, 40, 44, 0.09),
-    0 36px 72px -30px rgba(6, 20, 24, 0.5);
-  opacity: 0;
-  /* Grows out of its own button, which is where a popup comes from. */
-  transform: scale(0.965) translateY(-9px);
-  /* Re-measured with the panel. The button's centre is at 803px of an 872px browser and
-     the popup now spans 442–862, putting its origin at 86% of its own width — so it still
-     grows out of the control that was pressed rather than out of a corner. */
-  transform-origin: 86% 0;
-  transition:
-    opacity 0.2s ease,
-    transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
-  pointer-events: none;
-}
-
-.gx-popup[data-open="true"] {
-  opacity: 1;
-  transform: none;
-}
-
-.grt-app {
-  padding: 0 14px 18px;
-  border-radius: 14px;
-  color: var(--text);
-  background:
-    radial-gradient(120% 60% at 100% 0%, var(--bg-glow) 0%, transparent 62%),
-    var(--bg);
-}
-
-.grt-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 0 12px;
-}
-
-.grt-brand {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.grt-eyebrow {
-  color: var(--accent);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.grt-title {
-  margin-top: 2px;
-  font-size: 21px;
-  font-weight: 750;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-}
-
-.grt-feed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 20px;
-  margin-bottom: 12px;
-  padding: 0 2px;
-}
-
-.grt-feed-state {
-  display: inline-flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--text-soft);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.grt-feed-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: var(--text-muted);
-}
-
-.grt-feed-state.is-live {
-  color: var(--live);
-}
-
-.grt-feed-state.is-live .grt-feed-dot {
-  background: var(--live);
-  box-shadow: 0 0 0 3px var(--live-soft);
-  animation: grt-pulse 2.4s ease-in-out infinite;
-}
-
-@keyframes grt-pulse {
-  50% {
-    opacity: 0.45;
-  }
-}
-
-.grt-feed-detail {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  white-space: nowrap;
-}
-
-/* --- stop cards ----------------------------------------------------------- */
-
-.grt-stop-list {
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.grt-stop-card {
-  padding: 14px 14px 13px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  transition:
-    border-color 0.4s ease,
-    box-shadow 0.4s ease;
-}
-
-.grt-stop-card.is-nearest {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-}
-
-/* The card for the stop the bus has just reached. Not a colour change — the row
-   already went red on its own — just enough lift to tie it to the pole outside. */
-.grt-stop-card[data-hit="true"] {
-  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
-  box-shadow:
-    var(--shadow-card),
-    0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent);
-}
-
-.grt-stop-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.grt-stop-identity {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Wraps to two lines rather than truncating: a stop name is the one thing that
-   has to stay readable. */
-.grt-stop-name {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 750;
-  line-height: 1.32;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.grt-stop-meta {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 5px;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.grt-stop-tag {
-  padding: 2px 6px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-soft);
-  font-size: 9.5px;
-  font-weight: 800;
-}
-
-.grt-departures {
-  margin: 12px 0 0;
-  padding: 0;
-  border-top: 1px solid var(--border);
-  list-style: none;
-}
-
-/* Baseline alignment, not centring: the copy column is taller than the time
-   column, so matching first baselines keeps the headsign, the route number and
-   the countdown reading as one line across the row. */
-.grt-departure {
-  display: flex;
-  min-height: 54px;
-  align-items: baseline;
-  gap: 11px;
-  padding: 10px 0 0;
-}
-
-.grt-route-badge {
-  display: inline-flex;
-  min-width: 34px;
-  height: 24px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  border-radius: 7px;
-  color: var(--accent-contrast);
-  background: var(--accent);
-  font-size: 11.5px;
-  font-weight: 850;
-  letter-spacing: -0.01em;
-}
-
-.grt-departure-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.grt-headsign {
-  margin: 0;
-  overflow: hidden;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Both of these keep their height when empty, so a row does not resize as live
-   information arrives and drops away. */
-.grt-departure-note,
-.grt-departure-then {
-  display: flex;
-  min-height: 16px;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0 0;
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.35;
-  white-space: nowrap;
-}
-
-.grt-departure-then {
-  margin-top: 3px;
-}
-
-.grt-note-part {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.grt-note-sep {
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
-.grt-note-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--live);
-  font-weight: 750;
-}
-
-.grt-note-live::before {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  content: "";
-}
-
-.grt-note-late {
-  color: var(--warn);
-  font-weight: 700;
-}
-
-.grt-note-early {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.grt-then-label {
-  color: var(--text-muted);
-}
-
-.grt-then-time {
-  color: var(--text-soft);
-  font-variant-numeric: tabular-nums;
-  font-weight: 650;
-}
-
-.grt-departure-time {
-  flex: 0 0 auto;
-  text-align: right;
-}
-
-.grt-countdown {
-  display: block;
-  font-size: 17px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.25;
-  /* Keyed by its own text, so a minute passing is visible rather than inferred. */
-  animation: gx-count 0.45s ease-out;
-}
-
-@keyframes gx-count {
-  from {
-    opacity: 0.15;
-    transform: translateY(-4px);
-  }
-}
-
-.grt-is-soon {
-  color: var(--danger);
-}
-
-.grt-is-near {
-  color: var(--warn);
-}
-
-.grt-is-distant {
-  color: var(--text-soft);
-  font-size: 15px;
-  font-weight: 750;
-}
-
-.grt-clock {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* --- the notification ----------------------------------------------------- */
-
-/* --- the browser's notification bell -------------------------------------
+/* --- the browser's notification bell --------------------------------------
    The alert used to arrive with nothing in the chrome to have produced it, which
    made the banner read as a card the page had decided to show. A bell that rings
    on the same beat gives it an origin, and gives the scene a beat of "something
@@ -690,33 +277,700 @@
   }
 }
 
-/* Arrives from outside the frame, because that is where a system notification
-   comes from: not from the page, and not from anything the rider did. */
-.gx-alert {
-  position: absolute;
-  z-index: 8;
-  top: 54px;
-  right: -6.5vw;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  width: 352px;
-  padding: 14px 14px 15px;
-  border-radius: 13px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(16, 40, 44, 0.08),
-    0 30px 64px -26px rgba(8, 26, 30, 0.5);
-  opacity: 0;
-  transform: translateX(62px) scale(0.97);
-  transition:
-    opacity 0.3s ease,
-    transform 0.44s cubic-bezier(0.2, 0.9, 0.25, 1);
+/* ==========================================================================
+   THE STAGE — the tab you had open
+   ========================================================================== */
+
+/* This carries the window's height, and it is why the popup needs no magic
+   number: six agenda rows of a fixed minimum are taller than the popup with its
+   first row open, and the popup simply overhangs if that ever stops being true. */
+.gx-page {
+  position: relative;
+  padding: 18px 20px 20px;
+  border-radius: 0 0 13px 13px;
+  overflow: hidden;
 }
 
-.gx-alert[data-in="true"] {
+.gx-page-head {
+  margin: 0 0 12px;
+  color: rgba(16, 40, 44, 0.42);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gx-agenda {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gx-agenda-time {
+  flex: 0 0 44px;
+  padding-top: 6px;
+  color: rgba(16, 40, 44, 0.34);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.gx-agenda-slot {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The reason the countdown matters. Dimmed, because it is set dressing, but
+   legible, because "5:30" against a bus at "5:18 PM" is the whole stake. */
+.gx-agenda-event {
+  margin: 4px 0 6px;
+  padding: 9px 12px;
+  border-left: 3px solid #c26a15;
+  border-radius: 4px 7px 7px 4px;
+  color: color-mix(in srgb, #c26a15 78%, #16262c);
+  background: color-mix(in srgb, #c26a15 12%, transparent);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* ==========================================================================
+   THE POPUP
+   --------------------------------------------------------------------------
+   From here to the route badge, every class is the extension's own with `gx-` in
+   front of it, and every value is the one in `grt-bus-time/src/popup.css`.
+   ========================================================================== */
+
+.gx-popup {
+  /*
+   * The extension's Material 3 light palette, scoped to the panel so the token
+   * names can stay the ones the real stylesheet uses.
+   *
+   * Neutral, not tinted, and that is a decision rather than an oversight. The M3
+   * baseline these started from tints its containers toward the primary — #f0f4f9,
+   * #e9eef6, #dde3ea are all blue greys — but Google Maps does not: sampling its
+   * transit panel returns #ffffff for the sheet, #f2f2f2 behind it and #e3e3e3 for
+   * every rule on the page. A departure board is the same kind of surface.
+   *
+   * The previous copy of this block was mint, tuned to sit inside a mint section.
+   * That is the scene making the product look like the site, which is the same class
+   * of error as a scene printing a string the product does not.
+   */
+  --bg: #f2f2f2; /* the page inside the panel */
+  --surface: #ffffff; /* the list */
+  --surface-2: #e9e9e9;
+  --border: #e3e3e3; /* rules, and the neutral route chip */
+  --text: #1f1f1f;
+  --text-soft: #444746;
+  --text-muted: #5e5e5e;
+  --accent: #0b57d0;
+  --live: #2b7f3f;
+  --danger: #d32f28;
+  --error: #b3261e;
+  --radius-lg: 16px;
+  --radius-xs: 4px; /* the route chip, at the radius Maps draws it */
+
+  /* Type scale. Eight rem steps with an 11px floor, which is the ramp the redraw
+     collapsed seventeen literal pixel sizes down to. */
+  --text-sm: 0.75rem;
+  --text-lg: 0.875rem;
+  --text-xl: 1rem;
+  --text-4xl: 1.375rem; /* title-large: the countdown, and the popup's own title */
+  --track-body-sm: 0.4px;
+  --track-body-md: 0.25px;
+  --track-label: 0.1px;
+  --w-medium: 500;
+
+  /* One `.row-main`, and the geometry the detail panel indents itself by. */
+  --row-h: 72px;
+  --state-ink: 31, 31, 31;
+
+  position: absolute;
+  z-index: 3;
+  /* Clear of the chrome, not over it. The badge is the feature this project leads
+     with, and the first version of this pulled the popup up across the toolbar and
+     hid the very button it had just been opened from. */
+  top: 44px;
+  /*
+   * Inside the window it belongs to.
+   *
+   * This was `-26px`, which hung the panel 25px past the right edge of its own browser
+   * frame — measured at 1440 by `scripts/spec-anchors.mjs`, which reported the popup at
+   * x 54.7–102.9% of a layer whose browser ends at 100%. Chrome does not do that. A
+   * browser-action popup is a window Chrome puts under the button and clamps to the
+   * browser it came from; there is no arrangement in which it spills onto the desktop.
+   * A panel breaking its own frame reads as a drawing of a popup rather than a popup,
+   * which is the one thing this reconstruction cannot afford — the frame is what says
+   * "this is a browser", and everything inside it borrows that.
+   *
+   * 10px rather than 0: Chrome leaves a hairline of window either side, and a panel flush
+   * to the edge reads as a sidebar.
+   */
+  right: 10px;
+  width: 420px;
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow:
+    0 0 0 1px rgba(16, 40, 44, 0.09),
+    0 36px 72px -30px rgba(6, 20, 24, 0.5);
+  opacity: 0;
+  /* Grows out of its own button, which is where a popup comes from. */
+  transform: scale(0.965) translateY(-9px);
+  /* Re-measured with the panel. The button's centre is at 803px of an 872px browser and
+     the popup now spans 442–862, putting its origin at 86% of its own width — so it still
+     grows out of the control that was pressed rather than out of a corner. */
+  transform-origin: 86% 0;
+  transition:
+    opacity 0.2s ease,
+    transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: none;
+}
+
+.gx-popup[data-open="true"] {
   opacity: 1;
   transform: none;
+}
+
+.gx-app {
+  padding: 0 0 8px;
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* Everything below the top bar is inset 8px, which is what puts the row's copy
+   column at a knowable distance from the panel edge. Two in-frame labels are hung
+   off that distance — see `nudge` in the scene's `SPECS`. */
+.gx-feed-line,
+.gx-stop-list {
+  margin-inline: 8px;
+}
+
+/* --- top bar: M3's small app bar, 64dp, title-large, 48dp icon buttons ----- */
+
+.gx-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 64px;
+  padding: 0 4px 0 16px;
+}
+
+.gx-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.gx-brand-title {
+  overflow: hidden;
+  font-size: var(--text-4xl);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.27;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-topbar-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.gx-icon-button {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text-soft);
+}
+
+/* --- the feed line: what the times are, and how fresh they are ------------- */
+
+.gx-feed-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 20px;
+  margin-bottom: 12px;
+}
+
+.gx-feed-state {
+  display: inline-flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+  letter-spacing: var(--track-body-sm);
+  line-height: 1.33;
+}
+
+.gx-feed-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.gx-feed-state.is-live {
+  color: var(--live);
+}
+
+.gx-feed-state.is-live .gx-feed-dot {
+  background: var(--live);
+  animation: gx-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes gx-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.gx-feed-detail {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  letter-spacing: var(--track-body-sm);
+  white-space: nowrap;
+}
+
+/* --- the card: one physical stop ------------------------------------------ */
+
+.gx-stop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gx-stop-card {
+  /*
+   * The row's geometry, derived once here so the detail panel's indent cannot
+   * drift out of alignment with the copy column above it.
+   */
+  --row-pad: 8px;
+  --toggle-pad: 8px;
+  --badge-w: 40px;
+  --badge-gap: 16px;
+  --copy-inset: calc(var(--row-pad) + var(--toggle-pad) + var(--badge-w) + var(--badge-gap));
+
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+/* The closest saved stop, and the whole of what location produces on this screen
+   now: an outline, and being first. The distance and the `Closest` chip that used
+   to sit under the name went with the redraw. */
+.gx-stop-card.is-nearest {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* An M3 list subheader.
+   The stop name is the loudest thing on the card after the countdown, because a
+   rider scans this list for *their stop*. It used to be small grey text above a
+   large black destination, which had the hierarchy exactly backwards. */
+.gx-stop-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 4px 0 16px;
+}
+
+.gx-stop-identity {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* Truncates rather than wrapping: the header holds one line so the rows below it
+   keep their rhythm. */
+.gx-stop-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--text-xl);
+  font-weight: var(--w-medium);
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Drag to reorder — except on the closest stop, where the order is not the rider's
+   to set while "closest first" is on. Drawn in its disabled state there, which is
+   the tell that the list is ordered from a position rather than by hand. */
+.gx-stop-grip {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text-soft);
+}
+
+.gx-stop-grip[data-locked="true"] {
+  opacity: 0.38;
+}
+
+/* --- the row -------------------------------------------------------------- */
+
+.gx-service-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.gx-service-row {
+  border-radius: var(--radius-lg);
+}
+
+/*
+ * An opened row used to move onto `--surface-2` with an elevation shadow — M3's
+ * "lift the item onto its own container". Photographed on a white card it read as
+ * *disabled*: a flat grey slab with grey text on it. The disclosure does not need a
+ * colour to announce itself; the content appearing is the announcement, and a
+ * hairline is enough to tie the row to its detail.
+ */
+.gx-service-row[data-open="true"] .gx-detail-inner {
+  border-top: 1px solid var(--border);
+}
+
+/* The whole row is one highlight surface, so the row reads as one thing rather than
+   as two adjacent controls. */
+.gx-row-main {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--row-h);
+  padding: 0 var(--row-pad);
+  border-radius: var(--radius-lg);
+  isolation: isolate;
+}
+
+.gx-row-toggle {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  align-self: stretch;
+  gap: var(--badge-gap);
+  padding: 8px var(--toggle-pad);
+  text-align: left;
+}
+
+.gx-row-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.gx-service-destination {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: 400;
+  letter-spacing: var(--track-body-md);
+  line-height: 1.43;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Bold is the signal that a bus is imminent, so it has to stay a minority of rows:
+ * only the next two minutes get it. Keyed off the countdown's own class rather than
+ * a class on the row, because in the extension the ten-second ticker rewrites
+ * `className` on the countdown and nothing else.
+ */
+.gx-row-main:has(.gx-is-soon) .gx-service-destination {
+  font-weight: var(--w-medium);
+}
+
+/* `Live · 2 min late · 5 stops away`, or `Scheduled`. */
+.gx-departure-note {
+  display: block;
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+  letter-spacing: var(--track-body-sm);
+  line-height: 1.33;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gx-note-part {
+  display: inline;
+}
+
+/*
+ * The dots are punctuation between facts, not facts themselves, and they need air —
+ * set tight, the note reads as one run-on word.
+ *
+ * Recedes by colour, not by `opacity`. Faded to 60% this sat at roughly 2.9:1, and
+ * because the fade lives on the element rather than in `color`, a contrast check that
+ * reads the computed colour cannot see it.
+ */
+.gx-note-sep {
+  margin: 0 5px;
+  color: var(--text-muted);
+}
+
+.gx-note-live {
+  color: var(--live);
+  font-weight: var(--w-medium);
+}
+
+.gx-note-scheduled {
+  color: var(--text-soft);
+}
+
+.gx-note-late {
+  color: var(--danger);
+  font-weight: var(--w-medium);
+}
+
+.gx-note-early {
+  color: var(--live);
+  font-weight: var(--w-medium);
+}
+
+.gx-row-when {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+/* --- the two numbers ------------------------------------------------------ */
+
+/*
+ * The countdown is the hero. It was set at body size, in grey, in the corner — the
+ * same weight as the destination beside it — on a screen whose entire job is to say
+ * how long you have. Title-large, tabular, and dark enough to be the first thing the
+ * eye lands on.
+ */
+.gx-countdown {
+  display: block;
+  color: var(--text);
+  font-size: var(--text-4xl);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.27;
+  white-space: nowrap;
+  /* Remounted whenever the text changes, so the tick plays without the scene
+     tracking minute boundaries. Same trick as the toolbar badge. */
+  animation: gx-count 0.45s ease-out;
+}
+
+@keyframes gx-count {
+  from {
+    opacity: 0.15;
+    transform: translateY(-4px);
+  }
+}
+
+/*
+ * Urgency is carried by the colour of the number itself, as it is on the Maps
+ * station page, rather than by a pill around it: two minutes out reads red, the next
+ * five green, and anything further away stays neutral. Beyond an hour the label
+ * grows a word ("in 1 hr 20 min") and stops being a glance, so it steps back down to
+ * body size.
+ *
+ * The middle band was amber at seven minutes here for as long as the copy of
+ * `departureLabels` beside this file was. Both are five and green now, which is what
+ * the extension does.
+ */
+.gx-is-soon {
+  color: var(--danger);
+}
+
+.gx-is-near {
+  color: var(--live);
+}
+
+.gx-is-distant {
+  color: var(--text-soft);
+  font-size: var(--text-lg);
+  line-height: 1.43;
+}
+
+.gx-arrival-time {
+  display: inline;
+  color: var(--text-soft);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--track-body-sm);
+  white-space: nowrap;
+}
+
+.gx-row-when .gx-arrival-time {
+  display: block;
+  margin-top: -2px;
+  line-height: 1.33;
+}
+
+/* --- the disclosure ------------------------------------------------------- */
+
+/* 0fr → 1fr on a grid row, which is how a panel of unknown height animates open
+   without anybody having to measure it. */
+.gx-detail-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.gx-service-row[data-open="true"] .gx-detail-wrap {
+  grid-template-rows: 1fr;
+}
+
+.gx-detail {
+  overflow: hidden;
+}
+
+.gx-detail-inner {
+  margin-left: var(--copy-inset);
+  padding: 12px 16px 12px 0;
+}
+
+/*
+ * The departures after the next one.
+ *
+ * The settings panel's "Times shown per route" already fed its value into
+ * `nextBus(..., n)`, which filled `rest` — but the single call site rendered with
+ * `minimal: true`, and that branch dropped `rest` on the floor. The setting therefore
+ * had no visible effect at any of its four values, on a departure-board extension
+ * whose home screen showed exactly one bus per stop. This is the row that makes it
+ * real, and it is the reason a row is worth opening.
+ */
+.gx-service-later {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: var(--text-lg);
+  letter-spacing: var(--track-body-md);
+  line-height: 1.43;
+}
+
+.gx-service-later-label::after {
+  content: " ";
+}
+
+.gx-service-later .gx-arrival-time {
+  font-size: var(--text-lg);
+  letter-spacing: var(--track-body-md);
+}
+
+.gx-service-later .gx-arrival-time + .gx-arrival-time::before {
+  content: ", ";
+}
+
+/*
+ * The actions. `wrap` because at a large browser font the controls no longer sit
+ * side by side and should stack rather than overflow, and the negative margin
+ * cancels the text buttons' own 12px inset so their labels line up with the copy
+ * above them.
+ */
+.gx-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 8px -12px 0;
+}
+
+/* An M3 text button. The pair here replaced a bare bell in the row's leading slot
+   and a bare red cross alone in this panel: three identical unlabelled icons down
+   the left edge said nothing about what they did, cost the destination 36px of the
+   width it was already truncating, and — because arrival alerts are a paid feature —
+   made the most repeated control on the screen an upsell for most riders. */
+.gx-text-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 20px;
+  color: var(--accent);
+  font-size: var(--text-lg);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--track-label);
+  white-space: nowrap;
+}
+
+.gx-text-button.is-danger {
+  color: var(--error);
+}
+
+/* --- the route chip ------------------------------------------------------- */
+
+/*
+ * Google paints a badge with the agency's `route_color` and falls back to a neutral
+ * chip when the feed has none — a white pill with a 1px rule and the number a weight
+ * heavier, standing in for the colour that is missing. GRT's feed has no colour
+ * columns, so that fallback is the common case and it is the default here;
+ * `routeBadgeColor()` returns a value only for ION, and the inline style it sets
+ * paints over `border-color` so a coloured chip loses the rule without changing size.
+ *
+ * The copy of that function on this page used to hand the 200- and 300-series
+ * invented family tints. A badge colour that matches nothing on the bus, the sign or
+ * the timetable is worse than no colour at all.
+ */
+.gx-route-badge {
+  display: inline-flex;
+  min-width: var(--badge-w, 40px);
+  min-height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  font-weight: var(--w-medium);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--track-label);
+}
+
+/* ==========================================================================
+   THE STAGE — a notification, in the corner of your actual window
+   ========================================================================== */
+
+.gx-os-alert {
+  position: absolute;
+  top: clamp(14px, 2.2vh, 26px);
+  right: clamp(14px, 1.6vw, 28px);
+  display: flex;
+  width: min(374px, calc(100vw - 32px));
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 14px 15px;
+  border-radius: 14px;
+  color: #12201f;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(16, 40, 44, 0.09),
+    0 34px 70px -24px rgba(8, 26, 30, 0.55);
+  /* Comes in the way the operating system's does: from off the right edge, fast,
+     with a small overshoot. */
+  animation: gx-os-in 460ms cubic-bezier(0.18, 1.1, 0.28, 1) both;
+}
+
+@keyframes gx-os-in {
+  from {
+    opacity: 0;
+    transform: translate3d(28px, -8px, 0) scale(0.96);
+  }
 }
 
 .gx-alert-icon {
@@ -776,20 +1030,53 @@
   color: rgba(16, 40, 44, 0.32);
 }
 
-/* --- the route ------------------------------------------------------------ */
+/* The claim that belongs to that card, hung on the card.
+   A zero-size point on the notification's left edge, halfway down it, which is all the
+   geometry a `SpecPlate` needs: the plate translates itself fully left of the point and
+   the pin's dot stays on it. So the label is correct at every window width, which is the
+   thing a percentage of the pod could never be — the notification is not in the pod.
+   See `ALERT_SPEC` in the scene for what was wrong before.
+   Delayed behind the card, because a label arriving with the thing it labels reads as part
+   of the notification rather than as an annotation of it. */
+.gx-alert-spec {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0;
+  height: 0;
+  animation: gx-spec-in 300ms ease-out both;
+  animation-delay: 420ms;
+}
 
-/* Runs out past both edges of the section, so the bus the countdown is counting
-   arrives from somewhere rather than from the border of a card. The band sits in
-   the space the caption's top margin reserves. */
-/* Wider than the viewport at any viewport, and centred on the stage.
-   This used to be `left: -34vw; right: -20vw`, which worked only while the stage grew
-   with the window. Once `.project-body` was given a measure the stage stopped growing
-   at about 1600px, so on a 2560px screen those overhangs no longer reached: the road
-   started 80px inside the left edge and stopped 50px short of the right one, and a
-   road with two visible ends is a drawn line rather than a street passing through.
-   Anchoring the width to the viewport instead keeps both ends off-screen at every
-   width, and because the pole and the bus are placed as percentages of this element,
-   their spacing scales with it rather than sliding off one end. */
+@keyframes gx-spec-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .gx-alert-spec {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   THE STAGE — the route
+   --------------------------------------------------------------------------
+   Runs out past both edges of the section, so the bus the countdown is counting
+   arrives from somewhere rather than from the border of a card.
+
+   Wider than the viewport at any viewport, and centred on the stage. This used to be
+   `left: -34vw; right: -20vw`, which worked only while the stage grew with the
+   window. Once `.project-body` was given a measure the stage stopped growing at about
+   1600px, so on a 2560px screen those overhangs no longer reached: the road started
+   80px inside the left edge and stopped 50px short of the right one, and a road with
+   two visible ends is a drawn line rather than a street passing through. Anchoring
+   the width to the viewport instead keeps both ends off-screen at every width, and
+   because the pole and the bus are placed as percentages of this element, their
+   spacing scales with it rather than sliding off one end.
+   ========================================================================== */
+
 .gx-street {
   position: absolute;
   z-index: 1;
@@ -834,7 +1121,7 @@
 }
 
 /* The stops behind yours. There are as many between the bus and the pole as the
-   card says there are, because both come from the same clock. */
+   row says there are, because both come from the same clock. */
 .gx-stop-tick {
   position: absolute;
   bottom: 33px;
@@ -849,7 +1136,7 @@
 }
 
 /* Behind the bus. The stops it has already called at are spent, so the ones left
-   between it and your pole are countable — which is the number the card claims. */
+   between it and your pole are countable — which is the number the row claims. */
 .gx-stop-tick[data-passed="true"] {
   height: 8px;
   background: color-mix(in srgb, var(--project-accent) 14%, transparent);
@@ -858,33 +1145,6 @@
 
 /* The light thrown in front of it. Wide, soft and low-contrast: enough to say
    which way the bus is going, not enough to look like night. */
-/* The in-frame labels, as transit signage.
-   This is the one section about a physical network with its own graphic language, so its
-   labels borrow it: a filled dark-green plate, white uppercase mono, wide tracking, almost
-   no corner radius. The same treatment as the destination sign on the front of a bus, and
-   as the route badges the popup is already full of. See `.speclayer` for the component.
-
-   `.gx-alert-spec` is in the same list because it is the same signage on the same scene's
-   label — it is only declared separately because that one is portalled to `document.body`
-   with the notification and cannot inherit anything from the pod. */
-.gx-specs,
-.gx-alert-spec {
-  --spec-ink: #f2fbf6;
-  --spec-paper: #145c40;
-  --spec-edge: rgba(255, 255, 255, 0.16);
-  --spec-gloss: rgba(255, 255, 255, 0.14);
-  --spec-dot: #145c40;
-  --spec-shadow: rgba(10, 34, 28, 0.5);
-  --spec-radius: 3px;
-  --spec-pad: 0.28rem 0.52rem;
-  --spec-font: var(--font-geist-mono), ui-monospace, monospace;
-  --spec-size: clamp(9px, 1vw, 10.5px);
-  --spec-weight: 700;
-  --spec-tracking: 0.09em;
-  --spec-case: uppercase;
-  --spec-lead: 16px;
-}
-
 .gx-beam {
   position: absolute;
   right: -6px;
@@ -980,7 +1240,7 @@
      This replaced `transition: left 1.5s`, which was the reported lag. A per-beat target
      with a 1.5s transition on a 2,600ms beat means the bus drives for 1.5s and then stands
      still for 1.1s — nine lurches with a pause after each. It was not slow, it kept
-     stopping, and no easing curve fixes a value that only exists at nine instants.
+     stopping, and no easing curve fixes a value that only exists at ten instants.
 
      The 180ms that is left does a different job: it smooths the change of *speed* at each
      beat boundary, since the simulated clock jumps unevenly and every segment therefore has
@@ -1021,7 +1281,7 @@
 }
 
 /* The route number on the destination sign, which is the same number as the badge
-   in the card. */
+   in the row. */
 .gx-bus-route {
   position: absolute;
   top: 12.5%;
@@ -1034,131 +1294,41 @@
   text-align: center;
 }
 
-/* --- GRT: a notification, in the corner of your actual window ------------- */
-.gx-os-alert {
-  position: absolute;
-  top: clamp(14px, 2.2vh, 26px);
-  right: clamp(14px, 1.6vw, 28px);
-  display: flex;
-  width: min(374px, calc(100vw - 32px));
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 14px 15px;
-  border-radius: 14px;
-  color: #12201f;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(16, 40, 44, 0.09),
-    0 34px 70px -24px rgba(8, 26, 30, 0.55);
-  /* Comes in the way the operating system's does: from off the right edge, fast,
-     with a small overshoot. */
-  animation: gx-os-in 460ms cubic-bezier(0.18, 1.1, 0.28, 1) both;
-}
+/* ==========================================================================
+   The in-frame labels, as transit signage
+   --------------------------------------------------------------------------
+   This is the one section about a physical network with its own graphic language, so
+   its labels borrow it: a filled dark-green plate, white uppercase mono, wide
+   tracking, almost no corner radius. The same treatment as the destination sign on
+   the front of a bus.
 
-@keyframes gx-os-in {
-  from {
-    opacity: 0;
-    transform: translate3d(28px, -8px, 0) scale(0.96);
-  }
-}
+   `.gx-alert-spec` is in the same list because it is the same signage on the same
+   scene's label — it is only declared separately because that one is portalled to
+   `document.body` with the notification and cannot inherit anything from the pod.
+   ========================================================================== */
 
-/* The claim that belongs to that card, hung on the card.
-   A zero-size point on the notification's left edge, halfway down it, which is all the
-   geometry a `SpecPlate` needs: the plate translates itself fully left of the point and
-   the pin's dot stays on it. So the label is correct at every window width, which is the
-   thing a percentage of the pod could never be — the notification is not in the pod.
-   See `ALERT_SPEC` in the scene for what was wrong before.
-   Delayed behind the card, because a label arriving with the thing it labels reads as part
-   of the notification rather than as an annotation of it. */
+.gx-specs,
 .gx-alert-spec {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 0;
-  height: 0;
-  animation: gx-spec-in 300ms ease-out both;
-  animation-delay: 420ms;
+  --spec-ink: #f2fbf6;
+  --spec-paper: #145c40;
+  --spec-edge: rgba(255, 255, 255, 0.16);
+  --spec-gloss: rgba(255, 255, 255, 0.14);
+  --spec-dot: #145c40;
+  --spec-shadow: rgba(10, 34, 28, 0.5);
+  --spec-radius: 3px;
+  --spec-pad: 0.28rem 0.52rem;
+  --spec-font: var(--font-geist-mono), ui-monospace, monospace;
+  --spec-size: clamp(9px, 1vw, 10.5px);
+  --spec-weight: 700;
+  --spec-tracking: 0.09em;
+  --spec-case: uppercase;
+  --spec-lead: 16px;
 }
 
-@keyframes gx-spec-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@media (max-width: 760px) {
-  .gx-alert-spec {
-      display: none;
-    }
-}
-
-/* At narrow phone widths, the title and the absolute link row no longer fit side
-   by side. Return the links to document flow instead of squeezing or truncating
-   either editorial label. */
-/* This breakpoint held two rules and both of them were undoing the same thing: the
-   links' absolute position at 900px and the right padding at 660px that reserved room
-   for it. Both are gone at the source, so the corrections are gone with them. A patch
-   that only covers the last 440 pixels of a fault that starts at 900 is worse than none,
-   because it makes the fault look handled. */
-
-/* Keep the notification outside the browser, but inside the demo gutter. The old
-   viewport-relative overhang landed its close button exactly on the capture edge. */
-.gx-alert {
-  right: -1rem;
-}
-
-/* Chrome's real popup width stays intact; only surplus vertical air is tightened.
-   All three stops and both later departures remain visible without shrinking the
-   type or turning the sheet into a scroll position the film cannot communicate. */
-.gx-popup .grt-app {
-  padding-bottom: 11px;
-}
-
-.gx-popup .grt-topbar {
-  padding: 11px 0 8px;
-}
-
-.gx-popup .grt-feed {
-  margin-bottom: 8px;
-}
-
-.gx-popup .grt-stop-list {
-  gap: 8px;
-}
-
-.gx-popup .grt-stop-card {
-  padding: 10px 12px 9px;
-}
-
-.gx-popup .grt-stop-meta {
-  margin-top: 3px;
-}
-
-.gx-popup .grt-departures {
-  margin-top: 7px;
-}
-
-.gx-popup .grt-departure {
-  min-height: 46px;
-  gap: 8px;
-  padding-top: 7px;
-}
-
-.gx-popup .grt-departure-note,
-.gx-popup .grt-departure-then {
-  min-height: 14px;
-  gap: 5px;
-  margin-top: 2px;
-  line-height: 1.25;
-}
-
-.gx-popup .grt-departure-then {
-  margin-top: 1px;
-}
-
-
-/* Rules that need one of this scene's own classes as an ancestor to match at all —
-   they style bare elements and shared label markup, but only ever inside this scene. */
+/* ==========================================================================
+   Rules that need one of this scene's own classes as an ancestor to match at all —
+   they style bare elements and shared markup, but only ever inside this scene.
+   ========================================================================== */
 
 .gx-lights i {
   width: 10px;
@@ -1167,8 +1337,8 @@
   background: rgba(16, 40, 44, 0.16);
 }
 
-.gx-action .grt-mark,
-.gx-action .grt-mark svg {
+.gx-action .gx-mark,
+.gx-action .gx-mark svg {
   width: 21px;
   height: 21px;
   flex: 0 0 21px;
@@ -1180,29 +1350,48 @@
   font-weight: 750;
 }
 
-/* The row height is what keeps this column taller than the popup beside it. At 74px
-   the popup hung ~40px below the window and the bus leaving at the end of the loop
-   passed behind it, which looks like a clipping bug rather than like depth. */
+/* The row height is what keeps this column taller than the popup beside it, and the
+   popup grew when its first row learned to open: 92px × 6 clears the open panel with
+   room to spare. Below that the popup hangs past the bottom of its own window and
+   crosses the road, and a bus behind a panel looks like a clipping fault rather than
+   like depth. */
 .gx-agenda li {
   display: flex;
   align-items: stretch;
   gap: 14px;
-  min-height: 84px;
+  min-height: 92px;
   border-top: 1px solid rgba(16, 40, 44, 0.09);
 }
 
-.grt-brand p {
+.gx-brand p {
   margin: 0;
 }
 
-.grt-mark,
-.grt-mark svg {
+/* `#28766f` is the fill of `icon.svg` in the extension, not a colour picked here.
+   The mark is one asset and it appears three times in this scene — on the toolbar,
+   in the popup's top bar and on the notification — so it cannot take its colour from
+   whatever it happens to be sitting inside. It did: inside the popup it inherited
+   `--accent`, which is M3's blue, and the same icon was two colours in one frame. */
+.gx-mark,
+.gx-mark svg {
   display: block;
   width: 36px;
   height: 36px;
   flex: 0 0 36px;
   border-radius: 11px;
-  color: var(--accent);
+  color: #28766f;
+}
+
+.gx-topbar-actions svg,
+.gx-stop-grip svg {
+  width: 20px;
+  height: 20px;
+}
+
+.gx-text-button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
 }
 
 .gx-bell svg {
