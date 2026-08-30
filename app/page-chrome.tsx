@@ -33,7 +33,7 @@ import {
   type ReactNode,
   type WheelEvent,
 } from "react";
-import { setHeld, useHeld } from "./demos/scene/hold";
+import { adoptReducedMotionPreference, setHeld, useHeld } from "./demos/scene/hold";
 
 /**
  * Panning a rail must not start a native image drag. Images carry
@@ -537,17 +537,32 @@ export function MediaRail({ children, itemCount }: MediaRailProps) {
  *
  * This is it, and it does something better than stopping. Each scene long ago nominated
  * the single frame that carries its argument — see `stillBeat` in every pod — so
- * pressing this does not freeze six scenes mid-gesture, it *cuts to the point*: the
+ * pressing this does not freeze nine scenes mid-gesture, it *cuts to the point*: the
  * badge that has just lost its red, the shot you cannot see anything in, the pack being
  * read with the network down. Every label that has accumulated stays pinned to its
- * evidence, so the page stops being seven films and becomes seven labelled diagrams,
+ * evidence, so the page stops being ten films and becomes ten labelled diagrams,
  * which is a genuinely different way to read it rather than a lesser one.
  *
  * It lives in the dock because the dock is the furniture of the project run, and the
  * project run is where the films are.
+ *
+ * It is also where `prefers-reduced-motion` finally gets an answer. The effect below
+ * runs once, on the page's first commit, and a machine reporting `reduce` lands with
+ * this button already pressed — ten scenes on their argument frames, every label up,
+ * and the control right here saying what it does. See
+ * `adoptReducedMotionPreference` in `demos/scene/hold.ts` for why that is a landing
+ * position and not the ambient setting the old note refused. It is deliberately in
+ * this component rather than in a scene: the dock is server-rendered with the page and
+ * mounts before the first lazy scene chunk arrives, so the scenes come up held instead
+ * of starting and then being stopped, and it runs whether or not any scene is on
+ * screen yet.
  */
 export function MotionHold() {
   const held = useHeld();
+
+  useEffect(() => {
+    adoptReducedMotionPreference();
+  }, []);
 
   return (
     <button
@@ -572,8 +587,8 @@ export function MotionHold() {
  * A note for whoever opens the console.
  *
  * The people most likely to press F12 on a page like this are the people it is
- * written for, and the thing they are most likely to be checking is whether the seven
- * running scenes are seven videos. They are not, and that is the single most
+ * written for, and the thing they are most likely to be checking is whether the ten
+ * running scenes are ten videos. They are not, and that is the single most
  * interesting fact about how this page is built — so it is worth two lines to anyone
  * who went looking, and worth nothing to anyone who did not, which is the correct
  * shape for an easter egg.
@@ -665,7 +680,7 @@ export function ProjectFocusManager() {
      * down.
      *
      * Written straight onto each section, every frame, in one pass with one box read
-     * apiece. Nothing here invalidates a computed style beyond the seven nodes it
+     * apiece. Nothing here invalidates a computed style beyond the ten nodes it
      * touches — the reason this is not a variable on `:root`.
      */
     let presenceFrame = 0;

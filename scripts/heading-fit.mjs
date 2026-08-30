@@ -177,7 +177,12 @@ for (const width of WIDTHS) {
   const report = await page.evaluate(PROBE);
   const bad = report.filter((r) => r.hits.length || r.overflow > 1);
   if (bad.length === 0) {
-    console.log(`  ${String(width).padStart(4)}px  all seven headings fit`);
+    /* Counted, not typed. This line read "all seven headings fit" while the run
+       behind it was measuring ten, which is a check reporting a number it did not
+       take. */
+    console.log(
+      `  ${String(width).padStart(4)}px  all ${report.length} headings fit`,
+    );
   } else {
     console.log(`  ${String(width).padStart(4)}px`);
     for (const r of bad) {

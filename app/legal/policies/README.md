@@ -14,13 +14,15 @@ repository of the project it belongs to, next to the code it describes:
 | `two-factor-paster-privacy.md` | `2fa-paster/PRIVACY_POLICY.md` |
 | `byte-budget-privacy.md` | `byte-budget/PRIVACY_POLICY.md` |
 | `byte-budget-terms.md` | `byte-budget/TERMS_OF_SALE.md` |
+| `totem-privacy.md` | `totem/PRIVACY_POLICY.md` |
 
 They are copied rather than read from the sibling checkout because this site
 deploys on its own, without those repositories present.
 
-A policy has to be reachable at a URL — the Chrome Web Store asks for one — and
-it also has to sit in the repository of the thing it governs, versioned with the
-code that makes its claims true. So there are two copies, and
+A policy has to be reachable at a URL — the Chrome Web Store asks for one, and
+so do Apple and Google for an app that requests the microphone — and it also
+has to sit in the repository of the thing it governs, versioned with the code
+that makes its claims true. So there are two copies, and
 `tests/rendered-html.test.mjs` diffs them against the originals whenever the
 sibling repositories happen to be checked out beside this one. Edit the original;
 the test will tell you to bring the copy along.

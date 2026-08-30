@@ -8,13 +8,21 @@
  * sections that had already made the argument by running.
  *
  * So it became an address and two links, and that overshot. A page that spends
- * seven sections being deliberate should not end like the bottom of a form. The
+ * ten sections being deliberate should not end like the bottom of a form. The
  * two notes below are the smallest thing that is neither: a reason these exist,
  * and the two facts about the page a visitor cannot get by looking at it.
  *
- * Both are held to the rule the rest of the page is held to — nothing here is a
- * claim you could not check. The first is the seven `why` lines in
- * `projects.ts` said once instead of seven times. The second is what the README
+ * A `<footer>`, and it is rendered outside `<main>` in `page.tsx` for that to mean
+ * anything: HTML scopes a footer to its nearest sectioning ancestor, so one inside
+ * `main`, `article`, `aside`, `nav` or `section` carries no role at all. Out at the
+ * top level it is the page's `contentinfo` landmark, which is the thing a screen
+ * reader offers as "the end of this page" — and this is the end of the page: the
+ * address, the profile and the legal index. It was a `<section>`, which announced
+ * itself as one more region among ten.
+ *
+ * Both notes are held to the rule the rest of the page is held to — nothing here is
+ * a claim you could not check. The first is the eight `why` lines in
+ * `projects.ts` said once instead of eight times. The second is what the README
  * says about the vendored Choir app, plus the one control the page now has; the
  * hold button is deliberately not given a location, because a control described
  * well enough to find is more fun to find than one pointed at, and the dock it
@@ -25,7 +33,7 @@ import Link from "next/link";
 
 export function Closing() {
   return (
-    <section className="closing" aria-labelledby="closing-title" data-arrive>
+    <footer className="closing" aria-labelledby="closing-title" data-arrive>
       <h2 className="sr-only" id="closing-title">
         Contact
       </h2>
@@ -61,6 +69,6 @@ export function Closing() {
           </p>
         </div>
       </div>
-    </section>
+    </footer>
   );
 }

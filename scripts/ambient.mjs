@@ -84,9 +84,10 @@ let failures = 0;
  * What each visible section is wearing.
  *
  * The first version of this read `backgroundColor` and was measuring the wrong thing:
- * six of the seven sections paint themselves with a gradient, which leaves
- * `background-color` transparent, so five of them reported `rgb(0,0,0)` and the check
- * was nonsense. That mistake is worth keeping in mind — it is also what proved the
+ * six of the seven sections then on the page painted themselves with a gradient, which
+ * leaves `background-color` transparent, so five of them reported `rgb(0,0,0)` and the
+ * check was nonsense. Every one of the ten does it now, which only makes the point
+ * harder. That mistake is worth keeping in mind — it is also what proved the
  * original implementation could never have worked.
  *
  * So this measures the mechanism instead. Each section carries a `.project-tint` filled

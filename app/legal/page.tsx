@@ -11,10 +11,19 @@ export const metadata: Metadata = {
 /**
  * The index.
  *
- * Three of the seven projects need one of these: the two that take money, and the
- * one that reads a sensor. The other four collect nothing and have nothing to
- * disclose, which is worth saying here rather than leaving as a gap someone has
- * to interpret.
+ * Seven of the ten projects need one of these. Six are Chrome extensions, and an
+ * extension that reads your mail, your requests, your location or the page in front
+ * of you does not get listed until it has published what it does with them. The
+ * seventh is Totem, which asks a phone for its microphone, and Apple and Google ask
+ * the same question the Chrome Web Store does. Three of the seven also take money,
+ * so they publish terms beside the policy.
+ *
+ * The other three collect nothing and have nothing to disclose, which is worth
+ * saying here rather than leaving as a gap someone has to interpret.
+ *
+ * Each project name below is a link one level down rather than back to the home
+ * page: `/legal/<project>` is a real page now, because other repositories in this
+ * collection print that address in their own product. See `project-page.tsx`.
  */
 export default function LegalIndex() {
   const groups = [...new Set(policies.map((policy) => policy.project))].map((project) => ({
@@ -42,7 +51,7 @@ export default function LegalIndex() {
           {groups.map((group) => (
             <li key={group.project}>
               <h2>
-                <Link href={`/#${group.project}`}>{group.name}</Link>
+                <Link href={`/legal/${group.project}`}>{group.name}</Link>
               </h2>
               <ul>
                 {group.items.map((policy) => (

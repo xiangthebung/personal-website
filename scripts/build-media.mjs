@@ -6,7 +6,7 @@
  * supplies the AVIF srcset, the intrinsic size (so nothing reflows while media
  * decodes) and an average colour used as a placeholder tint.
  *
- * Run after adding or replacing anything in public/fun or public/projects:
+ * Run after adding or replacing anything in public/fun:
  *   npm run media
  *
  * Output is idempotent: a derivative is only re-encoded when its source is
@@ -25,25 +25,50 @@ const SOURCE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png"]);
 const MEASURE_ONLY_EXTENSIONS = new Set([".avif", ".webp"]);
 
 /**
- * Widths are sized to each surface's largest CSS box at 2x. Project
- * screenshots cap at a 740px card, gallery media at a 520px card.
+ * Widths are sized to each surface's largest CSS box at 2x. Gallery media caps
+ * at a 520px card; the hero face is full-bleed.
+ *
+ * There was a third surface here, `projects/`, and it is worth recording why it
+ * went rather than leaving a shorter list. It was the old design: a screenshot per
+ * project, at three widths, on a 740px card. The sections mount the software itself
+ * now, so nothing on this site has rendered one of those files in a long time — but
+ * `public/projects/` and its derivatives stayed, 71 originals and 118 AVIFs, 19MB,
+ * uploaded on every deploy and publicly reachable, several of them still filed under
+ * Decaf's old name. This pipeline is what kept them looking alive: it measured them,
+ * re-encoded them and wrote them into the manifest every run, so they had an entry in
+ * a generated file and no reader anywhere. A surface with no consumer is not a surface,
+ * and a plan entry for one is a standing invitation to put the files back.
  */
 const WIDTH_PLAN = [
   { prefix: "fun/", widths: [420, 640, 1040] },
-  { prefix: "projects/", widths: [640, 1024, 1480] },
   { prefix: "hero-face", widths: [768, 1200, 1600, 2200] },
 ];
 
 /**
- * The social preview image is never rendered in the page, so it gets no
- * derivatives and no manifest entry.
+ * Images the page never renders as an `<img>`, so they get no derivatives and no
+ * manifest entry.
  *
- * This used to also list `og.png`, `og-v2.png` and `hero-face.png`. Being on this
- * list is what let them sit in `public/` unreferenced by anything and unnoticed:
- * skipped by the media pipeline, absent from the manifest, and still uploaded on
- * every deploy — 10.9 MiB between them. They have been deleted.
+ * The manifest exists to hand a `srcset`, an intrinsic size and a placeholder tint to
+ * an element that is going to display one of these files. The social preview is read
+ * by a crawler out of a `<meta>` tag; the icons are read by the browser out of
+ * `<link rel="icon">`. Neither is ever laid out, so neither has anything to reflow and
+ * neither needs a 32px AVIF of itself. They were not on this list, they were not in the
+ * manifest either — nobody had run this since they were added — and the first run
+ * after that produced four derivatives no markup can reach.
+ *
+ * Being on this list is not a hiding place, and the entries that used to be here are
+ * the warning: `og.png`, `og-v2.png` and `hero-face.png` sat in `public/` referenced by
+ * nothing, skipped by this pipeline, absent from the manifest, and uploaded on every
+ * deploy — 10.9 MiB between them. They have been deleted. Everything left here is
+ * something a specific line of `app/layout.tsx` names.
  */
-const SKIP = new Set(["og-xiang-li.png"]);
+const SKIP = new Set([
+  "og-xiang-li.png",
+  "apple-touch-icon.png",
+  "favicon-32.png",
+  "favicon-192.png",
+  "favicon-512.png",
+]);
 
 async function collect(dir, base = "") {
   const entries = await readdir(dir, { withFileTypes: true });

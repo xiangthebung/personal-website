@@ -3,22 +3,25 @@
 /**
  * Whether the films on this page are held on a single frame.
  *
- * The README has carried an IOU for this for a long time. The site does not honour
- * `prefers-reduced-motion`, on purpose and with a written argument: the seven scenes
+ * The README carried an IOU for this for a long time. The site did not honour
+ * `prefers-reduced-motion`, on purpose and with a written argument: the ten scenes
  * *are* the content, so a visitor whose machine reports `reduce` was left reading
  * captions about motion that never arrived — and on Windows that setting is turned on
  * by performance options, battery savers and remote desktop sessions far more often
- * than by anyone choosing it. The note ends: "Bringing motion control back should mean
+ * than by anyone choosing it. The note ended: "Bringing motion control back should mean
  * a control on the page a visitor can find and press, not an ambient setting read
  * behind their back."
  *
- * This is that control's other half. The seam it plugs into was left in place the whole
- * time — every scene still declares `stillBeat`, the one frame that carries its
- * argument, and `SceneState.still` is still threaded down to the phantom cursor so a
- * pointer is never stranded mid-flight in a frozen frame. Nothing read either of them
- * until now.
+ * That control is what this file is. It also settled the media query: see
+ * `adoptReducedMotionPreference` at the foot, which is where the setting is finally
+ * honoured, and honoured as a starting position rather than as a permanent verdict.
  *
- * Held outside React because the seven scenes are seven independently lazy client
+ * The seam the button plugs into was left in place the whole time — every scene still
+ * declares `stillBeat`, the one frame that carries its argument, and `SceneState.still`
+ * is still threaded down to the phantom cursor so a pointer is never stranded
+ * mid-flight in a frozen frame. Nothing read either of them until the button existed.
+ *
+ * Held outside React because the ten scenes are ten independently lazy client
  * chunks with no common ancestor short of the page, which is a server component. A
  * context would mean making the page a client component to share one boolean. This is
  * a boolean and a set of callbacks.
@@ -73,7 +76,7 @@ export function isHeld(): boolean {
  */
 const SETTLE_MS = 1600;
 
-export function setHeld(next: boolean): void {
+export function setHeld(next: boolean, settleMs: number = SETTLE_MS): void {
   if (held === next) return;
   held = next;
 
@@ -87,12 +90,22 @@ export function setHeld(next: boolean): void {
   if (held) {
     /* And the class that stops every remaining clock follows once the page has had
        time to arrive. Everything that moves here and is not a storyboard — the
-       drifting ambient backdrops, the seven living marks in the hero index, the drop
+       drifting ambient backdrops, the ten living marks in the hero index, the drop
        running down the descend cue — knows nothing about beats, and somebody who asked
-       for the motion to stop meant those too. */
-    settleTimer = window.setTimeout(() => {
+       for the motion to stop meant those too.
+
+       `settleMs` is a parameter for exactly one caller. The wait exists to let a
+       *running* page come to rest, and the reduced-motion landing below runs before the
+       page has started — there is nothing to come to rest from, and making somebody who
+       asked for less motion watch 1.6 seconds of it first would be the setting honoured
+       and disregarded in the same breath. */
+    if (settleMs <= 0) {
       root.classList.add("is-held-settled");
-    }, SETTLE_MS);
+    } else {
+      settleTimer = window.setTimeout(() => {
+        root.classList.add("is-held-settled");
+      }, settleMs);
+    }
   } else {
     /* Released in the same breath, both of them. Letting the page run again is not
        something anybody wants staged. */
@@ -100,6 +113,53 @@ export function setHeld(next: boolean): void {
   }
 
   emit();
+}
+
+/**
+ * Where a visitor who asked for less motion lands.
+ *
+ * The note this file used to quote refused `prefers-reduced-motion` and set a condition
+ * for its return: a control on the page that a visitor can find and press, rather than
+ * an ambient setting read behind their back. That control now exists, a few inches away
+ * in the dock, which changes the question. The objection was never to the setting. It
+ * was that obeying it produced a broken page — ten captions about motion that never
+ * arrived, with nothing on screen to ask for the motion back.
+ *
+ * So the setting decides the starting position and nothing else. A machine reporting
+ * `reduce` lands on ten still frames — each scene's own `stillBeat`, the frame it
+ * nominated as the one carrying its argument — with every label pinned to its evidence
+ * and the button sitting there, pressed, saying what it does. Nothing is withheld and
+ * nothing has to be guessed at: the page a `reduce` visitor gets is the page anybody
+ * gets after pressing one button, and one press puts it back.
+ *
+ * Three properties make this a landing rather than an ambient setting, and all three
+ * are the point:
+ *
+ * - **Once.** A module-level latch, not a `matchMedia` listener. Read at first mount and
+ *   never again, so a visitor who presses Run is never overruled by their own operating
+ *   system a moment later. Fighting the button would be the exact behaviour the note
+ *   objected to, wearing a better hat.
+ * - **Never on the server.** `serverSnapshot` stays `false` and has to: Cloudflare has
+ *   no idea what the machine at the other end prefers, and a server render that guessed
+ *   would be a hydration mismatch for every visitor it guessed wrong about. This is a
+ *   client effect on the first commit, which is the earliest honest moment.
+ * - **Only ever toward held.** It cannot release a hold, so it can never surprise
+ *   somebody who arrived wanting the films to run.
+ *
+ * Called from `MotionHold` in `page-chrome.tsx`, which mounts with the dock on the
+ * page's first commit — before any scene chunk has loaded, so the scenes come up held
+ * rather than starting and then being stopped.
+ */
+let adoptedPreference = false;
+
+export function adoptReducedMotionPreference(): void {
+  if (adoptedPreference) return;
+  adoptedPreference = true;
+
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  setHeld(true, 0);
 }
 
 export function toggleHeld(): boolean {

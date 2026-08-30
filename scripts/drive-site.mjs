@@ -370,6 +370,25 @@ async function main() {
   if (legalSlugs.length < 6) {
     bad(`only ${legalSlugs.length} policy slugs parsed out of policies.ts`);
   }
+  /* The level between the index and a document. It 404'd for a long time while
+     `grt-bus-time`'s README published `/legal/grt-next-bus` as the base its popup links
+     hang off, so this walks it for the same reason the slugs above are read rather than
+     typed: the pages nothing ever opens are the pages that break. Derived from the same
+     registry, so a project cannot have a document here and no index. */
+  for (const project of [...new Set(legalSlugs.map((slug) => slug.split("/")[0]))]) {
+    await page.goto(`${BASE}/legal/${project}`, { waitUntil: "load" });
+    const body = page.locator(".legal-body");
+    if (!(await shows(body, `/legal/${project} renders`))) continue;
+
+    const links = await page.locator(`.legal-index a[href^="/legal/${project}/"]`).count();
+    const wanted = legalSlugs.filter((slug) => slug.startsWith(`${project}/`)).length;
+    if (links !== wanted) {
+      bad(`/legal/${project} lists ${links} document links, registry has ${wanted}`);
+    } else {
+      ok(`/legal/${project} lists all ${wanted} of its documents`);
+    }
+  }
+
   for (const slug of legalSlugs) {
     await page.goto(`${BASE}/legal/${slug}`, { waitUntil: "load" });
     const body = page.locator(".legal-body");
@@ -397,6 +416,60 @@ async function main() {
   if (broken.length) bad(`gallery images failed to decode: ${broken.join(", ")}`);
   else ok("gallery images all decoded");
   await shot("11-gallery");
+
+  /* --------------------------- reduced motion ------------------------------ */
+
+  /* The one state on this site nobody sees by accident. A machine reporting
+     `prefers-reduced-motion: reduce` is supposed to land with the films already
+     held — ten still frames, every label up, and the control in the dock pressed —
+     and every part of that is invisible on a normal run, because the browser this
+     script drives does not ask for it. It is a fresh context rather than an
+     emulation on the page: the preference has to be true from the first commit,
+     which is when `MotionHold` reads it.
+
+     Failing here does not mean the animation is broken; it means the setting is
+     being ignored again. */
+  step("reduced motion");
+  const calmContext = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    reducedMotion: "reduce",
+  });
+  const calmPage = await calmContext.newPage();
+  await calmPage.goto(BASE, { waitUntil: "load" });
+  await calmPage.waitForTimeout(1200);
+
+  const landed = await calmPage.evaluate(() => ({
+    held: document.documentElement.classList.contains("is-held"),
+    settled: document.documentElement.classList.contains("is-held-settled"),
+    pressed: document.querySelector(".dock-hold")?.getAttribute("aria-pressed"),
+  }));
+  if (!landed.held) bad("a reduce visitor did not land held");
+  else if (!landed.settled) bad("a reduce visitor landed held but the clocks kept running");
+  else if (landed.pressed !== "true") bad(`the hold control reads aria-pressed=${landed.pressed}`);
+  else ok("a reduce visitor lands held, settled, with the control showing it");
+
+  /* And can leave. A landing that cannot be undone is the ambient setting the
+     README spent four paragraphs refusing.
+
+     Scrolled into the project run first, because the dock is deliberately hidden over
+     the hero — `ProjectFocusManager` reveals it once a project owns the viewport, which
+     is also where the films the button is about are. Clicking it from the top of the
+     page times out against the hero, which is the control working as designed. */
+  await calmPage.locator("[data-project-section]").nth(1).scrollIntoViewIfNeeded();
+  await calmPage.waitForFunction(() => {
+    const root = document.documentElement.classList;
+    return root.contains("has-project-in-view") && !root.contains("is-hero-visible");
+  });
+  await calmPage.waitForTimeout(500);
+  await calmPage.locator(".dock-hold").click();
+  await calmPage.waitForTimeout(400);
+  const released = await calmPage.evaluate(() =>
+    document.documentElement.classList.contains("is-held"),
+  );
+  if (released) bad("pressing the control did not release the hold");
+  else ok("and one press gives the motion back");
+
+  await calmContext.close();
 
   await browser.close();
   await server.stop();

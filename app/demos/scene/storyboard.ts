@@ -22,25 +22,31 @@
  * React re-renders once per beat, not once per frame. Continuous motion is CSS's
  * job: the hook writes the fraction through the current beat onto the stage element
  * as `--beat-t`, and animation is driven from `data-beat` transitions and keyframes.
- * A six-scene page that re-rendered every scene every frame would be a page that
+ * A ten-scene page that re-rendered every scene every frame would be a page that
  * makes a laptop fan audible.
  *
- * It used to read `prefers-reduced-motion` and hold a single frame instead of
- * looping. It no longer does, deliberately — see the "Motion" note in
- * `globals.css`. A visitor whose machine reports `reduce` got seven captioned
- * stills describing motion that never arrived, and on Windows that setting is
- * turned on by performance options, battery savers and remote sessions rather than
- * by anyone choosing it.
+ * This hook does not read `prefers-reduced-motion`, and that is not the same thing as
+ * ignoring it. For a while it did read it, and holding a frame was all it did: a visitor
+ * whose machine reported `reduce` got seven captioned stills describing motion that
+ * never arrived, with nothing on the page that could give the motion back — and on
+ * Windows that setting is turned on by performance options, battery savers and remote
+ * sessions rather than by anyone choosing it. So the query came out.
  *
- * The still frame is back, and it is now reached the way that note said it should be:
- * by a control on the page a visitor can find and press. `stillBeat` was declared by
- * every scene the whole time it was going unread — each had already nominated the one
- * frame that carries its argument — so plugging the control in was a matter of reading
- * what was already there. See `demos/scene/hold.ts` for the control's other half, and
- * `.dock-hold` in the stylesheet for the button.
+ * The still frame came back the way the old note said it should: as a control a visitor
+ * can find and press. `stillBeat` was declared by every scene the whole time it was
+ * going unread — each had already nominated the one frame that carries its argument —
+ * so plugging the control in was a matter of reading what was already there. See
+ * `demos/scene/hold.ts` for the control's other half, and `.dock-hold` in the
+ * stylesheet for the button.
+ *
+ * With that in place the media query got its answer back, in one place rather than ten:
+ * `adoptReducedMotionPreference`, called once from the dock on first mount, presses the
+ * button for a visitor whose machine asks for less motion. This hook is downstream of
+ * that and needs to know nothing about it — it reads `useHeld` and holds, exactly as it
+ * would for a press. One state, one code path, and the visitor can leave it.
  *
  * Held is not paused. Pausing would stop each scene wherever it happened to be, which
- * for six of the seven is a transitional frame that argues nothing — a cursor halfway
+ * for nine of the ten is a transitional frame that argues nothing — a cursor halfway
  * to a button, a card mid-flight. Held jumps to the frame the scene was built around
  * and leaves every accumulated label up, so the page becomes a set of annotated
  * diagrams rather than a set of freeze-frames.
@@ -271,7 +277,7 @@ export function useStoryboard<Name extends string>(
       };
 
       /* A sideways gesture is the scrub; a vertical one must stay the page's. Same
-         contract as the gallery rail, and set inline because the seven stages share
+         contract as the gallery rail, and set inline because the ten stages share
          no class for a stylesheet rule to hang on. */
       const previousTouchAction = node.style.touchAction;
       const previousTabIndex = node.getAttribute("tabindex");

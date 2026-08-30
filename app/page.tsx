@@ -155,7 +155,7 @@ function ProjectSection({ project, index }: { project: Project; index: number })
       aria-labelledby={`${project.id}-title`}
       data-project-section
       /* Which composition this section uses. The variants are in the stylesheet;
-         see `Stage` in projects.ts for why there are four and not seven. */
+         see `Stage` in projects.ts for why there are four and not ten. */
       data-stage={project.stage}
     >
       {/* The theme's ambient motion, plus — where the project has a subject worth
@@ -309,157 +309,187 @@ export default function Home() {
   const heroAvif = mediaAsset(HERO_SOURCE)?.avif;
 
   return (
-    <main id="top">
-      {/* Fills as the page is descended; coloured by the project you are in. */}
-      <div className="page-trail" aria-hidden="true">
-        <span />
-      </div>
+    <>
+      {/* First in the document, and the only reason it is out here rather than
+          inside `<main>`: it has to be the first thing a Tab key finds. What it
+          skips is the dock — twelve stops before the page says anything — and
+          the collection already holds this standard elsewhere, in the choir app
+          this site vendors. Off screen until focused; see `.skip-link` in
+          site-chrome.css. */}
+      <a className="skip-link" href="#content">
+        Skip to content
+      </a>
 
-      {/* A compact route through the long project run. It stays hidden over the
-          hero and gallery; ProjectFocusManager reveals it only while a project
-          owns the viewport and marks the matching destination.
-
-          A div holding a nav rather than a nav itself, because the last thing in it
-          is not a destination: `MotionHold` stops every film on the page, and a
-          button that goes nowhere does not belong inside a navigation landmark. */}
-      <div className="project-dock">
-        <a className="project-dock-home" href="#top" aria-label="Back to the top">
-          XL
-        </a>
-        <nav className="project-dock-links" aria-label="Project navigation">
-          {projects.map((project) => (
-            <a
-              href={`#${project.id}`}
-              key={project.id}
-              data-project-dock={project.id}
-              /* Same palette hook as the hero index. The dock is on screen for the
-                 whole project run, so seven coloured numerals is the one place the
-                 page can show its shape while you are inside it. */
-              data-theme={project.theme}
-              title={project.name}
-            >
-              <span>{project.number}</span>
-              <strong>{project.name}</strong>
-            </a>
-          ))}
-        </nav>
-        <MotionHold />
-      </div>
-
-      <section className="hero" aria-labelledby="hero-title">
-        <picture className="hero-art">
-          {heroAvif && (
-            <source type="image/avif" srcSet={heroAvif} sizes="100vw" />
-          )}
-          <img
-            src={HERO_SOURCE}
-            alt=""
-            width="1600"
-            height="2133"
-            decoding="async"
-            fetchPriority="high"
-            draggable={false}
-          />
-        </picture>
-
-        <a
-          className="hero-github"
-          href="https://github.com/xiangthebung"
-          target="_blank"
-          rel="noreferrer"
-        >
-          GitHub <ExternalArrow />
-        </a>
-
-        <div className="hero-copy">
-          <h1 id="hero-title">
-            <span className="sr-only">Xiang Li</span>
-            <HeroLetters text="Xiang Li" />
-          </h1>
-
-          <a className="hero-cue" href={`#${projects[0].id}`}>
-            <span className="hero-cue-line" aria-hidden="true" />
-            Start exploring
-          </a>
+      <main id="top">
+        {/* Fills as the page is descended; coloured by the project you are in. */}
+        <div className="page-trail" aria-hidden="true">
+          <span />
         </div>
 
-        {/* Not a list of names. Each row carries the scene in miniature, running,
-            so the line above it is already true before anything is scrolled. See
-            app/index-marks.tsx. */}
-        <nav className="project-index" aria-label="Project index">
-          {projects.map((project, order) => (
-            <a
-              href={`#${project.id}`}
-              key={project.id}
-              /* Which of the six rooms this row is a door into. The stylesheet turns
-                 it into a colour; see `--accent-*` and `.project-index a[data-theme]`.
-                 An attribute rather than an inline custom property, so the palette
-                 stays in one file instead of being half in this one. */
-              data-theme={project.theme}
-              style={{ "--order": order } as CSSProperties}
-            >
-              <span className="project-index-number">{project.number}</span>
-              <IndexMark project={project.id} />
-              <strong>{project.name}</strong>
-              <span className="project-index-arrow" aria-hidden="true">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M12 5v14M6 13l6 6 6-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-            </a>
-          ))}
-        </nav>
-      </section>
+        {/* A compact route through the long project run. It stays hidden over the
+            hero and gallery; ProjectFocusManager reveals it only while a project
+            owns the viewport and marks the matching destination.
 
-      <div id="projects">
-        {projects.map((project, index) => (
-          <ProjectSection project={project} index={index} key={project.id} />
-        ))}
-      </div>
-
-      {/* The gallery: a draggable row of photographs, each at its own proportions.
-          No heading and no caption — a row of pictures is self-evident, and the
-          paper mount and pin that used to frame each one were furniture around the
-          thing worth looking at. The section is labelled here rather than by a
-          visible title, and the rail inside carries its own instructions for
-          assistive tech; see MediaRail. */}
-      <section className="fun-section" aria-label="Photos and clips">
-        <MediaRail itemCount={funMedia.length}>
-          <div className="fun-rail">
-            {funMedia.map((media, order) => (
-              <figure
-                className="fun-card"
-                key={media.src}
-                /* Alternating tilts, cycling through four angles rather than
-                   randomised: random gives you two neighbours at the same angle
-                   often enough to look like a mistake. */
-                data-tilt={order % 4}
+            A div holding a nav rather than a nav itself, because the last thing in it
+            is not a destination: `MotionHold` stops every film on the page, and a
+            button that goes nowhere does not belong inside a navigation landmark. */}
+        <div className="project-dock">
+          <a className="project-dock-home" href="#top" aria-label="Back to the top">
+            XL
+          </a>
+          <nav className="project-dock-links" aria-label="Project navigation">
+            {projects.map((project) => (
+              <a
+                href={`#${project.id}`}
+                key={project.id}
+                data-project-dock={project.id}
+                /* Same palette hook as the hero index. The dock is on screen for the
+                   whole project run, so ten coloured numerals is the one place the
+                   page can show its shape while you are inside it. */
+                data-theme={project.theme}
+                title={project.name}
               >
-                {media.kind === "image" ? (
-                  <GalleryImage src={media.src} alt={media.alt} />
-                ) : (
-                  <GalleryClip src={media.src} alt={media.alt} />
-                )}
-              </figure>
+                <span>{project.number}</span>
+                <strong>{project.name}</strong>
+              </a>
             ))}
+          </nav>
+          <MotionHold />
+        </div>
+
+        {/* The skip link's landing. `tabIndex={-1}` is what makes the jump move
+            focus rather than only scroll; the ring it would otherwise draw around a
+            full-height hero is turned off in site-chrome.css. */}
+        <section
+          className="hero"
+          id="content"
+          tabIndex={-1}
+          data-skip-target
+          aria-labelledby="hero-title"
+        >
+          <picture className="hero-art">
+            {heroAvif && (
+              <source type="image/avif" srcSet={heroAvif} sizes="100vw" />
+            )}
+            <img
+              src={HERO_SOURCE}
+              alt=""
+              width="1600"
+              height="2133"
+              decoding="async"
+              fetchPriority="high"
+              draggable={false}
+            />
+          </picture>
+
+          <a
+            className="hero-github"
+            href="https://github.com/xiangthebung"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub <ExternalArrow />
+          </a>
+
+          <div className="hero-copy">
+            <h1 id="hero-title">
+              <span className="sr-only">Xiang Li</span>
+              <HeroLetters text="Xiang Li" />
+            </h1>
+
+            <a className="hero-cue" href={`#${projects[0].id}`}>
+              <span className="hero-cue-line" aria-hidden="true" />
+              Start exploring
+            </a>
           </div>
-        </MediaRail>
-      </section>
+
+          {/* Not a list of names. Each row carries the scene in miniature, running,
+              so the line above it is already true before anything is scrolled. See
+              app/index-marks.tsx. */}
+          <nav className="project-index" aria-label="Project index">
+            {projects.map((project, order) => (
+              <a
+                href={`#${project.id}`}
+                key={project.id}
+                /* Which of the nine rooms this row is a door into. The stylesheet turns
+                   it into a colour; see `--accent-*` and `.project-index a[data-theme]`.
+                   An attribute rather than an inline custom property, so the palette
+                   stays in one file instead of being half in this one. */
+                data-theme={project.theme}
+                style={{ "--order": order } as CSSProperties}
+              >
+                <span className="project-index-number">{project.number}</span>
+                <IndexMark project={project.id} />
+                <strong>{project.name}</strong>
+                <span className="project-index-arrow" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M12 5v14M6 13l6 6 6-6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              </a>
+            ))}
+          </nav>
+        </section>
+
+        <div id="projects">
+          {projects.map((project, index) => (
+            <ProjectSection project={project} index={index} key={project.id} />
+          ))}
+        </div>
+
+        {/* The gallery: a draggable row of photographs, each at its own proportions.
+            No heading and no caption — a row of pictures is self-evident, and the
+            paper mount and pin that used to frame each one were furniture around the
+            thing worth looking at. The section is labelled here rather than by a
+            visible title, and the rail inside carries its own instructions for
+            assistive tech; see MediaRail. */}
+        <section className="fun-section" aria-label="Photos and clips">
+          <MediaRail itemCount={funMedia.length}>
+            <div className="fun-rail">
+              {funMedia.map((media, order) => (
+                <figure
+                  className="fun-card"
+                  key={media.src}
+                  /* Alternating tilts, cycling through four angles rather than
+                     randomised: random gives you two neighbours at the same angle
+                     often enough to look like a mistake. */
+                  data-tilt={order % 4}
+                >
+                  {media.kind === "image" ? (
+                    <GalleryImage src={media.src} alt={media.alt} />
+                  ) : (
+                    <GalleryClip src={media.src} alt={media.alt} />
+                  )}
+                </figure>
+              ))}
+            </div>
+          </MediaRail>
+        </section>
+
+        <ProjectFocusManager />
+      </main>
 
       {/* The last paragraph of the argument. It carries the contact details and
           the policy index that used to live in a thin footer under the photo
-          rail — a page that spends seven sections proving it is careful should not
-          end on a picture of dinner. */}
-      <Closing />
+          rail — a page that spends ten sections proving it is careful should not
+          end on a picture of dinner.
 
-      <ProjectFocusManager />
-    </main>
+          Outside `<main>`, and that is the whole reason it is a landmark. A
+          `<footer>` inside `main`, `article`, `aside`, `nav` or `section` is
+          scoped to that thing and maps to no role at all, so writing the tag
+          without moving the element would have looked like a fix and produced
+          nothing. Out here it is `contentinfo`. `<main>` carries no rule in any
+          stylesheet and no margins, so moving one block child out to be its next
+          sibling changes nothing that renders — which was checked rather than
+          assumed. */}
+      <Closing />
+    </>
   );
 }
