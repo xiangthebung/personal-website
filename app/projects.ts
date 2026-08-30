@@ -130,13 +130,15 @@ export type Project = {
    * There were seven, then four, and now one, and each round of cutting was the same
    * discovery in a different place: the line was saying something the frame beneath it
    * was already showing. PDF Explainer's "Four parts of the workspace, in turn" sat
-   * directly above a rail naming all four and lighting the one playing. GRT's "Nothing
+   * directly above a rail naming them and lighting the one playing — a rail that names
+   * three, since the fourth act turned out to be a misreading of the application and was
+   * folded into the third. See the pod's own header comment. GRT's "Nothing
    * open. Five minutes out, it tells you" was both of its own notes, shortened.
    *
    * The last three went when the scenes learned to label themselves. Night Neutralizer's
    * "The same shot, twice" is now a chip in the pod's own rig, over the two panels it is
-   * about. Decaf's "A feed at full volume, then the same feed on Decaf" is answered by six
-   * labels that fly out of the switch and land on the six things it changed. PagePack's
+   * about. Decaf's "A feed at full volume, then the same feed on Decaf" is answered by five
+   * labels that fly out of the switch and land on the five things it changed. PagePack's
    * "One save, then the connection dies" was a summary of a film that is perfectly clear
    * while you watch it.
    *
@@ -196,9 +198,15 @@ const projectData: Project[] = [
     /* The one line of framing left on the page, and the only one that was not restating
        the frame under it. Two claims, neither of which the pod can make by running: that
        this is the actual application rather than a reconstruction of it, and that it needs
-       a click. Everything the three deleted notes said is inside the frame now — the mixer
-       and the pitch detector carry leader lines to the app's own controls, and the four
-       voices are discs in the score's own colours moving with the mix. */
+       a click. Everything the three deleted notes said is inside the frame now — the pitch
+       detector carries a leader line to the app's own control, and the four voices are
+       discs in the score's own colours moving with the mix.
+       One leader line, not two. This said "the mixer and the pitch detector carry leader
+       lines", and the pod renders exactly one `.choir-cue`, gated on the microphone spot.
+       The second was designed and dropped: the parts panel is already open on screen,
+       headed "Parts", saying what a label would have said and saying it in the
+       application's own voice. `demo.tsx` records that in as many words — "There is no
+       second cue on the parts mixer" — six inches from where this claimed there was. */
     invitation: "The real app, on a real score. Play it and all four parts sing.",
   },
   {
@@ -217,8 +225,9 @@ const projectData: Project[] = [
     headline: "Make social media boring on purpose.",
     why: "Blocking a site makes you want it. Dullness doesn't.",
     theme: "paper",
-    // The repository was renamed along with the extension; the old `blokamine`
-    // path is not a redirect.
+    // The repository was renamed along with the extension. The old `blokamine` path
+    // still resolves — GitHub 301s a renamed repository to its new name — but this is
+    // the name the project has.
     source: "https://github.com/xiangthebung/Decaf",
     demo: "decaf",
     well: "light",
@@ -226,8 +235,10 @@ const projectData: Project[] = [
        three notes here were the only place the page said what Decaf does, and they sat
        beside ten seconds of hearts crossing the screen. Every one of them is now a label
        that flies out of the toolbar switch and lands on the thing it changed — the
-       greyscaled media, the hidden counts, the muted badge that keeps its number, the
-       suggestions column that goes. The escalating hold was always in the notice card. */
+       greyscaled media, the stopped autoplay, the hidden counts, the muted badge that
+       keeps its number, the suggestions column that goes. Five of them; there was a sixth
+       on the tab strip and the pod records why it went.
+       The escalating hold was always in the notice card. */
   },
   {
     id: "pdf-explainer",
@@ -241,8 +252,10 @@ const projectData: Project[] = [
     live: "https://pdf-explainer.xiangli3625.workers.dev/",
     demo: "pdf-explainer",
     well: "light",
-    /* The act rail across the top of the scene names the four parts and lights the one
-       playing, so there was never anything for an invitation to add. The two notes that
+    /* The act rail across the top of the scene names the three parts and lights the one
+       playing, so there was never anything for an invitation to add. It named four until
+       `ACT_NAMES` lost one: "Quiz" and "Matching" were never two parts of the application,
+       they are two of the three shapes a question takes inside one Practice panel. The two notes that
        were carrying real information — the overlay wakes on approach, and the practice
        material comes out of your own deck — are labels inside the stage now, on the panels
        making those claims. */
@@ -352,7 +365,14 @@ const projectData: Project[] = [
     number: "07",
     name: "Totem",
     platform: "iOS, Android and web",
-    headline: "A todo list that hides its own words behind symbols you learn.",
+    /* "hides" until this was checked, which overstated the app by one setting. `revealAll`
+       is `true` in `totem/src/lib/store.ts`, under a comment saying so in as many words:
+       "Titles are visible by default. Hiding your own todo list is the remarkable thing
+       this app can do, not the price of using it." So an installed Totem does not hide
+       anything until you ask it to. The project's own README says "can hide", and the
+       scene's label has always read "Off until you turn it on" — this headline was the
+       only place on the page claiming the hiding was the default state. */
+    headline: "A todo list that can hide its own words behind symbols you learn.",
     why: "A list you skim without reading is a list you have stopped noticing.",
     theme: "rose",
     source: "https://github.com/xiangthebung/totem",
@@ -395,13 +415,17 @@ const projectData: Project[] = [
        spent the film with a hand on the remote.
        The headline had not. It read "Dark scenes brighter, loud scenes quieter,
        automatically", and the second of those three is something this extension does not
-       do. Measured from its own core at the default strength, a full-scale peak comes out
-       at −0.09 dB; at maximum strength it comes out at −1.2. It never meaningfully touches
-       loud material. What it does is lift the quiet by 8 dB, which closes the gap, which is
-       what lets you run the whole thing lower.
+       do. Measured from its own core at the settings it ships with — strength 45, night EQ
+       off — a full-scale peak comes out at −0.09 dB; at maximum strength it comes out at
+       −1.2. It never meaningfully touches loud material. What it does is lift the quiet by
+       9 dB, which closes the gap, which is what lets you run the whole thing lower.
+       All three of those figures are one configuration's, and saying which one is the point
+       of the clause: the peaks are the EQ-off column and the lift used to be quoted from the
+       EQ-on one, under the heading "at the default strength", which is two settings in one
+       sentence. With the night EQ on the lift is 8 dB and the peaks are −2.0 and −4.7.
        So the headline is the two knobs now rather than the two halves of the signal. It is
        what the software is for, it survives contact with the measurements, and it is the
-       same sentence the scene below it acts out: one panel at 30% volume, one at 12%, the
+       same sentence the scene below it acts out: one panel at 30% volume, one at 10%, the
        same line of dialogue audible in both. */
     headline: "Turn the screen and the volume down without losing the film.",
     why: "Watching anything late means riding the volume and brightness for two hours: dialogue you can't hear, then a bang that wakes the house.",
@@ -418,7 +442,7 @@ const projectData: Project[] = [
        dark scenes brighter, the dialogue audible for less volume, the bang therefore lower,
        nothing to adjust. And the audio half is legible on a silent page because the
        soundtrack is printed at the size it arrives at — the whispered line the same size in
-       both panels, over volume dials reading 30% and 12%, and the explosion at forty pixels
+       both panels, over volume dials reading 30% and 10%, and the explosion at forty pixels
        against twenty-six. The version before it drew both lines landing within five pixels
        of each other, which is a compressor flattening a soundtrack and is not what this
        software does. */
@@ -435,7 +459,13 @@ const projectData: Project[] = [
     number: "07",
     name: "N-Back",
     platform: "Web game",
-    headline: "Match each cue to the one two or three turns back—without gamification.",
+    /* "two or three turns back" until `n-back/src/lib/sequence.ts` was read: `MIN_N` is 1
+       and `MAX_N` is 6, so the range named here was wrong at both ends and narrower than
+       the game at either. The fix keeps "two" — it is `DEFAULT_SETTINGS.n`, and it is the
+       rule the scene below actually plays, badge and all — and adds the real ceiling
+       rather than retreating to "a few turns back", which would have been true, vaguer,
+       and a worse sentence than the wrong one. */
+    headline: "Match each cue to the one two turns back, or up to six—without gamification.",
     why: "Most versions look like a lab instrument or promise you a higher IQ. This one is four quiet minutes.",
     theme: "forest",
     source: "https://github.com/xiangthebung/n-back",

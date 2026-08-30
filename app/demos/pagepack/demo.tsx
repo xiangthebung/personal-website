@@ -45,7 +45,12 @@ import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useSceneRun } from "../scene/use-scene-run";
 import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
-import { captureProgressMessage, formatBytes, type CapturePhase } from "./progress";
+import {
+  captureProgressMessage,
+  formatBytes,
+  optionsSummary,
+  type CapturePhase,
+} from "./progress";
 import "./demo.css";
 
 type BeatName =
@@ -477,9 +482,20 @@ const SPECS: readonly SpecTag<BeatName>[] = [
     side: "left",
     until: "cut",
   },
+  /* "And every page it links to" until this was checked against `background.js`, where it
+     is not every page and never was. `isLinkInScope` compares `siteKey(target.hostname)`
+     against `siteKey(source.hostname)`, so the crawl never leaves the site; it stops at the
+     depth chosen in the popup, capped at `MAX_CAPTURE_DEPTH = 3`; and it takes at most
+     `MAX_LINKS_PER_PAGE = 100` links from any one page, telling you when it hit that.
+     The extension's own store listing is exact about this — "Optional same-site link
+     following, up to three levels deep." — so the scene was the loosest description of
+     this feature anywhere in the project, which is the wrong way round.
+     Seven words, which is the cap. The depth is not in the label because it is already on
+     screen four lines below it: `optionsSummary` prints "One level of links" in the panel
+     this label points at. */
   {
     at: "collect",
-    text: "And every page it links to",
+    text: "And every same-site page it links to",
     x: 70,
     y: 74,
     anchor: "popup",
@@ -918,8 +934,14 @@ export function PagePackDemo() {
               <div className="pp-library">
                 {/* `packMeta` joins the page count, the size and the save date with ` · `,
                     and drops the count when a pack holds one page. Seven, so it stays. */}
+                {/* A pack row: `title` over `packMeta`, which is what `makeRow` is given
+                    for every pack in the list. It read "1 pack", and that is `#library-count`
+                    — an element `popup.js` explicitly hides in the root library view
+                    (`count.hidden = true`), showing it only for a search or inside a folder.
+                    So the scene was printing a number the extension takes care not to. The
+                    pack's own title is what stands there, and it is the page just saved. */}
                 <p className="pp-library-head">
-                  <strong>1 pack</strong>
+                  <strong>{CAPTURED[0].title}</strong>
                   <span>
                     {`${CAPTURED.length} pages · ${formatBytes(TOTAL_BYTES)} · ${SAVED_ON}`}
                   </span>
@@ -953,17 +975,41 @@ export function PagePackDemo() {
                   <span className="pp-target-host">lamport.azurewebsites.net</span>
                 </p>
 
-                {/* Three labels, not two. It read "Saving…" and then went back to
-                    "Save page", so the frames where the connection dies showed a
-                    popup offering to do a job it had already finished — and a
-                    visitor who had not yet seen the Library had nothing on screen
-                    telling them the save succeeded. The badge says seven; this says
-                    it in words, in the panel the eye is already on. */}
-                <button className="pp-primary" type="button" data-target="save" tabIndex={-1}>
-                  {saving ? "Saving…" : index >= at("cut") ? "Saved" : "Save page"}
+                {/* One label, because the extension only has one. This cycled through
+                    "Saving…" and "Saved", and `popup.js` writes neither onto this button:
+                    `saveButton.textContent` is "Save page", "You’re offline" or "No free
+                    saves left", and during a capture the button is not on screen at all
+                    (`$("#save-action").hidden = Boolean(capture || journey)`).
+
+                    The problem those two invented labels were solving is real — a visitor
+                    who has not reached the Library needs to be told the save worked — and
+                    the extension solves it itself, with `setStatus("Saved to your library.")`
+                    under the panel. That is the string used now.
+
+                    What is staged rather than copied: the button stays mounted while the
+                    capture runs, disabled, where the extension hides it. It is the cursor's
+                    anchor through `read` and `collect` (see `CURSOR`), and a target that
+                    unmounts mid-gesture leaves the pointer pointing at nothing. Disabled is
+                    the extension's own state for it here; only the visibility differs. */}
+                <button
+                  className="pp-primary"
+                  type="button"
+                  data-target="save"
+                  tabIndex={-1}
+                  disabled={saving}
+                >
+                  Save page
                 </button>
 
-                <p className="pp-options">One level of links · scripts on</p>
+                {/* From `optionsSummary`, which is the extension's own rule, rather than a
+                    literal beside it. It read "One level of links · scripts on", and the
+                    extension has no such string: `popup.js` appends exactly one suffix to
+                    the depth label, "no scripts", and only when the box is unchecked. The
+                    box is `checked` in `popup.html`, so the scripts-on case — which is what
+                    this scene stages — prints the depth label bare. A scene that hardcodes
+                    what a vendored helper computes is a scene with two answers to one
+                    question, and this one had them disagreeing. */}
+                <p className="pp-options">{optionsSummary(1, true)}</p>
 
                 {saving && (
                   <p className="pp-progress" key={run}>
@@ -975,6 +1021,13 @@ export function PagePackDemo() {
                     <span className="pp-progress-label">{labelFor(beat)}</span>
                   </p>
                 )}
+
+                {/* The extension's own success signal, and the reason the button no longer
+                    invents one: `setStatus("Saved to your library.")` is what `popup.js`
+                    prints when a capture completes. It arrives on the cut, which is the beat
+                    the connection dies on — so the frames where the page fails to load have
+                    a popup that has already said the save worked. */}
+                {index >= at("cut") && <p className="pp-status">Saved to your library.</p>}
               </div>
             )}
           </div>

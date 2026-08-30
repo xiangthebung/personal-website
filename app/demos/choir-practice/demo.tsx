@@ -562,15 +562,24 @@ function tapVoices(frame: HTMLIFrameElement | null, root: HTMLElement | null): (
  *
  * Takes the selector from `HOOKS` rather than naming one, which is what a second cue was
  * added for and then removed again. That cue was going to carry the deleted note "turn your
- * part up and the other three down" on a leader line to `#parts-btn` — and `#parts-btn` is
- * `display: none` at every width this pod runs at, measured 0x0. The application only has a
- * trigger for that panel below 900px, where the panel is a modal; above it the panel is a
- * permanent side column, which is why the pod's click on it is already a no-op there.
+ * part up and the other three down" on a leader line to `#parts-btn`.
  *
- * Worth recording because the conclusion is not "find another anchor". The panel is open on
- * screen, headed "Parts", listing Soprano at 100% and the other three at 35% over a control
- * called "Balance". The claim is already in the frame, made by the application, better than
- * a label would make it. The note went and nothing replaced it.
+ * THE REASON RECORDED HERE HAS EXPIRED, THOUGH THE DECISION HAS NOT.
+ *
+ * It said `#parts-btn` is `display: none` at every width this pod runs at, measured 0x0,
+ * because the app only had a trigger below 900px — and therefore that the pod's click on it
+ * "is already a no-op". None of that is true of the vendored copy. `02f36f0` deleted that
+ * rule: the button is a real toggle at every width, carrying `aria-controls="parts-panel"`
+ * and an `aria-expanded` the app keeps in sync, and the panel it opens is a closable
+ * `<dialog>`. There is no bug today — the pod clicks it only when `aria-expanded` is not
+ * already `"true"`, which is the correct guard — but a comment calling that click inert was
+ * sitting over automation that now does something, which is how a real press gets added
+ * later by somebody who read this and believed it.
+ *
+ * The decision survives its dead reason. The conclusion was never "find another anchor":
+ * the panel is open on screen, headed "Parts", listing Soprano at 100% and the other three
+ * at 35% over a control called "Balance". The claim is already in the frame, made by the
+ * application, better than a label would make it. The note went and nothing replaced it.
  *
  * Returns null on anything unexpected, and the caller renders nothing — a renamed
  * selector costs a label, not a broken layout.

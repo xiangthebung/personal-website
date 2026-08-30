@@ -11,17 +11,26 @@ for a microphone.
 
 ## What was left out
 
-The tests, the Playwright suite, `tools/`, and the packaging files. The full list is
-in the source repository's `.assetsignore`, which exists for the same reason:
-`wrangler.jsonc` serves that project straight from its repository root, so anything
-sitting there is a deploy candidate.
+The tests, the Playwright suite, `tools/`, and the packaging files.
+
+This used to say the full list was in the source repository's `.assetsignore`, kept
+because `wrangler.jsonc` served that project straight from its repository root. Neither
+half is so. There is no `.assetsignore` in that repository and none in its history; the
+denylist it describes was a configuration that was replaced rather than a file that was
+committed. `wrangler.jsonc` now serves `./public` and nothing else — its own comment
+records why, which is that a repository-root deploy made every new file a deploy
+candidate and had `wrangler dev` walking 5,134 files to publish 26.
+
+So there is no list to point at, and the reason there is none is that the source project
+no longer needs one: what ships over there is the same `public/` directory that is copied
+here.
 
 ## Samples
 
 | file | composer | status |
 | --- | --- | --- |
 | `Happy Birthday.musicxml` | arr. David Bauguess | freely reproducible, per the arranger's own notice on the score |
-| `Draw On, Sweet Night.musicxml` | John Wilbye (1574–1638) | public domain |
+| `draw-on-sweet-night.musicxml` | John Wilbye (1574–1638) | public domain |
 | `Quick! We have but a second.musicxml` | C. V. Stanford (1852–1924) | public domain |
 
 `Happy Birthday` is the one this site's pod opens; see `SCORE` in

@@ -298,6 +298,420 @@ test("the GRT copies are still copies of the extension", async (t) => {
   );
 });
 
+/**
+ * THE REST OF WHAT IS COPIED, AND WHY THIS BLOCK EXISTS.
+ *
+ * Two vendored copies were guarded above — Night Neutralizer's core and GRT's format
+ * helpers — and nothing else was. That gap is not hypothetical: it is what let N-Back's
+ * letter set sit one letter behind its own project (the scene told a screen reader the
+ * game draws from a set containing a letter it does not use), and what let Totem's
+ * `aria-label` go on describing a spinning owl and a hopping rabbit for as long as the two
+ * motions had been deliberately swapped the other way.
+ *
+ * The rule every one of these follows: a comment saying "this is a copy" is the most
+ * dangerous comment in a repository, because its whole effect is to tell the next reader
+ * not to check. So each of these checks, and each says *recopy it* rather than inviting a
+ * fix in place — editing a copy to match is how a copy stops being one.
+ *
+ * All of them skip when the sibling checkout is absent, which is the state a deploy runner
+ * is in. The last one needs no sibling: it holds a file to itself.
+ */
+
+test("the Byte Budget copies are still copies of the extension", async (t) => {
+  const siblingRoot = "../../byte-budget/src/";
+  if (!(await exists(siblingRoot))) {
+    t.skip("byte-budget checkout not present");
+    return;
+  }
+
+  const normalise = (source) => source.replace(/\r\n/g, "\n");
+
+  /* `format.ts` is a whole file, byte for byte, under a local banner that says so. The
+     banner is the only permitted difference, so it is stripped and nothing else may. */
+  const format = normalise(await read("../app/demos/byte-budget/format.ts"));
+  assert.match(
+    format,
+    /^\/\*\n \* COPIED, NOT WRITTEN\./,
+    "format.ts has lost the banner saying where it came from",
+  );
+  assert.equal(
+    format.replace(/^\/\*\n \* COPIED, NOT WRITTEN\.[\s\S]*?\*\/\n\n/, ""),
+    normalise(await read(`${siblingRoot}core/format.ts`)),
+    "byte-budget/format.ts has drifted from the extension; recopy it rather than editing " +
+      "in place. Every byte figure in that scene is rounded by this file, including the " +
+      "cases nobody would reinvent the same way (>99%, the four-character badge cap).",
+  );
+
+  /* `types.ts` is a different kind of copy and needs a different check. It is a shim, and
+     it says so: blocks lifted verbatim from two files, each under a header naming the file
+     it came from, plus one `Settings` interface that is written rather than copied — the
+     real one cut down to the single field `format.ts` reads.
+
+     So the check is structural. Split on those headers, and require every block in each
+     section to appear verbatim in the file the header names. `Settings` is the one
+     declared adaptation and is exempted by name; if a second exemption is ever wanted,
+     the honest move is to copy the whole file instead. */
+  const shim = normalise(await read("../app/demos/byte-budget/types.ts"));
+  const named = shim.split(/\/\* --- from `([^`]+)` -+ \*\//).slice(1);
+  assert.ok(named.length >= 4, "types.ts no longer marks which file each block came from");
+
+  let compared = 0;
+  for (let i = 0; i < named.length; i += 2) {
+    const origin = named[i];
+    const theirs = normalise(await read(`${siblingRoot}${origin}`));
+
+    for (const block of named[i + 1].trim().split("\n\n")) {
+      const text = block.trim();
+      if (!text) continue;
+      // The one block that is written rather than copied, per the file's own header.
+      if (text.includes("export interface Settings {")) continue;
+
+      const declaration =
+        text.split("\n").find((line) => /^export /.test(line)) ?? text.split("\n")[0];
+      assert.ok(
+        theirs.includes(text),
+        `byte-budget/types.ts claims this block is verbatim from \`${origin}\`, and it is ` +
+          `not: ${declaration.trim()} — recopy it rather than editing in place.`,
+      );
+      compared += 1;
+    }
+  }
+  assert.ok(compared >= 5, `only ${compared} lifted blocks were checked`);
+});
+
+/**
+ * PagePack's vocabulary, beyond the one function already covered.
+ *
+ * "PagePack's progress vocabulary has not drifted from the extension" holds
+ * `captureProgressMessage`. The rest of `progress.ts` was unheld, and the rest of
+ * `progress.ts` is where the scene's strings actually come from: the depth labels, the
+ * options suffix, the byte units, the progress-card title, and the rule about when a bar
+ * may show a percentage.
+ *
+ * `isDeterminate` is the one that had drifted. It carried a fourth clause,
+ * `progress.phase === "assets"`, that `renderProgressCard` does not have — upstream a
+ * single-page save stays determinate through `finishing`. Latent, because the scene stages
+ * a depth-1 save where the first clause already decides it, which is exactly the kind of
+ * divergence that stays invisible until someone reuses the helper.
+ */
+test("PagePack's copied vocabulary still matches the extension", async (t) => {
+  const popupPath = "../../pagepack-extension/popup.js";
+  if (!(await exists(popupPath))) {
+    t.skip("pagepack-extension checkout not present");
+    return;
+  }
+
+  const [mine, popup] = await Promise.all([
+    read("../app/demos/pagepack/progress.ts"),
+    read(popupPath),
+  ]);
+  const flat = (text) => text.replace(/\s+/g, " ").trim();
+  const recopy = "recopy it rather than editing in place";
+
+  /* The depth labels, in order, against `DEPTH_LABELS`. These are what `optionsSummary`
+     prints, and the scene prints `optionsSummary(1, true)` beside its save. */
+  const theirLabels = popup
+    .match(/const DEPTH_LABELS = \[([^\]]*)\]/)?.[1]
+    ?.match(/"([^"]*)"/g)
+    ?.map((quoted) => quoted.slice(1, -1));
+  assert.ok(theirLabels?.length === 4, "DEPTH_LABELS no longer has its known shape in popup.js");
+
+  const myLabels = mine
+    .slice(mine.indexOf("const DEPTH_LABEL:"))
+    .match(/\d: "([^"]*)"/g)
+    ?.map((entry) => entry.replace(/^\d: "/, "").slice(0, -1));
+  assert.deepEqual(
+    myLabels,
+    theirLabels,
+    `progress.ts's DEPTH_LABEL has drifted from popup.js's DEPTH_LABELS; ${recopy}`,
+  );
+
+  /* The suffix, and the fact that there is only one of it. `renderOptionsSummary` pushes
+     "no scripts" and nothing else, only when the box is unchecked — and the box is
+     `checked` in popup.html, so the default prints the depth label bare. A scene that
+     printed "· scripts on" is what this clause exists to stop coming back. */
+  assert.ok(
+    flat(popup).includes('if (!$("#run-scripts").checked) parts.push("no scripts");'),
+    "renderOptionsSummary no longer appends `no scripts` the way progress.ts copies it",
+  );
+  assert.doesNotMatch(
+    popup,
+    /parts\.push\("scripts on"\)/,
+    "popup.js has grown a `scripts on` suffix; progress.ts needs to learn it",
+  );
+  assert.match(
+    mine,
+    /return runScripts \? base : `\$\{base\} · no scripts`;/,
+    `optionsSummary no longer appends the extension's one suffix; ${recopy}`,
+  );
+
+  /* The byte units. Every size the library row prints goes through this. */
+  for (const line of [
+    "if (amount < 1024) return `${amount} B`;",
+    "if (amount < 1024 * 1024) return `${Math.round(amount / 1024)} KB`;",
+    "if (amount < 1024 * 1024 * 1024) return `${(amount / (1024 * 1024)).toFixed(1)} MB`;",
+    "return `${(amount / (1024 * 1024 * 1024)).toFixed(2)} GB`;",
+  ]) {
+    assert.ok(flat(popup).includes(flat(line)), `popup.js's formatBytes no longer has: ${line}`);
+    assert.ok(
+      flat(mine).includes(flat(line.replace(/amount/g, "bytes"))),
+      `progress.ts's formatBytes has drifted from popup.js; ${recopy}`,
+    );
+  }
+
+  /* The progress card's title, and the cancelling case it has to keep. */
+  assert.ok(
+    flat(popup).includes(
+      '? "Cancelling…" : pagesTotal > 1 ? "Saving pages" : "Saving this page";',
+    ),
+    "renderProgressCard's title no longer has the shape progress.ts copies",
+  );
+  for (const label of ["Cancelling…", "Saving pages", "Saving this page"]) {
+    assert.ok(mine.includes(`"${label}"`), `progressTitle no longer prints "${label}"; ${recopy}`);
+  }
+
+  /* THE ONE THAT HAD DRIFTED. Three clauses upstream, in this order, and no fourth.
+     `capture.determinate` is set as `Number(depth) === 0` in background.js, which is why
+     the copy takes a depth instead of the flag. */
+  assert.ok(
+    flat(popup).includes(
+      "const determinate = capture.determinate === true && Number(capture.assetsTotal) > 0 && !cancelling;",
+    ),
+    "renderProgressCard's determinate rule has changed shape; re-derive isDeterminate",
+  );
+  const determinate = mine.match(/export function isDeterminate\([\s\S]*?\n\}/)?.[0];
+  assert.ok(determinate, "progress.ts no longer declares isDeterminate");
+  assert.match(
+    flat(determinate),
+    /return depth === 0 && progress\.assetsTotal > 0 && !cancelling;\s*\}$/,
+    "isDeterminate does not match renderProgressCard's three clauses. It carried a fourth, " +
+      "`progress.phase === \"assets\"`, which the extension has never had and which drops " +
+      `the bar back to indeterminate through the finishing phase; ${recopy}`,
+  );
+});
+
+/**
+ * The vendored Choir application is the application, file for file.
+ *
+ * Everything else on this page is a reconstruction; this one section claims to be running
+ * the real thing, and that claim is only worth making if the copy is actually the copy.
+ * `public/demos/choir/` is a curated subset — the tests, the Playwright suite and the
+ * packaging files are deliberately not published, and one sample is withheld for copyright
+ * — so this walks what *is* here and holds each file to its counterpart.
+ *
+ * KNOWN DRIFT, RECORDED RATHER THAN HIDDEN.
+ *
+ * Three files are behind their originals as this is written, and they are listed by name
+ * below with what they are behind. They are exempted so that this test reports the state of
+ * the copy instead of failing on a backlog it cannot fix by itself — refreshing a running
+ * application is a decision, not a test's business. Every other file is held exactly, which
+ * is roughly twenty of them, including the two the pod reaches into.
+ *
+ * If you refresh the copy, delete the entry — and the last block here fails if you forget,
+ * because an allowlist entry left behind after its file was fixed silently stops guarding
+ * that file, which is the failure mode of every allowlist.
+ */
+test("the vendored Choir app is still the app it was copied from", async (t) => {
+  const siblingRoot = "../../satb-practice/public/";
+  if (!(await exists(siblingRoot))) {
+    t.skip("satb-practice checkout not present");
+    return;
+  }
+
+  /**
+   * Files known to be behind, and what they are behind. Each is a whole upstream commit
+   * that has not been pulled into the copy, not an edit made here.
+   */
+  const BEHIND = new Map([
+    ["index.html", "the link-preview meta block added by satb-practice ab62252"],
+    ["js/app.js", "the shortcut/focus fix in satb-practice's keydown handler"],
+    ["css/styles.css", "the sheet scroll-padding fix from satb-practice 6e51991"],
+  ]);
+
+  /** This site's own note about the copy. It has no counterpart over there. */
+  const LOCAL_ONLY = new Set(["README.md"]);
+
+  const base = new URL("../public/demos/choir/", import.meta.url);
+  const walk = async (prefix = "") => {
+    const found = [];
+    for (const entry of await readdir(new URL(prefix, base), { withFileTypes: true })) {
+      const path = `${prefix}${entry.name}`;
+      if (entry.isDirectory()) found.push(...(await walk(`${path}/`)));
+      else found.push(path);
+    }
+    return found;
+  };
+
+  const files = await walk();
+  assert.ok(files.length >= 20, `only found ${files.length} vendored files; the copy shrank`);
+
+  const normalise = (source) => source.replace(/\r\n/g, "\n");
+  let compared = 0;
+  const missing = [];
+
+  for (const path of files) {
+    if (LOCAL_ONLY.has(path)) continue;
+    if (!(await exists(`${siblingRoot}${path}`))) {
+      missing.push(path);
+      continue;
+    }
+    if (BEHIND.has(path)) continue;
+
+    const [mine, theirs] = await Promise.all([
+      read(`../public/demos/choir/${path}`),
+      read(`${siblingRoot}${path}`),
+    ]);
+    assert.equal(
+      normalise(mine),
+      normalise(theirs),
+      `public/demos/choir/${path} has drifted from satb-practice; recopy it rather than ` +
+        `editing in place. This section's whole claim is that it is running the real ` +
+        `application, and an edited copy is a reconstruction wearing its name.`,
+    );
+    compared += 1;
+  }
+
+  assert.deepEqual(
+    missing,
+    [],
+    `these vendored files have no counterpart in satb-practice any more, so they were ` +
+      `renamed or deleted upstream and the copy still carries them`,
+  );
+  assert.ok(compared >= 18, `only ${compared} vendored files were compared`);
+
+  for (const [path, why] of BEHIND) {
+    const [mine, theirs] = await Promise.all([
+      read(`../public/demos/choir/${path}`),
+      read(`${siblingRoot}${path}`),
+    ]);
+    assert.notEqual(
+      normalise(mine),
+      normalise(theirs),
+      `public/demos/choir/${path} now matches satb-practice, so it is no longer behind ` +
+        `${why}. Delete its entry from BEHIND so the file is guarded again.`,
+    );
+  }
+});
+
+/**
+ * N-Back's letter set is the project's letter set.
+ *
+ * THIS IS THE ONE THAT PROVES THE GAP WAS REAL. The scene carried the usual n-back set,
+ * C H K L Q R S T, after `stimuli.ts` had swapped C for O — because "see" and "tee" are
+ * the same rime through a small speaker at one cue every two seconds, which turns a miss
+ * into a hearing failure wearing a memory failure's clothes.
+ *
+ * It matters more than a stale constant usually does, because the pod splices the set into
+ * the stage's `aria-label`. A sighted visitor checks the scene against the picture; a
+ * screen-reader user has only that sentence, and it was naming a letter the game does not
+ * use and omitting one it does.
+ */
+test("N-Back's letters are still the letters the game draws from", async (t) => {
+  const origin = "../../n-back/src/lib/stimuli.ts";
+  if (!(await exists(origin))) {
+    t.skip("n-back checkout not present");
+    return;
+  }
+
+  const [pod, upstream] = await Promise.all([read("../app/demos/n-back/demo.tsx"), read(origin)]);
+
+  const letters = (source, pattern) =>
+    source.match(pattern)?.[1].match(/"([A-Z])"/g)?.map((quoted) => quoted[1]);
+
+  const theirs = letters(upstream, /export const LETTERS: readonly string\[\] = \[([^\]]*)\]/);
+  const mine = letters(pod, /const LETTERS = \[([^\]]*)\] as const/);
+  assert.ok(theirs?.length, "stimuli.ts no longer declares LETTERS where this test looks");
+  assert.ok(mine?.length, "the pod no longer declares LETTERS where this test looks");
+
+  assert.deepEqual(
+    mine,
+    theirs,
+    `the pod draws from ${mine?.join("")} and the game draws from ${theirs?.join("")}; ` +
+      `recopy it rather than editing in place. This set is spliced into the stage's ` +
+      `aria-label, so a stale copy is a false sentence read to somebody who cannot see the ` +
+      `frame it describes.`,
+  );
+
+  /* And the two claims made *about* the set, which went stale with it. O is a vowel, so
+     "consonants" is wrong; and upstream's rule is about rhyming, which is narrower than
+     "not sounding alike" and is the thing its own tests enforce. */
+  const from = pod.indexOf("aria-label={");
+  assert.doesNotMatch(
+    pod.slice(from, from + 1400),
+    /consonants/,
+    "the aria-label still calls this set consonants, and it contains a vowel",
+  );
+  assert.match(
+    upstream,
+    /no two rhyme/,
+    "stimuli.ts no longer states the rhyming rule the pod's aria-label quotes",
+  );
+});
+
+/**
+ * Totem's spoken description is generated from the table it describes.
+ *
+ * No sibling checkout: this holds a file to itself, which is all it needs, because the
+ * drift was internal. `TASKS` gives the owl `motion: "hop"` and the rabbit `motion: "spin"`
+ * — deliberately, and the file says so — while the `aria-label` went on describing "a
+ * spinning violet owl, a hopping jade rabbit", which is what they used to be.
+ *
+ * Two things are held. That the clause is *built* from `TASKS` rather than typed beside it,
+ * so the two cannot disagree again; and that each task's `phrase` still agrees with its own
+ * `motion`, `colour` and `object`, so the swap cannot be smuggled back by editing a phrase
+ * to match a stale sentence. The first without the second would move the drift one field
+ * along rather than ending it.
+ */
+test("Totem's aria-label is built from the motions TASKS actually gives", async () => {
+  const pod = await read("../app/demos/totem/demo.tsx");
+
+  /** The `-ing` forms of the `Motion` union. Doubled consonants are why this is a table. */
+  const PARTICIPLE = { spin: "Spinning", tick: "Ticking", flip: "Flipping", hop: "Hopping" };
+
+  const totems = [...pod.matchAll(/totem: \{([\s\S]*?)\n {4}\},/g)].map((block) => {
+    const field = (name) => block[1].match(new RegExp(`${name}: "([^"]*)"`))?.[1];
+    return {
+      colour: field("colour"),
+      object: field("object"),
+      motion: field("motion"),
+      phrase: field("phrase"),
+    };
+  });
+  assert.equal(totems.length, 4, `parsed ${totems.length} totems; the TASKS shape changed`);
+
+  for (const { colour, object, motion, phrase } of totems) {
+    const participle = PARTICIPLE[motion];
+    assert.ok(participle, `TASKS has a motion this test has no participle for: ${motion}`);
+    assert.equal(
+      phrase,
+      `${participle} ${colour.toLowerCase()} ${object.toLowerCase()}`,
+      `the ${object}'s phrase is "${phrase}" but TASKS gives it motion "${motion}" and ` +
+        `colour "${colour}". The phrase is what the stage's aria-label reads out, so a ` +
+        `phrase that disagrees with its own row is a false description of the picture.`,
+    );
+  }
+
+  /* Built, not typed. A literal list here is what went stale last time. */
+  assert.match(
+    pod,
+    /const TOTEM_CLAUSE = TASKS\.map\([\s\S]{0,160}?totem\.phrase[\s\S]{0,80}?\.join\(", "\)/,
+    "TOTEM_CLAUSE is no longer derived from TASKS; a retyped list is what drifted before",
+  );
+  assert.ok(
+    pod.includes("${TOTEM_CLAUSE}"),
+    "the stage's aria-label no longer interpolates TOTEM_CLAUSE, so the list it reads out " +
+      "is written by hand again",
+  );
+  const label = pod.slice(pod.indexOf("aria-label={"));
+  for (const motion of ["spinning", "hopping", "ticking", "flipping"]) {
+    assert.doesNotMatch(
+      label,
+      new RegExp(`"[^"]*${motion} \\w+ \\w+`),
+      `the aria-label has a hand-written "${motion} …" phrase in it again; build it from TASKS`,
+    );
+  }
+});
+
 test("demos that run a loop stop running it off screen", async () => {
   for (const id of ["night-neutralizer", "n-back", "grt-next-bus", "choir-practice"]) {
     const source = await read(`../app/demos/${id}/demo.tsx`);
@@ -798,13 +1212,55 @@ async function nightSoundTable() {
     return Number(found[1]);
   };
 
+  const flag = (name) => {
+    const found = source.match(new RegExp(`^const ${name} = (true|false);$`, "m"));
+    assert.ok(found, `the pod no longer declares ${name} where this test looks for it`);
+    return found[1] === "true";
+  };
+
   return {
     rows,
     strength: number("STRENGTH"),
+    nightEq: flag("NIGHT_EQ"),
     beforeVolume: number("BEFORE_VOLUME"),
     afterVolume: number("AFTER_VOLUME"),
   };
 }
+
+/**
+ * The premises the scene is drawn on are the extension's own defaults.
+ *
+ * THIS IS THE GAP THAT LET THE LAST DRIFT SURVIVE. The two tests below derive every printed
+ * figure from `core/`, which is why the table is right — but they used to derive it at
+ * `nightEq = true`, hardcoded here, because that is what the pod passed. So the suite was
+ * pinning the scene to whatever flag the scene chose rather than to what the extension
+ * ships, and a scene drawn at a setting no user has was internally consistent and passed.
+ *
+ * It was: `DEFAULT_SETTINGS.nightEq` is `false`, the pod passed `true`, and the page printed
+ * a +8 dB lift where the default lifts +9.87. Strength was never wrong — 45 is the default —
+ * which is what made the mixture hard to see. Both halves are held here now, so the pod may
+ * not quietly re-base onto a non-default setting again, and if the extension changes its own
+ * defaults this fails rather than the page going stale.
+ */
+test("the Night Neutralizer scene runs at the extension's own defaults", async () => {
+  const [{ strength, nightEq }, core] = await Promise.all([nightSoundTable(), loadNightCore()]);
+
+  assert.ok(core.DEFAULT_SETTINGS, "the vendored core no longer exports DEFAULT_SETTINGS");
+  assert.equal(
+    strength,
+    core.DEFAULT_SETTINGS.audioStrength,
+    `the scene is drawn at strength ${strength} but the extension ships ` +
+      `${core.DEFAULT_SETTINGS.audioStrength}. Either move the scene or say on the page ` +
+      `that it is not showing the default.`,
+  );
+  assert.equal(
+    nightEq,
+    core.DEFAULT_SETTINGS.nightEq,
+    `the scene passes nightEq=${nightEq} but the extension ships ` +
+      `${core.DEFAULT_SETTINGS.nightEq}. The footer quotes "At strength ${strength}" with no ` +
+      `qualifier, so every figure on it has to be the configuration an installer gets.`,
+  );
+});
 
 /**
  * Imports the vendored `core/` as running code.
@@ -841,7 +1297,12 @@ async function loadNightCore() {
       );
     }
     const load = (file) => import(pathToFileURL(nodePath.join(dir, file)).href);
-    return { ...(await load("readings.js")), ...(await load("strength.js")) };
+    return {
+      ...(await load("readings.js")),
+      ...(await load("strength.js")),
+      // For `DEFAULT_SETTINGS`, which is what the scene's premises are held to.
+      ...(await load("types.js")),
+    };
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -875,7 +1336,7 @@ async function loadNightCore() {
  *     as audible while the explosion arrives meaningfully quieter — the product.
  */
 test("the Night Neutralizer scene still prints what the extension actually does", async () => {
-  const { rows, strength, beforeVolume, afterVolume } = await nightSoundTable();
+  const { rows, strength, nightEq, beforeVolume, afterVolume } = await nightSoundTable();
   const core = await loadNightCore();
 
   const whisper = rows.get("whisper");
@@ -888,12 +1349,14 @@ test("the Night Neutralizer scene still prints what the extension actually does"
   assert.equal(whisper.film, core.QUIET_DB, "the whisper is no longer the core's quiet level");
   assert.equal(boom.film, core.LOUD_DB, "the explosion is no longer the core's loud level");
 
-  /* What the extension does to each beat, from the extension. `nightEq` is `true` because
-     that is what the pod's own footer quotes, and the two have to be the same setting or
-     the panels and the line underneath them describe different software. */
-  const params = core.mapAudioStrength(strength, true);
+  /* What the extension does to each beat, from the extension. `nightEq` is read off the pod
+     rather than written here, and separately held to `DEFAULT_SETTINGS` by "the Night
+     Neutralizer scene runs at the extension's own defaults" — the panels, the line
+     underneath them and the shipped extension all have to be the same setting, and a
+     literal in this file could only ever guarantee the first two. */
+  const params = core.mapAudioStrength(strength, nightEq);
   const through = (film) => core.audioTransferDb(params, film);
-  const lift = core.audioEffect(strength, true).liftDb;
+  const lift = core.audioEffect(strength, nightEq).liftDb;
 
   /* THE CLAIM THIS EXISTS TO POLICE. The whisper comes up; the peak does not come down.
      If that ever stops being true of `core/`, this fails and the scene gets rewritten —
@@ -1006,14 +1469,21 @@ test("the Night Neutralizer scene still prints what the extension actually does"
  * visible.mjs` is where that side is covered.
  *
  * Two things worth holding. The `nightEq` argument, because the test above derives every
- * reading in `SOUND` on the assumption that it is on, and a scene whose panels and whose
- * footer describe two different settings is the exact failure this pair of tests exists
- * for. And that both of the sentences `describeAudioEffect` returns reach the page: the
- * second is the loud-to-quiet gap, which is the single figure the audio half is built on,
- * and it went unprinted for as long as the scene was claiming something else.
+ * reading in `SOUND` from it, and a scene whose panels and whose footer describe two
+ * different settings is the exact failure this pair of tests exists for. It is held to the
+ * pod's own `NIGHT_EQ`, which "the Night Neutralizer scene runs at the extension's own
+ * defaults" holds to `DEFAULT_SETTINGS` — asserting a literal here is what let a
+ * non-default setting sit on the page for a year while every test agreed with it.
+ *
+ * And that both of the sentences `describeAudioEffect` returns reach the page: the second
+ * is the loud-to-quiet gap, which is the single figure the audio half is built on, and it
+ * went unprinted for as long as the scene was claiming something else. Note that the second
+ * *argument* to that function is `nightEq` rather than anything to do with how many
+ * sentences come back — it always returns two — which is a misreading the pod's own
+ * comment used to encourage.
  */
 test("the Night Neutralizer footer quotes the extension at the settings the scene runs", async () => {
-  const [source, { strength }, core] = await Promise.all([
+  const [source, { strength, nightEq }, core] = await Promise.all([
     read("../app/demos/night-neutralizer/demo.tsx"),
     nightSoundTable(),
     loadNightCore(),
@@ -1021,12 +1491,13 @@ test("the Night Neutralizer footer quotes the extension at the settings the scen
 
   const audio = source.match(/const \[(\w+), (\w+)\] = describeAudioEffect\(STRENGTH, (\w+)\);/);
   assert.ok(audio, "the pod no longer takes both readings from describeAudioEffect");
-  const [, liftName, gapName, nightEq] = audio;
+  const [, liftName, gapName, eqArg] = audio;
   assert.equal(
-    nightEq,
-    "true",
-    "the footer quotes the extension with the night EQ off while the panels are drawn " +
-      "with it on; the two halves of the scene now describe different settings",
+    eqArg,
+    "NIGHT_EQ",
+    `the footer quotes the extension at nightEq=${eqArg} while the panels are drawn at ` +
+      `NIGHT_EQ; the two halves of the scene now describe different settings. Pass the ` +
+      `same constant, and let the defaults test say what that constant may be.`,
   );
 
   const spec = source.match(/<p className="nn-spec"[^>]*>([\s\S]*?)<\/p>/);
@@ -1040,7 +1511,7 @@ test("the Night Neutralizer footer quotes the extension at the settings the scen
   }
 
   // And what those names resolve to at this strength is a figure, not an empty string.
-  const [lift, gap] = core.describeAudioEffect(strength, true);
+  const [lift, gap] = core.describeAudioEffect(strength, nightEq);
   assert.match(lift, /Quiet parts \+\d+ dB/, `the core reports the lift as "${lift}"`);
   assert.match(gap, /gap −\d+ dB/, `the core reports the gap as "${gap}"`);
 });

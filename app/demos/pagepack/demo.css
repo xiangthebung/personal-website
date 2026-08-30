@@ -704,6 +704,23 @@
   text-align: center;
 }
 
+/* `setStatus("Saved to your library.")`, which is how the extension says a capture
+   finished. It replaces two invented button labels — see the note in `demo.tsx`. */
+.pp-status {
+  margin: 8px 0 0;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* The extension disables this button for the whole of a capture. It also hides it; the
+   pod keeps it as the cursor's anchor and settles for the disabled look. */
+.pp-primary:disabled {
+  filter: saturate(0.5);
+  opacity: 0.55;
+}
+
 .pp-progress {
   display: flex;
   flex-direction: column;

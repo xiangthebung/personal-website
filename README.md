@@ -30,7 +30,7 @@ moving — the scene won that competition every time, and the list still took up
 room. The claims now live inside the frames as labels pinned to their evidence:
 "Notifications less distracting" beside the badge at the moment it loses its red,
 "Real positions, so late reads late" on the row of a bus that is,
-"And every page it links to" on the
+"And every same-site page it links to" on the
 cards flying out of the toolbar. What is left in the reading column is a name, a
 platform, a headline and — where the headline does not already contain it — the
 problem, which is the one thing a demonstration of the solution cannot state.

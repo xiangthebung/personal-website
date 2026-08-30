@@ -38,10 +38,27 @@ export function captureProgressMessage({
 
 /**
  * "Link-following discovers pages as it goes, so only a single-page save can
- * promise an honest percentage."
+ * promise an honest percentage." — `background.js`, where the flag is set as
+ * `determinate: Number(depth) === 0`.
+ *
+ * The three clauses are `renderProgressCard`'s, in its order. This had a fourth,
+ * `progress.phase === "assets"`, which the extension does not have and which changes the
+ * answer: upstream a single-page save stays determinate through `finishing`, and with that
+ * clause the bar would drop back to sliding for the last phase of every save. Latent here
+ * only because this scene stages a depth-1 save, where the first clause already decides it.
+ *
+ * `cancelling` is a parameter rather than a field on `CaptureProgress` because upstream
+ * reads it off `cancelRequestId === capture.id` in the popup's own module scope, not off
+ * the progress record. Nothing in this scene cancels, so it defaults to `false` — but the
+ * clause is here, because a copy that quietly drops a term is the thing this file exists
+ * not to be.
  */
-export function isDeterminate(depth: number, progress: CaptureProgress): boolean {
-  return depth === 0 && progress.assetsTotal > 0 && progress.phase === "assets";
+export function isDeterminate(
+  depth: number,
+  progress: CaptureProgress,
+  cancelling = false,
+): boolean {
+  return depth === 0 && progress.assetsTotal > 0 && !cancelling;
 }
 
 export function progressRatio(progress: CaptureProgress): number {

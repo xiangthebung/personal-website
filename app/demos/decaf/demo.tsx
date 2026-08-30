@@ -27,10 +27,24 @@
  * it visibly stay put while the middle empties.
  *
  * The scene ends on the escalating hold, which is the design's real argument: the
- * feed is not blocked, it is three seconds away, and tomorrow it is seven.
+ * feed is not blocked, it is three seconds away, and the next time today it is seven.
+ * Not "and tomorrow it is seven", which is what this said and is the opposite of the
+ * mechanism: `passCount` in `Decaf/core.js` reads `passHistory[dayKey(now)][site]`, so the
+ * escalation is keyed to the day and tomorrow starts again at three. The card's own foot
+ * line has always said this correctly — "First pass today is 3 seconds. The next is 7."
+ * — so the comment was contradicting the frame it describes.
  *
  * Nothing here is a real site. The layout is a generic one so that no brand is being
- * depicted with its numbers altered, and the copy in the notice is Decaf's own.
+ * depicted with its numbers altered, and the body line of the notice is Decaf's own,
+ * verbatim: "Search, messages and anything you open on purpose still work."
+ *
+ * The other three strings in that card are not, and saying "the copy in the notice is
+ * Decaf's own" of all four was the claim overreaching its evidence. The head is
+ * genericised on purpose — the extension writes "Decaf paused the {site} feed." and this
+ * scene depicts no real brand, so it says "this feed". The button reads "Hold 3s" where
+ * `holdHint()` produces "Hold for 3 seconds", compressed to fit a 44px ring. And the foot
+ * line is the demo's own sentence: the extension states the escalation by appending
+ * "· 2nd time today" to the hint, never as a sentence about what the next pass costs.
  */
 
 import "./demo.css";
@@ -311,9 +325,13 @@ const SUGGESTIONS = ["an account like yours", "trending near you", "because you 
  * the claim and the proof for a visitor to fail to cross.
  *
  * They burst out of the toolbar button, on a stagger, which is the point of the layout
- * as much as of the copy: one press, and six things fly out of it and land on six
- * different parts of the page. That reads as *this switch did all of this* in a way six
+ * as much as of the copy: one press, and five things fly out of it and land on five
+ * different parts of the page. That reads as *this switch did all of this* in a way five
  * bullet points four inches away cannot.
+ *
+ * Five, not six. There was a sixth — "Tab title stops counting" — and the reason it went
+ * is written where it stood, below. The count is stated here and in `projects.ts`, and
+ * both said six for as long as `SPECS` had five entries.
  *
  * Every one of them names the element it is about and is measured against it. The
  * coordinates are still here and are still worth getting close, because they are what the
@@ -327,9 +345,10 @@ const SUGGESTIONS = ["an account like yours", "trending near you", "because you 
  *
  * The three labels over the feed carry `until: "pause"`, because the feed is what the
  * notice card replaces. A label left pinned over the notice would be a label pointing at
- * nothing, which is the one failure this whole idea cannot survive. The other three sit
- * on furniture that never moves — the tab strip, the header, the suggestions column — so
- * they stay to the end and the last frame is the whole argument at once.
+ * nothing, which is the one failure this whole idea cannot survive. The other two sit
+ * on furniture that never moves — the header and the suggestions column — so they stay to
+ * the end and the last frame is the whole argument at once. It was three, over the tab
+ * strip as well, until that label was deleted.
  */
 const SPECS: readonly SpecTag<BeatName>[] = [
   /* "Media greyscaled" was the first wording and it was written from inside the code.

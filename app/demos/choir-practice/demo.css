@@ -23,30 +23,34 @@
 
 /* Tall enough for the application to fit inside it.
    This was `aspect-ratio: 16 / 10`, which derived the height from the width and gave the
-   app 609px at the pod's 980px. The app needs about 850: its parts panel is a fixed side
-   column in the desktop layout that neither scrolls nor closes, so anything shorter pushes
-   it out of the body — 243px of overflow at 609, 392px at 460 — and the score is cut off
-   inside a frame that is itself cut off. An aspect ratio is the wrong rule for a box whose
-   contents have a minimum height and do not care about its width. */
+   app 609px at the pod's 980px — and an aspect ratio is the wrong rule for a box whose
+   contents have a minimum height and do not care about its width.
+
+   THE REASON GIVEN HERE WAS THE APPLICATION'S OLD BEHAVIOUR.
+
+   It said the parts panel is "a fixed side column in the desktop layout that neither
+   scrolls nor closes", so a short frame pushed it out of the body. The vendored copy
+   contradicts both halves: `.panel-scroll` is `flex: 1; overflow-y: auto`, so the panel
+   scrolls, and the panel is a `<dialog>` with a `#parts-close` button and a `#parts-btn`
+   toggle, with `.parts-panel:not([open]) { display: none }` taking its whole grid track
+   back when it shuts. Both were fixed upstream and the note here was never updated. */
 .choir-frame {
   display: block;
   width: 100%;
-  /* Follows the window, with a floor.
-     236px is what the section spends around this frame — the heading column is beside it
-     now, so that is padding, the stand's base and the footnote. Subtracting it means the
-     section lands just inside the window rather than just outside it: at 1080 the frame
-     takes 844 and the section 1077.
-     The 760px floor is the compromise the application forces. It needs about 850 before
-     its parts panel stops pushing out of the body, and on a 900px-tall laptop there is no
-     height that both fits the window and satisfies that. Given the choice, the app stays
-     intact and the section runs a little long — a cut-off score is the fault that was
-     reported, and a section you scroll is not. */
-  /* 860px flat, which is what the application needs before its parts panel pushes out of
-     its own body. Not a function of the window: a shorter frame does not make the section
-     fit — the heading band above it costs ~290px either way — it only cuts the score off
-     inside a frame that is already too short. Given the choice between an intact app in a
-     section you scroll a little, and a cut-off app in a section that fits, the app wins;
-     the cut-off score is the fault that was reported. */
+  /* 860px flat, and not a function of the window: a shorter frame does not make the
+     section fit — the heading band above it costs ~290px either way — it only cuts the
+     score off inside a frame that is already too short. Given the choice between an intact
+     app in a section you scroll a little and a cut-off app in a section that fits, the app
+     wins; the cut-off score is the fault that was reported.
+
+     A `calc(100vh - 236px)` with a 760px floor was described here, at length, and no such
+     rule exists — it was replaced by this flat height and its comment was left behind.
+
+     What 860 is: a measurement, taken when the panel could not be closed. It has not been
+     re-measured since the panel learned to close and scroll, so it may now be more height
+     than the app needs. It is left alone deliberately rather than trimmed by guess — the
+     thing to measure, if this is revisited, is how much of the score survives at a shorter
+     height with the panel open, which is the state the pod puts it in. */
   height: 860px;
   border: 0;
   border-radius: 12px;

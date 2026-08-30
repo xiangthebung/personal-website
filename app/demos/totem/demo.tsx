@@ -111,7 +111,7 @@ interface Totem {
   readonly motion: Motion;
   readonly pitch: Pitch;
   readonly family: Family;
-  /** "Spinning violet owl" — `totemPhrase`, capitalised the way `TaskRow` capitalises it. */
+  /** "Hopping violet owl" — `totemPhrase`, capitalised the way `TaskRow` capitalises it. */
   readonly phrase: string;
 }
 
@@ -211,6 +211,24 @@ const TASKS: readonly Task[] = [
     },
   },
 ];
+
+/**
+ * The four totems as one clause, for the stage's `aria-label`.
+ *
+ * Built from `TASKS` rather than typed out beside it, and that is the whole point of its
+ * existing. The label used to carry the list as prose — "a spinning violet owl, a hopping
+ * jade rabbit" — written when the owl did spin, and left behind when the two motions were
+ * deliberately swapped a few lines above. So the one description of this scene that a
+ * sighted visitor cannot check was the one describing objects that no longer move that
+ * way, and it stayed wrong precisely because nothing rendered it.
+ *
+ * `phrase` is `totemPhrase`'s output, which is motion, colour and object in the app's own
+ * order. Lower-cased because it arrives capitalised for the row it is drawn in, and this
+ * is mid-sentence. "Totem's aria-label is built from the motions TASKS actually gives" in
+ * `tests/rendered-html.test.mjs` holds each `phrase` to its own `motion`/`colour`/`object`,
+ * so a swap cannot get through by editing the phrase to match.
+ */
+const TOTEM_CLAUSE = TASKS.map((task) => `a ${task.totem.phrase.toLowerCase()}`).join(", ");
 
 /**
  * How the Today screen groups them: overdue above what is due, which is the sort the app
@@ -519,9 +537,8 @@ export function TotemDemo() {
         "A phone running a todo app, beside the settings card that changes it and a " +
         "diagram of the sounds its symbols make. The list holds four tasks — renew " +
         "passport, standup notes, email Dana about the lease, water the plants — each " +
-        "with a small coloured symbol beside it: a ticking crimson key, a flipping aqua " +
-        "fish, a spinning violet owl, a hopping jade rabbit. A switch reading hide task " +
-        "names behind their symbol is off, then turned on, and the four titles dissolve " +
+        `with a small coloured symbol beside it: ${TOTEM_CLAUSE}. A switch reading hide ` +
+        "task names behind their symbol is off, then turned on, and the four titles dissolve " +
         "away leaving only the symbols and their names. One symbol is then practised: " +
         "the owl is drawn large under the question what is this one, above two answers " +
         "that print what each will do to the schedule — I had it, two days, and show " +

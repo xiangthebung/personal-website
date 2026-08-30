@@ -69,11 +69,28 @@ const NOTE = {
   ] as Array<[string, string]>,
 };
 
+/**
+ * The tutor panel's furniture, and the chips are the app's rather than this scene's.
+ *
+ * They used to read "Why four satellites?", "Explain pseudorange", "Worked example" — three
+ * plausible questions about this deck, and three strings `ChatPanel.tsx` never puts on
+ * screen. Its `SUGGESTIONS` are four fixed prompts that do not vary with the document,
+ * which is a real design decision the scene was overwriting with a better-looking one.
+ *
+ * `asked` is `chips[0]` because the cursor presses the first chip; the two have to agree or
+ * the bubble that appears is not the one that was clicked. The reply is staged — it comes
+ * out of a model in the real app — but it now answers the prompt actually pressed.
+ */
 const CHAT = {
-  chips: ["Why four satellites?", "Explain pseudorange", "Worked example"],
-  asked: "Why four satellites?",
+  chips: [
+    "Explain this slide as simply as possible",
+    "Why does this matter?",
+    "Walk me through the maths step by step",
+    "Give me a concrete example",
+  ],
+  asked: "Explain this slide as simply as possible",
   reply:
-    "Three ranges fix you in space. The fourth solves for your receiver's own clock error — the one term you cannot measure directly. That is why a cheap receiver can still keep time to a few nanoseconds.",
+    "A satellite says when it sent a signal. Your phone notes when it arrived, multiplies the difference by the speed of light, and that is the distance. Everything else in the system exists to make that one subtraction trustworthy.",
 };
 
 const QUIZ = {
@@ -698,12 +715,21 @@ export function PdfExplainerDemo() {
           data-open={split}
           aria-hidden="true"
         >
+          {/* `STUDY_TABS` in `src/workspace/StudyPanel.tsx`, verbatim and in its order.
+              This strip read "Tutor · Practice", which named the two acts the scene plays
+              rather than the two tabs the application draws — the app has three, and calls
+              them Notes, Ask and Review. The act names live on the rail above the stage,
+              which is the scene's own device and may use the scene's own words; a control
+              drawn inside a reconstruction of the interface may not.
+              `Notes` lights during act 0, when the overlay on the slide is what is being
+              read, so all three carry a state rather than one sitting permanently dead. */}
           <div className="pdfx-panel-tabs">
-            <span data-on={act === 1}>Tutor</span>
+            <span data-on={act === 0}>Notes</span>
+            <span data-on={act === 1}>Ask</span>
             {/* Named as a cursor target so the beat that swaps this panel's whole
                 contents has something visible causing it. See `CURSOR`. */}
             <span data-on={act >= 2} data-target="practice-tab">
-              Practice
+              Review
             </span>
           </div>
 
@@ -756,7 +782,13 @@ export function PdfExplainerDemo() {
               <div className="pdfx-practice-head">
                 <p className="pdfx-practice-score">
                   {done} of 3 done
-                  {done === 3 && <span className="pdfx-practice-all">set complete</span>}
+                  {/* `{correct}/{quizzes} correct`, which is the chip `PracticePanel.tsx`
+                      prints beside "n of m done" once anything has been answered. It said
+                      "set complete", which is not a string the application has. One of the
+                      three items in this set is `kind: "quiz"` — `stats.quizzes` counts only
+                      those — and the scene answers it correctly, so the app's own figure
+                      here is 1/1. */}
+                  {done === 3 && <span className="pdfx-practice-all">1/1 correct</span>}
                 </p>
                 <span className="pdfx-progress" aria-hidden="true">
                   <i style={{ width: `${(done / 3) * 100}%` }} />
@@ -811,7 +843,8 @@ export function PdfExplainerDemo() {
 
                   {revealed && (
                     <p className="pdfx-verdict">
-                      <strong>Correct.</strong> {QUIZ.explanation}
+                      {/* No full stop. `QuizCard.tsx` renders the bare word. */}
+                      <strong>Correct</strong> {QUIZ.explanation}
                     </p>
                   )}
                 </section>

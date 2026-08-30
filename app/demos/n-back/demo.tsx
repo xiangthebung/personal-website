@@ -34,8 +34,26 @@ import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
 import "./demo.css";
 
-/** The project's letter set: eight consonants picked for not sounding alike. */
-const LETTERS = ["C", "H", "K", "L", "Q", "R", "S", "T"] as const;
+/**
+ * The project's letter set, copied from `n-back/src/lib/stimuli.ts`.
+ *
+ * It was the usual n-back set — C H K L Q R S T — and upstream stopped being that in
+ * `2a769ad`: C was swapped for O, because "see" and "tee" are the same rime through a small
+ * speaker at one cue every two seconds, which makes a miss a hearing failure wearing a
+ * memory failure's clothes. `tests/stimuli.test.ts` over there holds every letter's rime
+ * and fails if two collide again.
+ *
+ * This matters here beyond tidiness: the set is spliced into the stage's `aria-label`, so
+ * the stale copy told a screen-reader user the game draws from a set containing a letter it
+ * does not use and missing one it does — the one description of this scene its reader
+ * cannot check against the picture.
+ *
+ * Two claims went with it. "Eight consonants" is false now (O is a vowel), and "picked for
+ * not sounding alike" was never upstream's reasoning: the rule is that no two *rhyme*, which
+ * is narrower and is the thing actually enforced. The four cues this scene draws are K, R
+ * and T, all of which are in both sets, so nothing visible moves.
+ */
+const LETTERS = ["H", "K", "L", "O", "Q", "R", "S", "T"] as const;
 
 type BeatName =
   | "empty"
@@ -235,7 +253,7 @@ export function NBackDemo() {
         "fourth repeats the second cue's letter, which is a match in the sound " +
         "stream. The two streams are scored separately. The letters are drawn from " +
         LETTERS.join(", ") +
-        " — eight consonants chosen for not sounding alike."
+        " — eight letters chosen so that no two of them rhyme."
       }
     >
       {/* ------------------------------------------------------------ the cue now */}
@@ -349,10 +367,27 @@ export function NBackDemo() {
             its slots, the bracket names the comparison, and the two keys light separately.
             The scoring is the exception, and it is an interesting exception — nobody is
             pressing anything here, so every answer this scene can ever show is a correct
-            one. "Pressing everything scores worse than pressing nothing" is therefore
-            unshowable and has to be said, and the place to say it is beside the two keys it
-            is about rather than four inches to the left of the frame. */}
-        <span className="nb-answer-cost">A false press costs more than a miss</span>
+            one. It is unshowable and has to be said, and the place to say it is beside the
+            two keys it is about rather than four inches to the left of the frame.
+
+            IT WAS BACKWARDS, AND SO WAS THE COMMENT EXPLAINING IT.
+
+            This read "A false press costs more than a miss", over a comment claiming
+            "Pressing everything scores worse than pressing nothing". `scoring.ts` scores
+            *balanced* accuracy — the mean of the hit rate and the correct-rejection rate —
+            and both statements are artefacts of reading it as proportion-correct.
+
+            Balanced accuracy makes the cost of an error the reciprocal of its own class's
+            size. A miss costs 1/(2 × targets); a false press costs 1/(2 × non-targets). The
+            default session is n=2 at 2500ms, which is 93 scored trials, and `TARGET_RATE`
+            is 0.3 — so 28 targets against 65 non-targets. A miss takes 1.79 points off, a
+            false press 0.77, and the miss is worth about 2.3 of the false press. Exactly
+            backwards from what was printed here.
+
+            The comment's claim fails for the same reason and is the point of the design:
+            `scoring.ts` says in as many words that pressing nothing, pressing everything and
+            pressing at random all land on 50%. That is what balancing is for. */}
+        <span className="nb-answer-cost">A miss costs more than a false press</span>
       </div>
 
       <p className="nb-caption" aria-hidden="true">

@@ -68,6 +68,23 @@ import { describeAudioEffect, describeVideoEffect } from "./core/readings";
 
 /** The extension's default. Not a number picked to make the demo look good. */
 const STRENGTH = 45;
+/**
+ * The other half of the extension's default, and it used to be wrong.
+ *
+ * `DEFAULT_SETTINGS.nightEq` is `false` in `core/types.ts`. This scene passed `true`, which
+ * made it a half-default: the strength above is what the extension ships with, the tone
+ * shaping was not, and nothing said so. The two figures then disagreed by 1.8 dB — the
+ * page printed a lift of +8 dB for a configuration nobody installing the extension gets,
+ * where the real default lifts +9.
+ *
+ * Both premises are literals rather than reads of `DEFAULT_SETTINGS` because this file's
+ * whole method is that the numbers a scene is drawn on are legible next to the table they
+ * produce. What stops a literal drifting is not writing it as an expression, it is a test:
+ * "the Night Neutralizer scene runs at the extension's own defaults" holds both of these
+ * to `DEFAULT_SETTINGS` in the vendored core, so shipping a different default over there
+ * fails the build here rather than quietly re-basing the page onto a setting.
+ */
+const NIGHT_EQ = false;
 
 /* Computed once, at module scope: with no frame analysis the curve never changes,
    so there is nothing for a render to recompute. */
@@ -77,9 +94,11 @@ const TONE_TABLE = curveToTableValues(
 );
 const SATURATION = VIDEO_PARAMS.saturation.toFixed(3);
 const [VIDEO_READING] = describeVideoEffect(STRENGTH);
-/* Both sentences, not just the first. The second one — the loud-to-quiet gap — is the
-   figure every number in `SOUND` is built on, so it belongs on the page beside them. */
-const [LIFT_READING, GAP_READING] = describeAudioEffect(STRENGTH, true);
+/* Destructured to two names because `describeAudioEffect` returns two sentences and both
+   belong on the page: the second — the loud-to-quiet gap — is the figure every number in
+   `SOUND` is built on. The second *argument* is `nightEq`, not a request for both
+   sentences; a comment here once implied otherwise, which is how `true` survived in it. */
+const [LIFT_READING, GAP_READING] = describeAudioEffect(STRENGTH, NIGHT_EQ);
 
 type BeatName = "night" | "dark" | "whisper" | "blast" | "boom" | "settle" | "hold";
 
@@ -114,7 +133,7 @@ const BEATS: readonly Beat<BeatName>[] = [
   // right and come back, which is what any comparison costs.
   { name: "dark", ms: 2600 },
   // Claim two: a line of dialogue printed at the size it sounds, the same size on both
-  // panels, over two volume dials that read 30% and 12%. The quietest beat in the scene
+  // panels, over two volume dials that read 30% and 10%. The quietest beat in the scene
   // and the one that needs the longest look, because what differs is a number.
   { name: "whisper", ms: 2800 },
   /* A cut is a cut. It should feel like an assault — but the white flash it fires is
@@ -140,16 +159,21 @@ const BEATS: readonly Beat<BeatName>[] = [
  * THE THING THIS TABLE USED TO GET WRONG
  *
  * It said the extension lifts a whisper by 17 dB and pulls an explosion down to −9 dB.
- * Neither is true. Run the vendored core: at strength 45 with the night EQ on, a whisper
- * at −45 dBFS comes out at −36.9, and a full-scale peak comes out at −0.087. The peak does
- * not move — not here, and not at any strength; it is −0.6 dB at 70 and −1.2 dB at 100,
- * and the project's own offline render measured −0.18 dBFS after a full-scale burst. The
- * extension does not make loud things quieter. It lifts the quiet, which closes the gap,
- * which is the thing that lets *you* turn the volume down.
+ * Neither is true. Run the vendored core: at the extension's defaults — strength 45, night
+ * EQ off — a whisper at −45 dBFS comes out at −35.1, and a full-scale peak comes out at
+ * −0.087. The peak does not move — not here, and not at any strength; with the EQ off it is
+ * −0.6 dB at 70 and −1.2 dB at 100, and the project's own offline render measured −0.18
+ * dBFS after a full-scale burst. The extension does not make loud things quieter. It lifts
+ * the quiet, which closes the gap, which is the thing that lets *you* turn the volume down.
+ *
+ * Those two peak figures are the default's. Switching the night EQ on moves them — to −2.0
+ * at 70 and −4.7 at 100 — which is still not levelling, but it is a different number, and
+ * quoting one configuration's peaks under another's heading is exactly the error this
+ * comment was carrying: it opened "with the night EQ on" and then listed the EQ-off column.
  *
  * So the levelling the old table drew — a whisper and an explosion landing within five
  * pixels of each other — was not an exaggeration of the effect, it was a different effect.
- * The real one is 8 dB out of 45: real, and much smaller.
+ * The real one is 9 dB out of 45: real, and much smaller.
  *
  * WHAT IS DRAWN INSTEAD
  *
@@ -157,11 +181,11 @@ const BEATS: readonly Beat<BeatName>[] = [
  * soundtrack changes shape". It is "you can turn it down and still hear the dialogue" —
  * two variables, the film and the volume. So the volume is the second variable, and it is
  * per panel rather than shared: both panels are playing at the setting it takes to hear
- * the whispered line, and because the extension has lifted that line by 8 dB, that setting
- * is 8 dB lower on the right.
+ * the whispered line, and because the extension has lifted that line by 9 dB, that setting
+ * is 9 dB lower on the right.
  *
  * Which lands the whisper at the same size on both panels — that is the constant being
- * held, and it is the promise — and lands the explosion 8 dB down on the right, at a
+ * held, and it is the promise — and lands the explosion 10 dB down on the right, at a
  * smaller size, on a meter that stays out of the red. Nothing in that frame is the
  * extension turning an explosion down. It is a viewer who could afford to turn the
  * volume down, which is the honest version and the one they would actually experience.
@@ -218,27 +242,27 @@ const SOUND: Record<BeatName, Cue> = {
   night: { say: "", film: -48, before: { db: "", loud: 0.04 }, after: { db: "", loud: 0.04 } },
   dark: { say: "", film: -48, before: { db: "", loud: 0.04 }, after: { db: "", loud: 0.04 } },
   /* The same reading on both panels, which is the point: the line is exactly as audible
-     on the right, at a volume 8 dB lower. */
+     on the right, at a volume 9 dB lower. */
   whisper: {
     say: "…did you hear that?",
     film: -45,
-    before: { db: "−45 dB", loud: 0.04 },
-    after: { db: "−45 dB", loud: 0.04 },
+    before: { db: "−45 dB", loud: 0.045 },
+    after: { db: "−45 dB", loud: 0.045 },
   },
   /* The cut and the frame after it are one event, so they carry one reading. `0 dB` is the
      top of the scale, which is why it is the number that reads as a problem — and the
-     treated panel is 8 dB under it because of the dial, not because of a limiter. */
+     treated panel is 10 dB under it because of the dial, not because of a limiter. */
   blast: {
     say: "[EXPLOSION]",
     film: 0,
     before: { db: "0 dB", loud: 1 },
-    after: { db: "−8 dB", loud: 0.57 },
+    after: { db: "−10 dB", loud: 0.513 },
   },
   boom: {
     say: "[EXPLOSION]",
     film: 0,
     before: { db: "0 dB", loud: 1 },
-    after: { db: "−8 dB", loud: 0.57 },
+    after: { db: "−10 dB", loud: 0.513 },
   },
   // The fire still burning, on its way out.
   settle: { say: "", film: -30, before: { db: "", loud: 0.13 }, after: { db: "", loud: 0.13 } },
@@ -293,8 +317,9 @@ const VERDICT: Partial<Record<BeatName, readonly [string, string]>> = {
  *
  * `BEFORE_VOLUME` is the premise: a guess at the setting a whispered line needs. The
  * distance to `AFTER_VOLUME` is not a guess. `HTMLMediaElement.volume` is a linear
- * amplitude gain, so a percentage is a dB figure: 30% is −10.5 dB, 12% is −18.4 dB, and
- * the 8 dB between them is the lift the extension applies to quiet material, measured.
+ * amplitude gain, so a percentage is a dB figure: 30% is −10.5 dB, 10% is −20.0 dB, and
+ * the 9.5 dB between them is the lift the extension applies to quiet material, measured
+ * at the extension's defaults — 9.87 dB, which the dials carry to within a third of a dB.
  * Turning the knob down by exactly what the extension gave you is what leaves the
  * dialogue where it was and takes the explosion with it.
  *
@@ -306,7 +331,7 @@ const VERDICT: Partial<Record<BeatName, readonly [string, string]>> = {
  */
 const BRIGHTNESS = 38;
 const BEFORE_VOLUME = 30;
-const AFTER_VOLUME = 12;
+const AFTER_VOLUME = 10;
 const DIAL_STEPS = 8;
 
 /** One labelled readout: a name, eight steps, a percentage. */
