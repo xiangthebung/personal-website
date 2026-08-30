@@ -2907,86 +2907,14 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
   }
 }
 
-/* The three rooms added with the eighth, ninth and tenth projects.
-   Each is one drifting wash, like the six above it, and each is timed prime-ish against
-   its neighbours so the page never falls into step — the same rule the hero index marks
-   follow. The keyframes sit here rather than in a scene's `demo.css` because the rule
-   playing them is on `.project-ambience`, which is server-rendered and on screen long
-   before any chunk is fetched. Two of N-Back's entrance keyframes were once moved into
-   its chunk for being named `nb-…`, and the entrance silently stopped running. */
-
-/* 2FA Paster: something arriving, on its own, while you wait for it. */
-.project--violet > .project-ambience::before {
-  inset: -18%;
-  background: radial-gradient(
-    circle at 50% 42%,
-    color-mix(in srgb, var(--project-accent) 16%, transparent),
-    transparent 58%
-  );
-  animation: violet-arrive 11s ease-in-out infinite;
-}
-
-@keyframes violet-arrive {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: translateY(2%) scale(0.88);
-  }
-
-  38% {
-    opacity: 0.95;
-    transform: translateY(-1%) scale(1.04);
-  }
-}
-
-/* Totem: a slow bloom, the way the glyphs carry a same-hue glow. */
-.project--rose > .project-ambience::before {
-  inset: -24%;
-  background: radial-gradient(
-    circle at 38% 56%,
-    color-mix(in srgb, var(--project-accent) 14%, transparent),
-    transparent 60%
-  );
-  animation: rose-bloom 13s ease-in-out infinite;
-}
-
-@keyframes rose-bloom {
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: scale(0.86) rotate(-2deg);
-  }
-
-  50% {
-    opacity: 0.95;
-    transform: scale(1.08) rotate(2deg);
-  }
-}
-
-/* Byte Budget: a level that fills and falls back, which is what a budget does. */
-.project--amber > .project-ambience::before {
-  inset: -16%;
-  background: linear-gradient(
-    100deg,
-    transparent 8%,
-    color-mix(in srgb, var(--project-accent) 15%, transparent) 46%,
-    transparent 84%
-  );
-  animation: amber-fill 17s ease-in-out infinite;
-}
-
-@keyframes amber-fill {
-  0%,
-  100% {
-    opacity: 0.34;
-    transform: translateX(-9%);
-  }
-
-  50% {
-    opacity: 0.9;
-    transform: translateX(9%);
-  }
-}
+/* The three rooms added with the eighth, ninth and tenth projects had a drifting wash
+   here, matching the six above them, and it is gone for the reason those six are switched
+   off too: a section with a drawn backdrop does not get the theme's generic ambience.
+   See the `:is(#choir-practice, …)` block that sets `display: none` on
+   `.project-ambience::before` — every project on this page is in it, so `forest-breathe`
+   and its five siblings have not run for a long time. Writing three more of them and
+   adding the sections to that same list in the same commit would have been shipping dead
+   rules on purpose. The backdrops are in `app/backdrops.tsx`. */
 
 @media (max-width: 900px) {
 }
@@ -5497,7 +5425,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   )::before {
   background: none;
   opacity: 0;
@@ -5510,7 +5441,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) > .project-ambience::before,
 :is(
     #choir-practice,
@@ -5519,7 +5453,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) > .project-ambience::after {
   display: none;
   content: none;
@@ -5532,7 +5469,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) .demo-surface {
   overflow: visible;
 }
@@ -6904,6 +6844,131 @@ svg.bd-vehicle {
   color: #7fd8a4;
 }
 
+/* --- 07 Totem: the vocabulary the four on screen were drawn from ----------- */
+
+.bd--totem {
+  color: #8a83ff;
+}
+
+.bd-totem-mark {
+  position: absolute;
+  top: calc(var(--mark-y) * 1%);
+  left: calc(var(--mark-x) * 1%);
+  width: calc(26px * var(--mark-s));
+  height: calc(26px * var(--mark-s));
+  background: var(--mark-hue);
+  /* The same soft same-hue bloom the app draws every totem with, which is what stops
+     nine flat shapes reading as a pattern swatch. */
+  box-shadow: 0 0 calc(18px * var(--mark-s)) var(--mark-hue);
+  opacity: 0.42;
+  animation: bd-totem-drift 23s ease-in-out infinite;
+  animation-delay: calc(var(--mark-order) * -2300ms);
+}
+
+/* Shape as well as colour, because that redundancy is the app's own rule — a scatter of
+   identical circles in nine colours would be a picture of the thing Totem deliberately
+   does not do. */
+.bd-totem-mark[data-shape="disc"] {
+  border-radius: 50%;
+}
+.bd-totem-mark[data-shape="square"] {
+  border-radius: 5px;
+}
+.bd-totem-mark[data-shape="diamond"] {
+  border-radius: 4px;
+  rotate: 45deg;
+}
+
+@keyframes bd-totem-drift {
+  0%,
+  100% {
+    opacity: 0.28;
+    scale: 0.86;
+  }
+  50% {
+    opacity: 0.62;
+    scale: 1.06;
+  }
+}
+
+/* --- 08 Byte Budget: per site, and where measuring stopped ----------------- */
+
+.bd--bytes {
+  color: #0f6a62;
+}
+
+.bd-bytes-run {
+  position: absolute;
+  top: calc(16% + var(--run-order) * 12%);
+  left: 4%;
+  width: calc(var(--run-len) * 0.72%);
+  height: 10px;
+  border-radius: 5px;
+  /* Teal to the seam, amber past it: the extension's own two semantic colours, and the
+     section's whole argument. `--run-split` is that row's measured share. */
+  background: linear-gradient(
+    to right,
+    #0f6a62 0%,
+    #0f6a62 calc(var(--run-split) * 100%),
+    #9c5406 calc(var(--run-split) * 100%),
+    #9c5406 100%
+  );
+  opacity: 0.3;
+  transform-origin: left;
+  animation: bd-bytes-fill 21s ease-in-out infinite;
+  animation-delay: calc(var(--run-order) * -1700ms);
+}
+
+/* The run that reached the cap, and stopped there rather than through it. */
+.bd-bytes-run[data-capped] {
+  opacity: 0.46;
+}
+
+.bd-bytes-run[data-capped] i {
+  position: absolute;
+  top: -5px;
+  right: -3px;
+  bottom: -5px;
+  width: 3px;
+  border-radius: 2px;
+  background: #9c5406;
+}
+
+/* The line lives entirely below the editorial mask, and so does its label.
+   An earlier version ran from 10% and put the label at its head, which the top-third fade
+   erased — leaving a pale vertical rule attached to nothing. That is the exact fault
+   Decaf's backdrop records having removed once already: "there's a line in the
+   background, what is that?" A mystery line is worse than no line. */
+.bd-bytes-cap {
+  position: absolute;
+  top: 36%;
+  left: calc(4% + 92 * 0.72%);
+  bottom: 14%;
+  width: 1px;
+  background: color-mix(in srgb, currentColor 38%, transparent);
+}
+
+.bd-bytes-cap small {
+  position: absolute;
+  bottom: -4px;
+  left: 8px;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.5;
+}
+
+@keyframes bd-bytes-fill {
+  0%,
+  100% {
+    transform: scaleX(0.82);
+  }
+  50% {
+    transform: scaleX(1);
+  }
+}
+
 .bd-memory-path {
   position: absolute;
   inset: 0;
@@ -7216,7 +7281,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) .demo-chrome {
   position: relative;
 }
@@ -7244,7 +7312,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) .project-heading,
 :is(
     #choir-practice,
@@ -7253,7 +7324,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) .demo-chrome {
   isolation: isolate;
 }
@@ -7265,7 +7339,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) .project-heading::before,
 :is(
     #choir-practice,
@@ -7274,7 +7351,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) .demo-chrome::before {
   position: absolute;
   z-index: -1;
@@ -7328,7 +7408,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) .project-heading::before {
   /* Wide enough that the mask above fades outside the words rather than across them.
      It was `-0.8rem -1rem`, which is the right amount of padding for a panel with a
@@ -7350,7 +7433,10 @@ svg.bd-vehicle {
     #pdf-explainer,
     #pagepack,
     #n-back,
-    #night-neutralizer
+    #night-neutralizer,
+    #two-factor-paster,
+    #totem,
+    #byte-budget
   ) .demo-chrome::before {
   /* Also widened, and less than the heading's: this backs a scene rather than a block of
      type, and a scene is opaque, so the mask only has to lose the panel's edge into the
@@ -7381,7 +7467,10 @@ svg.bd-vehicle {
    `clip-path` was doing for containment; nothing else relied on it. */
 #choir-practice .bd--choir,
 #night-neutralizer .bd--night,
-#pagepack .bd--pagepack {
+#pagepack .bd--pagepack,
+/* Byte Budget is `offset`, the same composition PagePack uses, so its backdrop wants the
+   same fade out of the top third where the heading sits. */
+#byte-budget .bd--bytes {
   mask-image: linear-gradient(
     to bottom,
     rgb(0 0 0 / 0) 24%,
@@ -7421,7 +7510,10 @@ svg.bd-vehicle {
 }
 
 #pdf-explainer .bd--pdf,
-#n-back .bd--nback {
+#n-back .bd--nback,
+/* Totem is `beside-flip` like these two: the heading is the right-hand column, so the
+   backdrop stops before it rather than above it. */
+#totem .bd--totem {
   mask-image: linear-gradient(
     to right,
     rgb(0 0 0 / 1) 58%,

@@ -685,6 +685,116 @@ function NBackBackdrop() {
   );
 }
 
+/* 2FA Paster has no backdrop, deliberately.
+   It had one — four envelopes drifting at four depths, each carrying six digits, one of
+   them marked as the one that belongs to the site you are on. The idea was right and the
+   room is wrong: this is the fullest section on the page, its pod runs 1080x861 inside it,
+   and the editorial fade takes the top third. The only envelope that survived landed on
+   the scene's own "GMAIL — UNREAD INBOX" label — which put an *invented* six-digit code a
+   centimetre from the two real ones the scene is about, in a section whose entire subject
+   is telling one code from another.
+   A backdrop is decoration; the frame it sits behind is the argument. When they compete
+   the decoration goes. */
+
+/* -------------------------------------------------------------- names hidden --- */
+
+/**
+ * Totem: the vocabulary, scattered.
+ *
+ * Nine marks in nine of the app's twenty-four hues, drifting. The section in front of
+ * this is about four totems; this is the room they were drawn from, which is the one
+ * thing a single screen of a list cannot show.
+ *
+ * Shapes rather than one repeated dot, because the app's own colour-blind redundancy is
+ * that every colour carries a shape — see `stimuli` in the N-Back sense, and
+ * `displayColor` in Totem's. A scatter of identical circles in different colours would be
+ * a picture of the thing that project deliberately does not do.
+ */
+const SCATTER = [
+  { hue: "#AB39E8", x: 10, y: 18, s: 1, shape: "disc" },
+  { hue: "#10CB68", x: 78, y: 12, s: 0.7, shape: "square" },
+  { hue: "#FF2D55", x: 24, y: 62, s: 0.85, shape: "diamond" },
+  { hue: "#3BC6F0", x: 88, y: 48, s: 0.6, shape: "disc" },
+  { hue: "#F0A93B", x: 46, y: 84, s: 0.75, shape: "square" },
+  { hue: "#8A83FF", x: 64, y: 72, s: 0.55, shape: "diamond" },
+  { hue: "#E8437F", x: 6, y: 88, s: 0.65, shape: "disc" },
+  { hue: "#5FD9A8", x: 92, y: 82, s: 0.5, shape: "square" },
+  { hue: "#C77DFF", x: 36, y: 34, s: 0.45, shape: "diamond" },
+] as const;
+
+function TotemBackdrop() {
+  return (
+    <div className="bd bd--totem">
+      {SCATTER.map((mark, index) => (
+        <span
+          className="bd-totem-mark"
+          key={`${mark.hue}-${index}`}
+          data-shape={mark.shape}
+          style={
+            {
+              "--mark-x": mark.x,
+              "--mark-y": mark.y,
+              "--mark-s": mark.s,
+              "--mark-hue": mark.hue,
+              "--mark-order": index,
+            } as React.CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------- measured, not guessed --- */
+
+/**
+ * Byte Budget: what the browser spends, per site, against a line it may not cross.
+ *
+ * Six runs at six lengths, each split where measurement ended and estimation began —
+ * teal to the left of the seam, amber to the right, which are the extension's own two
+ * semantic colours and the section's whole argument. One run reaches the cap and stops.
+ *
+ * The proportions are not decorative: each run's `--split` is the share of that row that
+ * was actually measured, and they run from 96% down to 41%, which is the spread the
+ * extension's `measuredShare` produces across hosts that do and do not send
+ * `Content-Length`. A backdrop that showed every site equally certain would be arguing
+ * against the section in front of it.
+ */
+const SPEND = [
+  { len: 92, split: 0.62, capped: true },
+  { len: 61, split: 0.96, capped: false },
+  { len: 74, split: 0.48, capped: false },
+  { len: 38, split: 0.88, capped: false },
+  { len: 52, split: 0.41, capped: false },
+  { len: 24, split: 0.79, capped: false },
+] as const;
+
+function BytesBackdrop() {
+  return (
+    <div className="bd bd--bytes">
+      <span className="bd-bytes-cap" aria-hidden="true">
+        <small>daily cap</small>
+      </span>
+      {SPEND.map((run, index) => (
+        <span
+          className="bd-bytes-run"
+          key={index}
+          data-capped={run.capped || undefined}
+          style={
+            {
+              "--run-len": run.len,
+              "--run-split": run.split,
+              "--run-order": index,
+            } as React.CSSProperties
+          }
+        >
+          <i />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ export --- */
 
 const BACKDROPS: Record<string, () => React.JSX.Element> = {
@@ -695,6 +805,8 @@ const BACKDROPS: Record<string, () => React.JSX.Element> = {
   decaf: DecafBackdrop,
   "pdf-explainer": PdfBackdrop,
   "n-back": NBackBackdrop,
+  totem: TotemBackdrop,
+  "byte-budget": BytesBackdrop,
 };
 
 /**
