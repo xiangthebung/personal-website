@@ -160,15 +160,11 @@ function ChoirBackdrop() {
       <Stave className="bd-stave--c" />
       <NoteStream />
 
-      {/* A score-edge register: measure numbers beyond the embedded page make the
-          104-bar rehearsal feel larger than the iframe without pretending to be UI. */}
-      <span className="bd-choir-ledger" aria-hidden="true">
-        <small>measure</small>
-        {[17, 33, 49, 65].map((measure) => (
-          <i key={measure}>{measure}</i>
-        ))}
-        <b>SATB · 104 bars</b>
-      </span>
+      {/* A register of measure numbers used to stand here — 17, 33, 49, 65 under
+          "SATB · 104 bars" — describing a score the pod stopped opening a long time
+          ago, and then a live echo of the app's bar ruler, which the right-hand
+          manuscript leaf covered. The ruler is on the stand's own ledge now, in the
+          pod, where it sits under the score it echoes: see `.choir-ledger`. */}
     </div>
   );
 }
@@ -486,156 +482,104 @@ function DecafBackdrop() {
 /* ---------------------------------------------------------- PDF Explainer --- */
 
 /**
- * The four satellites the deck is about, drawn.
+ * The lecture's own figure, at wall size.
  *
- * Positions are in the sky SVG's own 1600x760 space. Spread wide and at different
- * heights, because the whole point of the slide is that four ranges from four
- * directions are what pin a position — four satellites in a neat row would be a
- * picture of the wrong idea.
+ * The pod runs a lecture on gradient descent, so the room behind it is the loss
+ * surface drawn as contours, with the two descents the deck compares walking into the
+ * same minimum: batch, one exact and expensive step per pass, a clean curve; and
+ * stochastic, one cheap noisy step per example, a zig-zag. That second one is the
+ * phrase the film highlights on the slide and asks about, so it is the one a ball
+ * walks.
  *
- * `delay` staggers each one's range pulse so the sky is never all bright or all dark
- * at once, and so the four rings read as four independent signals rather than as one
- * effect applied four times.
+ * This replaced a GPS constellation — four satellites and their ranges — which was the
+ * diagram of the lecture the previous film read and stopped being true of the section
+ * the moment the deck changed.
+ *
+ * Coordinates are in the bowl SVG's own 1600x1010 space. `preserveAspectRatio="xMidYMid
+ * slice"` scales to *cover* the section, so the closer the viewBox is to the section's
+ * own proportions the less is thrown away; 1600x1010 lands the scale near 1 at a
+ * 1440x1009 section. `slice` rather than `none` because ellipses must not be stretched
+ * into something else.
  */
-const PDF_SATS = [
-  { x: 196, y: 152, delay: "0ms", label: "SV 14" },
-  { x: 608, y: 98, delay: "1400ms", label: "SV 22" },
-  { x: 1032, y: 142, delay: "2800ms", label: "SV 07" },
-  { x: 1408, y: 216, delay: "4200ms", label: "SV 31" },
-] as const;
+const PDF_BOWL = { w: 1600, h: 1010 } as const;
 
-/** Where the receiver sits — the point all four ranges are solving for. */
-const PDF_RECEIVER = { x: 800, y: 792 } as const;
+/** Where both paths end, off the section's centre so the pod does not sit on it. */
+const PDF_MINIMUM = { x: 1010, y: 650 } as const;
+
+/** Seven contours, outermost first, as the ellipse's long radius. */
+const PDF_CONTOURS = [640, 520, 410, 310, 220, 140, 70] as const;
 
 /**
- * The sky's coordinate space, and why it is this shape.
- *
- * `preserveAspectRatio="xMidYMid slice"` scales to *cover* the section, so the closer
- * the viewBox is to the section's own proportions the less of it is thrown away. At
- * 1600x760 in a 1440x1009 section the scale came out 1.33 and the sides were cropped
- * off: two of the four satellites were outside the frame, and the two that survived
- * were a third larger than intended and sitting on top of the pod's captions.
- *
- * 1600x1010 is close enough to the section that the scale lands near 1 and the whole
- * constellation is in shot. `slice` rather than `meet` because a backdrop that
- * letterboxes has bands of nothing at the top and bottom, and rather than `none`
- * because this drawing is full of circles and right angles that must not be stretched.
+ * The stochastic path, stepped: each pair of moves is one noisy step, and the jitter
+ * shrinks as the minimum nears — which is what a decaying learning rate looks like,
+ * and is slide 4. The same string is handed to the stylesheet as `--sgd`, so the ball's
+ * `offset-path` and the drawn line cannot disagree.
  */
-const PDF_SKY = { w: 1600, h: 1010 } as const;
+const PDF_SGD =
+  "M180 150 L262 212 L236 262 L332 298 L320 356 L422 370 L432 430 L522 428 L548 494 " +
+  "L642 486 L666 548 L760 542 L790 594 L872 588 L900 628 L962 620 L992 648 " +
+  `L${PDF_MINIMUM.x} ${PDF_MINIMUM.y}`;
+
+/** Batch descent: the same start and end, one smooth curve between. */
+const PDF_BATCH = `M180 150 C 420 210, 720 430, ${PDF_MINIMUM.x} ${PDF_MINIMUM.y}`;
 
 function PdfBackdrop() {
   return (
     <div className="bd bd--pdf">
-      {/* --------------------------------------------------------------- the sky
-          The section used to be pale nothing behind a few floating captions, and the
-          deck in the pod is a lecture on measuring distance by time of flight. So the
-          background is that lecture's own diagram at wall size: four satellites, a
-          range line down from each, the rings of a signal leaving them, and the
-          receiver they are all solving for.
-
-          `xMidYMid slice` rather than `none`: this one is full of round things and
-          right angles, and stretching it to the section's aspect ratio would turn the
-          dishes into ovals and lean the solar panels over. The links layer below can
-          stretch because it is only smooth curves. */}
       <svg
-        className="bd-pdf-sky"
-        viewBox={`0 0 ${PDF_SKY.w} ${PDF_SKY.h}`}
+        className="bd-pdf-bowl"
+        viewBox={`0 0 ${PDF_BOWL.w} ${PDF_BOWL.h}`}
         preserveAspectRatio="xMidYMid slice"
+        style={{ "--sgd": `path("${PDF_SGD}")` } as React.CSSProperties}
       >
-        {/* The horizon, and the ground the receiver stands on. */}
-        <path className="bd-pdf-horizon" d="M-40 838 H1640" />
-
-        {PDF_SATS.map((sat) => (
-          <g className="bd-pdf-sat" key={sat.label} style={{ "--delay": sat.delay } as React.CSSProperties}>
-            {/* The range line down to the receiver: what the slide calls the
-                pseudorange, dashed because it is a measurement rather than a thing. */}
-            <path
-              className="bd-pdf-range"
-              d={`M${sat.x} ${sat.y} L${PDF_RECEIVER.x} ${PDF_RECEIVER.y}`}
-            />
-
-            {/* Two rings leaving the satellite, one behind the other. This is the
-                time-of-flight idea itself — the distance is how long the ring took. */}
-            <circle className="bd-pdf-ping bd-pdf-ping--a" cx={sat.x} cy={sat.y} r="26" />
-            <circle className="bd-pdf-ping bd-pdf-ping--b" cx={sat.x} cy={sat.y} r="26" />
-
-            <g className="bd-pdf-sat-body" transform={`translate(${sat.x} ${sat.y})`}>
-              {/* Solar panels, then the bus, then the dish pointed at the ground. */}
-              <rect className="bd-pdf-panel" x="-40" y="-7" width="26" height="14" rx="1.5" />
-              <rect className="bd-pdf-panel" x="14" y="-7" width="26" height="14" rx="1.5" />
-              <path className="bd-pdf-spar" d="M-14 0h28" />
-              <rect className="bd-pdf-bus" x="-11" y="-11" width="22" height="22" rx="3" />
-              <path className="bd-pdf-dish" d="M-7 11 A9 9 0 0 0 7 11 Z" />
-            </g>
-
-            <text className="bd-pdf-sat-label" x={sat.x} y={sat.y - 26}>
-              {sat.label}
-            </text>
-          </g>
+        {/* The loss surface. Tilted, because a bowl seen square-on is a set of
+            concentric circles, which reads as a target rather than as terrain. */}
+        {PDF_CONTOURS.map((radius, ring) => (
+          <ellipse
+            className="bd-pdf-contour"
+            key={radius}
+            cx={PDF_MINIMUM.x}
+            cy={PDF_MINIMUM.y}
+            rx={radius}
+            ry={Math.round(radius * 0.58)}
+            transform={`rotate(-16 ${PDF_MINIMUM.x} ${PDF_MINIMUM.y})`}
+            style={{ "--ring": ring } as React.CSSProperties}
+          />
         ))}
 
-        {/* The trilateration triangle: three of the four, joined. The fourth is the
-            one that solves the clock, which is exactly the tutor's answer in the pod. */}
-        <path
-          className="bd-pdf-tri"
-          d={`M${PDF_SATS[0].x} ${PDF_SATS[0].y} L${PDF_SATS[1].x} ${PDF_SATS[1].y} L${PDF_SATS[2].x} ${PDF_SATS[2].y} Z`}
-        />
+        <path className="bd-pdf-path--batch" d={PDF_BATCH} />
+        <path className="bd-pdf-path--sgd" d={PDF_SGD} />
 
-        {/* The receiver, and the rings closing on it. */}
-        <g className="bd-pdf-rx" transform={`translate(${PDF_RECEIVER.x} ${PDF_RECEIVER.y})`}>
-          <circle className="bd-pdf-rx-halo" r="34" />
-          <circle className="bd-pdf-rx-halo bd-pdf-rx-halo--wide" r="34" />
-          <rect className="bd-pdf-rx-body" x="-13" y="-9" width="26" height="18" rx="3" />
-          <path className="bd-pdf-rx-mast" d="M0 -9 V-26" />
-          <circle className="bd-pdf-rx-tip" cy="-28" r="3" />
+        {/* The ball, walking the noisy path over and over. */}
+        <g className="bd-pdf-ball">
+          <circle className="bd-pdf-ball-halo" r="14" />
+          <circle className="bd-pdf-ball-core" r="6" />
         </g>
 
-        {/* There was a `d = c · Δt` set into the ground here, and it was the third copy
-            of that equation in one section: the slide's own figure draws it, the notes
-            card prints it, and this drew it again — landing on top of the matching
-            fragment while it did. The diagram says it without the algebra. */}
+        <g transform={`translate(${PDF_MINIMUM.x} ${PDF_MINIMUM.y})`}>
+          <circle className="bd-pdf-minimum-halo" r="30" />
+          <circle className="bd-pdf-minimum" r="5" />
+        </g>
+
+        <text className="bd-pdf-label" x="150" y="122">
+          J(θ)
+        </text>
+        <text className="bd-pdf-label" x={PDF_MINIMUM.x + 44} y={PDF_MINIMUM.y + 5}>
+          min
+        </text>
       </svg>
 
-      <svg className="bd-pdf-links" viewBox="0 0 1600 760" preserveAspectRatio="none">
-        <path className="bd-pdf-link bd-pdf-link--notes" d="M80 190 C300 80 490 200 700 330" />
-        <path className="bd-pdf-link bd-pdf-link--tutor" d="M620 120 C790 70 900 200 820 335" />
-        <path className="bd-pdf-link bd-pdf-link--quiz" d="M110 650 C360 720 560 570 760 420" />
-        <path className="bd-pdf-link bd-pdf-link--match" d="M520 635 C700 710 850 560 820 420" />
-      </svg>
-
-      {/* Two fragments used to sit up here: one reading `dᵢ = c · Δt`, one asking "Why
-          four satellites?". Both are now drawn rather than written — the equation is set
-          into the ground and the four satellites are overhead — so keeping the captions
-          meant the section said each thing twice, and a photograph showed a satellite
-          landing directly on top of the sentence about satellites. The drawing won. */}
-      <span className="bd-pdf-fragment bd-pdf-fragment--quiz">
-        <small>quiz</small>
-        <b>A · 300 metres</b>
-        <i>correct</i>
-      </span>
-      <span className="bd-pdf-fragment bd-pdf-fragment--concept">
-        <small>matching</small>
-        <b>Pseudorange</b>
-      </span>
-      <span className="bd-pdf-fragment bd-pdf-fragment--definition">
-        <small>paired</small>
-        <b>A distance containing clock error</b>
-      </span>
-      {/* The third practice kind. There were two of these while the scene treated matching
-          as its own act; the review set has three kinds of item and the room now echoes
-          all three. See `KINDS` in the pod. */}
-      <span className="bd-pdf-fragment bd-pdf-fragment--blank">
-        <small>blanks</small>
-        <b>clock error</b>
-        <i>that is it</i>
-      </span>
-
+      {/* The deck, at the section's edge: five slides, the current one stepping as the
+          reader presses on and the explained ones taking the rail's violet as each batch
+          lands. Keyed to the film in the stylesheet. */}
       <span className="bd-pdf-deck" aria-hidden="true">
         <small>deck</small>
-        <i>01</i>
-        <i data-current>02</i>
-        <i>03</i>
-        <b>02 / 10</b>
+        {[1, 2, 3, 4, 5].map((slide) => (
+          <i key={slide} data-slide={slide}>
+            {String(slide).padStart(2, "0")}
+          </i>
+        ))}
+        <b>5 slides</b>
       </span>
     </div>
   );
@@ -643,58 +587,58 @@ function PdfBackdrop() {
 
 /* ----------------------------------------------------------------- n-back --- */
 
-const MEMORY_CUES = [
-  { cell: 2, letter: "K" },
-  { cell: 6, letter: "R" },
-  { cell: 2, letter: "T" },
-  { cell: 4, letter: "R" },
-] as const;
-
-function MemoryCue({ order, cell, letter }: { order: number; cell: number; letter: string }) {
+/**
+ * N-Back: the match, ringing out of the well.
+ *
+ * Nothing behind the scene any more. This section used to draw the four held cues
+ * behind the well — a dashed path through them, a register of `−2 target · −1 hold ·
+ * now compare`, a pill restating the rule — from when the scene was a diagram of a
+ * rule the game did not show. The game shows it now, and the scene is its play
+ * screen: the strip under the board holds the cues, and the scene projects them into
+ * the sides of the well itself, in the game's face. A second set behind the well was
+ * the same four cards twice.
+ *
+ * What is left is in front. When the strip's bracket snaps, a ring goes out of it and
+ * across the section — one per match beat, keyed on `data-scene-beat` in the
+ * stylesheet, so each can play whole. In the foreground rather than behind, because a
+ * ring that leaves the frame has to be seen leaving it, and behind an opaque well it
+ * would only ever be seen arriving somewhere else.
+ */
+function NBackForeground() {
   return (
-    <span className={`bd-memory-cue bd-memory-cue--${order + 1}`}>
-      <span className="bd-memory-grid">
-        {Array.from({ length: 9 }, (_, index) => (
-          <i key={index} data-on={index === cell} />
-        ))}
-      </span>
-      <b>{letter}</b>
-      <small>{order + 1}</small>
-    </span>
-  );
-}
-
-function NBackBackdrop() {
-  return (
-    <div className="bd bd--nback">
-      <svg className="bd-memory-path" viewBox="0 0 1600 760" preserveAspectRatio="none">
-        <path d="M90 590 C260 350 420 610 570 360 S760 120 980 360" />
-        <path className="bd-memory-return bd-memory-return--square" d="M90 590 C300 230 500 190 710 180" />
-        <path className="bd-memory-return bd-memory-return--letter" d="M350 150 C560 650 790 660 980 540" />
-      </svg>
-      {MEMORY_CUES.map((cue, order) => (
-        <MemoryCue key={order} order={order} cell={cue.cell} letter={cue.letter} />
-      ))}
-      <span className="bd-memory-rule">compare with two cues earlier</span>
-      <span className="bd-memory-register" aria-hidden="true">
-        <i><b>−2</b> target</i>
-        <i><b>−1</b> hold</i>
-        <i><b>now</b> compare</i>
-      </span>
+    <div className="bd-nback-front">
+      <span className="bd-nback-ring bd-nback-ring--square" />
+      <span className="bd-nback-ring bd-nback-ring--letter" />
     </div>
   );
 }
 
-/* 2FA Paster has no backdrop, deliberately.
-   It had one — four envelopes drifting at four depths, each carrying six digits, one of
-   them marked as the one that belongs to the site you are on. The idea was right and the
-   room is wrong: this is the fullest section on the page, its pod runs 1080x861 inside it,
-   and the editorial fade takes the top third. The only envelope that survived landed on
-   the scene's own "GMAIL — UNREAD INBOX" label — which put an *invented* six-digit code a
-   centimetre from the two real ones the scene is about, in a section whose entire subject
-   is telling one code from another.
-   A backdrop is decoration; the frame it sits behind is the argument. When they compete
-   the decoration goes. */
+/* ------------------------------------------------------------- 2FA Paster --- */
+
+/**
+ * 2FA Paster: two washes, one per verdict, and nothing with a digit on it.
+ *
+ * It had a drawn backdrop once — four envelopes drifting at four depths, each carrying
+ * six digits, one of them marked as the one that belongs to the site you are on. The
+ * idea was right and the room was wrong: this is the fullest section on the page, its
+ * pod runs the whole measure, and the editorial fade takes the top third. The only
+ * envelope that survived landed on the scene's own "GMAIL — UNREAD INBOX" label, which
+ * put an *invented* six-digit code a centimetre from the real ones the scene is about,
+ * in a section whose entire subject is telling one code from another.
+ *
+ * So the room carries no object at all. What it carries is the scene's verdict: a
+ * violet wash rises behind the pod as the code goes in and the button goes down, and
+ * an amber one replaces it when the second code is held. Keyed off `data-scene-reached`,
+ * which the pod publishes — see `#two-factor-paster` in the stylesheet.
+ */
+function PasterBackdrop() {
+  return (
+    <div className="bd bd--tfa">
+      <span className="bd-tfa-wash bd-tfa-wash--pass" />
+      <span className="bd-tfa-wash bd-tfa-wash--hold" />
+    </div>
+  );
+}
 
 /* -------------------------------------------------------------- names hidden --- */
 
@@ -725,6 +669,12 @@ const SCATTER = [
 function TotemBackdrop() {
   return (
     <div className="bd bd--totem">
+      {/* The dealt totem's sound reaching the room: a wash in its colour, thrown once
+          on the deal and once, quieter, as the recall card arrives. Section furniture,
+          styled from `globals.css` off `data-scene-beat`, so it is on screen before the
+          scene's chunk is and takes its hue from the `--totem-hue` the scene sets. */}
+      <span className="bd-totem-pulse" aria-hidden="true" />
+
       {SCATTER.map((mark, index) => (
         <span
           className="bd-totem-mark"
@@ -741,6 +691,11 @@ function TotemBackdrop() {
           }
         />
       ))}
+
+      {/* The app's icon is not here, and it was. Placed in this backdrop it sat at a
+          percentage of the section, and the well is centred in a section whose height
+          is the window's: on a 1000px-tall window the well's top edge cut the mark in
+          half. It is the scene's mark now, in the well's own air — see `.tot-mark`. */}
     </div>
   );
 }
@@ -748,46 +703,52 @@ function TotemBackdrop() {
 /* ------------------------------------------------------- measured, not guessed --- */
 
 /**
- * Byte Budget: what the browser spends, per site, against a line it may not cross.
+ * Byte Budget: the page's own hosts, climbing towards the plan.
  *
- * Six runs at six lengths, each split where measurement ended and estimation began —
- * teal to the left of the seam, amber to the right, which are the extension's own two
- * semantic colours and the section's whole argument. One run reaches the cap and stops.
+ * Five runs, one per host the scene's page is spending on, each split where measurement
+ * ended and estimation began — teal to the left of the seam, amber to the right, which
+ * are the extension's own two semantic colours and the section's whole argument. The
+ * runs climb with the film: `at` is each host's length at the four beats the scene
+ * publishes, as a fraction of the way to the cap, and the stylesheet picks the one for
+ * the beat the section has reached. The stream's run is the one that arrives at the
+ * cap, and stops there rather than through it.
  *
- * The proportions are not decorative: each run's `--split` is the share of that row that
- * was actually measured, and they run from 96% down to 41%, which is the spread the
- * extension's `measuredShare` produces across hosts that do and do not send
- * `Content-Length`. A backdrop that showed every site equally certain would be arguing
- * against the section in front of it.
+ * The splits are not decorative: a video edge that streams its segments cannot be
+ * measured by the page and declares no length, so the model supplies a third of it; a
+ * mail client on its own origin can be measured almost entirely. A backdrop that showed
+ * every host equally certain would be arguing against the section in front of it.
  */
-const SPEND = [
-  { len: 92, split: 0.62, capped: true },
-  { len: 61, split: 0.96, capped: false },
-  { len: 74, split: 0.48, capped: false },
-  { len: 38, split: 0.88, capped: false },
-  { len: 52, split: 0.41, capped: false },
-  { len: 24, split: 0.79, capped: false },
+const BYTE_HOSTS = [
+  { host: "media.watch.example", split: 0.64, at: [0.3, 0.55, 0.8, 1], media: true },
+  { host: "img.watch.example", split: 0.22, at: [0.16, 0.19, 0.21, 0.22], media: false },
+  { host: "watch.example", split: 0.93, at: [0.11, 0.12, 0.13, 0.13], media: false },
+  { host: "mail.example", split: 0.97, at: [0.07, 0.07, 0.07, 0.07], media: false },
+  { host: "Background & other", split: 0.52, at: [0.05, 0.05, 0.05, 0.05], media: false },
 ] as const;
 
 function BytesBackdrop() {
   return (
     <div className="bd bd--bytes">
       <span className="bd-bytes-cap" aria-hidden="true">
-        <small>daily cap</small>
+        <small>5.0 GB plan</small>
       </span>
-      {SPEND.map((run, index) => (
+      {BYTE_HOSTS.map((run, index) => (
         <span
           className="bd-bytes-run"
-          key={index}
-          data-capped={run.capped || undefined}
+          key={run.host}
+          data-media={run.media || undefined}
           style={
             {
-              "--run-len": run.len,
               "--run-split": run.split,
               "--run-order": index,
+              "--run-load": run.at[0],
+              "--run-climb": run.at[1],
+              "--run-surge": run.at[2],
+              "--run-refuse": run.at[3],
             } as React.CSSProperties
           }
         >
+          <small>{run.host}</small>
           <i />
         </span>
       ))}
@@ -804,7 +765,7 @@ const BACKDROPS: Record<string, () => React.JSX.Element> = {
   pagepack: PagePackBackdrop,
   decaf: DecafBackdrop,
   "pdf-explainer": PdfBackdrop,
-  "n-back": NBackBackdrop,
+  "two-factor-paster": PasterBackdrop,
   totem: TotemBackdrop,
   "byte-budget": BytesBackdrop,
 };
@@ -814,11 +775,13 @@ const BACKDROPS: Record<string, () => React.JSX.Element> = {
  *
  * Deliberately near-empty. A foreground is a thing that covers the software the
  * section exists to show, so the bar for putting something here is that the scene is
- * unreadable without it — which is true of exactly one thing so far: PagePack's cable,
- * whose whole job is to be seen being cut.
+ * unreadable without it — which is true of PagePack's cable, whose whole job is to be
+ * seen being cut — or that the thing is a ring leaving the frame, which cannot be seen
+ * leaving from behind an opaque well: N-Back's match.
  */
 const FOREGROUNDS: Record<string, () => React.JSX.Element> = {
   pagepack: PagePackForeground,
+  "n-back": NBackForeground,
 };
 
 /** A backdrop selected by project id. Palettes never decide subject matter. */

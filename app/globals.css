@@ -3474,38 +3474,59 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
 }
 
 /* ===========================================================================
-   N-Back — "hold two, compare, let the oldest go"
+   N-Back — the game's play screen, in the game's own face
    ---------------------------------------------------------------------------
-   A diagram that moves rather than a game. Three parts stacked: the cue that
-   just arrived, the strip of cues being held, and the two answer keys. The
-   bracket drawn across the strip is the whole point of the layout, so its
-   geometry is the thing the rest is arranged around.
+   What is here is the stage box and the palette. Everything the scene is made
+   of — the column, the board, the strip, the keys, the two screens of the coda,
+   the trail of held cues — is in `demos/n-back/demo.css` and arrives with the
+   chunk.
 
-   The strip is a four-column grid rather than a flex row, because the bracket
-   has to be positioned against slot boundaries and a grid gives it arithmetic
-   it can trust at any width.
+   The palette is the app's own `@theme` block in `n-back/src/index.css`, name
+   for name, so the column the film draws sets in the colours the game sets in.
+   It used to be a mint-and-mono palette of the site's own, from when the scene
+   was a diagram drawn in the site's furniture because the game had nothing on
+   screen that taught its rule. The game has that now — the memory strip is the
+   diagram, adopted — so the scene is a film of the game, and its tokens are the
+   game's.
+
+   The box is a query container because the trail — the held cues projected
+   into the empty sides of the well — needs a side to project into, and only
+   the box knows whether it has one. `container-type` rather than a media
+   query: the well's width is a fact about the composition, not the window.
    =========================================================================== */
 
 .nb {
-  --nb-ink: #eef4ef;
-  --nb-muted: rgba(238, 244, 239, 0.56);
-  --nb-faint: rgba(238, 244, 239, 0.32);
-  --nb-line: rgba(238, 244, 239, 0.14);
-  --nb-well: rgba(255, 255, 255, 0.04);
-  --nb-accent: #7fd8a4;
-  --nb-accent-dim: rgba(127, 216, 164, 0.16);
-  --nb-slots: 4;
-  --nb-gap: clamp(0.4rem, 1vw, 0.7rem);
+  --nb-canvas: #0a0d0c;
+  --nb-surface: #131917;
+  --nb-raised: #1b2320;
+  --nb-line: #2b3531;
+  --nb-ink: #e9efec;
+  --nb-muted: #a9b6b0;
+  --nb-faint: #82908a;
+  --nb-sage: #8fb5a3;
+  --nb-sage-soft: #bcd8c9;
+  --nb-amber: #dfa65c;
+  --nb-rose: #d98a95;
+  --nb-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* The board: the app's `min(88vw, 44svh, 420px)` as it comes out on a 710px
+     window, which is the height this film is composed for. */
+  --nb-board: 312px;
+  /* The play screen's own height — header, HUD, board, strip, keys and caption at
+     the gaps above — measured at 705 by `.nb-play`'s box, not derived. The results
+     card is held to the same height and the home screen is cropped to it, so the well
+     never changes size between beats. */
+  --nb-screen: 705px;
 
   position: relative;
-  width: 100%;
-  max-width: 760px;
   display: flex;
+  width: 100%;
   flex-direction: column;
-  gap: clamp(0.9rem, 2vw, 1.4rem);
+  align-items: center;
+  gap: 16px;
   color: var(--nb-ink);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--nb-font);
   font-size: 13px;
+  container-type: inline-size;
 }
 
 /* ===========================================================================
@@ -3703,61 +3724,16 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
 }
 
 /* ===========================================================================
-   PDF Explainer — "reach for the notes and they wake"
+   PDF Explainer
    ---------------------------------------------------------------------------
-   One interaction, reproduced exactly: resting opacity 0.26, awake 1.0, a 300ms
-   ease-out on opacity, box-shadow and border colour. Those are the app's own
-   figures, and they are the only numbers in this block that are not free to
-   change.
-
-   Driven from `data-awake` rather than `:hover`, matching the real component. It
-   tracks wakefulness in state so that clicking a control inside the card cannot
-   make it fade out from under the pointer, and so tabbing in wakes it too. Here it
-   also means the scene can wake the card with a pointer that does not exist.
+   Nothing of the scene is here any more. The pod's palette used to sit in this
+   file as a bare `.pdfx` rule — the one scene whose tokens were declared in the
+   always-loaded stylesheet — and it has gone to `app/demos/pdf-explainer/demo.css`
+   with the rest of its furniture, for the reason the split exists: those tokens
+   are read by nothing that exists before the chunk mounts. What stays in this file
+   for that section is below, under "PDF Explainer" in the section-scale rules:
+   the wash that follows the panel, the backdrop, and the entrance.
    =========================================================================== */
-
-.pdfx {
-  --canvas: #f2f2f5;
-  --surface: #ffffff;
-  --elevated: rgba(255, 255, 255, 0.82);
-  --ink: #1d1d1f;
-  --ink-2: #61616b;
-  --ink-3: #8e8e97;
-  --line: rgba(0, 0, 0, 0.09);
-  --line-strong: rgba(0, 0, 0, 0.16);
-  --accent: #0b6fd6;
-  /**
-   * The application's own tint palette, from the light theme in `src/index.css`.
-   *
-   * Three of these were missing and it mattered. `--good` and `--good-soft` were never
-   * declared here at all, so `.pdfx-option[data-state="reveal"]` — the rule that turns the
-   * correct answer green when the quiz is marked — has been resolving `var(--good)` to
-   * nothing and quietly doing no work. Invalid at computed-value time is a silent failure
-   * by design, which is why a whole verdict state can be dead for as long as it likes.
-   * The teal was a near-miss hex repeated in nine places rather than the one the app
-   * engraves, and the amber did not exist because the scene had no blanks card to need it.
-   */
-  --violet: #6d28d9;
-  --violet-soft: rgba(109, 40, 217, 0.09);
-  --teal: #0f766e;
-  --teal-soft: rgba(15, 118, 110, 0.1);
-  --amber: #b45309;
-  --amber-soft: rgba(180, 83, 9, 0.11);
-  --good: #1f8f4e;
-  --good-soft: rgba(31, 143, 78, 0.1);
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
-  --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.06);
-
-  width: 100%;
-  max-width: 900px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
-}
 
 /* ===========================================================================
    Choir Practice
@@ -4117,13 +4093,18 @@ svg.bd-vehicle {
    can only ever add to the section, and they travel along the same three staves
    that are already drawn, so the music and the ruling belong to each other. */
 .bd-note {
+  --note-ink: color-mix(in srgb, var(--project-ink) 46%, var(--project-accent));
   position: absolute;
   left: 0;
-  color: color-mix(in srgb, var(--project-ink) 46%, var(--project-accent));
+  /* The keyframes own `opacity`, so the strength of the stream is carried by the ink
+     instead: `--note-strength` is set per beat on the section below, and a change to it
+     transitions here. The stream is faint until the choir sings. */
+  color: color-mix(in srgb, var(--note-ink) var(--note-strength, 100%), transparent);
   font-size: var(--glyph-size);
   line-height: 1;
   opacity: 0;
   animation: bd-note-run var(--dur) linear var(--delay) infinite;
+  transition: color 1400ms ease;
   will-change: transform;
 }
 /* One lane per stave, sitting on it rather than near it. */
@@ -4691,6 +4672,21 @@ svg.bd-vehicle {
   top: calc(50% - 6px + var(--step) * 4px);
 }
 
+/* The looped passage: a band across the middle of the stave, in the application's
+   loop ink (`--score-loop-fill` and `--score-loop-handle` in the vendored app), with a
+   handle at each end. Sits under the voice's second and third landings. */
+.imark--choir .imark-band {
+  top: calc(50% - 9px);
+  left: 14px;
+  width: 15px;
+  height: 18px;
+  border-radius: 1px;
+  background: rgba(0, 113, 227, 0.14);
+  box-shadow:
+    inset 2px 0 0 rgba(0, 113, 227, 0.6),
+    inset -2px 0 0 rgba(0, 113, 227, 0.6);
+}
+
 .imark--choir .imark-voice {
   top: calc(50% - 8px);
   left: 3px;
@@ -4758,43 +4754,66 @@ svg.bd-vehicle {
   }
 }
 
-/* --- 03 PDF Explainer: a note settling onto a slide ----------------------- */
+/* --- 03 PDF Explainer: the rail filling in ahead of the reader ------------- */
 
 .imark--pdf {
   background: rgba(22, 25, 23, 0.82);
 }
 
+/* Four rails, one per slide, going violet one after another. */
+.imark--pdf .imark-rail {
+  top: calc(4px + var(--step) * 5px);
+  left: 4px;
+  width: 3px;
+  height: 4px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  animation: imark-pdf-rail 5200ms ease-out infinite;
+  animation-delay: calc(var(--step) * 780ms);
+}
+
+@keyframes imark-pdf-rail {
+  0%,
+  4% {
+    background: rgba(255, 255, 255, 0.18);
+  }
+  12%,
+  78% {
+    background: #a78bfa;
+  }
+  92%,
+  100% {
+    background: rgba(255, 255, 255, 0.18);
+  }
+}
+
 .imark--pdf .imark-slide {
-  inset: 4px;
+  top: 4px;
+  right: 4px;
+  bottom: 4px;
+  left: 11px;
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.16);
 }
 
+/* The reader, a slide or two behind the fill: a pale bar stepping down the page. */
 .imark--pdf .imark-note {
-  top: 8px;
-  left: 12px;
-  width: 24px;
-  height: 10px;
-  border-radius: 2px;
+  top: 6px;
+  left: 14px;
+  width: 16px;
+  height: 3px;
+  border-radius: 1px;
   background: #f3f1e8;
-  box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.7);
-  animation: imark-note 5200ms var(--ease-out-back) infinite;
+  animation: imark-pdf-read 5200ms steps(3, jump-none) infinite;
+  animation-delay: 1400ms;
 }
 
-@keyframes imark-note {
+@keyframes imark-pdf-read {
   0% {
-    transform: translate(6px, -12px) rotate(-6deg);
-    opacity: 0;
+    transform: translateY(0);
   }
-  18%,
-  62% {
-    transform: translate(0, 0) rotate(-1.5deg);
-    opacity: 1;
-  }
-  84%,
   100% {
-    transform: translate(-4px, 10px) rotate(2deg);
-    opacity: 0;
+    transform: translateY(12px);
   }
 }
 
@@ -5184,7 +5203,6 @@ svg.bd-vehicle {
    them at rest any more. See "Motion". */
 
 
-
 /* ===========================================================================
    The closing section
    ---------------------------------------------------------------------------
@@ -5502,6 +5520,19 @@ svg.bd-vehicle {
   --night-fire: 0;
   --night-raw-level: 0.34;
   --night-treated-level: 0.5;
+}
+
+/* Held: the treated half of the waveform drops to the raw half's level, because for as
+   long as the pill is down there is no treatment. The `compare` beat is also where the
+   second whispered line plays, so the raw level is the whisper's. */
+#night-neutralizer[data-scene-beat="compare"] {
+  --night-raw-level: 0.2;
+  --night-treated-level: 0.2;
+}
+
+#night-neutralizer[data-scene-beat="release"] {
+  --night-raw-level: 0.2;
+  --night-treated-level: 0.62;
 }
 
 #night-neutralizer .project-body {
@@ -5827,20 +5858,23 @@ svg.bd-vehicle {
 }
 
 /* ===========================================================================
-   PDF Explainer — the sky behind the workspace
+   PDF Explainer — the room behind the workspace
    ---------------------------------------------------------------------------
-   The pod runs a lecture on measuring distance by signal time of flight, and the
-   section behind it was pale nothing with four captions floating in it. So the
-   backdrop is that lecture's diagram, drawn at wall size: four satellites, the
-   pseudorange down from each, the rings of a signal leaving them, and the receiver
-   all four are solving for.
+   The pod runs a lecture on gradient descent, so the backdrop is that lecture's own
+   figure at wall size: the loss surface as contour lines, and the two descents the
+   deck compares walking into the same minimum — batch, one exact expensive step per
+   pass, a clean curve; stochastic, one cheap noisy step per example, a zig-zag. That
+   second one is the phrase the film highlights and asks about.
+
+   It replaces a GPS constellation, which was the diagram of the lecture the previous
+   film read and is not the diagram of this one.
 
    Everything here is faint on purpose. It is the wall of the room the software is
    standing in, and a background that competes with a slide is a background that has
-   forgotten its job. The strokes sit between 0.05 and 0.16 alpha; the labels are
+   forgotten its job. The strokes sit between 0.07 and 0.34 alpha; the labels are
    smaller than anything in the pod.
    =========================================================================== */
-.bd-pdf-sky {
+.bd-pdf-bowl {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -5849,144 +5883,115 @@ svg.bd-vehicle {
   color: var(--project-ink);
 }
 
-.bd-pdf-horizon {
+/* Contours of the loss, a shade darker toward the minimum, breathing very slowly
+   and out of phase so the surface is never quite still. */
+.bd-pdf-contour {
   fill: none;
-  stroke: color-mix(in srgb, var(--project-ink) 14%, transparent);
+  stroke: var(--project-ink);
+  stroke-opacity: calc(0.1 + var(--ring) * 0.022);
   stroke-width: 1;
-  stroke-dasharray: 2 9;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pdf-breathe 11s ease-in-out infinite;
+  animation-delay: calc(var(--ring) * -1300ms);
 }
-
-/* The measurement, from each satellite to the receiver. Dashed and slowly crawling,
-   because it is a signal in transit rather than a line between two objects. */
-.bd-pdf-range {
-  fill: none;
-  stroke: color-mix(in srgb, var(--project-accent) 26%, transparent);
-  stroke-width: 1.1;
-  stroke-dasharray: 5 12;
-  animation: pdf-transit 3.6s linear infinite;
-  animation-delay: var(--delay);
-}
-@keyframes pdf-transit {
-  to {
-    /* One dash cycle, so the crawl has no seam in it. */
-    stroke-dashoffset: -17;
+@keyframes pdf-breathe {
+  50% {
+    transform: scale(1.016);
   }
 }
 
-/* The ring leaving a satellite. Two per satellite, half a cycle apart, so each one
-   is a train of pulses rather than a single expanding circle. */
-.bd-pdf-ping {
+/* Batch descent: exact, expensive, smooth. Dashed and crawling, because it is a path
+   being walked rather than a line between two points. */
+.bd-pdf-path--batch {
+  fill: none;
+  stroke: color-mix(in srgb, var(--project-accent) 36%, transparent);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 8;
+  stroke-linecap: round;
+  animation: pdf-crawl 4.2s linear infinite;
+}
+@keyframes pdf-crawl {
+  to {
+    /* One dash cycle, so the crawl has no seam in it. */
+    stroke-dashoffset: -11;
+  }
+}
+
+/* Stochastic descent: cheap, noisy, and it still arrives. Drawn in the rail's violet
+   because it is the one the film is about. */
+.bd-pdf-path--sgd {
+  fill: none;
+  stroke: rgba(109, 40, 217, 0.3);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+/* The ball, walking the noisy path. `offset-path` is handed the same string the path
+   is drawn from — see `PDF_SGD` in backdrops.tsx — so the two cannot disagree. */
+.bd-pdf-ball {
+  offset-path: var(--sgd);
+  offset-rotate: 0deg;
+  animation: pdf-descend 9s cubic-bezier(0.32, 0.08, 0.36, 1) infinite;
+}
+.bd-pdf-ball-core {
+  fill: #6d28d9;
+  opacity: 0.55;
+}
+.bd-pdf-ball-halo {
+  fill: none;
+  stroke: rgba(109, 40, 217, 0.34);
+  stroke-width: 1;
+}
+@keyframes pdf-descend {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+/* The minimum both paths are walking to, and the ring closing on it. */
+.bd-pdf-minimum {
+  fill: color-mix(in srgb, var(--project-accent) 58%, transparent);
+}
+.bd-pdf-minimum-halo {
   fill: none;
   stroke: color-mix(in srgb, var(--project-accent) 34%, transparent);
   stroke-width: 1.2;
   transform-box: fill-box;
   transform-origin: center;
   opacity: 0;
-  animation: pdf-ping 3.6s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
-  animation-delay: var(--delay);
+  animation: pdf-settle 3.6s ease-out infinite;
 }
-.bd-pdf-ping--b {
-  /* Half a cycle behind its twin. */
-  animation-delay: calc(var(--delay) + 1800ms);
-}
-@keyframes pdf-ping {
-  0% {
-    opacity: 0.5;
-    transform: scale(0.35);
-  }
-  70% {
-    opacity: 0.12;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(4.6);
-  }
-}
-
-.bd-pdf-panel {
-  fill: color-mix(in srgb, var(--project-accent) 16%, transparent);
-  stroke: color-mix(in srgb, var(--project-ink) 20%, transparent);
-  stroke-width: 0.9;
-}
-.bd-pdf-spar,
-.bd-pdf-rx-mast {
-  fill: none;
-  stroke: color-mix(in srgb, var(--project-ink) 22%, transparent);
-  stroke-width: 1.1;
-}
-.bd-pdf-bus {
-  fill: color-mix(in srgb, var(--project-ink) 9%, transparent);
-  stroke: color-mix(in srgb, var(--project-ink) 26%, transparent);
-  stroke-width: 1.1;
-}
-.bd-pdf-dish,
-.bd-pdf-rx-body,
-.bd-pdf-rx-tip {
-  fill: color-mix(in srgb, var(--project-accent) 22%, transparent);
-  stroke: color-mix(in srgb, var(--project-ink) 22%, transparent);
-  stroke-width: 0.9;
-}
-
-/* A slow drift, so the constellation is never quite still. Each satellite is offset
-   by its own delay, which keeps them from moving as one object. */
-.bd-pdf-sat-body {
-  animation: pdf-drift 14s ease-in-out infinite;
-  animation-delay: var(--delay);
-}
-@keyframes pdf-drift {
-  50% {
-    transform: translateY(-9px);
-  }
-}
-
-.bd-pdf-sat-label,
-.bd-pdf-formula {
-  fill: color-mix(in srgb, var(--project-ink) 26%, transparent);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-anchor: middle;
-}
-.bd-pdf-formula {
-  font-size: 20px;
-  letter-spacing: 0.2em;
-  fill: color-mix(in srgb, var(--project-ink) 15%, transparent);
-}
-
-/* Three of the four, joined. The fourth is the one that solves the clock — which is
-   the answer the tutor gives inside the pod. */
-.bd-pdf-tri {
-  fill: color-mix(in srgb, var(--project-accent) 4%, transparent);
-  stroke: color-mix(in srgb, var(--project-accent) 16%, transparent);
-  stroke-width: 1;
-  stroke-dasharray: 3 7;
-}
-
-.bd-pdf-rx-halo {
-  fill: none;
-  stroke: color-mix(in srgb, var(--project-accent) 30%, transparent);
-  stroke-width: 1.2;
-  transform-box: fill-box;
-  transform-origin: center;
-  opacity: 0;
-  /* Closing inward rather than expanding: these are the four ranges arriving. */
-  animation: pdf-lock 3.6s ease-out infinite;
-}
-.bd-pdf-rx-halo--wide {
-  animation-delay: 1800ms;
-}
-@keyframes pdf-lock {
+@keyframes pdf-settle {
   0% {
     opacity: 0;
     transform: scale(2.6);
   }
   60% {
-    opacity: 0.4;
+    opacity: 0.5;
   }
   100% {
     opacity: 0;
     transform: scale(0.5);
   }
+}
+
+.bd-pdf-label {
+  fill: color-mix(in srgb, var(--project-ink) 30%, transparent);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
 }
 
 .bd--pagepack,
@@ -6560,243 +6565,31 @@ svg.bd-vehicle {
   transition: background 800ms ease;
 }
 
-#pdf-explainer[data-scene-reached~="split"] {
+/* The room follows the panel. A shade more violet as the first read-ahead batch lands
+   — the rail's colour, and the notes' — amber while the review set is open, and the
+   accent's blue once the reader has asked. The same code the app's own tints use. */
+#pdf-explainer[data-scene-reached~="ahead"] {
   background:
-    radial-gradient(58% 52% at 48% 42%, rgba(236, 247, 255, 0.84), transparent 72%),
-    linear-gradient(135deg, #d3e7f4, #d8d9ef);
+    radial-gradient(58% 52% at 48% 42%, rgba(249, 246, 255, 0.84), transparent 72%),
+    linear-gradient(135deg, #dadcf8, #e3d7f0);
 }
 
-/* The room takes the tint of the practice item on screen. Three washes for the three
-   kinds, which is the same colour code the cards and the panel's filter row use — violet
-   for multiple choice, teal for matching, amber for blanks. */
-#pdf-explainer[data-scene-reached~="to-practice"] {
-  background:
-    radial-gradient(58% 52% at 48% 42%, rgba(249, 245, 255, 0.86), transparent 72%),
-    linear-gradient(135deg, #dedcf5, #eadcf1);
-}
-
-#pdf-explainer[data-scene-reached~="to-match"] {
-  background:
-    radial-gradient(58% 52% at 48% 42%, rgba(240, 252, 249, 0.88), transparent 72%),
-    linear-gradient(135deg, #d8ece8, #d8e2f0);
-}
-
-#pdf-explainer[data-scene-reached~="to-blank"] {
+#pdf-explainer[data-scene-reached~="review"] {
   background:
     radial-gradient(58% 52% at 48% 42%, rgba(255, 250, 240, 0.88), transparent 72%),
-    linear-gradient(135deg, #ece4d5, #e2e0ee);
+    linear-gradient(135deg, #ece3d3, #e3ddec);
+}
+
+#pdf-explainer[data-scene-reached~="ask"] {
+  background:
+    radial-gradient(58% 52% at 48% 42%, rgba(236, 247, 255, 0.86), transparent 72%),
+    linear-gradient(135deg, #d2e5f6, #d8daf0);
 }
 
 #pdf-explainer .demo-surface {
   border: 0;
   background: transparent;
   box-shadow: none;
-}
-
-.bd-pdf-links {
-  position: absolute;
-  inset: 4% 0 0;
-  width: 100%;
-  height: 92%;
-}
-
-.bd-pdf-link {
-  fill: none;
-  stroke: color-mix(in srgb, var(--project-accent) 46%, transparent);
-  stroke-width: 2;
-  stroke-dasharray: 8 10;
-  stroke-dashoffset: 180;
-  opacity: 0;
-  transition:
-    opacity 520ms ease,
-    stroke-dashoffset 1200ms ease;
-}
-
-.bd-pdf-fragment {
-  position: absolute;
-  display: flex;
-  max-width: clamp(150px, 18vw, 260px);
-  flex-direction: column;
-  gap: 0.38rem;
-  padding: clamp(0.7rem, 1.25vw, 1rem);
-  border: 1px solid rgba(37, 50, 82, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 24px 58px -38px rgba(30, 37, 65, 0.58);
-  opacity: 0.06;
-  transform: translateY(1rem) scale(0.9);
-  transition:
-    opacity 520ms ease,
-    transform 760ms cubic-bezier(0.16, 0.86, 0.18, 1.12),
-    border-color 520ms ease,
-    background 520ms ease;
-  backdrop-filter: blur(8px);
-}
-
-.bd-pdf-fragment small {
-  color: #777e91;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.52rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.bd-pdf-fragment b {
-  color: #263454;
-  font-size: clamp(0.72rem, 1vw, 0.92rem);
-  font-weight: 650;
-  line-height: 1.35;
-}
-
-.bd-pdf-fragment i {
-  color: #68728a;
-  font-size: clamp(0.58rem, 0.8vw, 0.72rem);
-  font-style: normal;
-  line-height: 1.45;
-}
-
-.bd-pdf-fragment--notes {
-  top: 11%;
-  left: 2.5%;
-  border-left: 3px solid #6d28d9;
-  transform: translate(-1rem, -1rem) rotate(-4deg) scale(0.9);
-}
-
-.bd-pdf-fragment--tutor {
-  top: 9%;
-  right: 2.5%;
-  border-left: 3px solid #0b6fd6;
-  transform: translate(1rem, -1rem) rotate(3deg) scale(0.9);
-}
-
-.bd-pdf-fragment--quiz {
-  bottom: 9%;
-  left: 2.5%;
-  border-left: 3px solid #6d28d9;
-  transform: translate(-1rem, 1rem) rotate(3deg) scale(0.9);
-}
-
-/* The blank shares the concept's slot at every width rather than claiming one of its own,
-   and that is not laziness — it is the only arrangement that cannot drift. These
-   fragments are repositioned three times below (900px, 700px, and a late override that
-   pulls the whole backdrop out of the editorial column at every width), and a fourth slot
-   would have to be placed in all three or it lands behind the heading, which is exactly
-   what the first attempt did. The matching pair fades as the blank arrives, so they are
-   never both readable. */
-.bd-pdf-fragment--concept,
-.bd-pdf-fragment--blank {
-  right: 23%;
-  bottom: 8%;
-  border-left: 3px solid #0f766e;
-}
-
-.bd-pdf-fragment--definition {
-  right: 2.5%;
-  bottom: 8%;
-  border-left: 3px solid #0f766e;
-}
-
-#pdf-explainer[data-scene-reached~="arrive"] .bd-pdf-fragment--notes,
-#pdf-explainer[data-scene-reached~="arrive"] .bd-pdf-link--notes {
-  opacity: 0.9;
-  stroke-dashoffset: 0;
-}
-
-#pdf-explainer[data-scene-reached~="arrive"] .bd-pdf-fragment--notes {
-  transform: rotate(-2deg) scale(1);
-}
-
-#pdf-explainer[data-scene-reached~="split"] .bd-pdf-fragment--notes {
-  opacity: 0.12;
-  transform: translate(-2rem, -1rem) rotate(-5deg) scale(0.86);
-}
-
-#pdf-explainer[data-scene-reached~="split"] .bd-pdf-fragment--tutor,
-#pdf-explainer[data-scene-reached~="split"] .bd-pdf-link--tutor {
-  opacity: 0.9;
-  stroke-dashoffset: 0;
-}
-
-#pdf-explainer[data-scene-reached~="split"] .bd-pdf-fragment--tutor {
-  transform: rotate(1deg) scale(1);
-}
-
-#pdf-explainer[data-scene-reached~="to-practice"] .bd-pdf-fragment--tutor {
-  opacity: 0.1;
-  transform: translate(2rem, -1rem) rotate(4deg) scale(0.86);
-}
-
-#pdf-explainer[data-scene-reached~="to-practice"] .bd-pdf-fragment--quiz,
-#pdf-explainer[data-scene-reached~="to-practice"] .bd-pdf-link--quiz {
-  opacity: 0.9;
-  stroke-dashoffset: 0;
-}
-
-#pdf-explainer[data-scene-reached~="to-practice"] .bd-pdf-fragment--quiz {
-  transform: rotate(1deg) scale(1);
-}
-
-#pdf-explainer[data-scene-reached~="to-match"] .bd-pdf-fragment--quiz {
-  opacity: 0.1;
-  transform: translate(-2rem, 1rem) rotate(5deg) scale(0.86);
-}
-
-#pdf-explainer[data-scene-reached~="to-match"] :is(
-    .bd-pdf-fragment--concept,
-    .bd-pdf-fragment--definition,
-    .bd-pdf-link--match
-  ) {
-  opacity: 0.92;
-  stroke-dashoffset: 0;
-}
-
-#pdf-explainer[data-scene-reached~="to-match"] .bd-pdf-fragment--concept {
-  transform: translateX(-1rem) scale(1);
-}
-
-#pdf-explainer[data-scene-reached~="to-match"] .bd-pdf-fragment--definition {
-  transform: translateX(1rem) scale(1);
-}
-
-#pdf-explainer[data-scene-reached~="matched"] .bd-pdf-fragment--concept {
-  border-color: #0f766e;
-  background: rgba(235, 250, 247, 0.9);
-  transform: translateX(2.4rem) scale(1);
-}
-
-#pdf-explainer[data-scene-reached~="matched"] .bd-pdf-fragment--definition {
-  border-color: #0f766e;
-  background: rgba(235, 250, 247, 0.9);
-  transform: translateX(-2.4rem) scale(1);
-}
-
-/* The third kind, so the room echoes all three rather than the two it used to.
-   The matching pair leaves as it arrives, the same handover the tutor and quiz fragments
-   make. Position comes from the concept's rule above; this is only its own colour and its
-   own entrance. */
-.bd-pdf-fragment--blank {
-  /* Literals, not `var(--amber)`: the backdrop is a child of `.project-ambience`, outside
-     `.pdfx`, so the application's palette is not in scope here. These are the same two
-     figures the pod's tokens carry. */
-  border-left-color: #b45309;
-  transform: translate(0, 1rem) scale(0.9);
-}
-
-#pdf-explainer[data-scene-reached~="to-blank"] :is(
-    .bd-pdf-fragment--concept,
-    .bd-pdf-fragment--definition
-  ) {
-  opacity: 0.1;
-}
-
-#pdf-explainer[data-scene-reached~="to-blank"] .bd-pdf-fragment--blank {
-  opacity: 0.92;
-  transform: rotate(-1deg) scale(1);
-}
-
-#pdf-explainer[data-scene-reached~="solved"] .bd-pdf-fragment--blank {
-  border-color: var(--good, #1a7f4b);
-  background: rgba(235, 250, 240, 0.92);
 }
 
 /* ----------------------------------------------------------------- n-back --- */
@@ -6806,25 +6599,182 @@ svg.bd-vehicle {
   --project-ink: #edf6f0;
   --project-muted: #98ad9f;
   --project-line: rgba(218, 238, 225, 0.15);
-  --project-accent: #7fd8a4;
+  /* The game's sage, `--color-sage` in its theme. It was a brighter mint of the
+     site's own, from when the scene was a diagram in the site's furniture. The
+     scene is the game's play screen now, so the section's accent and the column's
+     are one colour, and a label pinned in sage points at something lit in sage. */
+  --project-accent: #8fb5a3;
   background:
     radial-gradient(58% 62% at 50% 42%, rgba(55, 102, 75, 0.3), transparent 72%),
     linear-gradient(145deg, #17291f, #0d1712 72%);
 }
 
+/* The well is the game's canvas — `--color-canvas` — with the app's own ambient
+   wash over it: `AmbientBackground` is three slow blobs of sage, sky and amber
+   under a vignette, drawn here as three radial washes on a pseudo-element. Its own
+   stacking context, so the wash can sit between the canvas and the scene. The
+   translucent recess it replaces let the section's green through, which made the
+   game look like the site. */
 #n-back .demo-surface {
-  border-color: rgba(218, 238, 225, 0.1);
-  background: rgba(5, 11, 8, 0.42);
-  box-shadow: 0 26px 76px -48px #000;
-  backdrop-filter: blur(8px);
+  isolation: isolate;
+  border-color: rgba(233, 239, 236, 0.08);
+  background: #0a0d0c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 26px 76px -48px #000;
+  backdrop-filter: none;
+}
+
+#n-back .demo-surface::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(42% 46% at 14% 10%, rgba(143, 181, 163, 0.16), transparent 70%),
+    radial-gradient(46% 48% at 90% 92%, rgba(143, 173, 212, 0.13), transparent 70%),
+    radial-gradient(34% 36% at 30% 84%, rgba(223, 166, 92, 0.1), transparent 70%);
+  content: "";
+  pointer-events: none;
+  transition: opacity 900ms ease-out;
+}
+
+/* And it dims while a session is running, as the app's does — the wash drops to
+   0.35 from the first cue so the grid is the only thing moving — and comes back with
+   the results. Keyed on the section, which the scene writes its beat to. */
+#n-back[data-scene-reached~="cue-1"]:not([data-scene-reached~="results"]) .demo-surface::before {
+  opacity: 0.35;
 }
 
 #n-back .demo-chrome p {
   color: rgba(221, 236, 226, 0.68);
 }
 
-.bd--nback {
-  color: #7fd8a4;
+/* --- the match, at section scale --------------------------------------------
+   The strip's bracket snaps and a ring goes out of it: a small one inside the
+   well, in `demo.css`, and this one, out of the well and across the section, in
+   the foreground layer — above the scene, clipped to the section and feathered at
+   its bleed, so it can leave the frame and cannot reach the neighbours. One
+   element per match beat rather than one retriggered, because a CSS animation
+   restarts on a change of name and not on a change of selector.
+
+   Centred on the strip: the well's centre in a `beside-flip` composition is the
+   gutter plus half of what the heading column and the gap leave, and the strip's
+   bracket sits a fixed distance below the well's middle, because the column is a
+   fixed layout. Under 900px the layout stacks and the well is centred. The width
+   is what animates, not a transform, so the line stays a line: a scaled ring
+   scales its own stroke, and this one starts forty pixels across.
+
+   This section used to draw the four held cues behind the well as well, in the
+   site's mono face and mint. They are drawn now by the scene itself, in the
+   game's face, at the sides of the column — see `.nb-trail` — so a second copy
+   behind the well was the same four cards twice. */
+.bd-nback-front {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* Stops before the heading column, at the same fade the backdrops use. */
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 1) 58%,
+    rgb(0 0 0 / 0.78) 60.5%,
+    rgb(0 0 0 / 0.5) 62%,
+    rgb(0 0 0 / 0.22) 63.5%,
+    rgb(0 0 0 / 0) 66%
+  );
+}
+
+.bd-nback-ring {
+  position: absolute;
+  top: calc(50% + 160px);
+  left: calc(
+    var(--project-gutter) +
+      (100% - 2 * var(--project-gutter) - clamp(1.4rem, 3vw, 3rem) - clamp(16rem, 24vw, 21rem)) / 2
+  );
+  width: 40px;
+  aspect-ratio: 1;
+  border: 1.5px solid #8fb5a3;
+  border-radius: 50%;
+  opacity: 0;
+  translate: -50% -50%;
+}
+
+#n-back[data-scene-beat="match-square"] .bd-nback-ring--square,
+#n-back[data-scene-beat="match-letter"] .bd-nback-ring--letter {
+  animation: bd-nback-ring 1900ms cubic-bezier(0.18, 0.72, 0.22, 1) both;
+}
+
+@keyframes bd-nback-ring {
+  0% {
+    width: 40px;
+    opacity: 0;
+  }
+  6% {
+    opacity: 0.72;
+  }
+  100% {
+    width: 2200px;
+    opacity: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .bd-nback-front {
+    mask-image: none;
+  }
+  .bd-nback-ring {
+    top: calc(60% + 120px);
+    left: 50%;
+  }
+}
+
+
+/* --- 06 2FA Paster: the room takes the verdict --------------------------------
+   Nothing drawn, for the reason recorded on `PasterBackdrop`. Two washes behind the
+   pod instead, keyed off the beats the scene publishes: violet from the moment the
+   code goes in and the page's button goes down, amber from the moment a code is
+   held. They sit low and to the right, which is the one part of the pod's ground the
+   scene leaves bare — under the popup and beside the inbox — so the colour is seen
+   rather than covered. */
+
+.bd--tfa {
+  color: var(--project-accent);
+}
+
+.bd-tfa-wash {
+  position: absolute;
+  inset: -12% -8%;
+  opacity: 0;
+  transition: opacity 1100ms ease;
+  pointer-events: none;
+}
+
+.bd-tfa-wash--pass {
+  background: radial-gradient(
+    38% 34% at 64% 82%,
+    rgba(91, 69, 224, 0.36),
+    rgba(91, 69, 224, 0.12) 46%,
+    transparent 72%
+  );
+}
+
+.bd-tfa-wash--hold {
+  background: radial-gradient(
+    42% 36% at 62% 80%,
+    rgba(180, 110, 0, 0.34),
+    rgba(180, 110, 0, 0.1) 46%,
+    transparent 72%
+  );
+}
+
+#two-factor-paster[data-scene-reached~="fill"] .bd-tfa-wash--pass {
+  opacity: 1;
+}
+#two-factor-paster[data-scene-reached~="again"] .bd-tfa-wash--pass {
+  opacity: 0;
+}
+#two-factor-paster[data-scene-reached~="hold"] .bd-tfa-wash--hold {
+  opacity: 1;
 }
 
 /* --- 07 Totem: the vocabulary the four on screen were drawn from ----------- */
@@ -6874,21 +6824,103 @@ svg.bd-vehicle {
   }
 }
 
-/* --- 08 Byte Budget: per site, and where measuring stopped ----------------- */
+/* Once the names are hidden the vocabulary in the room is what is left to read the
+   list by, so it comes forward: the same marks, with more of their bloom. The
+   drift keyframes own `opacity`, so this is the shadow and the brightness. */
+#totem[data-scene-reached~="hidden"] .bd-totem-mark {
+  box-shadow: 0 0 calc(30px * var(--mark-s)) var(--mark-hue);
+  filter: brightness(1.25);
+  transition:
+    box-shadow 700ms ease,
+    filter 700ms ease;
+}
 
+/* The dealt totem's sound reaching the room. The scene rings out of the phone in the
+   totem's own colour when the tour's totem is tapped, and the section answers with a
+   wash of the same colour on the same clock — 760ms into the beat, which is when the
+   finger lands — centred where the device stands in the well. Again, quieter, when
+   the recall card arrives, because the app sounds the tone again then.
+
+   `:has()` on the stage's `data-running`, so a section reached before its scene has
+   started — the chunk mounts 300px early, on its first beat — does not wash on
+   arrival. The hue comes from the scene, which sets `--totem-hue` on the section
+   from the totem it deals, so this file carries no hex that could drift from it. */
+#totem .bd-totem-pulse {
+  --wash-peak: 1;
+  position: absolute;
+  top: 50%;
+  left: 35%;
+  width: min(1200px, 90vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--totem-hue, #ab39e8) 52%, transparent) 0%,
+    color-mix(in srgb, var(--totem-hue, #ab39e8) 20%, transparent) 42%,
+    transparent 70%
+  );
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.2);
+  pointer-events: none;
+}
+#totem[data-scene-beat="deal"]:has(.tot[data-running="true"]) .bd-totem-pulse {
+  animation: bd-totem-pulse 2400ms cubic-bezier(0.2, 0.7, 0.3, 1) 760ms forwards;
+}
+#totem[data-scene-beat="tap"]:has(.tot[data-running="true"]) .bd-totem-pulse {
+  --wash-peak: 0.5;
+  animation: bd-totem-pulse 2000ms cubic-bezier(0.2, 0.7, 0.3, 1) 480ms forwards;
+}
+@keyframes bd-totem-pulse {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  22% {
+    opacity: var(--wash-peak, 1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+/* --- 08 Byte Budget: the page's own hosts, climbing towards the plan ------- */
+
+/*
+ * The runs are the hosts the scene's page is spending on, drawn at section scale and
+ * climbing with it: `useSectionBeat` publishes the film's beat onto the section, and
+ * each run reads its length for that beat off the custom properties `BytesBackdrop`
+ * writes. Teal to the seam and amber past it — the extension's two semantic colours,
+ * and the section's whole argument: the amber is the part nothing measured.
+ *
+ * Everything lives below the editorial mask (the top third is the heading's) and left
+ * of the window, in the band the offset composition leaves clear. The cap the heaviest
+ * run reaches is the plan, and the run stops there rather than through it, which is
+ * the same moment the scene throws a segment back out of its frame.
+ */
 .bd--bytes {
   color: #0f6a62;
+  /* Where the plan is, as a share of the section's width. The runs are fractions of
+     this distance, so at any width the heaviest one arrives exactly at the line. */
+  --cap-x: 21%;
+  --run-x: 4%;
 }
 
 .bd-bytes-run {
   position: absolute;
-  top: calc(16% + var(--run-order) * 12%);
-  left: 4%;
-  width: calc(var(--run-len) * 0.72%);
+  top: calc(40% + var(--run-order) * 9%);
+  left: var(--run-x);
+  width: calc(var(--cap-x) - var(--run-x));
   height: 10px;
+  /* This beat's length, as a fraction of the way to the cap. The `load` figure is the
+     resting one: a section nobody has reached yet shows the day as it started. */
+  --run: var(--run-load);
+}
+
+.bd-bytes-run i {
+  position: absolute;
+  inset: 0;
   border-radius: 5px;
-  /* Teal to the seam, amber past it: the extension's own two semantic colours, and the
-     section's whole argument. `--run-split` is that row's measured share. */
   background: linear-gradient(
     to right,
     #0f6a62 0%,
@@ -6896,213 +6928,101 @@ svg.bd-vehicle {
     #9c5406 calc(var(--run-split) * 100%),
     #9c5406 100%
   );
-  opacity: 0.3;
+  opacity: 0.32;
+  transform: scaleX(var(--run));
   transform-origin: left;
-  animation: bd-bytes-fill 21s ease-in-out infinite;
-  animation-delay: calc(var(--run-order) * -1700ms);
+  transition:
+    transform 2000ms cubic-bezier(0.3, 0.1, 0.3, 1),
+    opacity 700ms ease;
 }
 
-/* The run that reached the cap, and stopped there rather than through it. */
-.bd-bytes-run[data-capped] {
+/* The name of the host, at the head of its run. */
+.bd-bytes-run small {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 5px;
+  color: var(--project-ink);
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
   opacity: 0.46;
 }
 
-.bd-bytes-run[data-capped] i {
-  position: absolute;
-  top: -5px;
-  right: -3px;
-  bottom: -5px;
-  width: 3px;
-  border-radius: 2px;
-  background: #9c5406;
+.bd-bytes-run[data-media] i {
+  opacity: 0.5;
 }
 
-/* The line lives entirely below the editorial mask, and so does its label.
-   An earlier version ran from 10% and put the label at its head, which the top-third fade
-   erased — leaving a pale vertical rule attached to nothing. That is the exact fault
-   Decaf's backdrop records having removed once already: "there's a line in the
-   background, what is that?" A mystery line is worse than no line. */
+#byte-budget[data-scene-reached~="climb"] .bd-bytes-run {
+  --run: var(--run-climb);
+}
+#byte-budget[data-scene-reached~="surge"] .bd-bytes-run {
+  --run: var(--run-surge);
+}
+#byte-budget[data-scene-reached~="refuse"] .bd-bytes-run {
+  --run: var(--run-refuse);
+}
+/* Held: the stream's run stands down, the others stay. */
+#byte-budget[data-scene-reached~="hold"] .bd-bytes-run[data-media] i {
+  opacity: 0.2;
+}
+
+/* The plan, as a line the runs climb towards. It lives entirely below the editorial
+   mask, and so does its label: a line whose head the top-third fade erased read as a
+   pale rule attached to nothing. */
 .bd-bytes-cap {
   position: absolute;
   top: 36%;
-  left: calc(4% + 92 * 0.72%);
+  left: var(--cap-x);
   bottom: 14%;
   width: 1px;
   background: color-mix(in srgb, currentColor 38%, transparent);
+  transition: background 600ms ease;
 }
 
 .bd-bytes-cap small {
   position: absolute;
   bottom: -4px;
   left: 8px;
+  color: currentColor;
   font-size: 0.6rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   white-space: nowrap;
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
-@keyframes bd-bytes-fill {
-  0%,
-  100% {
-    transform: scaleX(0.82);
+/* Below the offset composition's breakpoint the window takes the whole width and the
+   band the runs live in is gone; a host name half under a browser reads as a mistake. */
+@media (max-width: 760px) {
+  .bd-bytes-run,
+  .bd-bytes-cap {
+    display: none;
   }
-  50% {
-    transform: scaleX(1);
-  }
 }
 
-.bd-memory-path {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+/* Reached. The line the heaviest run just met turns the colour the plan meter does. */
+#byte-budget[data-scene-reached~="refuse"] .bd-bytes-cap {
+  background: #b6382f;
+}
+#byte-budget[data-scene-reached~="refuse"] .bd-bytes-cap small {
+  color: #b6382f;
+  opacity: 0.8;
 }
 
-.bd-memory-path path {
-  fill: none;
-  stroke: rgba(127, 216, 164, 0.18);
-  stroke-width: 2;
-  stroke-dasharray: 7 11;
+/* And the section warms where the plan is spent, the way the limit card does. */
+#byte-budget.project {
+  transition: background 900ms ease;
+}
+#byte-budget[data-scene-reached~="refuse"].project {
+  background:
+    radial-gradient(circle at 80% 20%, rgba(182, 56, 47, 0.2), transparent 32%),
+    radial-gradient(circle at 14% 84%, rgba(150, 168, 110, 0.16), transparent 34%),
+    linear-gradient(140deg, #fbebc8 0%, var(--project-bg) 58%, #dcb877 100%);
 }
 
-.bd-memory-return {
-  opacity: 0;
-  stroke: rgba(127, 216, 164, 0.7) !important;
-  stroke-width: 3 !important;
-  stroke-dasharray: 12 8 !important;
-  transition: opacity 360ms ease;
-}
-
-.bd-memory-cue {
-  position: absolute;
-  display: grid;
-  width: clamp(78px, 9vw, 126px);
-  aspect-ratio: 1;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 0.35rem;
-  padding: 0.6rem;
-  border: 1px solid rgba(197, 230, 208, 0.16);
-  border-radius: 14px;
-  background: rgba(8, 18, 12, 0.62);
-  box-shadow: 0 20px 54px -34px #000;
-  opacity: 0.05;
-  transform: scale(0.74);
-  transition:
-    opacity 420ms ease,
-    transform 620ms cubic-bezier(0.16, 0.86, 0.18, 1.12),
-    border-color 260ms ease,
-    box-shadow 260ms ease;
-}
-
-.bd-memory-cue--1 {
-  bottom: 13%;
-  left: 3%;
-  transform: rotate(-7deg) scale(0.74);
-}
-
-.bd-memory-cue--2 {
-  top: 12%;
-  left: 25%;
-  transform: rotate(5deg) scale(0.74);
-}
-
-.bd-memory-cue--3 {
-  top: 15%;
-  right: 24%;
-  transform: rotate(-4deg) scale(0.74);
-}
-
-.bd-memory-cue--4 {
-  right: 3%;
-  bottom: 18%;
-  transform: rotate(6deg) scale(0.74);
-}
-
-.bd-memory-grid {
-  display: grid;
-  grid-area: 1 / 1 / 2 / 3;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
-}
-
-.bd-memory-grid i {
-  border-radius: 2px;
-  background: rgba(225, 240, 230, 0.08);
-}
-
-.bd-memory-grid i[data-on="true"] {
-  background: #7fd8a4;
-  box-shadow: 0 0 18px rgba(127, 216, 164, 0.52);
-}
-
-.bd-memory-cue > b {
-  color: #eaf4ed;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: clamp(0.85rem, 1.4vw, 1.15rem);
-}
-
-.bd-memory-cue > small {
-  align-self: end;
-  color: rgba(218, 235, 223, 0.38);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.55rem;
-}
-
-#n-back[data-scene-reached~="cue-1"] .bd-memory-cue--1,
-#n-back[data-scene-reached~="cue-2"] .bd-memory-cue--2,
-#n-back[data-scene-reached~="cue-3"] .bd-memory-cue--3,
-#n-back[data-scene-reached~="cue-4"] .bd-memory-cue--4 {
-  opacity: 0.62;
-}
-
-#n-back[data-scene-reached~="cue-1"] .bd-memory-cue--1 {
-  transform: rotate(-7deg) scale(1);
-}
-
-#n-back[data-scene-reached~="cue-2"] .bd-memory-cue--2 {
-  transform: rotate(5deg) scale(1);
-}
-
-#n-back[data-scene-reached~="cue-3"] .bd-memory-cue--3 {
-  transform: rotate(-4deg) scale(1);
-}
-
-#n-back[data-scene-reached~="cue-4"] .bd-memory-cue--4 {
-  transform: rotate(6deg) scale(1);
-}
-
-#n-back[data-scene-beat="match-square"] :is(.bd-memory-cue--1, .bd-memory-cue--3),
-#n-back[data-scene-beat="match-letter"] :is(.bd-memory-cue--2, .bd-memory-cue--4) {
-  border-color: rgba(127, 216, 164, 0.76);
-  box-shadow:
-    0 0 0 1px rgba(127, 216, 164, 0.12),
-    0 0 48px -8px rgba(127, 216, 164, 0.52);
-  opacity: 1;
-}
-
-#n-back[data-scene-beat="match-square"] .bd-memory-return--square,
-#n-back[data-scene-beat="match-letter"] .bd-memory-return--letter {
-  opacity: 1;
-}
-
-.bd-memory-rule {
-  position: absolute;
-  bottom: 6%;
-  left: 50%;
-  padding: 0.35rem 0.65rem;
-  border: 1px solid rgba(127, 216, 164, 0.2);
-  border-radius: 999px;
-  background: rgba(8, 18, 12, 0.55);
-  color: rgba(194, 224, 204, 0.58);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.54rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  transform: translateX(-50%);
-}
 
 /* ------------------------------------------------------------------ choir --- */
 
@@ -7153,25 +7073,6 @@ svg.bd-vehicle {
     width: 82px;
   }
 
-  .bd-pdf-fragment {
-    max-width: 150px;
-  }
-
-  .bd-pdf-fragment--notes,
-  .bd-pdf-fragment--quiz {
-    left: -1rem;
-  }
-
-  .bd-pdf-fragment--tutor,
-  .bd-pdf-fragment--definition {
-    right: -1rem;
-  }
-
-  .bd-memory-cue {
-    width: 72px;
-    opacity: 0.035;
-  }
-
 
 }
 
@@ -7198,48 +7099,6 @@ svg.bd-vehicle {
 
   .bd-decaf-badge {
     right: 3%;
-  }
-
-  .bd-pdf-fragment {
-    max-width: 124px;
-    padding: 0.58rem;
-  }
-
-  .bd-pdf-fragment i {
-    display: none;
-  }
-
-  .bd-pdf-fragment--concept,
-  .bd-pdf-fragment--blank {
-    right: auto;
-    bottom: 2%;
-    left: 4%;
-  }
-
-  .bd-pdf-fragment--definition {
-    right: 4%;
-    bottom: 2%;
-  }
-
-  .bd-memory-cue {
-    width: 58px;
-    padding: 0.38rem;
-    border-radius: 9px;
-  }
-
-  .bd-memory-cue--2 {
-    top: 5%;
-    left: 8%;
-  }
-
-  .bd-memory-cue--3 {
-    top: 5%;
-    right: 8%;
-  }
-
-  .bd-memory-rule {
-    bottom: 2%;
-    font-size: 0.46rem;
   }
 
 
@@ -7493,7 +7352,6 @@ svg.bd-vehicle {
 }
 
 #pdf-explainer .bd--pdf,
-#n-back .bd--nback,
 /* Totem is `beside-flip` like these two: the heading is the right-hand column, so the
    backdrop stops before it rather than above it. */
 #totem .bd--totem {
@@ -7552,38 +7410,23 @@ svg.bd-vehicle {
   will-change: auto;
 }
 
-.bd-choir-ledger {
-  position: absolute;
-  top: 43%;
-  right: max(0.8rem, 2vw);
-  display: grid;
-  width: clamp(3rem, 5vw, 4.6rem);
-  gap: 0.42rem;
-  color: color-mix(in srgb, var(--project-ink) 58%, transparent);
-  font-family: var(--font-geist-mono), monospace;
-  text-align: center;
-  opacity: 0.18;
-  transition: opacity 700ms ease;
+/* The room waits for the score, and wakes when the choir sings.
+   The pod publishes its beats onto the section — `score` once a score is engraved,
+   `passage` once the loop is on the ruler, `count-in` and `singing` after the press —
+   and the manuscript behind the frame follows: faint ruling until there is music on
+   the stand, the note stream at half strength until the voices actually come in. Kept
+   quiet on purpose; this is a rehearsal room, and the application is the loud thing. */
+.bd-stave {
+  transition: opacity 900ms ease;
 }
-.bd-choir-ledger small,
-.bd-choir-ledger b {
-  font-size: 0.48rem;
-  font-weight: 650;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+#choir-practice:not([data-scene-reached~="score"]) .bd-stave {
+  opacity: 0.16;
 }
-.bd-choir-ledger i {
-  display: grid;
-  aspect-ratio: 1;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--project-ink) 18%, transparent);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--project-bg) 76%, transparent);
-  font-size: 0.6rem;
-  font-style: normal;
+#choir-practice .bd--choir {
+  --note-strength: 42%;
 }
-#choir-practice[data-scene-reached~="score"] .bd-choir-ledger {
-  opacity: 0.72;
+#choir-practice[data-scene-reached~="singing"] .bd--choir {
+  --note-strength: 100%;
 }
 
 /* ------------------------------------------------------------------- night --- */
@@ -7619,6 +7462,43 @@ svg.bd-vehicle {
 }
 #night-neutralizer[data-scene-beat="settle"] :is(.bd-night-room--base, .bd-night-treatment) {
   transition-duration: 1400ms;
+}
+/* Where the treated half of the room starts, and the seam that marks it.
+
+   The pod's two panels used to be centred in the stage, so the boundary between Before
+   and After was the section's centre line and the backdrop split there. The popup now
+   takes a column to the right of the panels, which moves that boundary 156px left of
+   centre at the 1180px measure — and the room behind the pod should split where the
+   panels in front of it do, or the seam runs through the After panel.
+
+   The treated copy is a full-width room inside a box that starts at the split, so the
+   box's width is `50% + 156px` and the copy inside it has to be the section's width,
+   offset back to the section's left edge: `200% - 312px` wide, `-100% + 312px` across.
+   Below 1000px the pod stacks the popup under the panels and they are centred again, so
+   the split goes back to the middle. */
+@media (min-width: 1001px) {
+  #night-neutralizer .bd-night-treatment,
+  #night-neutralizer .bd-night-seam {
+    left: calc(50% - 156px);
+  }
+  #night-neutralizer .bd-night-room--treated {
+    left: calc(-100% + 312px);
+    width: calc(200% - 312px);
+  }
+}
+
+/* The hold. While the phantom cursor holds the popup's Compare pill, the After panel in
+   the pod shows the site's own picture — and so does the treated half of the room behind
+   it, because the wash the section wears is the extension's doing and the whole point of
+   the pill is to take that away for as long as it is held. The pod publishes the beat
+   from its press gate, so this lands in the same instant the pill goes down. */
+#night-neutralizer[data-scene-beat="compare"] .bd-night-treatment {
+  filter: brightness(var(--night-exposure));
+}
+/* The coda: a protected player, whose frames cannot be read, gets the fixed curve at the
+   shipped brightness. The pod defines this filter alongside the adaptive one. */
+#night-neutralizer:is([data-scene-beat="protected"], [data-scene-beat="hold"]) .bd-night-treatment {
+  filter: brightness(var(--night-exposure)) url(#nn-tone-curve-fixed);
 }
 .bd-night-seam {
   top: 34%;
@@ -7755,6 +7635,14 @@ svg.bd-vehicle {
   gap: 0.28rem;
   color: rgba(45, 48, 46, 0.55);
   font-family: var(--font-geist-mono), monospace;
+  transition: opacity 420ms ease;
+}
+/* It stands down while the extension's popup is open. The popup hangs off the toolbar
+   into the corner the ladder lives in, and two grey discs peeking out beside a window's
+   edge read as clutter rather than as a scale. Back on `hold`, which is the beat that
+   lights its first rung. */
+#decaf[data-scene-reached~="open"]:not([data-scene-reached~="hold"]) .bd-decaf-ladder {
+  opacity: 0;
 }
 .bd-decaf-ladder small {
   grid-column: 1 / -1;
@@ -7782,39 +7670,11 @@ svg.bd-vehicle {
 
 /* ---------------------------------------------------------- PDF Explainer --- */
 
-.bd-pdf-links {
-  right: auto;
-  width: 66%;
-}
-.bd-pdf-fragment {
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: none;
-}
-.bd-pdf-fragment--notes {
-  top: 10%;
-  left: 2%;
-}
-.bd-pdf-fragment--tutor {
-  top: 8%;
-  right: auto;
-  left: 27%;
-}
-.bd-pdf-fragment--quiz {
-  bottom: 8%;
-  left: 2%;
-}
-.bd-pdf-fragment--concept,
-.bd-pdf-fragment--blank {
-  right: auto;
-  bottom: 6%;
-  left: 27%;
-}
-.bd-pdf-fragment--definition {
-  right: auto;
-  bottom: 6%;
-  left: 45%;
-}
-
+/* The deck register at the section's edge is the filmstrip's story, echoed at the
+   wall: the current slide steps as the reader presses on, and each slide takes the
+   rail's violet down its left as its batch lands — two before the film starts, the
+   third on `ahead`, the fourth on `next`. Attribute selectors rather than a count,
+   because the section has no clock of its own. */
 .bd-pdf-deck {
   position: absolute;
   top: 47%;
@@ -7835,78 +7695,29 @@ svg.bd-vehicle {
 .bd-pdf-deck i {
   padding: 0.28rem;
   border: 1px solid rgba(38, 52, 84, 0.14);
+  border-left: 2px solid rgba(38, 52, 84, 0.14);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.48);
   font-size: 0.54rem;
   font-style: normal;
-  transition: background 420ms ease, color 420ms ease, transform 420ms ease;
+  transition:
+    background 420ms ease,
+    color 420ms ease,
+    transform 420ms ease,
+    border-color 480ms ease;
 }
-#pdf-explainer[data-scene-reached~="arrive"] .bd-pdf-deck i[data-current] {
+.bd-pdf-deck i[data-slide="1"],
+.bd-pdf-deck i[data-slide="2"],
+#pdf-explainer[data-scene-reached~="ahead"] .bd-pdf-deck i[data-slide="3"],
+#pdf-explainer[data-scene-reached~="next"] .bd-pdf-deck i[data-slide="4"] {
+  border-left-color: #6d28d9;
+}
+#pdf-explainer:not([data-scene-reached~="next"]) .bd-pdf-deck i[data-slide="1"],
+#pdf-explainer[data-scene-reached~="next"]:not([data-scene-reached~="next-2"]) .bd-pdf-deck i[data-slide="2"],
+#pdf-explainer[data-scene-reached~="next-2"] .bd-pdf-deck i[data-slide="3"] {
   background: #6d28d9;
   color: #fff;
   transform: translateX(0.25rem);
-}
-
-/* ----------------------------------------------------------------- n-back --- */
-
-#n-back .demo-surface {
-  background: rgba(5, 11, 8, 0.78);
-  backdrop-filter: none;
-}
-.bd-memory-path {
-  right: auto;
-  width: 66%;
-}
-.bd-memory-cue--1 {
-  bottom: 12%;
-  left: 2%;
-}
-.bd-memory-cue--2 {
-  top: 13%;
-  left: 15%;
-}
-.bd-memory-cue--3 {
-  top: 12%;
-  right: auto;
-  left: 38%;
-}
-.bd-memory-cue--4 {
-  right: auto;
-  bottom: 16%;
-  left: 53%;
-}
-
-.bd-memory-register {
-  position: absolute;
-  bottom: 4%;
-  left: max(0.7rem, 1.5vw);
-  display: flex;
-  gap: 0.35rem;
-  color: rgba(194, 224, 204, 0.46);
-  font-family: var(--font-geist-mono), monospace;
-}
-.bd-memory-register i {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.35rem 0.45rem;
-  border: 1px solid rgba(127, 216, 164, 0.16);
-  border-radius: 6px;
-  background: rgba(8, 18, 12, 0.48);
-  font-size: 0.46rem;
-  font-style: normal;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  transition: border-color 260ms ease, color 260ms ease, transform 260ms ease;
-}
-.bd-memory-register b {
-  color: #7fd8a4;
-  font-size: 0.58rem;
-}
-#n-back:is([data-scene-beat="match-square"], [data-scene-beat="match-letter"]) .bd-memory-register i:first-child {
-  border-color: rgba(127, 216, 164, 0.72);
-  color: #eaf4ed;
-  transform: translateY(-0.25rem);
 }
 
 /* --------------------------------------------------------------- responsive --- */
@@ -7925,7 +7736,6 @@ svg.bd-vehicle {
       #grt-next-bus .bd--transit,
       #pdf-explainer .bd--pdf,
       #pagepack .bd--pagepack,
-      #n-back .bd--nback,
       #night-neutralizer .bd--night
     ) {
     --bd-band: clamp(26rem, 38%, 34rem);
@@ -7982,70 +7792,15 @@ svg.bd-vehicle {
     bottom: 2%;
   }
 
-  .bd-pdf-links,
-  .bd-memory-path {
-    top: 43%;
-    width: 100%;
-    height: 54%;
-  }
-  .bd-pdf-fragment--notes {
-    top: 51%;
-  }
-  .bd-pdf-fragment--tutor {
-    top: 55%;
-    right: -1rem;
-    left: auto;
-  }
-  .bd-pdf-fragment--quiz {
-    top: 71%;
-    bottom: auto;
-  }
-  .bd-pdf-fragment--concept,
-  .bd-pdf-fragment--blank {
-    right: auto;
-    bottom: 4%;
-    left: 3%;
-  }
-  .bd-pdf-fragment--definition {
-    right: 3%;
-    bottom: 4%;
-    left: auto;
-  }
   .bd-pdf-deck {
     top: 62%;
     right: 0.4rem;
     left: auto;
   }
 
-  .bd-memory-cue--1 {
-    top: 60%;
-    bottom: auto;
-    left: 1%;
-  }
-  .bd-memory-cue--2 {
-    top: 49%;
-    left: 21%;
-  }
-  .bd-memory-cue--3 {
-    top: 51%;
-    right: 17%;
-    left: auto;
-  }
-  .bd-memory-cue--4 {
-    right: 1%;
-    bottom: 12%;
-    left: auto;
-  }
-
-  .bd-choir-ledger {
-    top: 48%;
-    right: 0.45rem;
-  }
 }
 
 @media (max-width: 700px) {
-
-
   .bd-night-waveform {
     right: 0.7rem;
     left: 0.7rem;
@@ -8055,8 +7810,7 @@ svg.bd-vehicle {
   }
 
   .bd-pack-resources,
-  .bd-pdf-deck,
-  .bd-memory-register {
+  .bd-pdf-deck {
     display: none;
   }
 
@@ -8066,7 +7820,6 @@ svg.bd-vehicle {
   .bd-decaf-ladder i {
     width: 1.7rem;
   }
-
 }
 
 /* The backdrop notes, the choir's acoustic arcs, the n-back waveform and the Decaf
@@ -8525,13 +8278,20 @@ html.has-visibility-gates:not(.is-hero-visible) .hero-cue-line::after {
   }
 }
 
+/* The PDF Explainer pod stacks — slide, filmstrip, panel — from 1260px down, where a
+   three-column window would have no room for its stage. Measured at 1180 and 1024;
+   the two blocks below take over where the page itself goes to one column. */
+@media (max-width: 1260px) {
+  #pdf-explainer { --project-intrinsic-height: 1300px; }
+}
+
 @media (max-width: 900px) {
   #choir-practice { --project-intrinsic-height: 1235px; }
   #decaf { --project-intrinsic-height: 720px; }
-  #pdf-explainer { --project-intrinsic-height: 730px; }
+  #pdf-explainer { --project-intrinsic-height: 1500px; }
   #pagepack { --project-intrinsic-height: 700px; }
   #grt-next-bus { --project-intrinsic-height: 1225px; }
-  #night-neutralizer { --project-intrinsic-height: 690px; }
+  #night-neutralizer { --project-intrinsic-height: 1150px; }
   #n-back { --project-intrinsic-height: 870px; }
 }
 
@@ -8561,10 +8321,10 @@ html.has-visibility-gates:not(.is-hero-visible) .hero-cue-line::after {
 
   #choir-practice { --project-intrinsic-height: 1270px; }
   #decaf { --project-intrinsic-height: 790px; }
-  #pdf-explainer { --project-intrinsic-height: 590px; }
+  #pdf-explainer { --project-intrinsic-height: 1350px; }
   #pagepack { --project-intrinsic-height: 745px; }
   #grt-next-bus { --project-intrinsic-height: 1240px; }
-  #night-neutralizer { --project-intrinsic-height: 1030px; }
+  #night-neutralizer { --project-intrinsic-height: 1430px; }
   #n-back { --project-intrinsic-height: 1000px; }
 }
 

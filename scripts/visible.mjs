@@ -147,6 +147,18 @@ const CHECKS = [
     beat: { section: "night-neutralizer", name: "whisper" },
     required: true,
   },
+  /* The popup's live meter, on the first beat it is worth reading. It is the proof the
+     product added in 1.1.0 — what is being applied at this instant — and it sits in a
+     330px popup beside two panels, which is exactly the kind of thing a layout change
+     could put under a label or behind the stage. Checked on `dark`, where the phantom
+     cursor is still off stage and nothing else has any business on top of it. */
+  {
+    label: "night popup meter",
+    section: "night-neutralizer",
+    selector: "#night-neutralizer .nn-pop-meter",
+    beat: { section: "night-neutralizer", name: "dark" },
+    required: true,
+  },
   /* At `pull`, the peak of the flood, which is the only part of the loop these are
      meant to be visible for. Naming no beat meant sampling whatever happened to be on
      screen, and eight of Decaf's thirteen beats are after the extension goes on — where
@@ -191,6 +203,29 @@ const CHECKS = [
     beat: { section: "grt-next-bus", name: "stops" },
     required: true,
     note: "the scenes carry their own feature copy now, so an occluded label loses real information",
+  },
+  {
+    label: "pdf-explainer ask chip",
+    section: "pdf-explainer",
+    selector: "#pdf-explainer .pdfx-ask-chip",
+    beat: { section: "pdf-explainer", name: "chip" },
+    required: true,
+    note: "the chip pops out of an inline span inside a clipped slide; a stacking slip hides it",
+  },
+  {
+    label: "pdf-explainer lifted question",
+    section: "pdf-explainer",
+    selector: "#pdf-explainer .pdfx-lift",
+    beat: { section: "pdf-explainer", name: "landed" },
+    required: true,
+    note: "it lands outside the window, over the section, where a backdrop or the surface could cover it",
+  },
+  {
+    label: "pdf-explainer in-frame label",
+    section: "pdf-explainer",
+    selector: "#pdf-explainer .spectag[data-shown='true'] .spectag-text",
+    beat: { section: "pdf-explainer", name: "answer" },
+    required: true,
   },
 ];
 

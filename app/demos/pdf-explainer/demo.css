@@ -1,44 +1,409 @@
 /*
  * This scene's own styles, loaded with its chunk.
  *
- * They lived in app/globals.css until they were moved here, along with every other
- * scene's. That file had become twelve thousand lines of appended passes, and the
- * cost was not tidiness: three separate live rules had been silently destroyed by
- * dangling selectors left behind when neighbouring code was deleted, because at that
- * size nobody can see a stylesheet whole. A scene's rules now sit beside the markup
- * they style, and arrive only when that scene does.
- *
- * What deliberately did NOT come here: anything whose subject is the section rather
- * than the scene — the ambient wash, the entrance veil, the ghost number. The section
- * is server-rendered and on screen long before this file is fetched, so styling it
- * from here would flash.
+ * Everything here needs a `.pdfx` ancestor to match at all, and none of those elements
+ * exist until the chunk mounts, so the stylesheet cannot be late. What is deliberately
+ * NOT here is anything whose subject is the section rather than the scene — the wash
+ * that follows the panel, the backdrop, the entrance — which stays in `app/globals.css`
+ * because the section is server-rendered and on screen long before this file is.
  */
 
 /**
- * PDF Explainer — "reach for the notes and they wake"
+ * PDF Explainer — a workspace that explains the deck ahead of you.
  *
- * Four parts of the workspace in turn, each named by the act rail across the top.
+ * The window is the application's own layout at the pod's scale: a 56px top bar, a
+ * 176px filmstrip with a 3px rail beside each thumbnail, the stage in `#f2f2f5` under a
+ * floating pill toolbar, and a 460px panel headed by the Notes / Ask / Review control.
+ * Scaled to a 960px pod that is 44 / 118 / 316, and the type comes down with it — the
+ * app sets 15px body copy and this sets 10.5, which is the smallest that still reads as
+ * a paragraph rather than as texture.
+ *
+ * The palette is the application's light theme, from `src/index.css`: near-white
+ * neutrals, `#1d1d1f` ink, `#0b6fd6` accent, and the category hues — violet for notes
+ * and the rail, cyan for Ask, amber for Review, teal for matching.
  */
+
+@property --fill {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+.pdfx {
+  --canvas: #f2f2f5;
+  --surface: #ffffff;
+  --strip: #f7f7f9;
+  --ink: #1d1d1f;
+  --ink-2: #61616b;
+  --ink-3: #8e8e97;
+  --line: rgba(0, 0, 0, 0.09);
+  --line-strong: rgba(0, 0, 0, 0.16);
+  --accent: #0b6fd6;
+  --violet: #6d28d9;
+  --violet-soft: rgba(109, 40, 217, 0.09);
+  --cyan: #0891b2;
+  --teal: #0f766e;
+  --teal-soft: rgba(15, 118, 110, 0.1);
+  --amber: #b45309;
+  --amber-soft: rgba(180, 83, 9, 0.11);
+  --good: #1f8f4e;
+  --navy: #1f3b63;
+
+  /* Where the lifted question comes to rest, as a fraction of the pod: under the
+     stage, overlapping the window's bottom edge by a few pixels and clear of everything
+     in it, with its label reading right into the room under the panel it left. It was
+     56% / 87%, which photographed well until the film reached Ask, where the card's top
+     third was lying across the composer — the one part of the panel the still needs.
+     Left of the panel and below 97% there is nothing under it but the toolbar's shadow.
+     490 rather than 485 because at the narrower columns the toolbar sits lower in a
+     stage the card overlaps, and its bottom edge was touching the card's top. */
+  --land-x: 27%;
+  --land-y: 490px;
+  --land-w: 250px;
+
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  /* Room under the window for the question to land in, so it lands inside the
+     section rather than over the top of the next one. The landing is measured in
+     pixels from the window's own top edge (500px tall, minus the overlap) and this
+     pad is the card's height and a little; the negative margin gives most of it back
+     to the layout so the heading beside the window still centres near the window
+     rather than near the card. `scripts/visible.mjs` at 1440x900 is the check: the
+     card was landing 34px below the fold before the pad existed. */
+  padding-bottom: 180px;
+  margin-bottom: -80px;
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- the window ------------------------------------------------------------- */
+
+.pdfx-window {
+  position: relative;
+  display: grid;
+  height: 500px;
+  grid-template-rows: 44px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 26px 60px -30px rgba(20, 24, 40, 0.4);
+}
+
+.pdfx-body {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 118px minmax(0, 1fr) 316px;
+}
+
+/* --- the top bar ------------------------------------------------------------ */
+
+.pdfx-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 0 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.pdfx-close {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  place-items: center;
+  color: var(--ink-3);
+}
+
+.pdfx-close svg {
+  width: 13px;
+  height: 13px;
+}
+
+.pdfx-title {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pdfx-title b {
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+.pdfx-title small {
+  color: var(--ink-2);
+  font-size: 9.5px;
+}
+
+.pdfx-title em {
+  color: var(--amber);
+  font-style: normal;
+}
+
+.pdfx-top-tools {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--ink-2);
+}
+
+/* Explained slides, as an arc. `--fill` is registered above so the arc grows rather
+   than jumping when the count changes. */
+.pdfx-ring {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: conic-gradient(var(--violet) calc(var(--fill) * 360deg), rgba(0, 0, 0, 0.09) 0);
+  transition: --fill 520ms ease;
+}
+
+.pdfx-ring i {
+  position: absolute;
+  inset: 2.5px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.pdfx-ring-count {
+  margin-left: -5px;
+  font-size: 9.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdfx-top-icon {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+
+.pdfx-top-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- the filmstrip ---------------------------------------------------------- */
+
+.pdfx-strip {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 8px 10px 7px;
+  border-right: 1px solid var(--line);
+  background: var(--strip);
+  overflow: hidden;
+}
+
+.pdfx-strip-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 0 2px 9px;
+  color: var(--ink-2);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.pdfx-pill {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--violet-soft);
+  color: var(--violet);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.pdfx-collapse {
+  width: 11px;
+  height: 11px;
+  margin-left: auto;
+  color: var(--ink-3);
+}
+
+.pdfx-collapse svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pdfx-thumbs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pdfx-thumbs li {
+  display: flex;
+  align-items: stretch;
+  gap: 5px;
+}
+
+/* The rail. Three states from `Filmstrip.tsx`: explained, in flight, not yet. */
+.pdfx-rail {
+  width: 3px;
+  flex: none;
+  border-radius: 2px;
+  background: var(--line);
+  transition: background 480ms ease;
+}
+
+/* Landing: a rail that has just gone solid throws a short glow, so the batch
+   arriving is an event rather than a colour that was quietly different a moment ago.
+   Applied by the selector, so it plays each time a rail turns — including each lap. */
+.pdfx-thumbs li[data-rail="done"] .pdfx-rail {
+  background: var(--violet);
+  animation: pdfx-rail-land 720ms ease-out;
+}
+
+@keyframes pdfx-rail-land {
+  0% {
+    box-shadow: 0 0 0 0 rgba(109, 40, 217, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 7px rgba(109, 40, 217, 0);
+  }
+}
+
+.pdfx-thumbs li[data-rail="flight"] .pdfx-rail {
+  background: color-mix(in srgb, var(--violet) 45%, transparent);
+  animation: pdfx-rail-pulse 1400ms ease-in-out infinite;
+}
+
+@keyframes pdfx-rail-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.pdfx-thumb {
+  position: relative;
+  width: 94px;
+  height: 53px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition:
+    border-color 300ms ease,
+    box-shadow 300ms ease;
+}
+
+.pdfx-thumbs li[data-current="true"] .pdfx-thumb {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 1.5px var(--violet);
+}
+
+/* A render of the slide, not a stand-in for one: the same markup at a fixed basis,
+   scaled down. `--thumb-scale` is the thumbnail's width over the slide's 404px basis. */
+.pdfx-thumb-scale {
+  --thumb-scale: 0.2327;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 404px;
+  height: 227px;
+  transform: scale(var(--thumb-scale));
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.pdfx-thumb-scale .pdfx-slide {
+  width: 404px;
+  height: 227px;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.pdfx-thumb-n {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+  border-radius: 50%;
+  background: #3a3a40;
+  color: #fff;
+  font-size: 7px;
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* The explained mark: a violet disc in a white ring, top right. */
+.pdfx-thumb-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--violet);
+  box-shadow: 0 0 0 2px #fff;
+  animation: pdfx-pop 360ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+@keyframes pdfx-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+/* --- the stage -------------------------------------------------------------- */
 
 .pdfx-stage {
   position: relative;
-  border-radius: 14px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 18px 16px;
   background: var(--canvas);
-  padding: 14px;
-  box-shadow: inset 0 0 0 1px var(--line);
 }
 
-/* --- the slide ------------------------------------------------------------ */
+/* A new slide arrives from the right, the way the app's page turn does. */
+.pdfx-stage-slide {
+  animation: pdfx-slide-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pdfx-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
 
 .pdfx-slide {
   position: relative;
-  aspect-ratio: 16 / 9;
+  width: 100%;
   overflow: hidden;
-  padding: clamp(1rem, 3vw, 2.2rem);
-  border-radius: 10px;
+  aspect-ratio: 16 / 9;
+  padding: 20px 22px 16px;
+  border-radius: 8px;
   background: #fff;
+  color: var(--ink);
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.07),
+    0 4px 14px rgba(0, 0, 0, 0.08),
     0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
@@ -47,117 +412,384 @@
   top: 0;
   right: 0;
   left: 0;
-  height: 6px;
-  background: var(--accent);
+  height: 5px;
+  background: var(--navy);
 }
 
+.pdfx-slide h4 {
+  margin: 0 0 9px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.pdfx-slide ul {
+  margin: 0;
+  padding: 0 0 0 3px;
+  color: #303035;
+  font-size: 11px;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.pdfx-slide li {
+  position: relative;
+  margin: 5px 0;
+  padding-left: 12px;
+}
+
+.pdfx-slide li::before {
+  position: absolute;
+  left: 0;
+  color: #48484f;
+  content: "•";
+}
+
+.pdfx-slide-eq {
+  margin: 4px 0 8px 12px;
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  font-style: italic;
+}
+
+.pdfx-slide-eq sub,
+.pdfx-equation sub {
+  position: relative;
+  bottom: -0.2em;
+  font-size: 0.7em;
+  font-style: normal;
+  line-height: 0;
+  vertical-align: baseline;
+}
+
+/* Two loss curves, bottom right and under the bullets rather than beside them: beside,
+   it squeezed the bullets to 60% and the phrase the film selects wrapped onto a second
+   line, which put half the highlight at the end of one line and half at the start of
+   the next. A selection should be one shape. */
 .pdfx-figure {
   position: absolute;
-  right: clamp(1rem, 3vw, 2.2rem);
-  bottom: clamp(1rem, 3vw, 2.2rem);
-  width: min(46%, 300px);
-  color: var(--ink-3);
+  right: 18px;
+  bottom: 16px;
+  width: 30%;
+  height: auto;
 }
 
-.pdfx-slide-number {
-  position: absolute;
-  bottom: clamp(0.6rem, 2vw, 1.2rem);
-  left: clamp(1rem, 3vw, 2.2rem);
-  color: var(--ink-3);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
+.pdfx-figure-axis {
+  fill: none;
+  stroke: #9a9aa2;
+  stroke-width: 1;
 }
 
-/* --- the floating notes --------------------------------------------------- */
+.pdfx-figure-batch {
+  fill: none;
+  stroke: var(--navy);
+  stroke-width: 1.5;
+}
 
-.pdfx-notes {
+.pdfx-figure-sgd {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+
+.pdfx-figure-label {
+  fill: #8a8a92;
+  font-family: inherit;
+  font-size: 6.5px;
+}
+
+.pdfx-slide-foot {
   position: absolute;
-  top: 26px;
-  right: 26px;
-  bottom: 26px;
-  z-index: 2;
+  right: 14px;
+  bottom: 7px;
+  color: #8a8a92;
+  font-size: 6.5px;
+}
+
+/* --- the selection and the chip ---------------------------------------------
+   The app has a real text layer over the slide now, and a selection on it raises the
+   chip. The highlight is the accent at 32%, painted as a background that grows from
+   the left as the pointer crosses the phrase — the drag, drawn. */
+.pdfx-sel {
+  position: relative;
+  border-radius: 2px;
+  background-image: linear-gradient(rgba(11, 111, 214, 0.32), rgba(11, 111, 214, 0.32));
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  transition: background-size 180ms ease-out;
+}
+
+.pdfx[data-selected="true"] .pdfx-sel {
+  background-size: 100% 100%;
+  transition: background-size 340ms cubic-bezier(0.3, 0.7, 0.3, 1) 120ms;
+}
+
+/* From `SlideStage.tsx`: `#1d1d1f` on `#f7f7f9`, 32px tall at full size, centred 8px
+   above the selection, the ask icon in cyan. */
+.pdfx-ask-chip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 3;
   display: flex;
-  width: min(360px, 46%);
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  opacity: 0;
-  box-shadow: var(--shadow-soft);
-  /* The card slides in from the right the first time, then never moves again. */
-  transform: translateX(16px);
-  transition:
-    opacity 300ms ease-out,
-    transform 420ms cubic-bezier(0.16, 0.86, 0.18, 1.12),
-    box-shadow 300ms ease-out,
-    border-color 300ms ease-out;
+  height: 24px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  background: #1d1d1f;
+  color: #f7f7f9;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  translate: -50% 0;
+  animation: pdfx-chip-in 280ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
 }
 
-.pdfx-notes[data-present="true"] {
-  opacity: 0.26;
-  transform: none;
+@keyframes pdfx-chip-in {
+  from {
+    opacity: 0;
+    translate: -50% 5px;
+    scale: 0.85;
+  }
 }
 
-.pdfx-notes[data-awake="true"] {
-  border-color: var(--line-strong);
-  opacity: 1;
-  box-shadow: var(--shadow-float);
+.pdfx-ask-chip svg {
+  width: 12px;
+  height: 12px;
+  color: #22d3ee;
 }
 
-.pdfx-notes-backing {
+/* --- the floating toolbar --------------------------------------------------- */
+
+.pdfx-tools {
   position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--elevated);
-  backdrop-filter: blur(24px);
+  bottom: 14px;
+  left: 50%;
+  display: flex;
+  height: 30px;
+  align-items: center;
+  gap: 1px;
+  padding: 0 7px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink-2);
+  box-shadow:
+    0 8px 24px -8px rgba(0, 0, 0, 0.28),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  font-size: 10px;
+  white-space: nowrap;
+  translate: -50% 0;
 }
 
-.pdfx-notes-bar {
+.pdfx-tool {
+  display: flex;
+  height: 22px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 5px;
+  border-radius: 6px;
+}
+
+.pdfx-tool svg {
+  width: 13px;
+  height: 13px;
+}
+
+.pdfx-tool[data-dim="true"] {
+  opacity: 0.35;
+}
+
+.pdfx-tool--label {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pdfx-tool-page {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.6rem 0.85rem 0.5rem;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.pdfx-tool-page b {
+  display: inline-grid;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  place-items: center;
+  border-radius: 5px;
+  background: #f0f0f3;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pdfx-tool-zoom {
+  padding: 0 3px;
+}
+
+.pdfx-tool-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* --- the panel -------------------------------------------------------------- */
+
+.pdfx-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.pdfx-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--line);
 }
 
-.pdfx-notes-eyebrow {
+/* The segmented control. */
+.pdfx-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 9px;
+  background: #efeff3;
+}
+
+.pdfx-tabs span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  color: var(--ink-2);
+  font-size: 10.5px;
+  font-weight: 600;
+  transition:
+    background 260ms ease,
+    color 260ms ease,
+    box-shadow 260ms ease;
+}
+
+.pdfx-tabs span svg {
+  width: 11px;
+  height: 11px;
+}
+
+.pdfx-tabs span:nth-child(1) svg {
   color: var(--violet);
+}
+
+.pdfx-tabs span:nth-child(2) svg {
+  color: var(--cyan);
+}
+
+.pdfx-tabs span:nth-child(3) svg {
+  color: var(--amber);
+}
+
+.pdfx-tabs span[data-on="true"] {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Read-ahead's status line, from `StudyPanel.tsx`. */
+.pdfx-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--ink-2);
   font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* The number itself, so the mechanism is legible and not just felt. */
-.pdfx-opacity {
+.pdfx-spinner {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border: 1.5px solid rgba(109, 40, 217, 0.18);
+  border-top-color: var(--violet);
+  border-radius: 50%;
+  animation: pdfx-spin 900ms linear infinite;
+}
+
+@keyframes pdfx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pdfx-pause {
+  width: 12px;
+  height: 12px;
   color: var(--ink-3);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
 }
 
-.pdfx-notes-body {
+.pdfx-pause svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pdfx-panel-body {
+  position: relative;
   min-height: 0;
   flex: 1;
-  overflow-y: auto;
-  padding: 0.85rem 1rem 1.1rem;
-  scrollbar-width: thin;
+  overflow: hidden;
+  padding: 11px 14px 12px;
 }
 
-.pdfx-chips {
+/* --- notes ------------------------------------------------------------------ */
+
+.pdfx-notes,
+.pdfx-review,
+.pdfx-chat {
+  animation: pdfx-fade-up 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pdfx-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.pdfx-note-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 0.6rem;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 7px;
 }
 
 .pdfx-chip {
-  padding: 0.12rem 0.42rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
   border-radius: 999px;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 650;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+}
+
+.pdfx-chip svg {
+  width: 9px;
+  height: 9px;
 }
 
 .pdfx-chip--violet {
@@ -165,347 +797,9 @@
   color: var(--violet);
 }
 
-.pdfx-equation {
-  padding: 0.5rem 0.6rem;
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--ink) !important;
-  /* Serif italic for the variables, which is how maths is set, rather than the monospace
-     this used while it was a line of LaTeX source. See `RangeEquation` in the pod: the app
-     this is a film about renders with KaTeX, so printing `t_receive` was showing a visitor
-     the one place its output would look wrong. */
-  font-family: ui-serif, Georgia, "Times New Roman", serif;
-  font-size: 12.5px !important;
-  font-style: italic;
-  letter-spacing: 0.01em;
-  text-align: center;
-}
-
-.pdfx-sensitivity {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin: 0;
-}
-
-/* --- the act rail ---------------------------------------------------------
-   Four labels across the top, the current one lit and the finished ones ticked
-   down. Not navigation, and not clickable: it exists so that "this project has
-   four parts" is legible in the first second, rather than being something a
-   visitor discovers by watching a loop twice. */
-/* The in-frame labels, as marks made on a document.
-   This is a section about studying, so its labels are the thing a person does to a page
-   they are studying: a violet highlighter wash with violet ink, and no white plate. Read as
-   annotation rather than as interface, which is what the rest of this pod already looks
-   like — the notes overlay, the chips and the practice cards are all tinted washes.
-
-   They live inside `.pdfx-stage` rather than the pod, so their percentages are the same
-   coordinate space the phantom cursor uses; there is a long note in the pod about what went
-   wrong the one time something here was measured against the other box. */
-.pdfx-specs {
-  --spec-ink: #4c1d95;
-  --spec-paper: rgba(237, 228, 254, 0.95);
-  --spec-edge: rgba(109, 40, 217, 0.22);
-  --spec-gloss: rgba(255, 255, 255, 0.5);
-  --spec-dot: var(--violet);
-  --spec-shadow: rgba(76, 29, 149, 0.3);
-  --spec-radius: 4px;
-  --spec-pad: 0.24rem 0.52rem;
-  --spec-weight: 640;
-  --spec-lead: 16px;
-}
-
-.pdfx-acts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.pdfx-act-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.32;
-  transition:
-    opacity 320ms ease,
-    transform 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-
-.pdfx-acts li[data-done="true"] .pdfx-act-dot {
-  opacity: 0.7;
-}
-
-.pdfx-acts li[data-on="true"] .pdfx-act-dot {
-  opacity: 1;
-  transform: scale(1.5);
-}
-
-/* --- the split ------------------------------------------------------------
-   The slide keeps the whole stage for the overlay act and gives up a third of it
-   when a panel opens, which is what the real workspace does. Animating
-   `grid-template-columns` is the one layout property worth animating here: the
-   alternative is transforming the slide, which would scale its type. */
-.pdfx-stage {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 0fr;
-  gap: 0;
-  transition:
-    grid-template-columns 620ms cubic-bezier(0.22, 0.9, 0.24, 1),
-    gap 620ms cubic-bezier(0.22, 0.9, 0.24, 1);
-}
-
-.pdfx-stage[data-split="true"] {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr);
-  gap: 14px;
-}
-
-/* The satellite diagram is sized for a full-width slide, where it sits clear of
-   the bullets in the bottom-right corner. On a narrowed slide it crossed straight
-   through "Timing error → position error", so it shrinks and drops into the corner
-   for the acts that split the stage. It is only load-bearing in the first act,
-   where it is the thing the notes must not cover. */
-.pdfx-stage[data-split="true"] .pdfx-figure {
-  width: 38%;
-  opacity: 0.5;
-  transition:
-    width 620ms cubic-bezier(0.22, 0.9, 0.24, 1),
-    opacity 620ms ease;
-}
-
-/* --- the panel ------------------------------------------------------------ */
-.pdfx-panel {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-  opacity: 0;
-  transition: opacity 420ms ease;
-}
-
-.pdfx-panel[data-open="true"] {
-  opacity: 1;
-}
-
-.pdfx-panel-tabs {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--surface-2);
-}
-
-/* --- II. the tutor -------------------------------------------------------- */
-.pdfx-chat {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 8px;
-  /* Newest at the bottom, which is where a conversation grows. */
-  justify-content: flex-end;
-}
-
-.pdfx-bubble {
-  max-width: 88%;
-  margin: 0;
-  padding: 8px 11px;
-  border-radius: 14px;
-  font-size: 11.5px;
-  line-height: 1.55;
-  animation: pdfx-bubble-in 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-
-@keyframes pdfx-bubble-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-
-.pdfx-bubble--user {
-  align-self: flex-end;
-  background: var(--accent);
-  color: #fff;
-  border-bottom-right-radius: 5px;
-}
-
-.pdfx-bubble--bot {
-  align-self: flex-start;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  border-bottom-left-radius: 5px;
-}
-
-/* The app's own thinking state: three dots that bounce out of phase. */
-.pdfx-thinking {
-  display: flex;
-  gap: 4px;
-  padding: 11px 12px;
-}
-
-@keyframes pdfx-bounce {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(-4px);
-  }
-}
-
-.pdfx-suggest {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 4px;
-}
-
-.pdfx-composer {
-  margin: 0;
-  padding: 8px 11px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--surface-2);
-  color: var(--ink-3);
-  font-size: 11px;
-}
-
-/* --- III. the review set --------------------------------------------------
-   One panel, one set, three kinds of item. The header is the part that says so, and it
-   is the part the scene was missing: a progress line over a filter row that counts each
-   kind, straight out of `PracticePanel.tsx`. Without it the three cards are three
-   unrelated exercises, which is exactly how the rail used to describe them. */
-.pdfx-practice {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.pdfx-practice-head {
-  flex: 0 0 auto;
-}
-
-.pdfx-practice-score {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 5px;
-  color: var(--ink);
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.pdfx-practice-all {
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: var(--good-soft);
-  color: var(--good);
-  font-size: 9.5px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-}
-
-.pdfx-progress {
-  display: block;
-  width: 130px;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--surface-2);
-}
-
-/* The filter row, which is the sentence "a review set has three kinds of item" written
-   as a control rather than as prose. Each chip carries its kind's own tint, and those are
-   the same three tints the cards are drawn in — so the row is also the key. */
-.pdfx-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 7px;
-}
-
-.pdfx-filters span.pdfx-chip--violet[data-on="true"] {
-  background: var(--violet);
-  color: #fff;
-}
-
-.pdfx-filters span.pdfx-chip--teal[data-on="true"] {
-  background: var(--teal);
-  color: #fff;
-}
-
-.pdfx-filters span.pdfx-chip--amber[data-on="true"] {
-  background: var(--amber);
-  color: #fff;
-}
-
-/* --- the cards -----------------------------------------------------------
-   The real cards are tinted by kind — violet for multiple choice, teal for matching,
-   amber for blanks — and the tint is a left edge rather than a fill, so the card still
-   reads as paper. */
-.pdfx-card {
-  display: flex;
-  min-height: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 9px;
-  padding: 12px 13px 13px 15px;
-  border: 1px solid var(--line);
-  border-left-width: 3px;
-  border-radius: 12px;
-  background: var(--surface);
-  animation: pdfx-card-in 340ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-
-@keyframes pdfx-card-in {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-}
-
-.pdfx-card--violet {
-  border-left-color: var(--violet);
-}
-
-.pdfx-card--teal {
-  border-left-color: var(--teal);
-}
-
-.pdfx-card--amber {
-  border-left-color: var(--amber);
-}
-
-.pdfx-card-kicker {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  color: var(--ink-3);
-  font-size: 10px;
-}
-
-/* The matching game's own counter, right-aligned in the kicker row. It is the only thing
-   on screen that distinguishes six taps from one, which is what this scene was reported
-   for getting wrong. */
-.pdfx-card-count {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
+.pdfx-chip--amber {
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 
 .pdfx-chip--teal {
@@ -513,159 +807,179 @@
   color: var(--teal);
 }
 
-.pdfx-chip--amber {
-  background: var(--amber-soft);
+.pdfx-reexplain {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.pdfx-reexplain svg {
+  width: 10px;
+  height: 10px;
+}
+
+.pdfx-notes h5 {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.pdfx-notes p {
+  margin: 0 0 7px;
+  color: var(--ink);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.pdfx-equation {
+  padding: 2px 8px;
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-size: 11.5px;
+  font-style: italic;
+}
+
+/* The tinted callout the notes end a thought with. */
+.pdfx-callout {
+  margin: 8px 0;
+  padding: 8px 10px 9px;
+  border: 1px solid rgba(180, 83, 9, 0.18);
+  border-left: 3px solid var(--amber);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(180, 83, 9, 0.08), rgba(255, 255, 255, 0.4));
+}
+
+.pdfx-callout b {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
   color: var(--amber);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pdfx-callout b svg {
+  width: 11px;
+  height: 11px;
+}
+
+.pdfx-callout p {
+  margin: 0;
+  font-size: 10px;
+}
+
+.pdfx-notes .pdfx-section-head {
+  margin: 10px 0 5px;
+  color: var(--ink-2);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pdfx-notes .pdfx-note-foot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 9px 0 0;
+  color: var(--ink-3);
+  font-size: 9.5px;
+}
+
+/* --- the cards -------------------------------------------------------------- */
+
+.pdfx-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 10px 10px 11px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.pdfx-card--violet {
+  border-left-color: var(--violet);
+  background: linear-gradient(180deg, rgba(109, 40, 217, 0.07), rgba(109, 40, 217, 0.02));
+}
+
+.pdfx-card--amber {
+  border-left-color: var(--amber);
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.07), rgba(180, 83, 9, 0.02));
+}
+
+.pdfx-card-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 9px;
 }
 
 .pdfx-question {
   margin: 0;
-  color: var(--ink);
-  font-size: 12.5px;
-  font-weight: 550;
-  line-height: 1.5;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .pdfx-options {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .pdfx-option {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 7px 9px;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
   border: 1px solid var(--line);
-  border-radius: 9px;
-  color: var(--ink);
-  font-size: 11.5px;
-  line-height: 1.45;
-  transition:
-    background 260ms ease,
-    border-color 260ms ease,
-    opacity 260ms ease;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 10px;
 }
 
 .pdfx-option-letter {
   display: grid;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  flex: none;
   place-items: center;
-  border: 1px solid var(--line);
   border-radius: 50%;
-  font-size: 9px;
+  background: var(--violet-soft);
+  color: var(--violet);
+  font-size: 8px;
   font-weight: 700;
 }
 
-.pdfx-option[data-state="chosen"] {
-  border-color: var(--violet);
-  background: var(--violet-soft);
-}
-
-.pdfx-option[data-state="reveal"] {
-  border-color: var(--good);
-  background: var(--good-soft);
-}
-
-.pdfx-option[data-state="reveal"] .pdfx-option-letter {
-  border-color: var(--good);
-  background: var(--good);
-  color: #fff;
-}
-
-/* Everything else recedes once the answer is out, rather than disappearing. */
-.pdfx-option[data-state="dim"] {
-  opacity: 0.42;
-}
-
-.pdfx-verdict {
-  margin: 0;
-  color: var(--ink-2);
-  font-size: 11px;
-  line-height: 1.5;
-  animation: pdfx-bubble-in 300ms ease-out;
-}
-
-/* --- matching ------------------------------------------------------------- */
-.pdfx-match {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 6px;
-}
-
-.pdfx-tick {
-  position: absolute;
-  top: 6px;
-  right: 7px;
-  color: var(--good);
-  font-size: 10px;
-  font-style: normal;
-  opacity: 0;
-  transform: scale(0.4);
-  transition:
-    opacity 260ms ease,
-    transform 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-
-.pdfx-match li[data-matched="true"] .pdfx-tick {
-  opacity: 1;
-  transform: none;
-}
-
-/* --- fill in the blank ----------------------------------------------------
-   The third kind, and the one that needs a person to produce an answer rather than
-   choose one. From `src/practice/ClozeCard.tsx`: a dashed blank that is itself the
-   reveal control, a field, a Check button, and "That is it" when the answer lands. */
 .pdfx-cloze {
   margin: 0;
-  color: var(--ink);
-  font-size: 12px;
-  line-height: 2;
+  font-size: 10.5px;
+  line-height: 1.9;
 }
 
 .pdfx-cloze-blank {
   display: inline-block;
-  padding: 1px 7px;
-  border: 1px dashed color-mix(in srgb, var(--amber) 50%, transparent);
-  border-radius: 8px;
+  padding: 0 6px;
+  border: 1px dashed rgba(180, 83, 9, 0.5);
+  border-radius: 7px;
   color: var(--amber);
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
+  line-height: 1.5;
   vertical-align: middle;
-}
-
-.pdfx-cloze-filled {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 8px;
-  background: var(--good-soft);
-  color: var(--good);
-  font-size: 11.5px;
-  font-weight: 650;
-  vertical-align: middle;
-  animation: pdfx-pop 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
-}
-
-@keyframes pdfx-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.82);
-  }
-}
-
-.pdfx-cloze-verdict {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 0;
-  color: var(--good);
-  font-size: 11px;
-  font-weight: 600;
-  animation: pdfx-bubble-in 300ms ease-out;
 }
 
 .pdfx-cloze-row {
@@ -676,220 +990,179 @@
 
 .pdfx-field {
   display: flex;
-  min-width: 0;
-  height: 26px;
-  flex: 1 1 auto;
+  height: 24px;
+  flex: 1;
   align-items: center;
-  padding: 0 9px;
+  padding: 0 8px;
   border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--surface);
-  font-size: 11.5px;
-  transition:
-    border-color 220ms ease,
-    box-shadow 220ms ease;
-}
-
-/* Focused, because the pointer clicked into it. The application's focus ring. */
-.pdfx-field[data-typed="true"] {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-/**
- * The typing.
- *
- * A `steps()` reveal of the answer's own width, with a caret riding the right edge. No
- * keystrokes are simulated and none need to be: the width *is* the typing, and expressing
- * it as one animation on one element means it costs nothing per frame and restarts by
- * remounting — which is what the `key` in the pod is for.
- *
- * `ch` units against the same monospace the field prints in, so the steps land on
- * character boundaries rather than part way through a glyph. The width comes from
- * `--chars`, which the pod publishes from the answer's own length: it was `11ch` here and
- * `steps(11)` below, which is the answer's length written down twice in a stylesheet that
- * cannot see the answer. The step count stays a literal on purpose — it only has to be
- * roughly one per character to read as typing, and being a few out is invisible.
- */
-.pdfx-typed {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  border-right: 1.5px solid var(--accent);
-  color: var(--ink);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  animation:
-    pdfx-type 620ms steps(11) both,
-    pdfx-caret 620ms steps(2, jump-none) infinite;
-}
-
-@keyframes pdfx-type {
-  from {
-    width: 0;
-  }
-  to {
-    width: calc(var(--chars, 11) * 1ch);
-  }
-}
-
-@keyframes pdfx-caret {
-  50% {
-    border-right-color: transparent;
-  }
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-3);
+  font-size: 10px;
 }
 
 .pdfx-check {
-  flex: 0 0 auto;
-  padding: 4px 10px;
+  padding: 4px 9px;
   border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--surface-2);
-  color: var(--ink);
+  border-radius: 8px;
+  background: #f2f2f5;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* --- review ----------------------------------------------------------------- */
+
+.pdfx-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdfx-review-score {
+  margin: 0 0 4px;
   font-size: 11px;
   font-weight: 600;
 }
 
-@media (max-width: 760px) {
-  /* One column: a 0.82fr panel beside a slide is unreadable at this width, and
-       the acts still read in sequence stacked. */
-    .pdfx-stage[data-split="true"] {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 10px;
-    }
-
-    .pdfx-match {
-      grid-template-columns: minmax(0, 1fr);
-    }
-}
-
-@media (max-width: 640px) {
-  .pdfx-notes {
-      top: 14px;
-      right: 14px;
-      bottom: 14px;
-      width: 58%;
-      border-radius: 14px;
-    }
-
-    .pdfx-notes-body {
-      padding: 0.6rem 0.7rem 0.8rem;
-    }
-
-    .pdfx-sensitivity {
-      display: none;
-    }
-}
-
-
-/* Rules that need one of this scene's own classes as an ancestor to match at all —
-   they style bare elements and shared label markup, but only ever inside this scene. */
-
-.pdfx-slide h4 {
-  max-width: 22ch;
-  margin: 0 0 0.9rem;
-  color: var(--ink);
-  font-size: clamp(1rem, 2.3vw, 1.6rem);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.pdfx-slide ul {
-  margin: 0;
-  padding-left: 1.1rem;
-  color: var(--ink-2);
-  font-size: clamp(0.72rem, 1.3vw, 0.95rem);
-  line-height: 1.7;
-  list-style: disc;
-}
-
-.pdfx-figure svg {
+.pdfx-progress {
   display: block;
-  width: 100%;
-  height: auto;
+  width: 120px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eeeef2;
 }
 
-.pdfx-notes-body h5 {
-  margin: 0 0 0.4rem;
-  font-size: 13.5px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
+.pdfx-progress i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--violet);
 }
 
-.pdfx-notes-body p {
-  margin: 0 0 0.6rem;
-  color: var(--ink-2);
-  font-size: 11.5px;
-  line-height: 1.55;
-}
-
-/* Subscripts that do not push the line taller. `vertical-align: sub` adds leading on its
-   own, which in a card with a fixed reserve moves everything below it. */
-.pdfx-equation sub {
-  bottom: -0.22em;
-  font-size: 0.72em;
-  font-style: normal;
-  line-height: 0;
-  vertical-align: baseline;
-  position: relative;
-}
-
-.pdfx-sensitivity > div {
+.pdfx-filters {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.28rem 0;
-  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
 }
 
-.pdfx-sensitivity dt {
-  color: var(--ink-2);
-  font-size: 10.5px;
-}
-
-.pdfx-sensitivity dd {
-  margin: 0;
-  font-size: 10.5px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.pdfx-acts li {
-  display: flex;
+.pdfx-filters span {
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f0f0f3;
   color: var(--ink-3);
-  transition: color 320ms ease;
+  font-size: 8.5px;
+  font-weight: 650;
 }
 
-.pdfx-acts li[data-done="true"] {
-  color: var(--ink-3);
+.pdfx-filters span b {
+  opacity: 0.7;
 }
 
-.pdfx-acts li[data-on="true"] {
+.pdfx-filters span[data-on="true"] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.pdfx-filters .pdfx-chip--violet {
+  background: var(--violet-soft);
   color: var(--violet);
 }
 
-.pdfx-panel-tabs span {
-  padding: 3px 9px;
-  border-radius: 6px;
-  color: var(--ink-3);
-  font-size: 10.5px;
-  font-weight: 600;
-  transition:
-    background 260ms ease,
-    color 260ms ease;
+.pdfx-filters .pdfx-chip--teal {
+  background: var(--teal-soft);
+  color: var(--teal);
 }
 
-.pdfx-panel-tabs span[data-on="true"] {
-  background: var(--surface);
+.pdfx-filters .pdfx-chip--amber {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+/* The slot the question leaves. It keeps its box while the flight is measured, then
+   folds shut so the blanks card moves up into its place. */
+.pdfx-card-slot {
+  max-height: 220px;
+  overflow: hidden;
+  transition:
+    max-height 460ms ease 420ms,
+    margin 460ms ease 420ms;
+}
+
+.pdfx-card-slot[data-lifted="true"] {
+  max-height: 0;
+  margin-bottom: -8px;
+  visibility: hidden;
+}
+
+/* --- ask -------------------------------------------------------------------- */
+
+.pdfx-chat {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdfx-thread {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdfx-bubble {
+  max-width: 88%;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 14px;
+  font-size: 10.5px;
+  line-height: 1.55;
+  animation: pdfx-fade-up 300ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.pdfx-bubble--user {
+  align-self: flex-end;
+  border-bottom-right-radius: 5px;
+  background: var(--accent);
+  color: #fff;
+}
+
+/* The quoted selection: italic, with a rule down its left, above "Explain this." Its
+   ink arrives with the phrase — see `.pdfx-phrase`. */
+.pdfx-quote {
+  display: block;
+  margin-bottom: 4px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.95);
+  font-style: italic;
+  animation: pdfx-quote-in 220ms ease 500ms both;
+}
+
+@keyframes pdfx-quote-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.pdfx-bubble--bot {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 5px;
+  background: #fff;
   color: var(--ink);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.pdfx-thinking {
+  display: flex;
+  gap: 4px;
+  padding: 11px 12px;
 }
 
 .pdfx-thinking i {
@@ -908,109 +1181,372 @@
   animation-delay: 300ms;
 }
 
-.pdfx-suggest span {
-  padding: 4px 8px;
+@keyframes pdfx-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+.pdfx-composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.pdfx-composer-field {
+  display: flex;
+  height: 30px;
+  flex: 1;
+  align-items: center;
+  padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--ink-2);
-  font-size: 10px;
-  transition:
-    background 220ms ease,
-    border-color 220ms ease,
-    color 220ms ease;
+  border-radius: 11px;
+  background: #f2f2f5;
+  color: var(--ink-3);
+  font-size: 10.5px;
 }
 
-.pdfx-suggest span[data-picked="true"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+.pdfx-composer-send {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 45%, #fff);
+  color: #fff;
 }
 
-.pdfx-progress i {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--violet);
-  transition: width 420ms var(--ease-out-soft);
+.pdfx-composer-send svg {
+  width: 13px;
+  height: 13px;
 }
 
-.pdfx-filters span {
-  display: inline-flex;
+.pdfx-composer-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 8.5px;
+  white-space: nowrap;
+}
+
+.pdfx-composer-hint span:first-child {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pdfx-composer-hint span:not(:first-child) {
+  display: flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--ink-3);
-  font-size: 9.5px;
-  font-weight: 650;
-  letter-spacing: 0.03em;
-  opacity: 0.8;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.pdfx-composer-hint svg {
+  width: 9px;
+  height: 9px;
+}
+
+/* --- out of the frame --------------------------------------------------------
+   Two things leave the window. The phrase leaves the slide for the panel, and the
+   question leaves the panel for the section. Both are positioned from measurements the
+   pod writes as custom properties — see the two layout effects — because neither a
+   span of text nor a card in a scrolling panel is at a percentage anyone can write
+   down. */
+
+.pdfx-phrase {
+  position: absolute;
+  z-index: 30;
+  top: var(--from-y, 40%);
+  left: var(--from-x, 30%);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(11, 111, 214, 0.92);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(11, 111, 214, 0.35);
+  font-size: 11px;
+  font-style: italic;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: pdfx-phrase-fly 560ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+}
+
+@keyframes pdfx-phrase-fly {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+  30% {
+    scale: 1.18;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: calc(var(--to-x, 70%) - var(--from-x, 30%)) calc(var(--to-y, 20%) - var(--from-y, 40%));
+    scale: 0.92;
+  }
+}
+
+/* The lifted question. It starts exactly where the card was in the panel and travels to
+   a landing the stylesheet owns, growing a little on the way; `data-settled` is the
+   held-frame case, where there was never a card to leave from. */
+.pdfx-lift {
+  position: absolute;
+  z-index: 12;
+  top: var(--from-y, 40%);
+  left: var(--from-x, 66%);
+  width: var(--from-w, 288px);
+  rotate: 0deg;
+  scale: 1;
+  transform-origin: 0 0;
   transition:
-    background 260ms ease,
-    color 260ms ease,
-    opacity 260ms ease;
+    top 900ms cubic-bezier(0.2, 0.85, 0.2, 1),
+    left 900ms cubic-bezier(0.2, 0.85, 0.2, 1),
+    width 900ms cubic-bezier(0.2, 0.85, 0.2, 1),
+    rotate 900ms cubic-bezier(0.2, 0.85, 0.2, 1),
+    scale 900ms cubic-bezier(0.2, 0.85, 0.2, 1);
+  will-change: top, left;
 }
 
-.pdfx-filters span b {
-  font-weight: 650;
-  opacity: 0.7;
+.pdfx-lift .pdfx-card {
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 34px 64px -22px rgba(20, 24, 40, 0.5);
+  transition: box-shadow 900ms ease;
 }
 
-/* The selected filter. It follows the card on screen, which is consistent rather than
-   decorative: filtering to one kind in the application shows one card of that kind, and
-   one card of that kind is what the frame shows. */
-.pdfx-filters span[data-on="true"] {
-  opacity: 1;
+.pdfx-lift[data-flown="true"] {
+  top: var(--land-y);
+  left: var(--land-x);
+  width: var(--land-w);
+  rotate: -2.5deg;
+  scale: 1.05;
 }
 
-.pdfx-verdict strong {
-  color: var(--good);
+.pdfx-lift[data-settled="true"] {
+  transition: none;
 }
 
-.pdfx-match ul {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.pdfx-lift[data-settled="true"] .pdfx-card {
+  transition: none;
 }
 
-.pdfx-match li {
-  position: relative;
-  padding: 7px 20px 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  color: var(--ink);
-  font-size: 10.5px;
-  line-height: 1.4;
-  transition:
-    background 300ms ease,
-    border-color 300ms ease,
-    color 300ms ease;
+/* --- the in-frame labels ----------------------------------------------------
+   Marks made on a document. This is a section about studying, so its labels are the
+   thing a person does to a page they are studying: a violet highlighter wash with
+   violet ink, and no white plate. See `.speclayer` in globals.css for the component. */
+.pdfx-specs {
+  --spec-ink: #4c1d95;
+  --spec-paper: rgba(237, 228, 254, 0.95);
+  --spec-edge: rgba(109, 40, 217, 0.22);
+  --spec-gloss: rgba(255, 255, 255, 0.5);
+  --spec-dot: var(--violet);
+  --spec-shadow: rgba(76, 29, 149, 0.3);
+  --spec-radius: 4px;
+  --spec-pad: 0.24rem 0.52rem;
+  --spec-weight: 640;
+  --spec-lead: 16px;
 }
 
-.pdfx-match li[data-matched="true"] {
-  border-color: var(--good);
-  background: var(--good-soft);
+/* --- narrower pods ---------------------------------------------------------- */
+
+/* The pod is about 0.65 of the window wide until it hits its 960px cap, so these two
+   breakpoints are pod widths in disguise: 1340 is a pod of about 810px, 1260 about
+   760px. With the full columns a 770px pod left the stage 336px wide, and at that width
+   the bullet the film selects wrapped — half the highlight at the end of one line, half
+   at the start of the next — and the figure sat on the third bullet's tail. */
+@media (max-width: 1340px) {
+  .pdfx-body {
+    grid-template-columns: 104px minmax(0, 1fr) 282px;
+  }
+
+  .pdfx-thumb {
+    width: 82px;
+    height: 46px;
+  }
+
+  .pdfx-thumb-scale {
+    --thumb-scale: 0.203;
+  }
+
+  .pdfx-status {
+    font-size: 9px;
+  }
+
+  .pdfx-tabs span {
+    padding: 3px 6px;
+  }
 }
 
-/* A term tapped and waiting for its definition. This is the state the scene had no way
-   of showing while the whole game was one beat, and it is half of what makes the six taps
-   legible as six: a cell lights, then a second cell locks it in.
-   The real game's `pickedConcept` styling: `border-teal bg-teal-soft`. */
-.pdfx-match li[data-held="true"] {
-  border-color: var(--teal);
-  background: color-mix(in srgb, var(--teal) 14%, transparent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--teal) 14%, transparent);
+/* Stacked, which is the application's own portrait layout: the slide over its toolbar,
+   a horizontal filmstrip with the rail under each thumbnail, then the tabs and the
+   notes. At 1260 rather than at the phone width, and the number is a pod width of
+   about 760px: below that the three columns cannot all have what they need. A 708px pod
+   at a 1180px window gave the stage 322px — a slide whose second bullet wrapped, whose
+   figure lay across the third, and a toolbar clipped at both ends — and a 604px pod at
+   1024 gave it 218px, which is a slide with only its title on it. The panel's own share
+   cannot give way either: at 232px the read-ahead status no longer fits beside the
+   tabs, and that line is what the first five seconds are about. Stacked, every one of
+   those has the whole width. The lifted question lands in room reserved under the
+   window, and its label reads right. */
+@media (max-width: 1260px) {
+  .pdfx {
+    --land-x: 5%;
+    --land-y: calc(100% - 214px);
+    --land-w: 240px;
+    padding-bottom: 222px;
+    margin-bottom: 0;
+  }
+
+  .pdfx-window {
+    height: auto;
+  }
+
+  /* 340px for the panel: the first slide's notes are 300px of copy and then the
+     "Explaining ahead from slide 3…" foot, and at 300 that foot was the line cut off. */
+  .pdfx-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 340px;
+  }
+
+  .pdfx-stage {
+    order: 1;
+    padding: 14px 14px 56px;
+  }
+
+  .pdfx-tools {
+    bottom: 12px;
+  }
+
+  .pdfx-strip {
+    order: 2;
+    flex-direction: row;
+    padding: 8px 10px;
+    border-top: 1px solid var(--line);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .pdfx-strip-head {
+    display: none;
+  }
+
+  .pdfx-thumbs {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .pdfx-thumbs li {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pdfx-rail {
+    order: 2;
+    width: auto;
+    height: 3px;
+  }
+
+  .pdfx-thumb {
+    width: 64px;
+    height: 36px;
+  }
+
+  .pdfx-thumb-scale {
+    --thumb-scale: 0.1584;
+  }
+
+  .pdfx-thumb-n {
+    width: 10px;
+    height: 10px;
+    font-size: 6px;
+  }
+
+  .pdfx-thumb-dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .pdfx-panel {
+    order: 3;
+    border-left: 0;
+  }
+
+  /* The stage's slide is as wide as the window here, so its type grows with it — the
+     application renders the page at the stage's width, and a 640px slide set in 11px
+     bullets reads as a page with nothing on it. Scoped to the stage: the thumbnails
+     are the same markup at a fixed basis and must keep their size. */
+  .pdfx-stage .pdfx-slide {
+    padding: clamp(16px, 3.6vw, 30px) clamp(16px, 4vw, 36px) clamp(14px, 3vw, 24px);
+  }
+
+  .pdfx-stage .pdfx-slide h4 {
+    margin-bottom: clamp(9px, 1.6vw, 14px);
+    font-size: clamp(13.5px, 2.6vw, 22px);
+  }
+
+  .pdfx-stage .pdfx-slide ul {
+    font-size: clamp(10px, 1.7vw, 14.5px);
+  }
+
+  .pdfx-stage .pdfx-slide li {
+    margin: clamp(4px, 1vw, 9px) 0;
+    padding-left: clamp(12px, 1.8vw, 16px);
+  }
+
+  .pdfx-stage .pdfx-slide-eq {
+    font-size: clamp(13px, 2.1vw, 18px);
+  }
+
+  .pdfx-stage .pdfx-figure {
+    width: 34%;
+    right: clamp(16px, 4vw, 36px);
+  }
+
+  .pdfx-stage .pdfx-slide-foot {
+    font-size: clamp(6.5px, 1vw, 8.5px);
+  }
+
+  .pdfx-stage .pdfx-ask-chip {
+    height: clamp(24px, 3.6vw, 30px);
+    font-size: clamp(10px, 1.5vw, 12.5px);
+  }
 }
 
-.pdfx-cloze-verdict i {
-  font-style: normal;
-}
+@media (max-width: 420px) {
+  .pdfx-thumb {
+    width: 52px;
+    height: 29px;
+  }
 
-.pdfx-field em {
-  color: var(--ink-3);
-  font-style: normal;
+  .pdfx-thumb-scale {
+    --thumb-scale: 0.1287;
+  }
+
+  .pdfx-tools {
+    gap: 0;
+    padding: 0 4px;
+  }
+
+  .pdfx-tool--label {
+    display: none;
+  }
+
+  .pdfx-composer-hint span:first-child {
+    display: none;
+  }
 }

@@ -5,25 +5,26 @@
  * is the rule that decides what may live in a lazily-loaded stylesheet: these
  * elements do not exist until the chunk mounts, so the sheet cannot be late for
  * them. The section around the scene — the violet room, the entrance veil, the ghost
- * number — is server-rendered and is styled from `globals.css` for the opposite
- * reason.
+ * number, the two washes that answer the verdicts — is server-rendered and is styled
+ * from `globals.css` for the opposite reason.
  *
  * ---------------------------------------------------------------------------
- * 2FA Paster — "which code, and where it may not go"
+ * 2FA Paster — "what it did, and what it would not do"
  *
- * A payment confirmation with a saved card on it, and the extension answering two
- * questions about it at once: which of the two codes in the inbox belongs to this
- * page, and which of the things on the page it must not touch.
+ * A payment confirmation with a saved card on it, and the extension reaching two
+ * different verdicts about it: a code from the site goes in and the button goes
+ * down; a code from nowhere in particular goes in and the button does not.
  *
  * The palette is `popup.css`'s, unchanged: ground #f4f3f8, cards #ffffff, accent
  * violet #5b45e0, text #1d1d1f, success #1b7a3a, warning #8a5300, 14px card radius,
- * 11px control radius, two very soft shadows and no borders anywhere. The website in
- * the frame gets a cooler grey ground of its own so that the popup, which is the
- * only warm-grey object in the picture, reads as sitting on top of a different piece
- * of software rather than as part of it.
+ * 11px control radius, two very soft shadows and no borders anywhere. The page card
+ * is `CARD_STYLE` from `content.js`: white, 13px radius, a 340px cap, a green tick
+ * or an amber `!`. The website in the frame gets a cooler grey ground of its own so
+ * that the popup, which is the only warm-grey object in the picture, reads as
+ * sitting on top of a different piece of software rather than as part of it.
  *
  * The one loud thing is the code, in both the places it appears: 34px in the popup,
- * where `popup.css` sets it, and 26px in the six boxes it lands in. Everything else
+ * where `popup.css` sets it, and 30px in the six boxes it lands in. Everything else
  * in this scene is 11 to 14px, which is what the real interface is.
  */
 
@@ -37,6 +38,7 @@
   /* popup.css, verbatim. */
   --tfa-bg: #f4f3f8;
   --tfa-surface: #ffffff;
+  --tfa-surface-muted: #f4f3f8;
   --tfa-text: #1d1d1f;
   --tfa-secondary: #4a4a52;
   --tfa-tertiary: #6a6a74;
@@ -54,32 +56,41 @@
   --tfa-radius: 14px;
   --tfa-control: 11px;
 
-  /* The outline `content.js` puts on every field it writes to, which is the one
-     colour in this scene that is not the popup's. */
+  /* The outline `content.js` puts on every field it writes to, and the two badge
+     greens and ambers `flashBadge` and `CARD_STYLE` paint. */
   --tfa-fill: #6d5bff;
+  --tfa-badge-ok: #1b8a3a;
+  --tfa-hold-mark: #b46e00;
 
   /* The website the extension is working on, and the browser around it. Cooler than
-     the extension's own ground on purpose — see the note at the top of the file. */
+     the extension's own ground on purpose — see the note at the top of the file. The
+     site's own accent is a deep blue, so nothing on the page can be mistaken for
+     the extension's violet. */
   --tfa-site: #edecf3;
   --tfa-chrome: #e2e0ea;
   --tfa-line: rgba(29, 29, 31, 0.12);
+  --tfa-site-accent: #1f4f73;
 
-  /* The flight. Six digits leave one point — the code in the mail row — and land in
+  /* The flight. Six digits leave one point — the code in a mail row — and land in
      six boxes, so each one's start offset is that point less its own box, and the
-     difference between two boxes is the pitch of the row. Both the payment column
-     and the mail strip are pinned to the left edge of a pod whose width is capped,
-     so this vector is the same at every width the labels are measured at.
-     Measured rather than guessed: see `scripts/beat-shot.mjs`. */
-  --tfa-fly-x: 443px;
-  --tfa-fly-y: 311px;
+     difference between two boxes is the pitch of the row. The three numbers are
+     measured by the pod on every beat and written here inline; these are what a
+     visitor with no JavaScript, or the frame before the measurement lands, gets. */
+  --tfa-fly-x: 470px;
+  --tfa-fly-y: 640px;
   --tfa-step: 64px;
+
+  /* The mail strip's slots. Fixed, so a row can change slot by changing one number. */
+  --tfa-row: 68px;
+  --tfa-row-gap: 8px;
 
   position: relative;
   width: 100%;
-  /* Close to the width this was composed at. The `stacked` composition gives the
-     scene a 1180px measure at every window size the page has a layout for, so the
-     pod is the same size at 1440 and at 2560 and only shrinks below about 1200. */
-  max-width: 1080px;
+  /* The whole of the `stacked` measure less the well's padding. The composition is
+     three zones across — the form, a corridor, the popup — and the corridor is where
+     four of the five labels stand, so every pixel of width is a pixel of reading
+     room. */
+  max-width: 1120px;
   color: var(--tfa-text);
   font-family: var(--tfa-font);
   -webkit-font-smoothing: antialiased;
@@ -157,8 +168,8 @@
   border-radius: 3px;
   background: rgba(29, 29, 31, 0.18);
 }
-.tfa-favicon--pay {
-  background: #3f7f6a;
+.tfa-favicon--site {
+  background: var(--tfa-site-accent);
 }
 
 .tfa-bar {
@@ -202,10 +213,8 @@
   background: var(--tfa-accent-soft);
 }
 
-/* `popup.css` strokes the card and fills the three dots. Filling both, which is
-   what this did first, collapses the mark into a solid violet lozenge with nothing
-   legible in it — at 22px that is the difference between a recognisable icon and a
-   blob. */
+/* `popup.css` strokes the card and fills the three dots. Filling both collapses the
+   mark into a solid violet lozenge with nothing legible in it. */
 .tfa-action-mark svg {
   display: block;
   width: 21px;
@@ -239,13 +248,16 @@
   animation: tfa-tick 0.42s ease-out;
 }
 
-/* `background.js` sets both of these, with these colours: violet while it is looking
-   in Gmail, green once a code is actually in the page. */
+/* `flashBadge` in `background.js`, with its colours: violet while it is looking in
+   Gmail, green once a code is actually in the page, amber while one is held. */
 .tfa-badge[data-glyph="…"] {
-  background: #5b45e0;
+  background: var(--tfa-accent);
 }
 .tfa-badge[data-glyph="✓"] {
-  background: #1b8a3a;
+  background: var(--tfa-badge-ok);
+}
+.tfa-badge[data-glyph="?"] {
+  background: var(--tfa-hold-mark);
 }
 .tfa-badge[data-glyph="none"] {
   display: none;
@@ -263,20 +275,16 @@
   position: relative;
   display: flex;
   /* Stretch, so the order rail is the height of the page rather than a card
-     floating in the top-right corner of it. The first version reserved the popup's
-     height and left the right two thirds of the window empty for six of the seven
-     beats, which read as a broken layout rather than as a checkout. A right-hand
-     rail running the full height of the form is what a checkout actually looks
-     like, and it is also exactly the shape the popup lands on. */
+     floating in the top-right corner of it. */
   align-items: stretch;
   gap: 26px;
-  /* The popup is the tallest thing that can be in here and it arrives last, so the
-     page reserves its height from the first frame. Without it the window grows by
-     150px on the final beat and every measured label under it moves. Measured
-     against the popup: 578px of panel, hung from the top of the page area, plus
-     enough clearance that it does not hang out of the bottom of the window — which
-     it did, by 21px, when this number was guessed instead. */
-  min-height: 592px;
+  /* The popup is the tallest thing that can be in here and it arrives late, so the
+     page reserves its height from the first frame. Without it the window grows on
+     the sixth beat and every measured label under it moves. Sized to the held card,
+     which is the taller of the two — 812px of panel, measured — plus the page's own
+     bottom padding, so the panel ends inside the window the way the page card under
+     the form does. (`border-box`, so the padding is inside this number.) */
+  min-height: 838px;
   padding: 26px;
   border-radius: 0 0 13px 13px;
 }
@@ -295,7 +303,7 @@
 .tfa-pay {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 14px;
   padding: 20px 22px 22px;
   border-radius: var(--tfa-radius);
   background: var(--tfa-surface);
@@ -348,26 +356,13 @@
   height: 18px;
   flex: 0 0 26px;
   border-radius: 4px;
-  background: linear-gradient(150deg, #8b7bff, #3a1fc4);
+  background: linear-gradient(150deg, #4f7fa6, #163a58);
 }
 
-/* The control the never-press list is about. It is inside the form on purpose:
-   `submitButton` only ever considers what is in the same form as the field it
-   filled, so a destructive control anywhere else is not a test of anything. */
-.tfa-danger {
-  color: #b3261e;
-  font-size: 11.5px;
-  font-weight: 620;
-  transition:
-    color 0.3s ease,
-    opacity 0.3s ease;
-}
-
-.tfa-danger[data-skipped="true"] {
+.tfa-card-kind {
   color: var(--tfa-tertiary);
-  opacity: 0.62;
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .tfa-field {
@@ -379,6 +374,12 @@
   color: var(--tfa-secondary);
   font-size: 11.5px;
   font-weight: 600;
+}
+
+.tfa-field-hint {
+  margin-top: -4px;
+  color: var(--tfa-tertiary);
+  font-size: 11.5px;
 }
 
 /* The card's security code. Drawn as a sibling of the six boxes below it, at the
@@ -397,7 +398,7 @@
   box-shadow: 0 0 0 1px var(--tfa-separator) inset;
   transition:
     box-shadow 0.3s ease,
-    opacity 0.3s ease;
+    background 0.3s ease;
 }
 .tfa-cvv i {
   width: 5px;
@@ -406,7 +407,7 @@
   background: rgba(29, 29, 31, 0.28);
 }
 
-/* Passed over. A dashed edge in the warning tone the extension uses for "this is
+/* Passed over. A soft edge in the warning tone the extension uses for "this is
    something you should look at", and no fill of any kind. */
 .tfa-cvv[data-skipped="true"] {
   background: var(--tfa-warn-soft);
@@ -419,16 +420,10 @@
   background: var(--tfa-separator);
 }
 
-.tfa-otp-head {
-  margin: 0;
-  color: var(--tfa-secondary);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .tfa-boxes {
   display: flex;
   gap: 10px;
+  margin-top: 2px;
 }
 
 .tfa-box {
@@ -447,10 +442,11 @@
 /* `content.js` writes `outline: 2px solid #6d5bff` onto every field it fills and
    lifts it again after 1200ms. It is left up here, because the last frame of this
    scene has to work as a diagram of it and a diagram cannot rely on having been
-   watched. */
+   watched. Delayed to land with the first digit rather than a beat ahead of it. */
 .tfa[data-filled="true"] .tfa-box {
   background: #fff;
   box-shadow: 0 0 0 2px var(--tfa-fill) inset;
+  transition-delay: 380ms;
 }
 
 .tfa-digit {
@@ -465,11 +461,11 @@
      the offset from the code in the mail below to *this* box is the offset to the
      first box less this box's share of the row's pitch. */
   translate: calc(var(--tfa-fly-x) - var(--tfa-i) * var(--tfa-step)) var(--tfa-fly-y);
-  scale: 0.58;
+  scale: 0.5;
   transition:
-    translate 620ms cubic-bezier(0.2, 0.82, 0.24, 1),
-    scale 620ms cubic-bezier(0.2, 0.82, 0.24, 1),
-    opacity 200ms ease;
+    translate 720ms cubic-bezier(0.2, 0.82, 0.24, 1),
+    scale 720ms cubic-bezier(0.2, 0.82, 0.24, 1),
+    opacity 220ms ease;
   transition-delay: calc(var(--tfa-i) * 82ms);
 }
 
@@ -479,49 +475,57 @@
   scale: 1;
 }
 
-.tfa-submit {
+/* The page's own button, in the site's own colour. */
+.tfa-verify {
   display: grid;
   min-height: 44px;
   place-items: center;
   border-radius: var(--tfa-control);
-  background: #2f6f4f;
+  background: var(--tfa-site-accent);
   color: #fff;
   font-size: 13px;
   font-weight: 640;
   transition:
     background 0.2s ease,
-    box-shadow 0.3s ease;
+    box-shadow 0.3s ease,
+    transform 0.2s ease;
 }
 
 /* Pressed by the extension, not by a hand — so it wears the extension's colour
-   rather than a pointer ring. `SUBMIT_TEXT` matches `confirm\w*`, and this is also
-   the form's declared submit button, which is as unambiguous as this gets. */
-.tfa-submit[data-pressed="true"] {
-  background: #255a40;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tfa-fill) 30%, transparent);
+   rather than a pointer ring. `SUBMIT_TEXT` matches `verif\w*`, and this is also the
+   form's declared submit button, which is as unambiguous as this gets. */
+.tfa-verify[data-pressed="true"] {
+  background: #163a58;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tfa-fill) 34%, transparent);
+  transform: translateY(1px);
 }
 
-/* --- what the page says afterwards ----------------------------------------- */
+/* --- the page card ----------------------------------------------------------- */
 
-/* Out of the column's flow. `showToast` draws this `position: fixed`, so it costs
-   the page no height in the real thing either — and here that matters twice, because
-   the window's height is reserved from the tallest thing in it and a toast that
-   arrives on the sixth beat must not be one of them. */
+/* `CARD_STYLE` in `content.js`, in a closed shadow root at the page's bottom-right.
+   It sits under the form column here because the page's own corner is where the
+   popup hangs, and out of the column's flow because the real thing is `position:
+   fixed` and costs the page no height either. */
 .tfa-toast {
   position: absolute;
   top: 100%;
   right: 0;
-  display: flex;
-  align-items: flex-start;
+  display: grid;
   gap: 10px;
+  width: max-content;
+  min-width: 240px;
+  max-width: 340px;
   margin-top: 14px;
-  max-width: 300px;
   padding: 12px 14px;
   border-radius: 13px;
   background: var(--tfa-surface);
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.09),
     0 12px 32px rgba(0, 0, 0, 0.16);
+  color: var(--tfa-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
   opacity: 0;
   transform: translateY(8px);
   transition:
@@ -529,9 +533,15 @@
     transform 0.18s ease;
 }
 
-.tfa[data-submitted="true"] .tfa-toast {
+.tfa-toast[data-shown="true"] {
   opacity: 1;
   transform: none;
+}
+
+.tfa-toast-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .tfa-toast-mark {
@@ -541,24 +551,104 @@
   flex: 0 0 22px;
   place-items: center;
   border-radius: 50%;
-  background: #1b8a3a;
+  background: var(--tfa-badge-ok);
   color: #fff;
   font-size: 13px;
+  font-weight: 700;
   line-height: 1;
+}
+.tfa-toast[data-tone="hold"] .tfa-toast-mark {
+  background: var(--tfa-hold-mark);
 }
 
 .tfa-toast-copy {
   display: grid;
   min-width: 0;
+  flex: 1;
   gap: 2px;
 }
 .tfa-toast-copy b {
-  font-size: 13px;
   font-weight: 640;
 }
 .tfa-toast-copy small {
   color: var(--tfa-tertiary);
   font-size: 12px;
+  font-weight: 450;
+  overflow-wrap: anywhere;
+}
+.tfa-toast-note {
+  color: var(--tfa-warn);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.tfa-toast-close {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  margin: -2px -4px 0 0;
+  place-items: center;
+  border-radius: 6px;
+  color: #8a8a94;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tfa-toast-actions {
+  display: flex;
+  gap: 8px;
+}
+.tfa-toast-button {
+  display: grid;
+  min-height: 30px;
+  padding: 0 12px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--tfa-accent);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 620;
+  line-height: 1;
+}
+
+.tfa-toast-picker {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tfa-separator);
+}
+.tfa-toast-picker-title {
+  color: var(--tfa-tertiary);
+  font-size: 11.5px;
+  font-weight: 620;
+  letter-spacing: 0.01em;
+}
+.tfa-toast-row {
+  display: grid;
+  gap: 1px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--tfa-surface-muted);
+  transition: background 0.2s ease;
+}
+/* The row under the pointer, in `.row:hover`'s own tint. */
+.tfa-toast-row[data-aimed="true"] {
+  background: #e9e7f3;
+}
+.tfa-toast-row strong {
+  font-weight: 640;
+}
+.tfa-toast-row strong b {
+  font-family: var(--tfa-mono);
+  font-weight: 640;
+  letter-spacing: 0.06em;
+}
+.tfa-toast-row small {
+  color: var(--tfa-tertiary);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
 }
 
 /* --- the rest of the page --------------------------------------------------- */
@@ -609,8 +699,6 @@
   font-size: 11px;
 }
 
-/* Where the page thinks it has got to. Ticks for what is done, a hollow ring for
-   what is not. */
 .tfa-steps {
   display: grid;
   gap: 5px;
@@ -673,9 +761,6 @@
   line-height: 1.45;
 }
 
-/* Pushed to the foot of the rail, which is what makes the rail a full-height
-   column rather than a card with a hole under it. It is also the line that says
-   why this page is asking for a code at all. */
 .tfa-summary-foot {
   margin: 24px 0 0;
   padding-top: 12px;
@@ -688,14 +773,12 @@
 
 /* --- the keypress ----------------------------------------------------------- */
 
-/* Drawn for the one beat it happens on, in the corridor between the page's two
-   columns — which is empty then, and is where the labels about the fill arrive two
-   beats later. A keypress has no picture of its own and this one does the whole
-   job, so it is worth drawing rather than implying. */
+/* Drawn for the two beats it happens on, in the corridor between the form and the
+   popup — which is empty then, and is where the labels arrive afterwards. */
 .tfa-keys {
   position: absolute;
-  top: 44%;
-  left: 512px;
+  top: 300px;
+  left: 490px;
   display: flex;
   gap: 8px;
   opacity: 0;
@@ -703,7 +786,8 @@
   transition: opacity 0.24s ease;
 }
 
-.tfa[data-beat="press"] .tfa-keys {
+.tfa[data-beat="pick"] .tfa-keys,
+.tfa[data-beat="chord"] .tfa-keys {
   opacity: 1;
 }
 
@@ -722,15 +806,18 @@
   line-height: 1;
 }
 
-/* Down, then up, once — the element only exists on this beat, so a keyframe runs
-   exactly as often as the thing it is drawing happens. */
-.tfa[data-beat="press"] .tfa-key {
+/* Down, then up, once — the element is only visible on these beats, so a keyframe
+   runs exactly as often as the thing it is drawing happens. */
+.tfa[data-beat="pick"] .tfa-key,
+.tfa[data-beat="chord"] .tfa-key {
   animation: tfa-press 460ms cubic-bezier(0.3, 0.9, 0.3, 1) 220ms both;
 }
-.tfa[data-beat="press"] .tfa-key:nth-child(2) {
+.tfa[data-beat="pick"] .tfa-key:nth-child(2),
+.tfa[data-beat="chord"] .tfa-key:nth-child(2) {
   animation-delay: 260ms;
 }
-.tfa[data-beat="press"] .tfa-key:nth-child(3) {
+.tfa[data-beat="pick"] .tfa-key:nth-child(3),
+.tfa[data-beat="chord"] .tfa-key:nth-child(3) {
   animation-delay: 300ms;
 }
 
@@ -756,7 +843,7 @@
   position: absolute;
   z-index: 4;
   top: 0;
-  right: -14px;
+  right: -22px;
   width: 380px;
   border-radius: var(--tfa-radius);
   background: var(--tfa-bg);
@@ -764,18 +851,27 @@
     0 0 0 1px rgba(29, 29, 31, 0.08),
     0 36px 72px -30px rgba(24, 16, 60, 0.5);
   opacity: 0;
-  /* Grows out of its own button, which is where a popup comes from. */
-  transform: scale(0.965) translateY(-9px);
-  transform-origin: 86% 0;
+  /* Unrolls downward out of its own button, which is where a popup comes from.
+
+     A clip rather than a transform, and the reason is the label pinned to the address
+     line inside this panel. The press gate opens the panel some hundreds of
+     milliseconds into the beat — after the label layer has taken both of its
+     measurements — and `getBoundingClientRect` reads a transform, so a panel that
+     arrives by scaling out of its corner has the address line measured ten pixels
+     above where it ends up, and the plate sits on the sender's name for the rest of
+     the act. A clip moves nothing: the line is where it is from the first frame,
+     whether or not it can be seen yet. The insets reach past the box so the shadow
+     is not cut off. */
+  clip-path: inset(-48px -48px 100% -48px);
   transition:
     opacity 0.2s ease,
-    transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1);
+    clip-path 0.34s cubic-bezier(0.2, 0.9, 0.3, 1);
   pointer-events: none;
 }
 
 .tfa-pop[data-open="true"] {
   opacity: 1;
-  transform: none;
+  clip-path: inset(-48px -48px -90px -48px);
 }
 
 .tfa-pop-head {
@@ -824,6 +920,10 @@
 .tfa-pop-name small {
   color: var(--tfa-tertiary);
   font-size: 12px;
+}
+/* The account, in the green `popup.js` gives a connected mailbox. */
+.tfa-pop-name small.is-connected {
+  color: var(--tfa-success);
 }
 
 .tfa-pop-gear svg {
@@ -904,8 +1004,7 @@
   font-weight: 640;
 }
 
-/* The accelerator on the button itself, the way a menu shows one. It was a grey line
-   in the footer, which is nowhere anybody looks for the fastest way to use this. */
+/* The accelerator on the button itself, the way a menu shows one. */
 .tfa-shortcut {
   padding: 2px 6px;
   border-radius: 5px;
@@ -917,6 +1016,8 @@
   line-height: 1.3;
   white-space: nowrap;
 }
+
+/* --- the decision card -------------------------------------------------------- */
 
 .tfa-code-card {
   display: grid;
@@ -941,24 +1042,132 @@
   text-align: center;
 }
 
+/* Who sent it: the name, then the address it actually came from. */
+.tfa-code-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tfa-code-sender {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
 .tfa-code-source {
-  margin: 0;
-  color: var(--tfa-tertiary);
+  color: var(--tfa-secondary);
   font-size: 12px;
-  text-align: center;
+  font-weight: 600;
+}
+.tfa-code-address {
+  color: var(--tfa-tertiary);
+  font-family: var(--tfa-mono);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+.tfa-code-open {
+  flex: 0 0 auto;
+  padding-top: 1px;
+  color: var(--tfa-accent-text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-/* Said out loud only when it is worth saying. This is the `is-match` branch: the
-   mail demonstrably came from the site in front of you. */
+/* The sender's standing with the page: match, or held. `renderOrigin`. */
 .tfa-origin {
+  display: grid;
+  gap: 1px;
   margin: 0;
   padding: 7px 10px;
   border-radius: var(--tfa-control);
+  font-size: 12px;
+  text-align: center;
+}
+.tfa-origin strong {
+  font-weight: 640;
+}
+.tfa-origin span {
+  font-weight: 500;
+  opacity: 0.85;
+}
+.tfa-origin.is-match {
   background: var(--tfa-success-soft);
   color: var(--tfa-success);
+}
+.tfa-origin.is-unsure {
+  background: var(--tfa-warn-soft);
+  color: var(--tfa-warn);
+}
+
+/* What happened, one line each, with a glyph that says which kind of line.
+   `renderOutcome`, and `.outcome-list` in `popup.css`. */
+.tfa-outcome {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 9px 0 0;
+  border-top: 1px solid var(--tfa-separator);
+  color: var(--tfa-secondary);
   font-size: 12px;
-  font-weight: 600;
+  list-style: none;
+}
+.tfa-outcome li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.tfa-outcome li::before {
+  width: 14px;
+  flex: 0 0 auto;
+  color: var(--tfa-success);
+  content: "✓";
+  font-weight: 700;
   text-align: center;
+}
+.tfa-outcome li.is-skip::before {
+  color: var(--tfa-tertiary);
+  content: "–";
+}
+.tfa-outcome li.is-hold::before {
+  color: var(--tfa-warn);
+  content: "!";
+}
+
+/* Held: the submit, and the other codes, each one click away. `renderHeld`. */
+.tfa-held {
+  display: grid;
+  gap: 6px;
+}
+.tfa-held-submit {
+  display: grid;
+  min-height: 38px;
+  place-items: center;
+  border-radius: var(--tfa-control);
+  background: var(--tfa-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 640;
+}
+.tfa-alt {
+  display: grid;
+  gap: 1px;
+  padding: 7px 10px;
+  border: 1px solid var(--tfa-separator);
+  border-radius: var(--tfa-control);
+  background: var(--tfa-surface);
+  text-align: left;
+}
+.tfa-alt strong {
+  color: var(--tfa-accent-text);
+  font-size: 13px;
+  font-weight: 640;
+}
+.tfa-alt small {
+  color: var(--tfa-tertiary);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
 }
 
 .tfa-code-actions {
@@ -978,20 +1187,16 @@
 }
 
 .tfa-why {
-  border-top: 1px solid var(--tfa-separator);
-}
-
-.tfa-why-head {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 8px 2px 2px;
+  padding: 9px 2px 0;
+  border-top: 1px solid var(--tfa-separator);
   color: var(--tfa-secondary);
   font-size: 12px;
   font-weight: 600;
 }
-
 .tfa-why-value {
   flex: 1;
   color: var(--tfa-tertiary);
@@ -1005,28 +1210,8 @@
   flex: none;
   border-right: 1.6px solid var(--tfa-tertiary);
   border-bottom: 1.6px solid var(--tfa-tertiary);
-}
-
-/* Open, because the disclosure is the reason this scene has a last beat at all. */
-.tfa-why .tfa-chevron {
-  transform: rotate(-135deg);
-}
-
-.tfa-why-list {
-  display: grid;
-  gap: 3px;
-  margin: 0;
-  padding: 8px 2px 2px;
-  color: var(--tfa-tertiary);
-  font-size: 12px;
-  list-style: none;
-}
-.tfa-why-list li {
-  padding-left: 12px;
-  text-indent: -12px;
-}
-.tfa-why-list li::before {
-  content: "· ";
+  /* Collapsed, which is its resting state, and pointing down to say so. */
+  transform: translateY(-2px) rotate(45deg);
 }
 
 .tfa-history {
@@ -1048,27 +1233,16 @@
   text-align: right;
 }
 
-/* Collapsed: the chevron points the other way from the open one above it. */
-.tfa-history .tfa-chevron {
-  transform: rotate(45deg);
-}
-
 /* --- the inbox -------------------------------------------------------------- */
 
-/* Below the window rather than inside it, because that is where the mail actually
-   is: another tab, or another window, or a phone — somewhere the whole point is
-   that you do not have to go. */
 .tfa-inbox {
   position: relative;
   margin-top: 24px;
 }
 
-/* The empty inbox, before anything lands in it.
-   The rows hold their space from the first frame so that nothing under them moves
-   when they arrive — but two invisible rows are indistinguishable from a hole in
-   the page, and the first beat is 2.4 seconds of one. A faint well says "this is a
-   container and there is nothing in it", which is the true state of affairs, and it
-   goes when the mail turns up. */
+/* The empty inbox, before anything lands in it. A faint well says "this is a
+   container and there is nothing in it", which is the true state of affairs, and
+   it goes when the mail turns up. */
 .tfa-inbox::before {
   position: absolute;
   top: 30px;
@@ -1110,17 +1284,26 @@
   stroke-width: 1.7;
 }
 
+/* Three slots, newest at the top. The rows are placed rather than flowed so a row
+   can change slot by changing one number — the first mail sinks two places when the
+   two later ones land above it. */
 .tfa-mail {
-  display: grid;
+  position: relative;
+  height: calc(3 * var(--tfa-row) + 2 * var(--tfa-row-gap));
   max-width: 560px;
-  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .tfa-mail-row {
+  position: absolute;
+  top: calc(var(--slot) * (var(--tfa-row) + var(--tfa-row-gap)));
+  right: 0;
+  left: 0;
   display: flex;
+  box-sizing: border-box;
+  height: var(--tfa-row);
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
@@ -1130,19 +1313,20 @@
   opacity: 0;
   transform: translateY(10px);
   transition:
+    top 360ms cubic-bezier(0.2, 0.86, 0.24, 1),
     opacity 0.34s ease,
     transform 0.34s cubic-bezier(0.2, 0.86, 0.24, 1),
     box-shadow 0.34s ease;
 }
 
-/* Arriving, one after the other. Two mails landing at the same instant is one event;
-   two landing a moment apart is the situation this project exists for. */
-.tfa[data-landed="true"] .tfa-mail-row {
+.tfa-mail-row[data-landed="true"] {
   opacity: 1;
   transform: none;
 }
-.tfa[data-landed="true"] .tfa-mail-row:nth-child(2) {
-  transition-delay: 420ms;
+/* Arriving one after the other. Two mails landing at the same instant is one event;
+   two landing a moment apart is the situation the second act exists for. */
+.tfa-mail-row[data-landed="true"][data-late="true"] {
+  transition-delay: 0ms, 420ms, 420ms, 0ms;
 }
 
 .tfa-avatar {
@@ -1156,10 +1340,10 @@
   font-size: 13px;
   font-weight: 650;
 }
-.tfa-avatar[data-who="chosen"] {
-  background: linear-gradient(150deg, #8b7bff, #3a1fc4);
+.tfa-avatar[data-who="site"] {
+  background: linear-gradient(150deg, #4f7fa6, #163a58);
 }
-.tfa-avatar[data-who="rival"] {
+.tfa-avatar[data-who="relay"] {
   background: linear-gradient(150deg, #7f8a99, #47505c);
 }
 
@@ -1184,7 +1368,8 @@
 .tfa-mail-from small {
   overflow: hidden;
   color: var(--tfa-tertiary);
-  font-size: 11px;
+  font-family: var(--tfa-mono);
+  font-size: 10.5px;
   text-overflow: ellipsis;
 }
 
@@ -1222,6 +1407,8 @@
   transition: color 0.3s ease;
 }
 
+/* The sender's domain, which is what the scorer matches against the site. Shown
+   once the scorer has looked. */
 .tfa-mail-tag {
   padding: 1px 7px;
   border-radius: 999px;
@@ -1230,7 +1417,10 @@
   font-size: 10.5px;
   font-weight: 650;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    background 0.3s ease,
+    color 0.3s ease;
 }
 
 .tfa-mail-age {
@@ -1238,35 +1428,63 @@
   font-size: 10.5px;
 }
 
-/* The decision, drawn. One row is tied to the site in front of you and keeps its
-   code; the other is identifiably from another company and is removed from
-   consideration entirely rather than merely outscored, which is what `findBestCode`
-   does the moment any message matches the site. */
-.tfa[data-picked="true"] .tfa-mail-tag {
+/* The decision, drawn. The first act: the one row is tied to the site in front of
+   you and keeps its code. The second: the row it picked is outlined in the warning
+   tone rather than the accent, because the pick came with a hold; the other new
+   mail is set a little aside; the old one has sunk. Delayed so the row lights after
+   the chord has gone down, not before. */
+.tfa-mail-row[data-state="chosen"],
+.tfa-mail-row[data-state="held"],
+.tfa-mail-row[data-state="aside"] {
+  transition-delay: 0ms, 0ms, 0ms, 520ms;
+}
+.tfa-mail-row[data-state="chosen"] .tfa-mail-tag,
+.tfa-mail-row[data-state="held"] .tfa-mail-tag,
+.tfa-mail-row[data-state="aside"] .tfa-mail-tag,
+.tfa-mail-row[data-state="older"] .tfa-mail-tag {
   opacity: 1;
+  transition-delay: 520ms;
+}
+.tfa-mail-row[data-state="older"] .tfa-mail-tag {
+  transition-delay: 0ms;
 }
 
-.tfa[data-picked="true"] .tfa-mail-row[data-state="chosen"] {
+.tfa-mail-row[data-state="chosen"] {
   box-shadow:
     0 0 0 2px var(--tfa-accent) inset,
     0 2px 6px rgba(31, 22, 74, 0.09),
     0 10px 26px -14px rgba(31, 22, 74, 0.36);
 }
-.tfa[data-picked="true"] .tfa-mail-row[data-state="chosen"] .tfa-mail-tag {
+.tfa-mail-row[data-state="chosen"] .tfa-mail-tag {
   background: var(--tfa-accent-soft);
   color: var(--tfa-accent-text);
 }
-.tfa[data-picked="true"] .tfa-mail-row[data-state="chosen"] .tfa-mail-code {
+.tfa-mail-row[data-state="chosen"] .tfa-mail-code {
   color: var(--tfa-accent-text);
+  transition-delay: 520ms;
 }
 
-.tfa[data-picked="true"] .tfa-mail-row[data-state="rival"] {
-  opacity: 0.5;
+.tfa-mail-row[data-state="held"] {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--tfa-hold-mark) 70%, transparent) inset,
+    0 2px 6px rgba(74, 46, 0, 0.08),
+    0 10px 26px -14px rgba(74, 46, 0, 0.3);
 }
-.tfa[data-picked="true"] .tfa-mail-row[data-state="rival"] .tfa-mail-code {
-  color: var(--tfa-tertiary);
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
+.tfa-mail-row[data-state="held"] .tfa-mail-tag {
+  background: var(--tfa-warn-soft);
+  color: var(--tfa-warn);
+}
+.tfa-mail-row[data-state="held"] .tfa-mail-code {
+  color: var(--tfa-warn);
+  transition-delay: 520ms;
+}
+
+.tfa-mail-row[data-state="aside"] {
+  opacity: 0.72;
+}
+
+.tfa-mail-row[data-state="older"] {
+  opacity: 0.55;
 }
 
 /* --- the labels ------------------------------------------------------------- */
@@ -1276,9 +1494,9 @@
    own furniture — a white card, 14px radii scaled down, one violet accent and a
    very soft shadow — which is the least this scene could get away with and the most
    honest, because the thing being annotated is that interface.
-   Deliberately small: three of these read rightward across a 260px corridor between
-   the payment column and the popup, and a plate that reaches past it lands on the
-   reasoning it is standing next to. */
+   Deliberately small: four of these read across the corridor between the payment
+   column and the popup, and a plate that reaches past it lands on the verdict it is
+   standing next to. */
 .tfa-specs {
   --spec-ink: #1d1d1f;
   --spec-paper: rgba(255, 255, 255, 0.97);
@@ -1297,19 +1515,19 @@
 /* --- narrow --------------------------------------------------------------- */
 
 /* The composition in this scene is three zones across — the form, a corridor, and
-   the popup — and the corridor is not decoration: it is where three of the five
+   the popup — and the corridor is not decoration: it is where four of the five
    labels stand, and they are only correct because they have room to stand there.
-   Measured, it needs about 1040px of window. Below that the popup lands on the six
-   boxes it is supposed to be explaining, and two plates land on the popup: a label
-   covering its own evidence, which is the one thing this component must never do.
-   Photographed at 860px before this rule existed, and it was as bad as it sounds.
+   Measured, it needs about 1180px of window. Below that the popup would land on the
+   six boxes it is supposed to be explaining and two plates would land on the popup:
+   a label covering its own evidence, which is the one thing this component must
+   never do.
 
-   So below 1040 the zones stack rather than shrink. The form keeps its width and
-   the popup takes its turn underneath it, both pinned to the left, which leaves the
-   right of the page as a gutter the labels can still point across. Nothing has to
-   move to a coordinate it was not measured at, because every label is anchored to an
-   element rather than to a percentage. */
-@media (max-width: 1040px) {
+   So below 1180 the zones stack rather than shrink. The form keeps its width and
+   the popup takes its turn underneath it, pinned to the *right* so that the one
+   label reading leftward out of it still has a page to read into. Nothing has to
+   move to a coordinate it was not measured at, because every label is anchored to
+   an element rather than to a percentage. */
+@media (max-width: 1180px) {
   /* Set dressing, and the first thing that can go when there is no room. */
   .tfa-summary {
     display: none;
@@ -1336,38 +1554,67 @@
   }
 
   /* Back into the flow with everything else. Absolute here would have it lying over
-     the popup that is now underneath it. */
+     the popup that is now underneath it.
+
+     `width: auto` as well, and it is load-bearing: `max-content` is right for a card
+     hanging off the form, but a flex item sized `max-content` contributes that whole
+     width to its column's minimum, and the column is a grid item sized by its
+     contents. At 390px the card's longest line was 340px, the page had 297px, and the
+     form, the popup and the page card all ran out of the window's right edge before
+     any of them had appeared. Fit-content under `align-self: flex-end` looks the
+     same and contributes only the longest word. */
   .tfa-toast {
     position: static;
+    width: auto;
     align-self: flex-end;
     margin-top: 14px;
   }
 
   /* Open from the first frame, at these widths, and that is a deliberate trade.
-     A panel that appears on the last beat would add 578px to the page as it arrived,
-     which on a narrow screen means the section growing under somebody who is reading
-     it. Reserving the space instead leaves a hole where the panel will be, which is
-     worse. So the popup is simply present — which is the extension's other real
-     path: open the popup, press its button, watch the code arrive in it. */
+     A panel that appears on the sixth beat would add seven hundred pixels to the
+     page as it arrived, which on a narrow screen means the section growing under
+     somebody who is reading it. Reserving the space instead leaves a hole where the
+     panel will be, which is worse. So the popup is simply present — which is the
+     extension's other real path: open the popup, press its button, watch the code
+     arrive in it. */
   .tfa-pop {
     position: static;
     width: 380px;
     max-width: 100%;
+    justify-self: end;
     opacity: 1;
-    transform: none;
+    clip-path: none;
   }
 
-  /* What is *not* present is the answer. The code card and the recent list keep
-     their space and stay out of sight until the popup has actually been asked for a
-     code, which is the popup's own state before its button is pressed — the film
-     would otherwise print the code it is about to find on the first frame. */
+  /* What is *not* present is the answer. The decision card is absent until the
+     popup has actually been asked for a code — the panel's own state before its
+     button is pressed is the header, the target and the button, and the film would
+     otherwise print the verdict it is about to reach on the first frame.
+
+     Absent, not hidden-in-place. It was `visibility: hidden` for a while, to keep
+     the panel's height steady, and a phone-width screenshot showed what that
+     bought: a white panel three hundred pixels deep with nothing in it, for the nine
+     seconds before the card arrives — and the held card is taller than the clean
+     one, so the panel grew on the eighth beat regardless. A panel that grows when
+     something arrives in it reads as something arriving; a panel that is mostly
+     empty reads as broken. */
   .tfa-pop .tfa-code-card,
   .tfa-pop .tfa-history {
-    visibility: hidden;
+    display: none;
   }
-  .tfa[data-open="true"] .tfa-pop .tfa-code-card,
+  .tfa[data-open="true"] .tfa-pop .tfa-code-card {
+    display: grid;
+  }
   .tfa[data-open="true"] .tfa-pop .tfa-history {
-    visibility: visible;
+    display: flex;
+  }
+
+  /* Room for the plate that hangs off the list's right edge. At full width the
+     list stops at 560px and the plate stands in the corridor beside it; on a
+     narrower stage the corridor is gone and the plate was running off the section,
+     mid-word. The rows give up what the plate needs and nothing else changes. */
+  .tfa-mail {
+    max-width: min(560px, calc(100% - 196px));
   }
 }
 
@@ -1386,26 +1633,73 @@
   }
   .tfa-pop {
     width: auto;
+    justify-self: stretch;
+  }
+  /* One tab, and a shorter address bar. Two tabs, a pill and the button do not fit
+     in 330px, and what gave way was the active tab's own title. */
+  .tfa-chrome {
+    gap: 10px;
+    padding: 8px 10px;
+  }
+  .tfa-tab {
+    max-width: 150px;
+    padding: 6px 9px;
+  }
+  .tfa-tab:not(.is-active) {
+    display: none;
+  }
+  .tfa-omni {
+    flex: 1 1 60px;
+  }
+  /* The six boxes share the row rather than each holding a width. At 390px the
+     window is 362px across and the form has 284px inside its padding, and six
+     44px boxes with their gaps came to 314 — so the form ran out of its own
+     window on the right. Sized by the row, they cannot. */
+  .tfa-pay {
+    padding: 16px 16px 18px;
+  }
+  .tfa-boxes {
+    gap: 8px;
   }
   .tfa-box {
-    width: 44px;
+    width: auto;
+    min-width: 0;
     height: 52px;
-    flex: 0 0 44px;
+    flex: 1 1 0;
   }
   .tfa-digit {
     font-size: 24px;
+  }
+  /* The sender line and the link to the mail share a row in the popup, and at this
+     width the row is 269px: the relay address was breaking mid-word to leave room
+     for "Open in Gmail". The link drops to its own line, still on the right. */
+  .tfa-code-meta {
+    flex-wrap: wrap;
+  }
+  .tfa-code-open {
+    margin-left: auto;
+  }
+  /* The mail strip's right edge is the pod's here — there is no plate beside it,
+     the labels are chips under the frame at this width. */
+  .tfa-mail {
+    max-width: none;
   }
   /* The flight goes with the layout it was measured in. At this width the mail strip
      is most of a thousand pixels below the form and off to one side of it, so a digit
      crossing that distance reads as a stray element rather than as a code arriving.
      They rise a short way into their boxes instead, keeping the stagger — which is
-     the part that reads as a code being entered rather than pasted. */
+     the part that reads as a code being entered rather than pasted. The pod stands
+     its measurement down at this width so these numbers are the ones in force. */
   .tfa {
     --tfa-fly-x: 0px;
     --tfa-fly-y: 34px;
     --tfa-step: 0px;
+    --tfa-row: 54px;
   }
   .tfa-mail-snippet {
     display: none;
+  }
+  .tfa-toast {
+    max-width: 100%;
   }
 }

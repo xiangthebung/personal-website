@@ -17,26 +17,83 @@
 /**
  * PagePack — "the signal drops and the pack still opens"
  *
- * A thirteen-second film in five acts: a page open, a save, cards tearing off the
- * page into a stack, the connection dying, and the stack surviving it.
+ * A twenty-one-second film: a page open, a save that shows its price before it is
+ * paid, pages tearing off into the section while a meter counts them, the connection
+ * dying, and the saved copy opening where the error page should have been.
+ *
+ * HOW THE BROWSER IS DRAWN, AND WHY EVERYTHING INSIDE IT IS IN THE EXTENSION'S PIXELS
+ *
+ * The popup is 400×600. The reader's bar is 52px and its sidebar 280px. Type is 13px,
+ * cards have a 14px radius and a half-pixel separator, the primary button is 46px
+ * tall. Those numbers are the product's — `popup.css` and `viewer.css` — and the
+ * previous version of this scene approximated them at a smaller size, with a 232px
+ * popup whose type was drawn a size larger than its layout so it stayed legible. That
+ * is a caricature, however careful.
+ *
+ * So the screen inside the window is now authored at the real sizes and scaled as a
+ * whole: `.pp-screen` is `100% / --pp-zoom` wide and `transform: scale(--pp-zoom)`, so
+ * at 0.8 a 992px well shows a 1240px browser with a 400px popup in it, exactly as a
+ * screenshot of one would. Every measurement the scene makes — the cursor's target,
+ * the labels' anchors — goes through `getBoundingClientRect`, which reports the scaled
+ * box, so nothing downstream needs to know. The reader that unfolds across the section
+ * at the end is the one thing drawn at 1:1, because it is the payoff and it is the
+ * reader at reading size.
  */
 
-/**
- * The one colour this scene has to get from the extension rather than from the page.
- *
- * `paintActionBadge` in `background.js` paints the toolbar badge in exactly two colours,
- * and they are the whole of how the two modes are told apart at badge size: `#0a84ff`
- * while a save is running, `#b85c5c` while "save as I browse" is collecting. There is no
- * state in which it is green.
- *
- * It was `var(--good)`, which is `#1f8f4e` — a page-level token meaning "this went well",
- * shared with every other section. Repointing it would have been the wrong repair twice
- * over: it is not this scene's to move, and the badge is not making a value judgement, it
- * is reporting which of two jobs is running. So the blue is its own token, named after the
- * mode it belongs to, declared and used here.
- */
 .pp {
+  /**
+   * The extension's own tokens, from `:root` in `popup.css` and `viewer.css`. Named
+   * with the scene's prefix so they cannot collide with the page's `--accent` or
+   * `--surface`, which mean different things.
+   *
+   * `--pp-badge-save` is the one colour that comes from the service worker rather than
+   * the stylesheet: `paintActionBadge` in `background.js` paints the toolbar badge
+   * `#0a84ff` while a save is running and `#b85c5c` while "save as I browse" is
+   * collecting, and there is no state in which it is green.
+   */
   --pp-badge-save: #0a84ff;
+  --pp-bg: #f2f2f6;
+  --pp-surface: #ffffff;
+  --pp-surface-raised: rgba(255, 255, 255, 0.96);
+  --pp-muted: #eeeef2;
+  --pp-hover: #f7f7f9;
+  --pp-sep: rgba(60, 60, 67, 0.14);
+  --pp-sep-strong: rgba(60, 60, 67, 0.24);
+  --pp-text: #1d1d1f;
+  --pp-secondary: #4a4a4f;
+  --pp-tertiary: #6a6a70;
+  --pp-accent: #007aff;
+  --pp-accent-text: #0066cc;
+  --pp-accent-soft: rgba(0, 122, 255, 0.1);
+  --pp-accent-softer: rgba(0, 122, 255, 0.05);
+  --pp-danger-text: #d70015;
+  --pp-shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 6px 16px rgba(0, 0, 0, 0.04);
+  --pp-shadow-pop:
+    0 18px 44px rgba(0, 0, 0, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.08);
+  --pp-radius-card: 14px;
+  --pp-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  /* The invented publication's own type. A serif, because the extension's screenshots
+     are shot against a serif article and a reader is most obviously a reader when the
+     page in it looks like reading. */
+  --pp-serif: Georgia, "Times New Roman", serif;
+
+  /* The screen. See the note at the top of this file. */
+  --pp-zoom: 0.8;
+  --pp-chrome-h: 82px;
+  --pp-view-h: 628px;
+  /* The reading plane's width, declared once because its centring needs it twice. */
+  --pp-plane-w: min(900px, calc(100vw - 4rem));
+
+  position: relative;
+  width: 100%;
+  /* A container, so the escaped cards can be placed in the stage's own coordinates:
+     `100cqw` is the stage's width, which is how a landing spot can be "62px past the
+     window's right edge" at every width without a script measuring anything. Inline
+     size only; the stage's height still comes from the window in it. */
+  container-type: inline-size;
 }
 
 /* --- the browser ---------------------------------------------------------- */
@@ -52,11 +109,59 @@
      escaped from. Confining them keeps the whole frame at 0, under the spill. */
   z-index: 0;
   isolation: isolate;
+  height: calc((var(--pp-chrome-h) + var(--pp-view-h)) * var(--pp-zoom));
   overflow: hidden;
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  background: var(--canvas);
-  box-shadow: var(--shadow);
+  border: 1px solid rgba(20, 22, 30, 0.14);
+  border-radius: 12px;
+  background: #dfe1e5;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 24px 56px -28px rgba(20, 22, 40, 0.45);
+  transform-origin: top center;
+  transition:
+    opacity 620ms ease,
+    transform 760ms cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+
+/* Once the reader is on the plane the window it came from recedes behind it: a quarter
+   of its opacity, a little smaller, a little higher. The browser is dead; the reading
+   is not. */
+.pp[data-reading="true"] .pp-browser {
+  opacity: 0.24;
+  transform: translateY(-1.5rem) scale(0.88);
+}
+
+.pp-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% / var(--pp-zoom));
+  height: calc(var(--pp-chrome-h) + var(--pp-view-h));
+  color: var(--pp-text);
+  font-family: var(--pp-font);
+  transform: scale(var(--pp-zoom));
+  transform-origin: top left;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The extension draws every icon the same way — `svg { fill: none; stroke: currentColor;
+   stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7 }` — so the parts of
+   this scene that are the extension inherit that rule. Scoped to those parts: the
+   article's figure and the browser's own glyphs have fills of their own. */
+.pp-popup svg,
+.pp-rbar svg,
+.pp-rside svg,
+.pp-mark svg,
+.pp-loader svg,
+.pp-thumb svg,
+.pp-row-icon svg,
+.pp-local-note svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 /* The outage.
@@ -65,7 +170,11 @@
    so desaturating the frame also desaturated the popup inside it — and the popup
    staying lit while everything around it dies is the entire point of the shot.
    An overlay only affects what paints beneath it, so the popup and the saved page
-   sit above it in full colour and become the only light in the frame. */
+   sit above it in full colour and become the only light in the frame.
+
+   Inside `.pp-screen` rather than beside it: the screen's transform makes it a
+   stacking context, and a wash outside that context could only ever be above or
+   below the whole screen, popup included. */
 .pp-drain {
   position: absolute;
   z-index: 2;
@@ -81,14 +190,15 @@
 }
 
 /* Draining the colour is a separate job from darkening, and it is done here, on
-   the chrome's own subtree.
-   `backdrop-filter: grayscale(1)` on the wash was tried first and produced a
-   subtle, expensive bug: Chromium promotes a backdrop-filtered element into its
-   own compositing layer, which reordered it against its siblings, and the saved-page
-   card at `z-index: 5` came out grey underneath a wash at `z-index: 2`. The one
-   card that has to look alive was the one thing being killed. A filter on a subtree
-   that contains no popup and no reader cannot have that problem. */
+   the chrome's own subtree. `backdrop-filter: grayscale(1)` on the wash promoted it
+   into its own compositing layer and reordered it against its siblings; a filter on
+   a subtree that contains no popup and no reader cannot have that problem. */
 .pp-chrome {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: var(--pp-chrome-h);
+  flex-direction: column;
   transition: filter 640ms ease;
 }
 
@@ -96,40 +206,154 @@
   filter: grayscale(1) brightness(0.42);
 }
 
-.pp-chrome {
+/* The tab strip exists for one detail: the title in the tab. */
+.pp-tabstrip {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--hairline);
-  background: linear-gradient(#fafafc, #f1f1f4);
+  height: 40px;
+  flex: none;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0 12px;
+  background: #dfe1e5;
 }
 
 .pp-dots {
   display: flex;
-  gap: 5px;
+  align-self: center;
+  gap: 8px;
+  margin-right: 6px;
+}
+
+.pp-dots i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #c3c6cc;
+}
+
+.pp-tab {
+  display: flex;
+  width: 250px;
+  height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 8px 8px 0 0;
+  background: #fff;
+  color: #202124;
+  font-size: 12px;
+}
+
+.pp-favicon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 4px;
+  background: linear-gradient(150deg, #3b7bb0, #1b3e63);
+  transition: background 400ms ease;
+}
+
+.pp-favicon[data-dead="true"] {
+  background: #9aa0a6;
+}
+
+.pp-tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-tab-new {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  align-self: center;
+  place-items: center;
+  color: #5f6368;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.pp-toolbar-row {
+  display: flex;
+  height: 42px;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.14);
+  background: #fff;
+}
+
+/* Back, forward, reload: drawn with borders so the chrome is a browser's rather than
+   three grey dots standing in for one. */
+.pp-navs {
+  display: flex;
+  gap: 2px;
+}
+
+.pp-navs i {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.pp-navs i::before {
+  position: absolute;
+  content: "";
+}
+
+.pp-navs i:nth-child(1)::before,
+.pp-navs i:nth-child(2)::before {
+  top: 10px;
+  width: 7px;
+  height: 7px;
+  border-bottom: 2px solid #5f6368;
+  border-left: 2px solid #5f6368;
+}
+
+.pp-navs i:nth-child(1)::before {
+  left: 11px;
+  transform: rotate(45deg);
+}
+
+.pp-navs i:nth-child(2)::before {
+  left: 8px;
+  border-color: #b8bcc2;
+  transform: rotate(-135deg);
+}
+
+.pp-navs i:nth-child(3)::before {
+  top: 7px;
+  left: 7px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #5f6368;
+  border-right-color: transparent;
+  border-radius: 50%;
 }
 
 .pp-omnibox {
   display: flex;
   min-width: 0;
+  height: 32px;
   flex: 1 1 auto;
   align-items: center;
-  gap: 7px;
-  padding: 5px 10px;
+  gap: 8px;
+  padding: 0 14px;
   border-radius: 999px;
-  background: #fff;
-  box-shadow: inset 0 0 0 1px var(--hairline);
+  background: #f1f3f4;
 }
 
 .pp-lock {
   display: flex;
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1;
 }
 
@@ -137,21 +361,21 @@
    `chrome-extension://` address by then, and a padlock is a claim about a site's
    certificate that an extension page does not make. */
 .pp-lock svg {
-  width: 11px;
-  height: 11px;
-  color: var(--accent);
+  width: 14px;
+  height: 14px;
+  color: var(--pp-accent);
 }
 
 .pp-url {
   overflow: hidden;
-  color: var(--ink-2);
-  font-size: 11px;
+  color: #202124;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .pp[data-offline="true"] .pp-url {
-  color: var(--ink-3);
+  color: #80868b;
   text-decoration: line-through;
 }
 
@@ -159,18 +383,21 @@
    address was reached — it is on the disk — so the strike comes off when the redirect
    lands, and it is the one part of the dead chrome that reads as working. */
 .pp[data-restored="true"] .pp-url {
-  color: var(--ink-2);
+  color: #202124;
   text-decoration: none;
 }
 
 /* The signal, and the moment it goes. */
-/* 17px was the honest size for a browser's own signal indicator and too small to be
-   the moment the scene turns on. Bumped, because the arcs going out one by one is the
-   cause of everything that follows. */
 .pp-wifi {
+  width: 22px;
   flex: 0 0 auto;
-  width: 24px;
-  color: var(--ink-2);
+  color: #5f6368;
+}
+
+.pp-wifi svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .pp-wifi-arc,
@@ -179,7 +406,7 @@
 }
 
 .pp-wifi-slash {
-  stroke: var(--alarm);
+  stroke: #d93025;
   stroke-width: 2.4;
   stroke-linecap: round;
   /* Drawn on, so the cut has a direction instead of appearing. */
@@ -189,7 +416,7 @@
 }
 
 .pp[data-offline="true"] .pp-wifi {
-  color: var(--alarm);
+  color: #d93025;
 }
 
 /* The arcs drop outside-in, which is how a connection actually feels like it
@@ -214,41 +441,56 @@
   transition-delay: 260ms;
 }
 
+/* The extension's toolbar button: the mark on its tile, at Chrome's 32px hit size. */
 .pp-toolbar {
   position: relative;
   display: grid;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
   place-items: center;
-  border-radius: 7px;
-  color: var(--ink-2);
+  border-radius: 8px;
   transition:
     background 220ms ease,
-    color 220ms ease,
     transform 220ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
 }
 
 .pp[data-beat="reach"] .pp-toolbar,
 .pp[data-beat="open"] .pp-toolbar {
-  color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--pp-accent-soft);
   transform: scale(1.08);
+}
+
+.pp-mark {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  background: linear-gradient(150deg, #37a0ff, #0069df);
+  color: #fff;
+}
+
+.pp-mark svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.9;
 }
 
 .pp-badge {
   position: absolute;
   right: -3px;
-  bottom: -2px;
-  min-width: 14px;
-  padding: 0 3px;
-  border: 1.5px solid #f5f5f7;
+  bottom: -1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border: 1.5px solid #fff;
   border-radius: 999px;
   background: var(--pp-badge-save);
   color: #fff;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 14px;
+  line-height: 13px;
   text-align: center;
   animation: pp-badge-in 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
 }
@@ -264,46 +506,33 @@
 
 .pp-viewport {
   position: relative;
-  height: 306px;
-  padding: 20px 22px;
-  background: var(--surface);
+  height: var(--pp-view-h);
+  overflow: hidden;
+  background: #fff;
+}
+
+/* --- the article ----------------------------------------------------------
+   Drawn three times from one component — live in the tab, small in the reader that
+   replaces the error, at reading size on the plane — so the copy cannot drift. The
+   publication is invented; its type is what an invented technical publication would
+   set: a serif for the reading, a sans for the furniture. */
+
+.pp-article {
+  color: #24272d;
+  font-family: var(--pp-font);
+}
+
+.pp-article--live {
+  position: absolute;
+  inset: 0;
+  max-width: 800px;
+  padding: 44px 56px 0;
 }
 
 .pp-page {
-  display: flex;
-  height: 100%;
-  flex-direction: column;
-  gap: 7px;
   transition:
     opacity 420ms ease,
     transform 520ms ease;
-}
-
-.pp-byline {
-  margin: -2px 0 4px;
-  color: var(--ink-3);
-  font-size: 8.5px;
-  letter-spacing: 0.09em;
-}
-
-.pp-line {
-  height: 6px;
-  flex: 0 0 auto;
-  border-radius: 3px;
-  background: #ececed;
-}
-
-.pp-figure {
-  height: 54px;
-  margin: 5px 0;
-  border-radius: 5px;
-  background:
-    repeating-linear-gradient(
-        -45deg,
-        rgba(0, 0, 0, 0.05) 0 6px,
-        transparent 6px 12px
-      ),
-    #f4f4f6;
 }
 
 /* Once the connection is gone the page is not dimmed, it is *absent*. Dimming
@@ -313,33 +542,168 @@
   transform: translateY(-6px);
 }
 
+.pp-kicker {
+  margin: 0 0 14px;
+  color: #2a5d8f;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pp-headline {
+  max-width: 20ch;
+  margin: 0 0 14px;
+  font-family: var(--pp-serif);
+  font-size: 34px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+}
+
+.pp-standfirst {
+  margin: 0 0 14px;
+  color: #3a3f48;
+  font-family: var(--pp-serif);
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.pp-links {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+/* In the live page the series links sit in a column on the left, under the standfirst,
+   rather than running the full measure. The progress label — "The meter counts pages,
+   not guesses" — reads left off the popup's meter at exactly this height, and across the
+   full measure the row's third and fourth links lay under it; `spec-anchors.mjs` reported
+   "Logging to a card" covered outright. The reader's copies keep their own measure: the
+   saved page is the same page at a different width, which is what a saved page is. */
+.pp-article--live .pp-links {
+  max-width: 340px;
+}
+
+/* Atomic, so the row can wrap between links. The links are rendered back to back with no
+   whitespace between them, and each is `nowrap` inside, so as plain inline spans the row
+   had no break opportunity anywhere and ran off the right edge of the page as one line —
+   the reader's copy wrapped only because its "✓ Saved" pills happened to supply one. */
+.pp-link {
+  display: inline-block;
+  margin-right: 14px;
+  color: #0066cc;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 102, 204, 0.4);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+/* `savedLinkStyle` in `pack-render.js`, verbatim: a 2px accent underline and a
+   "✓ Saved" pill after every link that is in the pack. */
+.pp-link[data-saved="true"] {
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-thickness: 2px;
+  text-decoration-color: #007aff;
+  text-underline-offset: 3px;
+}
+
+.pp-link[data-saved="true"]::after {
+  content: "\2713 Saved";
+  display: inline-block;
+  margin-left: 0.38em;
+  padding: 0.1em 0.34em;
+  border: 1px solid rgba(0, 122, 255, 0.5);
+  border-radius: 999px;
+  background: rgba(0, 122, 255, 0.12);
+  color: #007aff;
+  font-size: 0.62em;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  text-decoration: none;
+  vertical-align: 0.12em;
+  white-space: nowrap;
+}
+
+.pp-subhead {
+  margin: 16px 0 8px;
+  font-family: var(--pp-serif);
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.pp-body {
+  margin: 0 0 12px;
+  font-family: var(--pp-serif);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+/* The one picture in the article: the ridge, drawn rather than photographed, because a
+   photograph would be of somewhere. */
+.pp-figure {
+  margin: 18px 0;
+  overflow: hidden;
+  aspect-ratio: 16 / 5;
+  border-radius: 10px;
+  background: linear-gradient(#dfe9ef, #eef3f6);
+}
+
+.pp-figure svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pp-ridge--far {
+  fill: #aec5cf;
+}
+
+.pp-ridge--mid {
+  fill: #7f9eab;
+}
+
+.pp-ridge--near {
+  fill: #55707e;
+}
+
+.pp-sun {
+  fill: #f6f1e6;
+}
+
+.pp-mast {
+  fill: none;
+  stroke: #2e3a42;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
 /* Above the wash, and styled for it: this is the browser's own dead-end screen,
    so it is the one thing that should be legible in a frame gone dark. */
 .pp-crash {
   position: absolute;
   z-index: 3;
-  top: 26px;
-  left: 24px;
+  top: 110px;
+  left: 120px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 5px;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.42);
   opacity: 0;
-  color: rgba(255, 255, 255, 0.4);
+  transform: translateY(8px);
   transition:
     opacity 420ms ease,
     transform 520ms ease;
-  transform: translateY(8px);
 }
 
 .pp[data-dead="true"] .pp-crash {
   opacity: 1;
   transform: none;
-}
-
-.pp-crash-glyph {
-  width: 34px;
-  color: rgba(255, 255, 255, 0.28);
 }
 
 /* Wiped, not faded. The redirect is a navigation: the failed load is replaced in the same
@@ -351,6 +715,30 @@
   transition:
     opacity 260ms ease,
     transform 320ms cubic-bezier(0.4, 0, 0.9, 0.4);
+}
+
+.pp-crash-glyph {
+  width: 72px;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.pp-crash-glyph svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pp-crash strong {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.pp-crash span:last-child {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
 }
 
 /* --- what the error was replaced by --------------------------------------
@@ -365,10 +753,10 @@
   display: flex;
   flex-direction: column;
   inset: 0;
-  background: var(--surface);
+  background: var(--pp-bg);
   opacity: 0;
-  transform: translateY(10px);
   pointer-events: none;
+  transform: translateY(10px);
   transition:
     opacity 300ms ease 120ms,
     transform 420ms cubic-bezier(0.16, 0.86, 0.18, 1.12) 120ms;
@@ -379,233 +767,300 @@
   transform: none;
 }
 
-/* The reader's own bar, from `#reader-bar` in `viewer.html`: back to the Library, the
-   title over the page's short URL, the page position, and the live page. */
-.pp-restored-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 11px;
-  border-bottom: 1px solid var(--hairline);
-  background: var(--surface-2);
-}
-
-.pp-restored-back,
-.pp-restored-count,
-.pp-restored-online {
-  flex: 0 0 auto;
-  padding: 3px 7px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--ink-2);
-  font-size: 9px;
-  font-weight: 600;
-}
-
-.pp-restored-online {
-  margin-left: auto;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.pp-restored-identity {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.pp-restored-identity strong {
-  overflow: hidden;
-  color: var(--ink);
-  font-size: 10.5px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pp-restored-identity span {
-  overflow: hidden;
-  color: var(--ink-3);
-  font-size: 8.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* `#reader-loading`, which is what a save paints while it is being read off the device.
-   Centred in the space the page is about to take, so the page does not jump when it
-   arrives. */
+/* `#reader-loading`, which is what a save paints while it is being read off the device:
+   the mark on a 62px tile, a title, a line. Centred in the space the page is about to
+   take, so the page does not jump when it arrives. */
 .pp-restored-loading {
-  display: flex;
+  display: grid;
   flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+  align-content: center;
+  justify-items: center;
   margin: 0;
+  padding: 0 40px;
   text-align: center;
 }
 
+.pp-loader {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  margin-bottom: 20px;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--pp-accent);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(0, 122, 255, 0.22);
+}
+
+.pp-loader svg {
+  width: 43px;
+  height: 43px;
+  stroke-width: 1.6;
+}
+
 .pp-restored-loading strong {
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 660;
+  letter-spacing: -0.018em;
 }
 
 .pp-restored-loading span {
-  color: var(--ink-3);
-  font-size: 10px;
+  margin-top: 9px;
+  color: var(--pp-secondary);
+  font-size: 13px;
 }
 
-.pp-restored-page {
+/* --- the reader's bar, from `#reader-bar` in `viewer.html` ---------------- */
+
+.pp-rbar {
   display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 9px;
-  padding: 22px 26px;
-}
-
-/* --- pages leaving the building ------------------------------------------
-   Seven cards tear off the page, tumble out through the browser window, and come
-   to rest scattered across the section — over the project title, out past the
-   gutters, down into the copy. They do not come back. That is the argument: the
-   reading has left the browser, and is now somewhere the browser cannot lose it.
-
-   `.pp-spill` lives outside `.pp-browser`, for the plain reason that the browser
-   clips its own contents and these have to get out of it. The perspective the cards
-   tumble in comes from there too, so all seven look like they are in the same room.
-   There was once a shared `.demo-spill` base class for this; no demo ever applied
-   it, so it has been removed and each scene now sizes its own spill layer.
-
-   One keyframe, a per-card delay, three custom properties for the landing spot:
-   seven cards cost seven composited transforms and no JavaScript. */
-
-.pp-spill {
-  /* Stage coordinates matched to the popup's own position, so a card leaves the
-     Save button rather than the middle of a rectangle. */
-  --emit-right: 130px;
-  --emit-top: 150px;
-}
-
-/* The in-frame labels, in the same idiom as the extension.
-   PagePack's whole design is unashamedly Apple-flavoured — see the token set at the top of
-   this section — so its labels are fully rounded frosted pills with a hairline edge, the
-   shape that platform puts every transient status in. See `.speclayer` for the component
-   and `SPECS` in the pod for the two claims it carries and why there are only two. */
-.pp-specs {
-  --spec-ink: var(--ink);
-  --spec-paper: rgba(255, 255, 255, 0.82);
-  --spec-edge: rgba(0, 0, 0, 0.1);
-  --spec-gloss: rgba(255, 255, 255, 0.85);
-  --spec-dot: var(--accent);
-  --spec-shadow: rgba(0, 0, 0, 0.34);
-  --spec-radius: 999px;
-  --spec-pad: 0.28rem 0.68rem;
-  --spec-weight: 590;
-  --spec-lead: 18px;
-}
-
-.pp-flyer {
-  position: absolute;
-  top: var(--emit-top);
-  right: var(--emit-right);
-  display: flex;
-  width: 84px;
-  height: 104px;
-  flex-direction: column;
-  gap: 5px;
-  padding: 7px 8px 9px;
-  border: 1px solid rgba(0, 0, 0, 0.09);
-  border-radius: 7px;
-  background: #fff;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.1),
-    0 18px 40px -16px rgba(0, 0, 0, 0.5);
-  opacity: 0;
-  will-change: transform;
-}
-
-.pp-flyer-head {
-  display: flex;
+  height: 52px;
+  flex: none;
   align-items: center;
-  gap: 4px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.16);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--pp-text);
+  font-family: var(--pp-font);
+  backdrop-filter: blur(20px);
 }
 
-.pp-flyer-bar {
-  height: 3px;
-  border-radius: 2px;
-  background: #e6e6e9;
+.pp-rbtn {
+  display: inline-flex;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: var(--pp-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 620;
+  white-space: nowrap;
 }
 
-.pp-flyer-bar:nth-child(4) {
-  width: 78%;
+.pp-rbtn svg {
+  width: 15px;
+  height: 15px;
 }
 
-.pp-flyer-bar:last-child {
-  width: 52%;
+.pp-rbtn--quiet {
+  background: var(--pp-muted);
+  color: var(--pp-text);
 }
 
-/* Timed against the beats, not chosen for feel. Seven cards at 1900ms with a
-   235ms stagger means the last one settles as `finish` ends — 3310ms after the
-   press, which is exactly `press + read + collect + finish`. An earlier attempt
-   used 1500ms and a 165ms stagger, and the pages were all gone before the beat
-   was over, leaving the middle of the shot empty. */
-.pp-flyer[data-flying="true"] {
-  animation: pp-burst 1900ms cubic-bezier(0.22, 0.9, 0.24, 1) forwards;
-  animation-delay: calc(var(--order) * 235ms);
+.pp-ricon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--pp-secondary);
 }
 
-@keyframes pp-burst {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 0, 0) rotate(-14deg) scale(0.22);
-  }
-  8% {
-    opacity: 1;
-  }
-  /* Through the glass and toward the viewer. The positive Z is the whole trick:
-     it makes this a card coming out of a window rather than a sprite sliding
-     across one. */
-  44% {
-    transform:
-      translate3d(calc(var(--to-x) * 0.4), calc(var(--to-y) * 0.3 - 9vh), 220px)
-      rotate3d(1, 0.55, 0.22, 212deg)
-      scale(1.18);
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(var(--to-x), var(--to-y), 0) rotate(var(--rot)) scale(1);
-  }
+.pp-ricon svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.8;
 }
 
-/* When the connection dies, these are the only things that do not. Outlined and
-   lifted, so a glance at the dead frame finds them instead of it. */
-.pp-flyer[data-kept="true"] {
-  border-color: rgba(255, 255, 255, 0.42);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.15),
-    0 0 46px -10px rgba(255, 255, 255, 0.32),
-    0 22px 48px -18px rgba(0, 0, 0, 0.55);
+.pp-ricon[data-disabled="true"] {
+  opacity: 0.4;
 }
 
-/* --- the popup ------------------------------------------------------------ */
+.pp-ridentity {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
+}
+
+.pp-ridentity strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-ridentity span {
+  overflow: hidden;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-rnav {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 11px;
+  background: rgba(120, 120, 128, 0.1);
+}
+
+/* `#reader-page-button`: "1 of 8", a quiet bar button between its arrows. */
+.pp-rnav b {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: var(--pp-muted);
+  font-size: 12px;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- "In this save", from `renderSidebar` --------------------------------- */
+
+.pp-rmain {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: stretch;
+}
+
+.pp-rside {
+  display: flex;
+  width: 280px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 0.5px solid rgba(60, 60, 67, 0.16);
+  background: var(--pp-bg);
+  color: var(--pp-text);
+  font-family: var(--pp-font);
+}
+
+.pp-rside-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 16px 16px 8px;
+}
+
+.pp-rside-head strong {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+.pp-rside-head span {
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-rside-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 8px 16px;
+  list-style: none;
+}
+
+.pp-rside-list li {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.pp-rside-list li[data-current="true"] {
+  background: var(--pp-accent);
+  color: #fff;
+}
+
+.pp-rside-list i {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(120, 120, 128, 0.12);
+  color: var(--pp-tertiary);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-rside-list li[data-current="true"] i {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.pp-rside-list li > span {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.pp-rside-list strong {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-rside-list small {
+  overflow: hidden;
+  color: var(--pp-tertiary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-rside-list li[data-current="true"] small {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* The saved page inside the tab: `#reader-frame`, a white page beside the sidebar. */
+.pp-article--tab {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  padding: 36px 44px;
+  background: #fff;
+}
+
+/* --- the popup ------------------------------------------------------------
+   400×600, on `#f2f2f6`, with the header, the segmented control and the cards of
+   `popup.html`. Every size below is `popup.css`'s. */
 
 .pp-popup {
   position: absolute;
   z-index: 4;
-  top: 10px;
-  right: 14px;
-  width: 232px;
+  top: 6px;
+  right: 10px;
+  display: flex;
+  width: 400px;
+  height: 600px;
+  flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--hairline);
+  border: 0.5px solid rgba(0, 0, 0, 0.14);
   border-radius: 12px;
-  background: var(--surface);
-  box-shadow: 0 22px 48px -18px rgba(0, 0, 0, 0.42);
+  background: var(--pp-bg);
+  color: var(--pp-text);
+  box-shadow: var(--pp-shadow-pop);
+  font-family: var(--pp-font);
+  font-size: 13px;
+  line-height: 1.4;
   opacity: 0;
   transform: translateY(-8px) scale(0.96);
-  transform-origin: 88% 0;
+  transform-origin: 92% 0;
   transition:
     opacity 240ms ease,
     transform 340ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
@@ -625,64 +1080,203 @@
     0 22px 48px -18px rgba(0, 0, 0, 0.7);
 }
 
+.pp-popup p {
+  margin: 0;
+}
+
 .pp-popup-head {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 6px;
-  padding: 9px 10px;
-  border-bottom: 1px solid var(--hairline);
-  background: var(--surface-2);
+  gap: 10px;
+  padding: 14px 18px 12px;
 }
 
+/* `.brand-mark` */
 .pp-popup-mark {
-  width: 14px;
-  color: var(--accent);
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(150deg, #37a0ff, #0069df);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(0, 105, 223, 0.28);
 }
 
-.pp-tabs {
-  display: flex;
-  margin-left: auto;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 7px;
-  background: rgba(0, 0, 0, 0.05);
+.pp-popup-mark svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.6;
 }
 
-.pp-save,
-.pp-library {
-  padding: 11px 11px 12px;
+.pp-brand {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 1px;
 }
 
-.pp-target {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0 0 10px;
+.pp-brand strong {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
-.pp-target-title {
+.pp-plan {
   overflow: hidden;
-  font-size: 11.5px;
-  font-weight: 600;
+  color: var(--pp-tertiary);
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pp-target-host {
-  color: var(--ink-3);
-  font-size: 10px;
+/* `.plan-chip` */
+.pp-chip {
+  display: grid;
+  min-width: 54px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--pp-accent-soft);
+  color: var(--pp-accent-text);
+  font-size: 12px;
+  font-weight: 650;
 }
 
-.pp-primary {
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-size: 11.5px;
+/* `.tabs` and `.tab` */
+.pp-tabs {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin: 0 18px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #e3e3e8;
+}
+
+.pp-tabs span {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  color: var(--pp-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    background 220ms ease,
+    color 220ms ease;
+}
+
+.pp-tabs svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pp-tabs span[data-on="true"] {
+  background: var(--pp-surface);
+  color: var(--pp-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* `.view-panel` and `.view`: the panel scrolls in the extension; here it clips, which
+   at 600px is the same picture. */
+.pp-save,
+.pp-library {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  align-content: start;
+  gap: 12px;
+  overflow: hidden;
+  padding: 18px 18px 22px;
+}
+
+/* `.target-card` */
+.pp-target {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  padding: 12px 13px;
+  border: 0.5px solid var(--pp-sep);
+  border-radius: var(--pp-radius-card);
+  background: var(--pp-surface);
+  box-shadow: var(--pp-shadow-card);
+}
+
+.pp-target-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--pp-accent-soft);
+  color: var(--pp-accent-text);
+  font-size: 16px;
   font-weight: 650;
+}
+
+.pp-target-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pp-target-copy strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-target-copy span {
+  overflow: hidden;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* `.saved-notice` */
+.pp-saved-notice {
+  margin: -4px 0 0;
+  color: var(--pp-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.pp-saved-notice b {
+  color: var(--pp-accent-text);
+  font-weight: 600;
+}
+
+.pp-save-action {
+  display: grid;
+  gap: 2px;
+}
+
+/* `.primary-button` */
+.pp-primary {
+  position: relative;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--pp-accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.22);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 620;
   transition:
     transform 120ms ease,
     filter 200ms ease;
@@ -692,42 +1286,56 @@
    rather than when the beat containing that press starts. The two are 90ms apart — the
    pointer settles before it clicks — and five frames is the whole width of what a click
    looks like. See `usePressGate` and `CLICKS` in the demo. */
-.pp[data-did="press"] .pp-primary {
+.pp[data-did="press"] .pp-primary,
+.pp[data-did="confirm"] .pp-sheet .pp-primary {
   filter: brightness(0.86);
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
-.pp-options {
-  margin: 8px 0 0;
-  color: var(--ink-3);
-  font-size: 10px;
-  text-align: center;
-}
-
-/* `setStatus("Saved to your library.")`, which is how the extension says a capture
-   finished. It replaces two invented button labels — see the note in `demo.tsx`. */
-.pp-status {
-  margin: 8px 0 0;
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 600;
-  text-align: center;
-}
-
-/* The extension disables this button for the whole of a capture. It also hides it; the
-   pod keeps it as the cursor's anchor and settles for the disabled look. */
+/* `button:disabled` and `.is-loading`: faded, with the spinner `setBusy` puts in front of
+   "Finding linked pages…". */
 .pp-primary:disabled {
-  filter: saturate(0.5);
-  opacity: 0.55;
+  box-shadow: none;
+  opacity: 0.45;
 }
 
+.pp-primary[data-busy="true"]::before {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 7px;
+  border: 1.6px solid rgba(255, 255, 255, 0.5);
+  border-right-color: #fff;
+  border-radius: 50%;
+  animation: pp-spin 0.7s linear infinite;
+  content: "";
+  vertical-align: -2px;
+}
+
+@keyframes pp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* `.save-hint` */
+.pp-hint {
+  margin: 4px 2px 0;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* `.progress-card` */
 .pp-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 11px 0 0;
-  padding-top: 10px;
-  border-top: 1px solid var(--hairline);
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 0.5px solid var(--pp-sep);
+  border-radius: var(--pp-radius-card);
+  background: var(--pp-surface);
+  box-shadow: var(--pp-shadow-card);
   animation: pp-rise 260ms cubic-bezier(0.16, 0.8, 0.2, 1);
 }
 
@@ -738,47 +1346,343 @@
   }
 }
 
+.pp-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pp-progress-head strong {
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.pp-progress-head span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pp-bar {
   position: relative;
   display: block;
-  height: 4px;
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--pp-muted);
 }
 
-@keyframes pp-slide {
-  0% {
-    transform: translateX(-105%);
-  }
-  100% {
-    transform: translateX(240%);
-  }
+/* Determinate, because a planned save knows its total: `captureProgressRatio` is pages
+   landed plus the fraction of the page in hand, over the pages planned. The fraction
+   rides `--beat-t`, which the storyboard writes on the stage every frame, so the bar
+   moves between the two frames React draws. The short transition is the extension's
+   own `.25s`, and here it also smooths the step between beats. */
+.pp-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(
+    100% * (var(--pp-done, 0) + var(--pp-live, 0) * var(--beat-t, 0)) / var(--pp-total, 1)
+  );
+  border-radius: inherit;
+  background: var(--pp-accent);
+  transition: width 250ms ease;
 }
 
-.pp-progress-label {
-  color: var(--ink-2);
-  font-size: 10px;
+/* `#progress-meter`: the honest line. */
+.pp-meter {
+  margin: -2px 0 0;
+  color: var(--pp-secondary);
+  font-size: 12px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.pp-progress-hint {
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* `.quiet-danger-button` */
+.pp-cancel {
+  display: grid;
+  width: 100%;
+  min-height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--pp-danger-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* `.status-message` */
+.pp-status {
+  margin: 0 2px;
+  color: var(--pp-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* `.option-row` and `.destination-row` */
+.pp-row {
+  display: grid;
+  min-height: 60px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 13px;
+  border: 0.5px solid var(--pp-sep);
+  border-radius: var(--pp-radius-card);
+  background: var(--pp-surface);
+  box-shadow: var(--pp-shadow-card);
+}
+
+.pp-row-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--pp-accent-soft);
+  color: var(--pp-accent-text);
+}
+
+.pp-row-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.pp-row-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pp-row-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pp-row-copy small {
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.pp-row-chevron {
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-top: 1.6px solid var(--pp-tertiary);
+  border-right: 1.6px solid var(--pp-tertiary);
+  transform: rotate(45deg);
+}
+
+/* `.folder-trigger` at its default, "Library". */
+.pp-row-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--pp-accent-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pp-row-pick svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* `.disclosure > summary` */
+.pp-option-row {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 13px;
+  border: 0.5px solid var(--pp-sep);
+  border-radius: var(--pp-radius-card);
+  background: var(--pp-surface);
+  box-shadow: var(--pp-shadow-card);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pp-option-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.pp-option-value svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* `.local-note` */
+.pp-local-note {
+  display: flex;
+  gap: 8px;
+  margin: 0 2px;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pp-local-note svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.pp-local-note kbd {
+  padding: 1px 4px;
+  border: 0.5px solid var(--pp-sep-strong);
+  border-bottom-width: 1.5px;
+  border-radius: 4px;
+  background: var(--pp-surface);
+  font: inherit;
+  font-size: 11px;
 }
 
 /* --- the library, after the lights go out -------------------------------- */
 
-.pp-library-head {
+.pp-library-title {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 8px;
+  gap: 10px;
 }
 
-.pp-shelf {
+.pp-library-title strong {
+  font-size: 21px;
+  font-weight: 680;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+}
+
+/* `.icon-button` */
+.pp-icon-btn {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--pp-muted);
+  color: var(--pp-secondary);
+}
+
+.pp-icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pp-library-sub {
+  margin: -8px 0 0;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+}
+
+/* `.storage-line`. The bar under it is `display: none` in the popup — it belongs to the
+   full library page — so the pod's own `<i>` stays hidden too. */
+.pp-storage {
+  margin: -8px 0 0;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-storage i {
+  display: none;
+}
+
+/* `.search-box` */
+.pp-search {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #e6e6eb;
+  color: var(--pp-tertiary);
+  font-size: 13px;
+}
+
+.pp-search svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+/* `.library-tools`: the two selects at their defaults. */
+.pp-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pp-tools span {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  border: 0.5px solid var(--pp-sep-strong);
+  border-radius: 8px;
+  background: var(--pp-muted);
+  font-size: 12px;
+}
+
+.pp-tools span::after {
+  width: 6px;
+  height: 6px;
+  margin: -3px 4px 0 0;
+  border-right: 1.5px solid var(--pp-secondary);
+  border-bottom: 1.5px solid var(--pp-secondary);
+  content: "";
+  transform: rotate(45deg);
+}
+
+/* `.entry`, with `.entry-open` folded into the same grid. */
+.pp-shelf {
+  display: grid;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.pp-shelf li {
+  display: grid;
+  grid-template-columns: 12px 34px minmax(0, 1fr) 30px;
+  align-items: center;
+  column-gap: 8px;
+  padding: 10px 8px 10px 6px;
+  border: 0.5px solid var(--pp-sep);
+  border-radius: var(--pp-radius-card);
+  background: var(--pp-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  animation: pp-land 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12) backwards;
+  transition:
+    background 260ms ease,
+    border-color 260ms ease;
 }
 
 @keyframes pp-land {
@@ -788,44 +1692,456 @@
   }
 }
 
-.pp-shelf-title {
+/* The row the pointer is standing on, before it presses. A row that is about to be
+   clicked has to look like it, or the click reads as landing on the panel rather than on
+   the page — and the page is what the reader below is a copy of. */
+.pp-shelf li[data-aimed="true"] {
+  background: var(--pp-hover);
+}
+
+.pp-shelf li[data-open="true"] {
+  border-color: rgba(0, 122, 255, 0.38);
+  background: var(--pp-accent-soft);
+}
+
+/* `.entry-grip`: a dotted handle. */
+.pp-grip {
+  width: 12px;
+  height: 26px;
+  background: radial-gradient(circle, currentColor 1.05px, transparent 1.4px) 1px 3px / 5px 6px;
+  color: var(--pp-tertiary);
+  opacity: 0.5;
+}
+
+/* `.entry-icon` */
+.pp-thumb {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--pp-accent-soft);
+  color: var(--pp-accent-text);
+}
+
+.pp-thumb svg {
+  width: 20px;
+  height: 20px;
+}
+
+.pp-shelf-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pp-shelf-copy strong {
+  display: flex;
+  align-items: center;
   overflow: hidden;
-  font-size: 10.5px;
-  font-weight: 550;
+  font-size: 13px;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pp-shelf-meta {
+/* `.unread-dot`, 7px of the accent. */
+.pp-unread {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
   flex: 0 0 auto;
-  color: var(--ink-3);
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
+  margin: 0 6px 1px 0;
+  border-radius: 50%;
+  background: var(--pp-accent);
 }
 
-/* The saved page, reopened outside the window it came from.
-   Positioned in the spill layer and pushed left of the browser on purpose: the
-   frame behind it is dead, and a reading pane floating clear of it says so more
-   plainly than one tucked neatly inside the dead frame's borders. Deliberately
-   the brightest, largest thing on screen by this point — it is the payoff. */
+.pp-shelf-copy span {
+  overflow: hidden;
+  color: var(--pp-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* `.entry-menu` */
+.pp-more {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--pp-tertiary);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: -0.06em;
+}
+
+/* --- the pre-flight sheet --------------------------------------------------
+   `#review-overlay` in its pre-flight mode: `.overlay`, `.scrim` and `.sheet` from
+   `popup.css`, at their sizes. The list is capped at 296px and clips, exactly as the
+   extension's scrolls, so the frame shows the first rows and the button — which is the
+   frame the extension's own screenshot shows. */
+
+.pp-overlay {
+  position: absolute;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  inset: 0;
+  place-items: center;
+  padding: 16px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 220ms ease,
+    visibility 0s linear 220ms;
+}
+
+.pp-overlay[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 220ms ease;
+}
+
+.pp-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(6px);
+}
+
+.pp-sheet {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-height: 100%;
+  gap: 12px;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--pp-surface-raised);
+  box-shadow: var(--pp-shadow-pop);
+  backdrop-filter: blur(24px);
+  transform: translateY(16px) scale(0.98);
+  transition: transform 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
+}
+
+.pp-overlay[data-open="true"] .pp-sheet {
+  transform: none;
+}
+
+.pp-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pp-sheet-head > span {
+  display: grid;
+  min-width: 0;
+}
+
+/* `.sheet-kicker` */
+.pp-sheet-head small {
+  margin-bottom: 5px;
+  color: var(--pp-accent-text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+/* `h1` */
+.pp-sheet-head strong {
+  font-size: 21px;
+  font-weight: 680;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+}
+
+/* `.sheet-summary` */
+.pp-sheet-summary {
+  color: var(--pp-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* `.review-note` */
+.pp-sheet-note {
+  margin: -4px 0 0;
+  color: var(--pp-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* `.review-list` */
+.pp-review {
+  display: grid;
+  max-height: 296px;
+  gap: 7px;
+  overflow: hidden;
+}
+
+/* `.review-row` */
+.pp-review-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 0.5px solid var(--pp-sep);
+  border-radius: 11px;
+  background: var(--pp-surface);
+}
+
+/* `.is-required.is-disabled`: the page in the tab, which cannot be unticked. */
+.pp-review-row[data-locked="true"] {
+  border-color: rgba(0, 122, 255, 0.3);
+  background: var(--pp-accent-softer);
+  opacity: 0.6;
+}
+
+/* A checked 17px checkbox in the accent, as `accent-color: var(--accent)` paints one. */
+.pp-check {
+  position: relative;
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
+  background: var(--pp-accent);
+}
+
+.pp-check::after {
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  width: 4px;
+  height: 9px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.pp-review-row[data-locked="true"] .pp-check {
+  background: #c7c7cc;
+}
+
+.pp-review-row > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.pp-review-row strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-review-row small {
+  overflow: hidden;
+  color: var(--pp-tertiary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-sheet-actions {
+  display: grid;
+  gap: 6px;
+}
+
+/* `.link-button` */
+.pp-link-btn {
+  display: block;
+  padding: 6px 4px;
+  color: var(--pp-accent-text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* --- pages leaving the building ------------------------------------------
+   Eight cards tear off the site, tumble out through the browser window, and come
+   to rest scattered across the section — up the sides of the window, out past the
+   gutters. They do not come back. That is the argument: the reading has left the
+   browser, and is now somewhere the browser cannot lose it.
+
+   `.pp-spill` lives outside `.pp-browser`, for the plain reason that the browser
+   clips its own contents and these have to get out of it. It is laid over the stage
+   so a card can be placed in stage coordinates and then thrown a third of a viewport
+   away. The perspective is here too, so all eight look like they are in the same
+   room; setting it per card would give each its own vanishing point.
+
+   One keyframe, a per-card delay, three custom properties for the landing spot:
+   eight cards cost eight composited transforms and no JavaScript. */
+
+.pp-spill {
+  position: absolute;
+  inset: 0;
+  /* Stage coordinates matched to the sheet's "Save 8 pages" button, so a card leaves
+     the button that was pressed rather than the middle of a rectangle. */
+  --emit-right: 168px;
+  --emit-top: 468px;
+  perspective: 1600px;
+  perspective-origin: 85% 90%;
+  pointer-events: none;
+}
+
+.pp-flyer {
+  position: absolute;
+  top: calc(var(--emit-top) - 60px);
+  right: calc(var(--emit-right) - 48px);
+  display: flex;
+  width: 96px;
+  height: 120px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 9px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 18px 40px -16px rgba(0, 0, 0, 0.5);
+  font-family: var(--pp-font);
+  opacity: 0;
+  will-change: auto;
+  /* Where the card lands, as the pod authors it: its centre, in stage pixels. Split
+     out so a narrower screen can hand every card a different spot below. */
+  --land-x: var(--to-x);
+  --land-y: var(--to-y);
+  /* And the same spot as a translation from where the card starts, which is centred
+     on the button — `--emit-right` in from the stage's right edge, `--emit-top` down. */
+  --dx: calc(var(--land-x) - (100cqw - var(--emit-right)));
+  --dy: calc(var(--land-y) - var(--emit-top));
+}
+
+/* The burst has a compositor budget only while it is actually in flight. */
+.pp:is(
+    [data-beat="confirm"],
+    [data-beat="read"],
+    [data-beat="collect"],
+    [data-beat="finish"]
+  ) .pp-flyer {
+  will-change: transform;
+}
+
+.pp-flyer-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.pp-flyer-head i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  background: var(--pp-accent);
+}
+
+.pp-flyer-head span {
+  overflow: hidden;
+  color: var(--pp-text);
+  font-size: 7.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The opening of the page, in the publication's serif. Small, but text — a page torn
+   off a site should look like a page, not like four grey bars. */
+.pp-flyer-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--pp-secondary);
+  font-family: var(--pp-serif);
+  font-size: 6.7px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+/* Timed against the beats, not chosen for feel. Eight cards at 1900ms with a
+   235ms step means the last one settles as `finish` ends — see `FLYER_STAGGER`
+   in the demo, which derives the multiplier from the save window. */
+.pp-flyer[data-flying="true"] {
+  animation: pp-burst 1900ms cubic-bezier(0.22, 0.9, 0.24, 1) forwards;
+  animation-delay: calc(var(--order) * 235ms);
+}
+
+@keyframes pp-burst {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-14deg) scale(0.22);
+  }
+  8% {
+    opacity: 1;
+  }
+  /* Through the glass and toward the viewer. The positive Z is the whole trick:
+     it makes this a card coming out of a window rather than a sprite sliding
+     across one. */
+  44% {
+    transform:
+      translate3d(calc(var(--dx) * 0.6), calc(var(--dy) * 0.35 - 70px), 220px)
+      rotate3d(1, 0.55, 0.22, 212deg)
+      scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(var(--dx), var(--dy), 0) rotate(var(--rot)) scale(1);
+  }
+}
+
+/* When the connection dies, these are the only things that do not. Outlined and
+   lifted, so a glance at the dead frame finds them instead of it. */
+.pp-flyer[data-kept="true"] {
+  border-color: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 46px -10px rgba(255, 255, 255, 0.32),
+    0 22px 48px -18px rgba(0, 0, 0, 0.55);
+}
+
+/* --- the reader at reading size --------------------------------------------
+   The saved page, reopened outside the window it came from and at 1:1: a 52px bar, a
+   280px sidebar, a serif article. Positioned in the spill layer over the receding
+   browser on purpose — the frame behind it is dead, and a reading pane floating clear
+   of it says so more plainly than one tucked inside the dead frame's borders.
+   Deliberately the brightest, largest thing on screen by this point: it is the payoff.
+
+   Centred with a negative margin rather than a percentage translate, so the transform is
+   only ever the entrance and the settled plane sits on whole pixels. */
 .pp-reader {
   position: absolute;
   z-index: 8;
-  bottom: 3vh;
-  left: -11vw;
+  bottom: 2rem;
+  left: 50%;
   display: flex;
-  width: min(300px, 74vw);
+  width: var(--pp-plane-w);
+  /* The bar, the sidebar's head and eight 44px rows, with the last one whole. */
+  height: 500px;
   flex-direction: column;
-  gap: 7px;
-  padding: 14px 16px 17px;
+  margin-left: calc(var(--pp-plane-w) / -2);
+  overflow: hidden;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
+  border-radius: 16px;
   background: #fff;
   box-shadow:
     0 0 70px -6px rgba(255, 255, 255, 0.3),
     0 30px 66px -18px rgba(0, 0, 0, 0.45);
+  font-family: var(--pp-font);
   opacity: 0;
-  transform: translate3d(46px, 26px, 0) rotate(-5deg) scale(0.88);
+  transform: translateY(44px) rotate(-1deg) scale(0.9);
   transition:
     opacity 420ms ease,
     transform 640ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
@@ -833,405 +2149,276 @@
 
 .pp-reader[data-open="true"] {
   opacity: 1;
-  transform: translate3d(0, 0, 90px) rotate(-1.5deg) scale(1);
+  transform: none;
 }
 
-.pp-reader-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 0 0 3px;
-}
-
-.pp-reader .pp-line {
-  background: #e9e9ec;
-}
-
-@media (max-width: 720px) {
-  .pp-viewport {
-      height: 268px;
-      padding: 14px 15px;
-    }
-
-    .pp-popup {
-      right: 8px;
-      width: 196px;
-    }
-
-    .pp-spill {
-      --emit-right: 104px;
-      --emit-top: 132px;
-    }
-
-    /* Smaller cards, and no scaling up mid-flight. At this width a card at 1.18
-       scale covers most of the browser it is supposed to be escaping from. The
-       landing spots need no override: they are in viewport units, so the spread
-       shrinks with the screen on its own. */
-    .pp-flyer {
-      width: 62px;
-      height: 78px;
-    }
-
-    .pp-reader {
-      left: -6vw;
-      bottom: -3vh;
-    }
-}
-
-#pagepack .pp-browser {
-  transition:
-    opacity 620ms ease,
-    transform 760ms cubic-bezier(0.22, 0.9, 0.24, 1);
-}
-
-#pagepack .pp[data-beat="read-offline"] .pp-browser,
-#pagepack .pp[data-beat="hold"] .pp-browser {
-  opacity: 0.24;
-  transform: translateY(-1.5rem) scale(0.88);
-}
-
-/* The selected saved page becomes the section's reading plane rather than one
-   more card beside a dead browser. */
-#pagepack .pp-reader {
-  z-index: 8;
-  bottom: -1.25rem;
-  left: 50%;
-  display: block;
-  width: min(900px, calc(100vw - 4rem));
-  padding: clamp(1.1rem, 2.4vw, 2rem);
-  border-radius: 16px;
-  opacity: 0;
-  transform: translate3d(-50%, 44px, 0) rotate(-1deg) scale(0.9);
-}
-
-#pagepack .pp-reader[data-open="true"] {
-  opacity: 1;
-  transform: translate3d(-50%, 0, 110px) rotate(0deg) scale(1);
-}
-
-#pagepack .pp-reader-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin: 0 0 1.1rem;
-  padding-bottom: 0.8rem;
-  border-bottom: 1px solid #e2e3e7;
-}
-
-.pp-reader-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.38fr);
-  gap: clamp(1.2rem, 3vw, 2.6rem);
-}
-
-.pp-reader-document {
-  display: flex;
+.pp-article--plane {
   min-width: 0;
-  flex-direction: column;
-  gap: 0.48rem;
+  flex: 1;
+  overflow: hidden;
+  padding: 36px 48px;
 }
 
-.pp-reader-byline {
-  margin: 0 0 0.25rem;
-  color: #777d87;
-  font-size: 0.58rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.pp-reader-index {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding-left: 1rem;
-  border-left: 1px solid #e2e3e7;
-}
-
-@media (max-width: 700px) {
-  #pagepack .pp-reader {
-      bottom: -2rem;
-      width: calc(100vw - 2rem);
-      padding: 1rem;
-    }
-
-    .pp-reader-layout {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .pp-reader-index {
-      display: none;
-    }
-}
-
-@media (max-width: 700px) {
-  #pagepack .pp[data-beat="read-offline"] .pp-browser,
-    #pagepack .pp[data-beat="hold"] .pp-browser {
-      display: none;
-    }
-
-    #pagepack .pp[data-beat="read-offline"] .pp-reader[data-open="true"],
-    #pagepack .pp[data-beat="hold"] .pp-reader[data-open="true"] {
-      position: relative;
-      inset: auto;
-      left: 50%;
-    }
-}
-
-/* The burst has a compositor budget only while it is actually in flight. */
-.pp-flyer {
-  will-change: auto;
-}
-
-/* End the reading plane above the caption instead of painting through it. */
-#pagepack .pp-reader,
-#pagepack .pp-reader[data-open="true"] {
-  bottom: 4.35rem;
-}
-
-@media (max-width: 700px) {
-  #pagepack .pp-reader,
-    #pagepack .pp-reader[data-open="true"] {
-      bottom: 4.8rem;
-    }
-}
-
-
-/* Rules that need one of this scene's own classes as an ancestor to match at all —
-   they style bare elements and shared label markup, but only ever inside this scene. */
-
-.pp-dots i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #d3d3d8;
-}
-
-.pp-wifi svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.pp-toolbar svg {
-  width: 15px;
-  height: 15px;
-}
-
-.pp-page h4 {
-  max-width: 26ch;
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.pp-crash-glyph svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.pp-crash strong {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.pp-crash span:last-child {
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 9.5px;
-  letter-spacing: 0.04em;
+/* --- the in-frame labels, in the same idiom as the extension ----------------
+   PagePack's whole design is unashamedly Apple-flavoured — see the token set at the top of
+   this file — so its labels are fully rounded frosted pills with a hairline edge, the
+   shape that platform puts every transient status in. See `.speclayer` for the component
+   and `SPECS` in the pod for the five claims it carries. */
+.pp-specs {
+  --spec-ink: #101820;
+  --spec-paper: rgba(255, 255, 255, 0.84);
+  --spec-edge: rgba(0, 0, 0, 0.1);
+  --spec-gloss: rgba(255, 255, 255, 0.85);
+  --spec-dot: var(--pp-accent);
+  --spec-shadow: rgba(0, 0, 0, 0.34);
+  --spec-radius: 999px;
+  --spec-pad: 0.3rem 0.72rem;
+  --spec-weight: 600;
+  --spec-lead: 18px;
 }
 
 /* The one place a blur is worth its cost: a translucent pill needs something behind it to
-   be translucent *against*, and both of these sit over a page of body text. */
+   be translucent *against*, and these sit over a page of body text. */
 .pp-specs .spectag-text {
   backdrop-filter: blur(8px) saturate(1.4);
 }
 
-.pp-flyer-head i {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 auto;
-  border-radius: 2px;
-  background: var(--accent);
+/* --- where the cards land when the scatter does not fit ---------------------
+   The pod measures the floor on either side of the window and writes `data-scatter` on
+   the stage — see the effect in the demo. `wide` is the authored scatter above, and the
+   two other modes pile the cards instead: two piles, the odd cards in one and the even
+   in the other so both grow together as the burst lands, each card a few pixels up and
+   to the right of the one beneath it, which is what a pile of pages looks like and is
+   also the honest picture of a pack — one thing, on the desk.
+
+   The piles were four pairs on the window's own left edge, at a breakpoint. That put
+   them on the crash screen, and then on the reader's sidebar — the first thing in the
+   frame a visitor is meant to read after the cut. Both modes here keep clear of
+   everything the film still needs: the sidebar's eight rows end 130px above the window's
+   bottom edge, and the live article's text ends higher than that. */
+
+.pp-flyer:nth-child(-n + 2) {
+  --pile-n: 0;
 }
 
-.pp-flyer-head span {
-  overflow: hidden;
-  color: var(--ink-2);
-  font-size: 6.5px;
-  font-weight: 650;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.pp-flyer:nth-child(n + 3):nth-child(-n + 4) {
+  --pile-n: 1;
 }
 
-.pp-popup-mark svg {
-  display: block;
-  width: 100%;
-  height: auto;
+.pp-flyer:nth-child(n + 5):nth-child(-n + 6) {
+  --pile-n: 2;
 }
 
-.pp-popup-head strong {
-  font-size: 11.5px;
-  font-weight: 650;
+.pp-flyer:nth-child(n + 7) {
+  --pile-n: 3;
 }
 
-.pp-tabs span {
-  padding: 2px 7px;
-  border-radius: 5px;
-  color: var(--ink-3);
-  font-size: 9.5px;
-  font-weight: 600;
-  transition:
-    background 220ms ease,
-    color 220ms ease;
+.pp[data-scatter="floor"] .pp-flyer,
+.pp[data-scatter="corner"] .pp-flyer {
+  --pile-dx: 5px;
+  --pile-dy: -4px;
+  --land-x: calc(var(--pile-x) + var(--pile-n) * var(--pile-dx));
+  --land-y: calc(var(--pile-y) + var(--pile-n) * var(--pile-dy));
 }
 
-.pp-tabs span[data-on="true"] {
-  background: #fff;
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+/* Floor to the left but none to the right — 1280 to 1440 or so, where a column beside
+   the window's right edge would lie on the hero index. On the floor beside the window's
+   foot, under the cable's run and clear of its coupler, left of the reading plane. */
+.pp[data-scatter="floor"] .pp-flyer:nth-child(odd) {
+  --pile-x: -200px;
+  --pile-y: 490px;
 }
 
-.pp-bar i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 100%;
-  border-radius: inherit;
-  background: var(--accent);
+.pp[data-scatter="floor"] .pp-flyer:nth-child(even) {
+  --pile-x: -90px;
+  --pile-y: 482px;
 }
 
-/* Indeterminate for a link-following save, because it genuinely does not know
-   its own total yet. The sliding bar is the honest shape of that. */
-.pp-bar[data-indeterminate="true"] i {
-  width: 42%;
-  animation: pp-slide 1250ms ease-in-out infinite;
+/* No floor at all: the window fills the section. Overhanging the window's own bottom-left
+   corner, which is blank white while the article is live and the sidebar's blank foot
+   once the reader has the tab — its eighth row ends 110px above the window's edge, and
+   the top of the pile stays under that; the crash screen and the popup are nowhere near
+   it. Below the window there is a 50px shelf before the cable's run. */
+.pp[data-scatter="corner"] .pp-flyer:nth-child(odd) {
+  --pile-x: 16px;
+  --pile-y: 540px;
 }
 
-.pp-library-head strong {
-  font-size: 11.5px;
+.pp[data-scatter="corner"] .pp-flyer:nth-child(even) {
+  --pile-x: 118px;
+  --pile-y: 534px;
 }
 
-.pp-library-head span {
-  color: var(--ink-3);
-  font-size: 9.5px;
+/* Once the reading plane is up it lies over the whole pile bar a sliver, and the label
+   that hangs under the sidebar on this floor — see `CORNER_SPECS` in the demo — wants the
+   ground the sliver is on. `visibility` rather than `opacity`, because the flight's
+   `forwards` fill owns the opacity and would win. */
+.pp[data-scatter="corner"][data-reading="true"] .pp-flyer {
+  visibility: hidden;
 }
 
-.pp-shelf li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 7px;
-  border-radius: 7px;
-  background: var(--surface-2);
-  animation: pp-land 320ms cubic-bezier(0.16, 0.86, 0.18, 1.12) backwards;
-  animation-delay: calc(var(--order) * 80ms);
-  transition:
-    background 260ms ease,
-    box-shadow 260ms ease;
+/* Below this the labels fall back to a row of chips under the scene (see `.speclayer`),
+   the cable runs under the window rather than beside it, and there is no room for a
+   plane over a window — so the reader takes the window's place: the dead browser leaves
+   the flow and the reader enters it at the same height, with the cable still lying
+   under it and the chips below that. The escaped cards, piled on the window's bottom-left
+   corner at this width, would be lying on the reader, so they are put away with it. */
+@media (max-width: 760px) {
+  /* The stage keeps one height through the film, which below this width it did not.
+
+     Two things moved it. The labels are chips in the stage's own flow here — see
+     `.speclayer` — and the stage grew a row as each arrived and lost one as each left:
+     539px on `dead` with no chip up, 609px on the still with three. And the stage is a
+     flex column with a gap between its in-flow children (`.pp` in `globals.css`), so
+     the reader's beats, which take the dead window out of the flow, lost a gap as well.
+     That was the whole section changing height four times in a twenty-second film,
+     with everything under it stepping down and up in time.
+
+     So the gap goes, the chip row carries its own margin instead, and its ground is
+     reserved: one chip is the plate's type at its line-height plus the pod's own padding
+     and a hairline; two rows fit the three claims of the still at anything down to about
+     520px, and three below that. */
+  .pp[data-beat] {
+    --pp-chip: calc(var(--spec-size) * 1.32 + 0.6rem + 2px);
+    gap: 0;
+  }
+
+  .pp-specs {
+    min-height: calc(2 * var(--pp-chip) + 0.3rem);
+    margin-top: 0.85rem;
+  }
+
+  .pp-spill {
+    position: static;
+    /* The floor the cable runs along, under the window. `--pack-window-bottom` puts
+       the run 14px under the window's edge in an 84px band; the chips wait below it. */
+    padding-bottom: 100px;
+    perspective: none;
+  }
+
+  .pp[data-reading="true"] .pp-browser {
+    display: none;
+  }
+
+  .pp[data-reading="true"] .pp-flyer {
+    visibility: hidden;
+  }
+
+  .pp-reader {
+    display: none;
+  }
+
+  .pp-reader[data-open="true"] {
+    position: relative;
+    display: flex;
+    inset: auto;
+    left: auto;
+    width: 100%;
+    height: calc((var(--pp-chrome-h) + var(--pp-view-h)) * var(--pp-zoom));
+    margin: 0;
+  }
+
+  /* `viewer.css` at its own narrow breakpoint: a 220px sidebar, no URL under the title. */
+  .pp-reader .pp-rside {
+    width: 220px;
+  }
+
+  .pp-reader .pp-ridentity span,
+  .pp-reader .pp-rbtn--quiet:not(:first-child) {
+    display: none;
+  }
+
+  .pp-article--plane {
+    padding: 28px 28px;
+  }
+
+  .pp-reader .pp-headline {
+    font-size: 26px;
+  }
 }
 
-/* The row the pointer is standing on, before it presses. A row that is about to be
-   clicked has to look like it, or the click reads as landing on the panel rather than on
-   the page — and the page is what the reader below is a copy of. */
-.pp-shelf li[data-aimed="true"] {
-  background: color-mix(in srgb, var(--accent-soft) 62%, var(--surface));
-  box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.18);
+@media (max-width: 720px) {
+  .pp {
+    --pp-zoom: 0.58;
+  }
+
+  /* Recomputed for the smaller screen: the same button, at 0.58. */
+  .pp-spill {
+    --emit-right: 122px;
+    --emit-top: 342px;
+  }
+
+  /* Chrome's dead end, on the strip the popup leaves. The popup is 400 screen pixels
+     wide at a 574-pixel screen, so it stands over everything right of 164px — and the
+     error's "No internet" ran to 240 and was cut to "No i". Pulled into the strip and
+     bounded by the popup's edge, with the error code small enough to fit on one line:
+     the code is the least of it, and the popup surviving over a dead page is the shot. */
+  .pp-crash {
+    top: 64px;
+    right: 416px;
+    left: 20px;
+  }
+
+  .pp-crash-glyph {
+    width: 56px;
+  }
+
+  .pp-crash span:last-child {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Smaller cards, and no scaling up mid-flight. At this width a card at 1.18
+     scale covers most of the browser it is supposed to be escaping from. */
+  .pp-flyer {
+    width: 70px;
+    height: 88px;
+    padding: 6px 7px 8px;
+  }
+
+  .pp-flyer-head span {
+    font-size: 6.5px;
+  }
+
+  .pp-flyer-text {
+    font-size: 5.6px;
+    -webkit-line-clamp: 5;
+  }
+
+  /* The same two piles on the window's bottom-left corner, for the smaller window and
+     the smaller cards: on the 95px strip the popup leaves to its left — the step between
+     cards is shortened so the top of the second pile stays off the popup's edge — under
+     the last row of the sidebar, and above the cable that now runs under the window. */
+  .pp[data-scatter="corner"] .pp-flyer {
+    --pile-dx: 3px;
+  }
+
+  .pp[data-scatter="corner"] .pp-flyer:nth-child(odd) {
+    --pile-x: 10px;
+    --pile-y: 392px;
+  }
+
+  .pp[data-scatter="corner"] .pp-flyer:nth-child(even) {
+    --pile-x: 46px;
+    --pile-y: 386px;
+  }
 }
 
-.pp-shelf li[data-open="true"] {
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px rgba(11, 111, 214, 0.3);
+/* Below about 520px two of the three chips no longer share a row. See `--pp-chip`. */
+@media (max-width: 520px) {
+  .pp-specs {
+    min-height: calc(3 * var(--pp-chip) + 0.6rem);
+  }
 }
 
-.pp-reader-head span {
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.35;
-}
+/* A phone: no room for a sidebar beside a column of reading. */
+@media (max-width: 600px) {
+  .pp-reader .pp-rside,
+  .pp-reader .pp-rnav {
+    display: none;
+  }
 
-/* The page's own address, as `shortReaderUrl` prints it. It was an uppercase green stamp
-   reading "SAVED COPY · NO NETWORK REQUEST" — a string the extension does not contain,
-   set in the one colour on the page that means "verified". A URL is neither a verdict nor
-   an acronym, so it is quiet, lower case and left as typed. */
-.pp-reader-head small {
-  flex: 0 0 auto;
-  color: var(--ink-3);
-  font-size: 8.5px;
-  font-weight: 500;
-}
-
-#pagepack .pp-reader-head span {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: #24272d;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.1rem, 2.3vw, 1.7rem);
-  font-weight: 400;
-}
-
-#pagepack .pp-reader-head small,
-#pagepack .pp-reader-head b {
-  color: #6c727d;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.6rem;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-/* `1 of 7`, from `#reader-page-label`. The chip it sits in is the reader's own page
-   button; it was a green "OFFLINE" pill, which is a mood rather than a control. */
-#pagepack .pp-reader-head b {
-  padding: 0.3rem 0.6rem;
-  border-radius: 999px;
-  background: rgba(20, 24, 32, 0.06);
-  font-variant-numeric: tabular-nums;
-}
-
-.pp-reader-document h4 {
-  margin: 0 0 0.45rem;
-  color: #24272d;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(0.9rem, 1.5vw, 1.15rem);
-  font-weight: 400;
-}
-
-.pp-reader-index > small {
-  margin-bottom: 0.2rem;
-  color: #898f98;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.52rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.pp-reader-index > span {
-  display: grid;
-  grid-template-columns: 1.8rem minmax(0, 1fr);
-  gap: 0.4rem;
-  padding: 0.38rem 0.45rem;
-  border-radius: 6px;
-  color: #6c727d;
-  font-size: 0.62rem;
-  line-height: 1.35;
-}
-
-.pp-reader-index > span[data-current="true"] {
-  background: rgba(11, 111, 214, 0.09);
-  color: #263647;
-}
-
-.pp-reader-index i {
-  color: #2d7fd2;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 0.55rem;
-  font-style: normal;
+  .pp-article--plane {
+    padding: 24px 22px;
+  }
 }

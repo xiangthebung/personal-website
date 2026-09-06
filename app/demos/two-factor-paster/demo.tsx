@@ -1,69 +1,61 @@
 "use client";
 
 /**
- * 2FA Paster, as the two decisions it makes.
+ * 2FA Paster, as the two verdicts it can reach.
  *
  * The convenience is easy to state and boring to watch: a code arrives, a keypress
- * puts it in the box. Every password manager has a version of that. What this
- * extension actually has, and what a film of it should therefore be about, is the
- * pair of judgements underneath:
+ * puts it in the box. What the extension actually has — and what 1.3.0 put on
+ * screen for the first time — is an account of *what it did and why*, and a refusal
+ * to finish the job when it cannot vouch for the sender. So the film is two takes
+ * of the same page.
  *
- *   WHICH CODE. With one code in the inbox the question never comes up. With two —
- *   which, on an ordinary afternoon, is the normal state of an inbox — the
- *   best-written mail is not necessarily the one for the page in front of you. So
- *   the sender decides, not the wording, and the popup shows the signals it scored
- *   under a "Why this one" disclosure. An extension that shows its reasoning is
- *   unusual enough to be the thing worth staging.
+ *   THE CLEAN CASE. One mail, from the site in front of you. The shortcut is
+ *   pressed, the six digits leave the mail row and land in the six boxes, the
+ *   page's own Verify is pressed, and the popup shows the decision card: the
+ *   sender's address rather than its display name, a green pill saying it is the
+ *   site you are on, what was filled, what was pressed, and the one field it
+ *   would not write to — "Security code", the card field, left empty.
  *
- *   WHERE IT MAY NOT GO. A field that looks like a card security code is
- *   disqualified outright rather than outscored, and a button whose wording is
- *   destructive is skipped before anything else is considered. Both are cheap to
- *   get wrong and expensive to get wrong: "Security code" is the CVV label on most
- *   checkout pages, and "Confirm account deletion" reads exactly like a button that
- *   finishes a code step.
- *
- * So the page in the frame is one that exercises all of it at once — a payment
- * confirmation carrying a saved card, its security-code box, a "Remove this card"
- * control and a six-box one-time-code field. That is not a composite invented to
- * flatter the extension; it is `tests/browser/fixtures/checkout.html` and
- * `destructive.html` in the same document, and every rule below fires on it exactly
- * as the fixtures assert.
+ *   THE AMBIGUOUS CASE. Two codes arrive at once, both through relay senders,
+ *   neither naming the site. `deliver()` computes `hold = ambiguous && !siteMatch`
+ *   and `content.js fill()` skips `submitFrom` when held: the code goes in, the
+ *   button is not pressed, the in-page card reads "Held — check the sender" and
+ *   offers "Submit anyway" and the other recent codes, one click each.
  *
  * WHAT IS REAL HERE
  *
- * The two messages in the strip were run through the extension's own
- * `code-finder.js`. `findBestCode` returns 482917 at 100% with the four reasons the
- * popup prints, sets 306184 aside as another company's, and reports `siteMatch`,
- * which is what makes the popup say "Sent by ledgerline.com — the site you are on".
- * The reasons, the percentage and the wording are transcribed from that run rather
- * than composed to look plausible. See the note on `CODE` for the exact call.
- *
- * The badge glyphs and their colours are `background.js`'s: `…` on #5b45e0 while it
- * looks, `✓` on #1b8a3a once a code is in the page. The filled boxes wear
- * #6d5bff, which is the outline `content.js` puts on every field it writes to. The
- * corner card's two lines are `showToast`'s. The popup is `popup.html` in its own
- * order, at the 34px monospace the code is set in there — the one loud thing in an
- * otherwise very quiet interface, and the reason this scene has a hero object at all.
+ * Every string the popup, the page card and the badge print is the product's:
+ * the decision rows come from `renderOutcome` (`Filled “Verification code”`,
+ * `Pressed Verify`, `Skipped “Security code” — card field`, `Copied to your
+ * clipboard`, `Not submitted — check the sender first`), the pills from
+ * `renderOrigin`, the page card's title/detail/note from `fill()` in `content.js`
+ * (`Code filled in, Verify pressed`, `Held — check the sender`, `Filled but not
+ * submitted: several codes arrived and none name ledgerline.example.`), the
+ * picker heading `Other recent codes` and its `Use NNNNNN instead` rows from
+ * `showCard`, the badge glyphs and colours from `flashBadge` (`…` violet, `✓`
+ * #1b8a3a, `?` amber while held). The popup is 380px because Chrome gives it
+ * 380px; its palette is `popup.css` verbatim; the page card is `CARD_STYLE`
+ * verbatim. The two relay senders and the held code are the ones the product's
+ * own screenshots were taken with.
  *
  * WHAT IS STAGED
  *
- * The keyboard chord in the middle of the frame: a keypress has no picture, and the
- * shortcut is the fastest way to use this, so it gets drawn for the beat it happens
- * on. The mail strip is a reconstruction of the unread inbox the default reader sees
- * — `inbox-feed.js` reads Gmail's Atom feed and gets a sender, a subject, a snippet
- * and a timestamp, which is exactly what a row here shows. And the six digits fly
- * out of the mail into the boxes, which nothing does; that is the sentence the
- * project's own README opens with, drawn.
+ * The keyboard chord, drawn for the beat it happens on. The mail strip, which is
+ * a reconstruction of the unread inbox `inbox-feed.js` reads — sender, address,
+ * subject, snippet, and the newest at the top. The six digits flying out of the
+ * mail and into the boxes, which nothing does; that is the project's own first
+ * sentence, drawn. And two liberties so the last frame can be a diagram: the
+ * violet outline `content.js` lifts after 1200ms stays up, and the popup shows
+ * its whole card rather than the 600px Chrome would scroll it inside.
  *
- * Two deliberate infidelities, both so that the last frame can be a diagram:
- * `content.js` lifts the violet outline off a filled field after 1200ms and this
- * leaves it up, and the corner card sits under the payment column rather than at the
- * page's bottom-right corner, which in this pod belongs to the popup.
+ * The site is invented. Ledgerline, its checkout, its card on file and its copy
+ * are the scene's; nothing here is a brand.
  */
 
-import { useRef, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { usePressGate } from "../scene/press-gate";
+import { useSectionBeat } from "../scene/section-beat";
 import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useOnScreen } from "../use-on-screen";
@@ -71,217 +63,247 @@ import { useSceneRun } from "../scene/use-scene-run";
 import { useSectionFocused } from "../use-section-focus";
 import "./demo.css";
 
-type BeatName = "form" | "mail" | "press" | "pick" | "fill" | "submit" | "why";
+type BeatName =
+  | "form"
+  | "mail"
+  | "pick"
+  | "fill"
+  | "submit"
+  | "why"
+  | "again"
+  | "chord"
+  | "hold"
+  | "offer";
 
 /**
- * Seven beats over 17.3 seconds.
+ * Ten beats over 20.1 seconds, in two acts.
  *
- * The shape is: establish, complicate, act, and then account for the act. `form`
- * and `mail` are long because they are the setup — a visitor who has not read the
- * page has to work out that the boxes are empty, that there are two mails, and that
- * both of them contain a six-digit number, before anything happens. `press` is
- * short because a keypress is short.
+ * The first act is the shape every scene here has — establish, act, account for
+ * the act. `form` and `mail` are the setup: empty boxes, an empty inbox, one mail
+ * landing in it. `pick` is the keypress and the scorer's choice in one beat, because
+ * both are fast. `fill` has to be long enough for six digits to cross the frame on a
+ * stagger. `submit` is the page's own button going down and the card saying so.
+ * `why` is the popup opening on a click and a reader being given three seconds with
+ * a card that has seven lines on it.
  *
- * `pick` is the longest of the middle beats and it is the one carrying the argument
- * of the whole project: one row lights and the other is set aside. `fill` has to be
- * long enough for six digits to cross the frame on a stagger and settle.
- *
- * `why` is the last and the largest, because it is two things at once — the popup
- * arriving, and the reader being given long enough to read four reasons and a
- * percentage inside it. It is also the still.
+ * The second act is the same page, later. `again` is the cut: the boxes clear, the
+ * card goes, two new mails land on top of the old one. `chord` is the keypress
+ * again. `hold` is the whole argument of the release — the code goes in and the
+ * button does not go down — and `offer` is the reader's time with the picker, which
+ * is also the still.
  */
 const BEATS: readonly Beat<BeatName>[] = [
-  { name: "form", ms: 2400 },
-  { name: "mail", ms: 2600 },
-  { name: "press", ms: 1500 },
-  { name: "pick", ms: 2800 },
-  { name: "fill", ms: 2600 },
-  { name: "submit", ms: 2400 },
+  { name: "form", ms: 1600 },
+  { name: "mail", ms: 2000 },
+  { name: "pick", ms: 1400 },
+  { name: "fill", ms: 2000 },
+  { name: "submit", ms: 1800 },
   { name: "why", ms: 3000 },
+  { name: "again", ms: 1800 },
+  { name: "chord", ms: 1300 },
+  { name: "hold", ms: 2400 },
+  { name: "offer", ms: 2800 },
 ];
 
 /**
- * The one click in the scene, and the only beat with a pointer in it.
+ * Where the pointer is. One click, one hover.
  *
- * Everything before this happens without anybody touching the browser, which is the
- * point of the keyboard path. The popup is opened afterwards for the reason a person
- * opens it: to see what it decided. `usePressGate` holds the popup back until the
- * ring lands, so the panel is not already open when the pointer arrives.
+ * Everything else happens without anybody touching the browser, which is the point
+ * of the keyboard path. The popup is opened on `why` for the reason a person opens
+ * it — to see what it decided — and `usePressGate` holds the panel back until the
+ * ring lands. On `offer` the pointer comes back to rest on the picker's first row
+ * and presses nothing: the claim is that the other code is one click away, and a
+ * hand hovering over the click is the picture of that.
  */
-const CURSOR: Partial<Record<BeatName, string>> = { why: "toolbar" };
+const CURSOR: Partial<Record<BeatName, string>> = { why: "toolbar", offer: "swap" };
 const OPENS: ReadonlySet<BeatName> = new Set<BeatName>(["why"]);
 
-/** The site in the address bar, and therefore the site the sender is matched against. */
-const SITE = "ledgerline.com";
-
-/**
- * The two messages, and what the extension's own scorer makes of them.
- *
- * Run against `code-finder.js` from the extension, with `site: "ledgerline.com"`:
- *
- *   findBestCode([ledgerline, northwind], { site: "ledgerline.com" })
- *     → code 482917, confidence 100, siteMatch true, ambiguous false,
- *       reasons ["6 digits", 'near "verification code"', "in the subject",
- *                "sent by ledgerline.com"]
- *       alternatives [{ code: "306184", confidence: 50, siteMatch: false }]
- *
- * Both mails are well-written code mails and the second one scores perfectly
- * respectably on its own — 50%, on wording alone. It loses because of who sent it,
- * which is the distinction the project makes and the reason this scene has two rows
- * in it rather than one. Once any message is tied to the site in front of you,
- * messages identifiably from other companies are removed from consideration
- * entirely rather than merely outscored.
- *
- * The senders are invented. The scoring is not.
- */
-const CHOSEN = {
-  from: "Ledgerline",
-  sender: "no-reply@ledgerline.com",
-  subject: "482917 is your Ledgerline verification code",
-  snippet: "Enter this code to confirm your payment. It expires in 10 minutes.",
-  code: "482917",
-  age: "just now",
-  tag: SITE,
-};
-
-const RIVAL = {
-  from: "Northwind Market",
-  sender: "no-reply@northwind-market.com",
-  subject: "Your Northwind sign-in code",
-  snippet: "Your verification code is 306184. Order number 5590142.",
-  code: "306184",
-  age: "1 min",
-  tag: "another service",
-};
-
-/** What the popup prints under "Why this one", in the order the scorer produced them. */
-const REASONS: readonly string[] = [
-  "6 digits",
-  'near "verification code"',
-  "in the subject",
-  `sent by ${SITE}`,
-];
-
-/** `confidenceOf` rescales the winning score against 140, which a textbook case clears. */
-const CONFIDENCE = "100% sure";
-
+/** The site in the address bar, and therefore the site every sender is matched against. */
+const SITE = "ledgerline.example";
+/** The account the popup header shows, in `popup.js`'s connected green. */
+const MAILBOX = "you@gmail.com";
 /** The suggested key in `manifest.json`, under `commands.paste-code`. */
 const CHORD: readonly string[] = ["Ctrl", "Shift", "2"];
 
 /**
- * The three things this scene can point at, and the two it can only assert.
+ * The three mails, in the order they arrive. The senders are invented; the
+ * addresses are the ones the product's own held-state screenshots were taken with,
+ * and the point of the second act is that two of them are relay domains that name
+ * no site at all.
+ */
+const LEDGERLINE = {
+  from: "Ledgerline",
+  address: "no-reply@ledgerline.example",
+  subject: "482917 is your Ledgerline verification code",
+  snippet: "Enter this code to confirm your payment. It expires in 10 minutes.",
+  code: "482917",
+  site: "ledgerline.example",
+  initial: "L",
+};
+
+const ACCOUNT_TEAM = {
+  from: "Account Team",
+  address: "noreply@accountprotection.net",
+  subject: "Your verification code is 558102",
+  snippet: "Use this code to continue. If you did not request it, ignore this email.",
+  code: "558102",
+  site: "accountprotection.net",
+  initial: "A",
+};
+
+const NORTHWIND = {
+  from: "Northwind Market",
+  address: "bounce@sendgrid.net",
+  subject: "771204 is your Northwind sign-in code",
+  snippet: "Your one-time code expires in 5 minutes. Do not share it with anyone.",
+  code: "771204",
+  site: "sendgrid.net",
+  initial: "N",
+};
+
+type RowTone = "ok" | "skip" | "hold";
+
+/**
+ * The two decision cards, line by line, as `popup.js` renders them and as
+ * `content.js` draws the page card for the same fill.
  *
- * Five labels, and each one had to earn a piece of evidence that is still on screen
- * in the last frame — which is the constraint that decided the staging rather than
- * the other way round. A claim whose subject leaves has to leave with it, and a
- * scene that ends with three of its five claims pointing at nothing is not a
- * diagram of itself.
+ * The rows are in `renderOutcome`'s order: what was filled, what happened to the
+ * submit, what was refused, and whether the code was copied. `Skipped “Security
+ * code” — card field` is on both, because the page has a card field on it both
+ * times and the extension declines it both times.
+ */
+const CLEAN = {
+  code: LEDGERLINE.code,
+  source: "From Ledgerline · 12s ago",
+  address: LEDGERLINE.address,
+  pill: { tone: "match", title: `Sent by ${SITE} — the site you are on`, note: "" },
+  rows: [
+    ["ok", "Filled “Verification code”"],
+    ["ok", "Pressed Verify"],
+    ["skip", "Skipped “Security code” — card field"],
+    ["ok", "Copied to your clipboard"],
+  ] as const satisfies readonly (readonly [RowTone, string])[],
+  sure: "100% sure",
+  toast: {
+    title: "Code filled in, Verify pressed",
+    detail: `2FA Paster · from ${LEDGERLINE.address}`,
+    note: "",
+  },
+};
+
+const HELD = {
+  code: ACCOUNT_TEAM.code,
+  source: "From Account Team · 12s ago",
+  address: ACCOUNT_TEAM.address,
+  pill: {
+    tone: "unsure",
+    title: "Held — check the sender",
+    note: `Several codes just arrived and none name ${SITE}.`,
+  },
+  rows: [
+    ["ok", "Filled “Verification code”"],
+    ["hold", "Not submitted — check the sender first"],
+    ["skip", "Skipped “Security code” — card field"],
+    ["ok", "Copied to your clipboard"],
+  ] as const satisfies readonly (readonly [RowTone, string])[],
+  sure: "93% sure",
+  toast: {
+    title: "Held — check the sender",
+    detail: `2FA Paster · from ${ACCOUNT_TEAM.address}`,
+    note: `Filled but not submitted: several codes arrived and none name ${SITE}.`,
+  },
+};
+
+/**
+ * The other codes, newest first, as both the popup's held card and the page card's
+ * picker list them: `pickerRows` and `renderHeld` both read the same history with
+ * the current code left out.
+ */
+const ALTERNATIVES = [
+  { code: NORTHWIND.code, address: NORTHWIND.address, age: "12s ago" },
+  { code: LEDGERLINE.code, address: LEDGERLINE.address, age: "2 min ago" },
+] as const;
+
+/**
+ * The five claims, each pinned to the thing that proves it.
  *
- * So: the mail row that turned up without anybody connecting an account; the row
- * that was set aside as another company's; the boxes the code landed in; the
- * security-code box it did not; and the button it would not press. All five are
- * there at `why`, and the popup arrives to the right of all of them.
- *
- * Every one is anchored rather than pinned to a percentage. The payment column and
- * the mail strip are both left-aligned in a pod whose width is capped, so a
- * coordinate would very nearly work — but "very nearly" is how the labels on this
- * page have gone wrong before, and the anchors cost nothing.
+ * Every one is anchored rather than pinned to a percentage, and every one is still
+ * pointing at something in the last frame — which is the constraint that decided
+ * the staging. The inbox label hangs off the top of the list rather than off a row,
+ * because the newest mail takes the top slot and the label is about the list.
  */
 const SPECS: readonly SpecTag<BeatName>[] = [
-  /* On the first row to arrive, reading right into the empty half of the strip.
-     The claim is about setup and setup is the absence of something, so what the
-     frame can actually show is mail simply being there: no sign-in, no connect
+  /* On the inbox. The claim is about setup and setup is the absence of something,
+     so what the frame can show is mail simply being there: no sign-in, no connect
      step, no key pasted anywhere. `inbox-feed.js` reads the Atom feed Gmail already
-     serves to the session cookie in the browser. */
+     serves to the session cookie in the browser. Gripped to the list's top-right
+     corner and pushed down half a row, so it sits beside whichever mail is newest. */
   {
     at: "mail",
-    text: "Reads Gmail with no setup",
-    x: 44,
-    y: 88,
+    text: "Read from Gmail with no setup",
+    x: 50,
+    y: 82,
     anchor: "inbox",
-    grip: "right",
+    grip: "top right",
+    nudge: { y: 34 },
     side: "right",
   },
-  /* On the tag that appears when the second row is set aside. This is the label the
-     scene exists for, and it is deliberately pinned to the *rejected* row: a lit row
-     on its own shows a choice being made only if you already know there was one.
-     The row that says "another service" is the evidence. */
-  {
-    at: "pick",
-    text: "Matches the code to your site",
-    x: 44,
-    y: 95,
-    anchor: "rival",
-    grip: "right",
-    side: "right",
-  },
-  /* On the boxes, reading right into the corridor between the payment column and
-     the popup. The keypress itself is drawn on `press` and gone by the time this
-     arrives; what is left of it, and what the label is about, is six digits in a
-     form that nobody typed into. */
+  /* On the CVV box, which stays empty in both acts. "Security code" is the card
+     label on most checkout pages, so the rule has to beat the strongest positive
+     signal the field could carry — and the popup then says so in as many words. */
   {
     at: "fill",
-    text: "One keypress from email to form",
-    x: 40,
-    y: 48,
-    anchor: "boxes",
-    grip: "right",
-    side: "right",
-  },
-  /* On the security-code box, which stays empty. "Security code" is the CVV label on
-     most checkout pages, so the rule has to beat the strongest positive signal the
-     field could carry rather than merely compete with it — see `PAYMENT_HINT` in
-     `content.js`, and `fixtures/checkout.html`, where nothing on the page is written
-     to at all. */
-  {
-    at: "fill",
-    text: "Never fills a CVV field",
-    x: 40,
-    y: 30,
+    text: "The card field is never touched",
+    x: 14,
+    y: 27,
     anchor: "cvv",
     grip: "right",
     side: "right",
   },
-  /* On the control it will not press. `AVOID_TEXT` is checked first and against every
-     candidate, including the form's own declared submit button, and its destructive
-     verbs are stems: `remov\w*` catches "Remove this card" the way `delet\w*` catches
-     "Confirm account deletion". It held the bare words `delete` and `remove` until
-     recently, which matched neither of those while `confirm\w*` in the submit list
-     matched both. */
+  /* On the address line of the decision card, reading left into the corridor. This
+     is the change 1.3.0 made to the source line: a spoofed display name is
+     indistinguishable, an address is not — and in the second act the name reads
+     "Account Team" while the address reads a relay domain. */
   {
-    at: "submit",
-    text: "Refuses to click destructive buttons",
+    at: "why",
+    text: "The sender's address, not its name",
+    x: 66,
+    y: 28,
+    anchor: "address",
+    grip: "left",
+    side: "left",
+    nudge: { x: -4 },
+  },
+  /* On the page's own Verify button, which the second fill leaves alone. The
+     evidence is a button that did not go down under a code that went in. */
+  {
+    at: "hold",
+    text: "Unknown sender, so held, not sent",
     x: 40,
-    y: 22,
-    anchor: "remove",
+    y: 45,
+    anchor: "verify",
     grip: "right",
     side: "right",
-    /* Three pixels clear of the last letter. The grip is the element's own right
-       edge, which is correct — but the dot is 7px across and centred on it, so half
-       of it lands on the "d" of "card" and the word it is pointing at is the one
-       thing it must not sit on. */
-    nudge: { x: 3 },
+  },
+  /* On the picker's first row in the page card, which is also where the pointer
+     comes to rest. The still is held on this frame. The claim is the recovery: if
+     the scorer's choice was not the one you wanted, the ones it did not choose are
+     listed, with their senders, and one click swaps. */
+  {
+    at: "offer",
+    text: "The other codes are one click away",
+    x: 40,
+    y: 60,
+    anchor: "swap",
+    grip: "right",
+    side: "right",
   },
 ];
 
-/**
- * Where the labels come from: the extension's own toolbar button.
- *
- * The same theatre as the other scenes on this page — several claims bursting out of
- * one control reads as *this thing did all of this*, which is true here in a
- * literal way. Nothing else in the frame was touched.
- */
-const SPEC_ORIGIN = { x: 96.5, y: 3 };
+/** Where the labels come from: the extension's own toolbar button. */
+const SPEC_ORIGIN = { x: 96.5, y: 2.5 };
 
-/**
- * The order the payment page is confirming.
- *
- * Set dressing, and it is doing a job beyond looking busy: a checkout's right-hand
- * rail runs the height of its form, and without one the window was two thirds empty
- * for six of the seven beats — which reads as a layout fault rather than as a page.
- * Quiet on purpose. Everything in here is 11 to 12.5px in the muted greys, because
- * the subject of the frame is the column to its left.
- */
+/** The order the payment page is confirming. Set dressing, and quiet on purpose. */
 const SUMMARY: readonly { label: string; note: string; value: string }[] = [
   { label: "Brightwater Studio", note: "Slate print, A2", value: "$42.00" },
   { label: "Delivery", note: "Standard, 3–5 days", value: "$6.20" },
@@ -300,6 +322,17 @@ function Mark() {
   );
 }
 
+function Envelope() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4.5 6.5h15v11h-15zM4.5 8l7.5 5 7.5-5" />
+    </svg>
+  );
+}
+
+/** How long the mail rows take to change slot. Shorter than `spec.tsx`'s settle. */
+const ROW_MOVE_MS = 360;
+
 export function TwoFactorPasterDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
@@ -308,33 +341,111 @@ export function TwoFactorPasterDemo() {
   const state = useStoryboard(BEATS, {
     running,
     stage: stageRef,
-    /* The frame that carries the argument: the form filled, the security box empty,
-       the destructive control passed over, and the popup open beside all three with
-       its reasoning showing. Every label is up by then and every one of them is
-       pointing at something. */
-    stillBeat: "why",
+    /* The frame that carries the argument: a code in the boxes, the button under
+       them not pressed, the page card saying why and offering the other code, the
+       popup's held card open beside it, and all five labels pinned. */
+    stillBeat: "offer",
   });
   const { beat, index, run, still } = state;
   const { reached, onPress } = usePressGate(BEATS, state, OPENS);
 
+  /* The section reacts to the verdicts — a violet wash for the pass, an amber one
+     for the hold. See `#two-factor-paster` in globals.css. */
+  useSectionBeat(stageRef, beat, BEATS);
+
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
 
+  /* --- act one ------------------------------------------------------------ */
+  const second = index >= at("again");
+  const act = second ? 2 : 1;
   const landed = index >= at("mail");
-  const looking = index >= at("press");
-  const picked = index >= at("pick");
-  const filled = index >= at("fill");
-  const submitted = index >= at("submit");
+  const picked = index >= at("pick") && !second;
+  const filledClean = index >= at("fill") && !second;
+  const submitted = index >= at("submit") && !second;
   /* Held back until the ring lands on the toolbar button. Without the gate the panel
      is open five frames before anything says it was clicked. */
   const open = reached >= at("why");
 
-  const digits = [...CHOSEN.code];
+  /* --- act two ------------------------------------------------------------ */
+  const arrived = index >= at("again");
+  const pickedHeld = index >= at("chord");
+  const held = index >= at("hold");
+  const offering = index >= at("offer");
 
-  /* `…` while it looks, `✓` once a code is in the page — `background.js`, which sets
-     the first at the start of the fetch and flashes the second afterwards. Nothing
-     before that: the badge is the only status there is when the popup is closed, and
-     it says nothing when there is nothing to say. */
-  const badge = filled ? "✓" : looking ? "…" : "";
+  const filled = second ? held : filledClean;
+  const decision = held ? HELD : CLEAN;
+  const digits = [...(second ? HELD.code : CLEAN.code)];
+
+  /* `…` while it looks, `✓` once a code is in the page, `?` while one is held —
+     `flashBadge` in `background.js`, with its colours. Nothing in between: the badge
+     is the only status there is when the popup is closed, and it says nothing when
+     there is nothing to say. */
+  const looking = beat === "pick" || beat === "chord";
+  const badge = held ? "?" : filled ? "✓" : looking ? "…" : "";
+
+  /**
+   * Where the six digits fly from.
+   *
+   * The vector from the code in the mail row to the first box, measured rather than
+   * authored, because the row that carries it is a different row in each act and
+   * moves slot between them. Written onto the stage as custom properties the
+   * stylesheet reads; see `--tfa-fly-x` there. Measured on every beat and once more
+   * after the entrances have settled, the same way `spec.tsx` measures its anchors.
+   *
+   * Below 760px the stylesheet shortens the flight to a rise into the boxes — the
+   * strip is most of a thousand pixels below the form there — so the measurement
+   * stands down and lets the stylesheet's numbers through.
+   */
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const wide = window.matchMedia("(min-width: 761px)");
+    let frame = 0;
+    let settle = 0;
+
+    const measure = () => {
+      frame = 0;
+      if (!wide.matches) {
+        stage.style.removeProperty("--tfa-fly-x");
+        stage.style.removeProperty("--tfa-fly-y");
+        stage.style.removeProperty("--tfa-step");
+        return;
+      }
+      const from = stage.querySelector<HTMLElement>(`[data-fly-from="${act}"]`);
+      const boxes = stage.querySelectorAll<HTMLElement>(".tfa-box");
+      if (!from || boxes.length < 2) return;
+      const source = from.getBoundingClientRect();
+      const first = boxes[0].getBoundingClientRect();
+      const next = boxes[1].getBoundingClientRect();
+      if (source.width === 0 || first.width === 0) return;
+      const x = source.left + source.width / 2 - (first.left + first.width / 2);
+      const y = source.top + source.height / 2 - (first.top + first.height / 2);
+      stage.style.setProperty("--tfa-fly-x", `${x.toFixed(1)}px`);
+      stage.style.setProperty("--tfa-fly-y", `${y.toFixed(1)}px`);
+      stage.style.setProperty("--tfa-step", `${(next.left - first.left).toFixed(1)}px`);
+    };
+
+    const request = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+
+    request();
+    settle = window.setTimeout(request, ROW_MOVE_MS + 120);
+    window.addEventListener("resize", request);
+    const observer = new ResizeObserver(request);
+    observer.observe(stage);
+
+    return () => {
+      window.removeEventListener("resize", request);
+      observer.disconnect();
+      window.clearTimeout(settle);
+      cancelAnimationFrame(frame);
+    };
+  }, [act, beat, run]);
+
+  const toast = second ? HELD.toast : CLEAN.toast;
+  const toastShown = second ? held : submitted;
 
   return (
     <div
@@ -342,26 +453,35 @@ export function TwoFactorPasterDemo() {
       ref={stageRef}
       data-beat={beat}
       data-lap={run}
+      data-act={act}
       data-landed={landed}
       data-picked={picked}
       data-filled={filled}
       data-submitted={submitted}
       data-open={open}
+      data-arrived={arrived}
+      data-picked-held={pickedHeld}
+      data-held={held}
+      data-offering={offering}
       role="img"
       aria-label={
         "A payment confirmation page with the 2FA Paster extension pinned to the " +
-        "browser toolbar. The page carries a saved card, a Remove this card control, " +
-        "an empty box labelled Security code, and six empty boxes for a code sent by " +
-        "email. Two unread messages arrive in Gmail below, each containing a " +
-        "six-digit code: one from Ledgerline, the site being paid, and one from " +
-        "Northwind Market. A keyboard shortcut is pressed. The Ledgerline message is " +
-        "chosen and the Northwind one is set aside as another service. Its six " +
-        "digits land one per box, the security-code box is left empty, the Remove " +
-        "this card control is passed over, and the page's own Confirm payment button " +
-        "is pressed, after which a card in the corner reads Code filled in and " +
-        "submitted. The extension's popup is then opened and shows the code at " +
-        "reading size, that it was sent by ledgerline.com, and the four signals that " +
-        "picked it."
+        "browser toolbar. The page carries a saved card, an empty box labelled " +
+        "Security code, six empty boxes labelled Verification code, and a Verify " +
+        "button. An unread message from Ledgerline, the site being paid, arrives in " +
+        "Gmail below with the code 482917 in it. The shortcut Ctrl+Shift+2 is pressed: " +
+        "the six digits leave the message and land one per box, the Security code box " +
+        "stays empty, Verify is pressed, and a card in the page reads Code filled in, " +
+        "Verify pressed. The extension's popup is opened and shows the code at reading " +
+        "size, the sender's address, that it was sent by ledgerline.example, the site " +
+        "you are on, and that it filled Verification code, pressed Verify and skipped " +
+        "Security code as a card field. Later the boxes are empty again and two more " +
+        "codes arrive at once, from noreply@accountprotection.net and " +
+        "bounce@sendgrid.net, neither naming the site. The shortcut is pressed again: " +
+        "558102 goes into the boxes but Verify is not pressed. The page card reads " +
+        "Held, check the sender, offers Submit anyway, and lists the other recent " +
+        "codes under Other recent codes, each one click away. The popup shows the same " +
+        "held verdict and the same choices."
       }
     >
       <div className="tfa-browser">
@@ -373,7 +493,7 @@ export function TwoFactorPasterDemo() {
           </span>
           <span className="tfa-tabs">
             <span className="tfa-tab is-active">
-              <i className="tfa-favicon tfa-favicon--pay" />
+              <i className="tfa-favicon tfa-favicon--site" />
               Confirm your payment
             </span>
             <span className="tfa-tab">
@@ -413,14 +533,11 @@ export function TwoFactorPasterDemo() {
                     <small>Expires 09 / 29</small>
                   </span>
                 </span>
-                {/* Inside the form, which is where the never-press list has to work:
-                    everything considered is inside the form holding the field that was
-                    filled, so a destructive control in there is exactly the case. */}
-                <span className="tfa-danger" data-spec-anchor="remove" data-skipped={submitted}>
-                  Remove this card
-                </span>
+                <span className="tfa-card-kind">Saved card</span>
               </div>
 
+              {/* The field the extension refuses. Its label is the CVV label on most
+                  checkout pages, which is exactly why `PAYMENT_HINT` has to beat it. */}
               <div className="tfa-field">
                 <span className="tfa-field-label">Security code</span>
                 <span className="tfa-cvv" data-spec-anchor="cvv" data-skipped={filled}>
@@ -432,48 +549,90 @@ export function TwoFactorPasterDemo() {
 
               <div className="tfa-rule" aria-hidden="true" />
 
-              <p className="tfa-otp-head">Enter the 6-digit code we emailed you</p>
-              <div className="tfa-boxes" data-spec-anchor="boxes">
-                {digits.map((digit, position) => (
-                  <span className="tfa-box" key={`${position}-${digit}`}>
-                    {/* Rendered from the first frame and flown in on `fill`, because the
-                        journey is the claim. Each starts at the same point — the code in
-                        the mail row below — which means its offset is that point less its
-                        own box, and the arithmetic for that is one multiplication of the
-                        box pitch. See `--tfa-fly-x` in the stylesheet.
-
-                        Keyed on the lap as well as the position so a loop rebuilds them
-                        at the start of the flight rather than transitioning backwards
-                        out of the boxes while the next scene's first beat plays. */}
-                    <b
-                      className="tfa-digit"
-                      key={`${run}-${position}`}
-                      style={{ "--tfa-i": position } as CSSProperties}
-                    >
-                      {digit}
-                    </b>
-                  </span>
-                ))}
+              {/* The field it fills. "Verification code" is the label `targetLabel`
+                  reads off the page and the popup then quotes back. */}
+              <div className="tfa-field">
+                <span className="tfa-field-label">Verification code</span>
+                <span className="tfa-field-hint">We emailed a 6-digit code to {MAILBOX}</span>
+                <div className="tfa-boxes" data-spec-anchor="boxes">
+                  {digits.map((digit, position) => (
+                    <span className="tfa-box" key={position}>
+                      {/* Rendered from the first frame and flown in on the fill beat,
+                          because the journey is the claim. Each starts at the code in
+                          the mail row below — see the measurement above — and is keyed
+                          on the act and the lap, so a cut or a loop rebuilds them at the
+                          start of the flight rather than transitioning backwards out of
+                          the boxes. */}
+                      <b
+                        className="tfa-digit"
+                        key={`${run}-${act}-${position}`}
+                        style={{ "--tfa-i": position } as CSSProperties}
+                      >
+                        {digit}
+                      </b>
+                    </span>
+                  ))}
+                </div>
               </div>
 
-              <span className="tfa-submit" data-pressed={submitted}>
-                Confirm payment
+              {/* The page's own button. Pressed by the extension in the first act —
+                  `SUBMIT_TEXT` matches it and it is the form's declared submit — and
+                  left alone in the second, which is the whole of the second act. */}
+              <span
+                className="tfa-verify"
+                data-spec-anchor="verify"
+                data-pressed={submitted}
+                data-held={held}
+              >
+                Verify
               </span>
             </div>
 
-            {/* `showToast` draws this in a closed shadow root at the bottom-right of the
-                page, and it says what happened rather than what was intended — the
-                wording below is the branch for a fill that was submitted by pressing the
-                form's own button. It sits under the payment column here because the
-                page's own bottom-right corner is where the popup opens. */}
-            <div className="tfa-toast">
-              <span className="tfa-toast-mark" aria-hidden="true">
-                ✓
-              </span>
-              <span className="tfa-toast-copy">
-                <b>Code filled in and submitted</b>
-                <small>2FA Paster · from {CHOSEN.from}</small>
-              </span>
+            {/* `showCard` draws this in a closed shadow root at the bottom-right of the
+                page. It sits under the form here because the page's own bottom-right
+                corner is where the popup hangs. Its title, detail and note are the
+                strings `fill()` passes; the picker is `pickerRows` with the current
+                code left out. */}
+            <div className="tfa-toast" data-tone={second ? "hold" : "ok"} data-shown={toastShown}>
+              <div className="tfa-toast-head">
+                <span className="tfa-toast-mark" aria-hidden="true">
+                  {second ? "!" : "✓"}
+                </span>
+                <span className="tfa-toast-copy">
+                  <b>{toast.title}</b>
+                  <small>{toast.detail}</small>
+                  {toast.note && <em className="tfa-toast-note">{toast.note}</em>}
+                </span>
+                <span className="tfa-toast-close" aria-hidden="true">
+                  ×
+                </span>
+              </div>
+              {second && (
+                <>
+                  <div className="tfa-toast-actions">
+                    <span className="tfa-toast-button">Submit anyway</span>
+                  </div>
+                  <div className="tfa-toast-picker">
+                    <span className="tfa-toast-picker-title">Other recent codes</span>
+                    {ALTERNATIVES.map((other, order) => (
+                      <span
+                        className="tfa-toast-row"
+                        key={other.code}
+                        data-spec-anchor={order === 0 ? "swap" : undefined}
+                        data-target={order === 0 ? "swap" : undefined}
+                        data-aimed={order === 0 && offering}
+                      >
+                        <strong>
+                          Use <b>{other.code}</b> instead
+                        </strong>
+                        <small>
+                          {other.address} · {other.age}
+                        </small>
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -495,10 +654,6 @@ export function TwoFactorPasterDemo() {
               <span>Total</span>
               <span>$48.20</span>
             </p>
-            {/* The page's own account of where it has got to. The third row is the
-                only thing in this rail that moves, and it moves because the form was
-                submitted — which is the page reacting to the extension rather than
-                the extension reporting on itself. */}
             <dl className="tfa-summary-block">
               <dt>Status</dt>
               <dd>
@@ -524,10 +679,8 @@ export function TwoFactorPasterDemo() {
             </p>
           </div>
 
-          {/* The chord, for the beat it happens on. A keypress has no picture and this
-              one does the whole job, so it gets drawn once and taken away again — the
-              corridor it stands in is where the labels about the fill arrive two beats
-              later. */}
+          {/* The chord, for the two beats it happens on. A keypress has no picture and
+              this one does the whole job, so it gets drawn and taken away again. */}
           <div className="tfa-keys" aria-hidden="true">
             {CHORD.map((key) => (
               <kbd className="tfa-key" key={key}>
@@ -537,14 +690,14 @@ export function TwoFactorPasterDemo() {
           </div>
 
           {/* --- the popup, at the 380px Chrome gives it ------------------------- */}
-          <div className="tfa-pop" data-spec-anchor="popup" data-open={open}>
+          <div className="tfa-pop" data-spec-anchor="popup" data-open={open} data-held={held}>
             <div className="tfa-pop-head">
               <span className="tfa-pop-brand">
                 <Mark />
               </span>
               <span className="tfa-pop-name">
                 <b>2FA Paster</b>
-                <small>Reading your inbox</small>
+                <small className="is-connected">{MAILBOX}</small>
               </span>
               <span className="tfa-pop-gear" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -557,9 +710,7 @@ export function TwoFactorPasterDemo() {
             <div className="tfa-pop-body">
               <div className="tfa-target">
                 <span className="tfa-target-mark" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4.5 6.5h15v11h-15zM4.5 8l7.5 5 7.5-5" />
-                  </svg>
+                  <Envelope />
                 </span>
                 <span className="tfa-target-copy">
                   <b>{SITE}</b>
@@ -567,100 +718,165 @@ export function TwoFactorPasterDemo() {
                 </span>
               </div>
 
-              {/* The shortcut sits on the button that does the same job, the way a menu
-                  shows its accelerator. */}
               <span className="tfa-primary">
                 <span>Get my code</span>
                 <kbd className="tfa-shortcut">{CHORD.join("+")}</kbd>
               </span>
 
+              {/* The decision card. Not "a code was found" but what was done with it. */}
               <div className="tfa-code-card">
-                {/* The hero object. 34px, monospace, tabular numerals, centred: the one
-                    loud element in an interface that is otherwise all 12 and 13px. */}
-                <b className="tfa-code">{CHOSEN.code}</b>
-                <p className="tfa-code-source">
-                  From {CHOSEN.from} · {CHOSEN.age}
+                <b className="tfa-code">{decision.code}</b>
+                <div className="tfa-code-meta">
+                  <span className="tfa-code-sender">
+                    <span className="tfa-code-source">{decision.source}</span>
+                    <span className="tfa-code-address" data-spec-anchor="address">
+                      {decision.address}
+                    </span>
+                  </span>
+                  <span className="tfa-code-open">Open in Gmail ↗</span>
+                </div>
+
+                <p className={`tfa-origin is-${decision.pill.tone}`}>
+                  <strong>{decision.pill.title}</strong>
+                  {decision.pill.note && <span>{decision.pill.note}</span>}
                 </p>
-                {/* Said out loud only when it is worth saying, which is when the mail
-                    demonstrably came from the site you are on. Silent in between. */}
-                <p className="tfa-origin">Sent by {SITE} — the site you are on</p>
+
+                <ul className="tfa-outcome">
+                  {decision.rows.map(([tone, text]) => (
+                    <li className={`is-${tone}`} key={text}>
+                      {text}
+                    </li>
+                  ))}
+                </ul>
+
+                {held && (
+                  <div className="tfa-held">
+                    <span className="tfa-held-submit">Submit anyway</span>
+                    {ALTERNATIVES.map((other) => (
+                      <span className="tfa-alt" key={other.code}>
+                        <strong>Use {other.code} instead</strong>
+                        <small>
+                          {other.address} · {other.age}
+                        </small>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <div className="tfa-code-actions">
                   <span>Copy</span>
-                  <span>Fill this page</span>
+                  <span>Fill and submit</span>
                 </div>
+
                 <div className="tfa-why">
-                  <p className="tfa-why-head">
-                    <span>Why this one</span>
-                    <span className="tfa-why-value">{CONFIDENCE}</span>
-                    <i className="tfa-chevron" aria-hidden="true" />
-                  </p>
-                  <ul className="tfa-why-list">
-                    {REASONS.map((reason) => (
-                      <li key={reason}>{reason}</li>
-                    ))}
-                  </ul>
+                  <span>Why this one</span>
+                  <span className="tfa-why-value">{decision.sure}</span>
+                  <i className="tfa-chevron" aria-hidden="true" />
                 </div>
               </div>
 
-              {/* Collapsed, which is its resting state. The code on display is left out
-                  of it, so what is in there is the one the scene set aside. */}
-              <div className="tfa-history">
-                <span>Recent codes</span>
-                <span className="tfa-history-count">1</span>
-                <i className="tfa-chevron" aria-hidden="true" />
-              </div>
+              {/* `2 more`: the history less the code on display. Only once there is a
+                  history — the first act's inbox held one mail. */}
+              {held && (
+                <div className="tfa-history">
+                  <span>Recent codes</span>
+                  <span className="tfa-history-count">2 more</span>
+                  <i className="tfa-chevron" aria-hidden="true" />
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* --- the inbox the codes actually arrive in -------------------------- */}
+      {/* Below the window rather than inside it, because that is where the mail is:
+          another tab, another window, a phone — somewhere the whole point is that
+          you do not have to go. Newest at the top, the way Gmail keeps it, so the
+          rows are slotted rather than flowed and the old mail sinks when new ones
+          land. */}
       <div className="tfa-inbox">
         <p className="tfa-inbox-head">
           <span className="tfa-inbox-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M4.5 6.5h15v11h-15zM4.5 8l7.5 5 7.5-5" />
-            </svg>
+            <Envelope />
           </span>
           Gmail — unread inbox
         </p>
-        <ul className="tfa-mail">
-          <li className="tfa-mail-row" data-spec-anchor="inbox" data-state="chosen">
-            <span className="tfa-avatar" data-who="chosen" aria-hidden="true">
-              L
+        <ul className="tfa-mail" data-spec-anchor="inbox">
+          <li
+            className="tfa-mail-row"
+            data-landed={landed}
+            data-state={second ? "older" : picked ? "chosen" : "new"}
+            style={{ "--slot": second ? 2 : 0 } as CSSProperties}
+          >
+            <span className="tfa-avatar" data-who="site" aria-hidden="true">
+              {LEDGERLINE.initial}
             </span>
             <span className="tfa-mail-copy">
               <span className="tfa-mail-from">
-                <b>{CHOSEN.from}</b>
-                <small>{CHOSEN.sender}</small>
+                <b>{LEDGERLINE.from}</b>
+                <small>{LEDGERLINE.address}</small>
               </span>
-              <p className="tfa-mail-subject">{CHOSEN.subject}</p>
-              <p className="tfa-mail-snippet">{CHOSEN.snippet}</p>
+              <p className="tfa-mail-subject">{LEDGERLINE.subject}</p>
+              <p className="tfa-mail-snippet">{LEDGERLINE.snippet}</p>
             </span>
             <span className="tfa-mail-side">
-              <b className="tfa-mail-code">{CHOSEN.code}</b>
-              <span className="tfa-mail-tag">{CHOSEN.tag}</span>
-              <span className="tfa-mail-age">{CHOSEN.age}</span>
+              <b className="tfa-mail-code" data-fly-from="1">
+                {LEDGERLINE.code}
+              </b>
+              <span className="tfa-mail-tag">{LEDGERLINE.site}</span>
+              <span className="tfa-mail-age">{second ? "2 min ago" : "just now"}</span>
             </span>
           </li>
-          <li className="tfa-mail-row" data-state="rival">
-            <span className="tfa-avatar" data-who="rival" aria-hidden="true">
-              N
+
+          <li
+            className="tfa-mail-row"
+            data-landed={arrived}
+            data-state={pickedHeld ? "held" : "new"}
+            style={{ "--slot": 0 } as CSSProperties}
+          >
+            <span className="tfa-avatar" data-who="relay" aria-hidden="true">
+              {ACCOUNT_TEAM.initial}
             </span>
             <span className="tfa-mail-copy">
               <span className="tfa-mail-from">
-                <b>{RIVAL.from}</b>
-                <small>{RIVAL.sender}</small>
+                <b>{ACCOUNT_TEAM.from}</b>
+                <small>{ACCOUNT_TEAM.address}</small>
               </span>
-              <p className="tfa-mail-subject">{RIVAL.subject}</p>
-              <p className="tfa-mail-snippet">{RIVAL.snippet}</p>
+              <p className="tfa-mail-subject">{ACCOUNT_TEAM.subject}</p>
+              <p className="tfa-mail-snippet">{ACCOUNT_TEAM.snippet}</p>
             </span>
             <span className="tfa-mail-side">
-              <b className="tfa-mail-code">{RIVAL.code}</b>
-              <span className="tfa-mail-tag" data-spec-anchor="rival">
-                {RIVAL.tag}
+              <b className="tfa-mail-code" data-fly-from="2">
+                {ACCOUNT_TEAM.code}
+              </b>
+              <span className="tfa-mail-tag">{ACCOUNT_TEAM.site}</span>
+              <span className="tfa-mail-age">just now</span>
+            </span>
+          </li>
+
+          <li
+            className="tfa-mail-row"
+            data-landed={arrived}
+            data-late="true"
+            data-state={pickedHeld ? "aside" : "new"}
+            style={{ "--slot": 1 } as CSSProperties}
+          >
+            <span className="tfa-avatar" data-who="relay" aria-hidden="true">
+              {NORTHWIND.initial}
+            </span>
+            <span className="tfa-mail-copy">
+              <span className="tfa-mail-from">
+                <b>{NORTHWIND.from}</b>
+                <small>{NORTHWIND.address}</small>
               </span>
-              <span className="tfa-mail-age">{RIVAL.age}</span>
+              <p className="tfa-mail-subject">{NORTHWIND.subject}</p>
+              <p className="tfa-mail-snippet">{NORTHWIND.snippet}</p>
+            </span>
+            <span className="tfa-mail-side">
+              <b className="tfa-mail-code">{NORTHWIND.code}</b>
+              <span className="tfa-mail-tag">{NORTHWIND.site}</span>
+              <span className="tfa-mail-age">just now</span>
             </span>
           </li>
         </ul>
@@ -678,7 +894,7 @@ export function TwoFactorPasterDemo() {
 
       {/* No caption. Everything a line under this would have said is printed inside
           the frame already — the code is in the boxes, the sender is on the row, the
-          reasons are in the popup — and the five claims that are not printed anywhere
+          verdict is on the card — and the five claims that are not printed anywhere
           are pinned to the things that prove them. */}
       <SpecTags
         beats={BEATS}

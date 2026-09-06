@@ -201,12 +201,16 @@ const projectData: Project[] = [
        a click. Everything the three deleted notes said is inside the frame now — the pitch
        detector carries a leader line to the app's own control, and the four voices are
        discs in the score's own colours moving with the mix.
-       One leader line, not two. This said "the mixer and the pitch detector carry leader
-       lines", and the pod renders exactly one `.choir-cue`, gated on the microphone spot.
-       The second was designed and dropped: the parts panel is already open on screen,
-       headed "Parts", saying what a label would have said and saying it in the
-       application's own voice. `demo.tsx` records that in as many words — "There is no
-       second cue on the parts mixer" — six inches from where this claimed there was. */
+       Four leader lines, and none of them on the parts mixer. The pod renders a `.choir-cue`
+       for the passage it marks on the app's bar ruler, for the bar the app counts in before
+       the music (hung on the tempo readout), for the Share control, and for the microphone;
+       each points at the application's own control rather than duplicating it. The mixer's
+       was designed and dropped: the parts panel is already open on screen, headed "Parts",
+       saying what a label would have said and saying it in the application's own voice.
+       `demo.tsx` records that at `findSpot`, and the rule it gives — a cue goes on a control
+       whose consequence is not visible in the frame at rest — is what admitted the other
+       three. Below 900px the same four are a row of chips under the frame instead, the
+       fallback the other scenes' labels make on a narrow window. */
     invitation: "The real app, on a real score. Play it and all four parts sing.",
   },
   {
@@ -246,19 +250,21 @@ const projectData: Project[] = [
     number: "03",
     name: "PDF Explainer",
     platform: "Web app",
-    headline: "The slide, and what it means, without switching windows.",
+    headline: "The slide, and what it means, written before you get there.",
+    why: "A lecture deck is a hundred slides that assume you were in the room.",
     theme: "black",
     source: "https://github.com/xiangthebung/pdf-explainer",
     live: "https://pdf-explainer.xiangli3625.workers.dev/",
     demo: "pdf-explainer",
     well: "light",
-    /* The act rail across the top of the scene names the three parts and lights the one
-       playing, so there was never anything for an invitation to add. It named four until
-       `ACT_NAMES` lost one: "Quiz" and "Matching" were never two parts of the application,
-       they are two of the three shapes a question takes inside one Practice panel. The two notes that
-       were carrying real information — the overlay wakes on approach, and the practice
-       material comes out of your own deck — are labels inside the stage now, on the panels
-       making those claims. */
+    /* "without switching windows" until the application changed under it. What it does now
+       that it did not before is explain *ahead*: after the first batch, the next is asked
+       for while you are still two slides away, and the filmstrip's rail fills in as each
+       one lands — so the headline says that, because it is the thing the scene spends its
+       first five seconds on. The scene has no act rail any more and no invitation; its
+       four claims are labels inside the frame, on the rail, the lifted question, the Ask
+       panel and the settings gear, and the pod's own header comment records why the film
+       runs Review before Ask. */
   },
   {
     id: "pagepack",
@@ -495,7 +501,7 @@ export const projectMotifs: Record<string, { label: string; mark: string }> = {
   "n-back": { label: "two back", mark: "▦" },
   pagepack: { label: "kept offline", mark: "⇩" },
   decaf: { label: "colour off", mark: "B/W" },
-  "pdf-explainer": { label: "slide over slide", mark: "▱" },
+  "pdf-explainer": { label: "explained ahead", mark: "▱▱▱" },
   "choir-practice": { label: "four voices", mark: "♪" },
   "two-factor-paster": { label: "one keypress", mark: "••••••" },
   totem: { label: "names hidden", mark: "◆" },

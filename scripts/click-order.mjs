@@ -48,10 +48,14 @@ const BASE = `http://localhost:${PORT}`;
 const SCENES = [
   {
     id: "decaf",
-    lapMs: 22_000,
+    /* 27.8s of beats plus the loop gap, since the popup and its receipt were added
+       between the switch and the hold. */
+    lapMs: 30_000,
     watch: [
       // The toolbar button pressed in, which is the frame the whole switch is about.
       { beat: "press", state: '.dc[data-did="press"]' },
+      // The popup growing out of the same icon on the second press.
+      { beat: "open", state: '.dc-popup[data-open="true"]' },
       // The hold ring beginning to fill.
       { beat: "hold", state: '.dc-hold[data-holding="true"]' },
     ],
@@ -71,16 +75,14 @@ const SCENES = [
   },
   {
     id: "pdf-explainer",
-    lapMs: 26_000,
+    lapMs: 18_000,
     watch: [
-      { beat: "ask", state: ".pdfx-suggest [data-picked='true']" },
-      // The panel swapping from the tutor to the practice set.
-      { beat: "to-practice", state: ".pdfx-practice" },
-      { beat: "pick", state: '.pdfx-option[data-state="chosen"]' },
-      // A term tapped and waiting for its definition.
-      { beat: "term-b", state: '.pdfx-match [data-held="true"]' },
-      // And a pair locked in.
-      { beat: "pair-a", state: '.pdfx-match [data-matched="true"]' },
+      // The next button pressed, and slide 2 arriving because of it.
+      { beat: "next", state: '.pdfx[data-did="next"]' },
+      // The panel swapping to the review set.
+      { beat: "review", state: ".pdfx-review" },
+      // The chip pressed, and the chat opening with the phrase quoted.
+      { beat: "ask", state: ".pdfx-chat" },
     ],
   },
 ];

@@ -1,41 +1,55 @@
 "use client";
 
 /**
- * PDF Explainer, in three parts.
+ * PDF Explainer, as the product is now: a deck that is explained before you reach it.
  *
- * It used to be one: the notes overlay fading as a pointer approached it. That is
- * the product's signature interaction and it was worth showing, but showing only
- * that made a study workspace look like a single hover effect. The app has a
- * floating notes overlay, a tutor you can ask about the slide you are on, and a
- * practice panel that builds a review set out of the whole deck.
+ * The previous film was three acts about three panels — a notes overlay fading up on
+ * approach, a tutor, a practice set — and it was a faithful film of the workspace it
+ * described. That workspace has moved on. The overlay is gone; notes live in a 460px
+ * panel beside the slide, and three things the application did not do when the old
+ * scene was staged are now the reason to show it at all:
  *
- * So the scene runs through all three, and says so: the rail across the top names the
- * parts and lights the one you are watching, which is how a visitor learns there are
- * three without being asked to click anything.
+ *   it explains *ahead* of you. After the first batch, the next is requested when the
+ *   reader is two slides from the first unexplained one, and the filmstrip's 3px rail
+ *   fills in as each batch lands — so by the time a slide is reached its notes are there;
  *
- * IT WAS FOUR, AND THE FOURTH WAS A MISREADING
+ *   you ask by highlighting. The slide has a real text layer now, a selection raises an
+ *   "Ask about this" chip, and the Ask panel quotes the phrase back before answering,
+ *   with the two neighbouring slides as context;
  *
- * The rail read "Notes overlay · Tutor · Quiz · Matching", which tells a visitor the
- * application has a matching feature standing beside its quiz feature. Reading
- * `src/workspace/PracticePanel.tsx` settles it: there is one Practice panel, it plans a
- * mixed set across the deck, and `KINDS` gives that set three kinds of item — multiple
- * choice, match the pairs, fill in the blank — which the panel itself surfaces as a filter
- * row that counts each kind. So matching is not a peer of the quiz; it is one of the
- * shapes a question can take. The practice act is one act now and it plays all three,
- * with the panel's own header and filters above them saying what they are.
+ *   and it runs on your own key, in your own browser — sessions in IndexedDB, the key in
+ *   local storage — which no frame can show and one label has to say.
  *
- * What is real. The overlay's numbers are the app's own — 0.26 at rest, 1.0 awake, a 300ms
- * ease-out — and the card prints its own opacity so the mechanism is legible rather than
- * merely felt. The three item kinds keep their real tints and labels from `KINDS` (violet,
- * teal, amber), the matching game is the real interaction — tap a term, tap its
- * definition, three times over — the cloze card's `?????`, its "Type the missing term"
- * field and its "That is it" are the real ones, the tutor's three-dot "Thinking" state and
- * its `Ask about slide N…` placeholder are the real ones, and the deck content is the GPS
- * lecture that ships in the repository. The arrangement is staged: this is a film about
- * the app, not the app.
+ * So the film is those things, in the order a reader meets them. A deck opens on slide 1
+ * with its notes beside it and the rail already filling; the reader presses on to slide 3
+ * and the notes are waiting; Review builds a question out of that slide and the card
+ * leaves the panel for the section; then the pointer drags across a phrase on the slide,
+ * the chip appears, and the panel answers with the phrase quoted. Review comes before
+ * Ask, which is the one place this departs from the reading order the product suggests,
+ * and it is for the hold frame: the still is the answer, and the flown-out question has
+ * to be resting under the window when the film stops for all four claims to be on screen.
+ *
+ * What is real. Every string the chrome prints is one the application prints —
+ * "Explaining ahead…", "Explaining ahead from slide 4…", "Ask about this", "Explain
+ * this.", "Ask about slide 3…", "Re-explain", "0/2 practice", "Enter to send · Shift +
+ * Enter for a new line", the Notes / Ask / Review control, the Quiz / Match / Blanks
+ * filters — and the dimensions are the workspace's: a 56px top bar, a 176px filmstrip
+ * with a 3px rail, a `#f2f2f5` stage under a floating pill toolbar, a 460px panel, all
+ * scaled to the pod. The rail's colours are the product's: violet explained, violet at
+ * 45% pulsing for the batch in flight, hairline otherwise. The slide is a made-up lecture
+ * on gradient descent and the notes are the shape the app writes — chips, a heading, a
+ * paragraph, an INTUITION callout, a CHECK YOURSELF card — with the first slide's copy
+ * taken from the application's own test deck. The reply is staged: it comes out of a
+ * model in the real app.
  */
 
-import { useRef, type CSSProperties } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { usePressGate } from "../scene/press-gate";
 import { useSectionBeat } from "../scene/section-beat";
@@ -46,928 +60,915 @@ import { useOnScreen } from "../use-on-screen";
 import { useSectionFocused } from "../use-section-focus";
 import "./demo.css";
 
-/** From `src/demo/demoDeck.ts` — slide 2 of the bundled GPS lecture. */
-const SLIDE = {
-  number: 2,
-  total: 10,
-  title: "Measuring Distance via Signal Time-of-Flight",
-  bullets: [
-    "Pseudorange from transit time",
-    "Timing error → position error",
-    "1 ns ≈ 30 cm of range",
-  ],
-};
-
-const NOTE = {
-  summary: "Distance is just time, times light",
-  lead:
-    "GPS measures the time a radio wave takes to reach you. Everything else in the system exists to make that one measurement trustworthy.",
-  sensitivity: [
-    ["1 millisecond", "300 kilometres"],
-    ["1 microsecond", "300 metres"],
-    ["3 nanoseconds", "1 metre"],
-  ] as Array<[string, string]>,
-};
+/* ------------------------------------- the deck ------------------------------------ */
 
 /**
- * The tutor panel's furniture, and the chips are the app's rather than this scene's.
- *
- * They used to read "Why four satellites?", "Explain pseudorange", "Worked example" — three
- * plausible questions about this deck, and three strings `ChatPanel.tsx` never puts on
- * screen. Its `SUGGESTIONS` are four fixed prompts that do not vary with the document,
- * which is a real design decision the scene was overwriting with a better-looking one.
- *
- * `asked` is `chips[0]` because the cursor presses the first chip; the two have to agree or
- * the bubble that appears is not the one that was clicked. The reply is staged — it comes
- * out of a model in the real app — but it now answers the prompt actually pressed.
+ * A five-slide lecture, invented. The session takes its name from the file, which is
+ * what the application does — `lecture4.pdf` opens as "lecture4".
  */
-const CHAT = {
-  chips: [
-    "Explain this slide as simply as possible",
-    "Why does this matter?",
-    "Walk me through the maths step by step",
-    "Give me a concrete example",
+const DECK = {
+  name: "lecture4",
+  foot: "Intro to Machine Learning · Lecture 4",
+  slides: [
+    {
+      title: "Lecture 4: Gradient Descent",
+      bullets: [
+        "Why optimisation is the engine of learning",
+        "Batch, stochastic and mini-batch variants",
+        "Choosing a learning rate",
+      ],
+    },
+    {
+      title: "The update rule",
+      equation: true,
+      bullets: [
+        "Step against the gradient of the loss",
+        "The learning rate η sets the stride",
+        "Stop when the gradient vanishes",
+      ],
+    },
+    {
+      title: "Stochastic vs batch",
+      figure: true,
+      bullets: [
+        "Batch: one step per pass over the data",
+        "Stochastic: one step per example, noisy but cheap",
+        "Mini-batch: 32–256 examples, the usual default",
+      ],
+    },
+    {
+      title: "Choosing a learning rate",
+      bullets: [
+        "Too large: the iterates overshoot and diverge",
+        "Too small: convergence crawls",
+        "Schedules: decay η as training goes on",
+      ],
+    },
+    {
+      title: "Summary",
+      bullets: [
+        "Gradient descent follows the negative gradient",
+        "The learning rate is the knob that matters most",
+        "Mini-batches trade noise for throughput",
+      ],
+    },
   ],
-  asked: "Explain this slide as simply as possible",
-  reply:
-    "A satellite says when it sent a signal. Your phone notes when it arrived, multiplies the difference by the speed of light, and that is the distance. Everything else in the system exists to make that one subtraction trustworthy.",
-};
+} as const;
 
+const TOTAL = DECK.slides.length;
+
+/** How many practice items each explained slide contributes to the review set. */
+const PRACTICE_PER_SLIDE = 2;
+
+/**
+ * The phrase the pointer drags across, and where it is. Slide 3, the second bullet, at
+ * the end of the line so the chip that pops above it lands over nothing the eye needs.
+ */
+const SELECTION = { slide: 3, bullet: 1, phrase: "noisy but cheap" } as const;
+
+/**
+ * The question Review builds from slide 3. It is also the CHECK YOURSELF card in that
+ * slide's notes, which is what the application does: each slide's notes end in its own
+ * practice items, and Review is those items collected across the deck.
+ */
 const QUIZ = {
-  question:
-    "A GPS timing measurement is off by 1 microsecond. How large is the position error?",
-  options: ["300 metres", "3 metres", "30 kilometres", "0.3 millimetres"],
-  answer: 0,
-  explanation:
-    "1 microsecond × the speed of light ≈ 300 m. Timing error and range error are the same quantity in different units.",
-};
+  kicker: "Q1",
+  slide: 3,
+  question: "Which variant takes one step per training example?",
+  options: ["Batch gradient descent", "Stochastic gradient descent", "Mini-batch, 256 examples"],
+} as const;
 
-const MATCH = {
-  title: "Terms in this lecture",
-  pairs: [
-    ["Pseudorange", "A distance that still contains your clock error"],
-    ["Ephemeris", "The satellite's own orbit, broadcast to you"],
-    ["Ionospheric delay", "Signal slowed by charged particles overhead"],
-  ] as Array<[string, string]>,
-  /* Deliberately out of order — a matching exercise where the rows line up is not an
-     exercise. These are display positions holding pair indices, so `[1, 2, 0]` puts
-     Ephemeris's definition first and Pseudorange's last. The real game shuffles both
-     columns with `shuffle()`; a film cannot, because the pointer's route has to be the
-     same every lap. */
-  order: [1, 2, 0],
-};
-
-/**
- * The third practice kind, from `src/practice/ClozeCard.tsx`.
- *
- * It answers the same question the tutor did two acts earlier, on purpose: a review set
- * is drawn from the deck you have been reading, so being asked to recall the thing that
- * was just explained is the mechanism working rather than the scene repeating itself.
- */
+/** The second card in the review set, from `src/practice/ClozeCard.tsx`. */
 const CLOZE = {
-  before: "Three satellite ranges fix you in space. The fourth solves for your receiver's own",
-  answer: "clock error",
-  after: ".",
-};
+  slide: 2,
+  before: "The",
+  after: "decides how far each step moves.",
+} as const;
 
 /**
- * The practice panel's three kinds, with the labels and tints the application uses.
- *
- * From `KINDS` and `FILTERS` in `src/workspace/PracticePanel.tsx`. Worth copying exactly,
- * because getting this wrong is what this scene previously got wrong: it presented
- * matching as a fourth part of the application, a peer of the notes overlay and the
- * tutor. It is not. There is one Practice panel, it builds a mixed set out of the whole
- * deck, and multiple choice, matching and blanks are three kinds of item inside it —
- * which the panel says out loud with a filter row that counts each kind.
+ * What the Ask panel prints. The quoted line and "Explain this." are what `ChatPanel.tsx`
+ * puts in the bubble when a selection is sent; the reply is staged, and mentions slide 4
+ * because the tutor is now handed the two slides either side.
  */
-const KINDS = [
-  { id: "quiz", filter: "Quiz", label: "Multiple choice", tint: "violet" },
-  { id: "match", filter: "Match", label: "Match the pairs", tint: "teal" },
-  { id: "cloze", filter: "Blanks", label: "Fill in the blank", tint: "amber" },
-] as const;
+const ASK = {
+  quote: SELECTION.phrase,
+  ask: "Explain this.",
+  reply:
+    "One example per step makes each gradient a rough guess, so the path zig-zags. But a step costs one example rather than a pass over the whole set — which is why slide 4 pairs it with a smaller η.",
+} as const;
 
-type Kind = (typeof KINDS)[number]["id"];
+/**
+ * The notes for the three slides the reader visits. The first is the application's own
+ * copy for this slide, from its test deck; the other two are written to the same shape.
+ */
+const NOTES: Record<
+  1 | 2 | 3,
+  {
+    head: string;
+    lead: string;
+    equation?: ReactNode;
+    body?: string;
+    callout?: string;
+    quiz?: boolean;
+  }
+> = {
+  1: {
+    head: "Gradient descent, slide 1",
+    lead: "The update rule moves the parameters against the gradient of the loss:",
+    equation: (
+      <>
+        θ<sub>t+1</sub> = θ<sub>t</sub> − η ∇<sub>θ</sub> J(θ<sub>t</sub>)
+      </>
+    ),
+    body: "The learning rate η decides how far each step goes. Too large and the iterates overshoot the minimum; too small and convergence crawls.",
+    callout:
+      "Picture a ball rolling downhill in fog: it can only feel the slope under its feet, so it takes a step, feels again, and repeats.",
+  },
+  2: {
+    head: "The update rule, slide 2",
+    lead: "Each step subtracts the gradient, scaled by η. The gradient points uphill, so subtracting it walks the parameters toward lower loss.",
+    callout: "The slope says which way. η says how far.",
+  },
+  3: {
+    head: "Stochastic vs batch, slide 3",
+    lead: "Batch descent reads the whole dataset before every step, so each step is exact and expensive. Stochastic descent steps after every example: cheap, and noisy enough to shake out of shallow minima.",
+    quiz: true,
+  },
+};
 
-/* --------------------------------- storyboard ------------------------------- */
+/* ------------------------------------ storyboard ----------------------------------- */
 
 type BeatName =
-  | "slide"
-  | "arrive"
-  | "resting"
-  | "reach"
-  | "awake"
-  | "split"
+  | "open"
+  | "ahead"
+  | "next"
+  | "next-2"
+  | "read"
+  | "review"
+  | "lift"
+  | "landed"
+  | "aim"
+  | "select"
+  | "chip"
   | "ask"
   | "thinking"
-  | "answer"
-  | "to-practice"
-  | "pick"
-  | "verdict"
-  | "to-match"
-  | "term-a"
-  | "pair-a"
-  | "term-b"
-  | "pair-b"
-  | "term-c"
-  | "pair-c"
-  | "matched"
-  | "to-blank"
-  | "typing"
-  | "check"
-  | "solved";
+  | "answer";
 
 /**
- * Three parts, in one list so the pacing is visible.
+ * Sixteen seconds, four presses and one drag.
  *
- * It was four, and the fourth was wrong. The rail read "Notes overlay · Tutor · Quiz ·
- * Matching", which says the application has a matching feature standing beside its quiz
- * feature. It does not: there is a Practice panel, it builds one mixed review set from
- * the whole deck, and multiple choice, matching and blanks are three *kinds of item* in
- * that set — see `KINDS`, copied from the panel's own filter row. So the practice act is
- * one act now and it plays all three kinds, which also fixes the smaller half of the same
- * report: the matching game is three pairs and six taps, and the scene was doing one.
+ * `open` is long because it is the only beat that shows the whole workspace at rest —
+ * the deck, the notes, the rail already two slides in — and everything after it is a
+ * change to that picture. `ahead` is the mechanism on its own: nothing is pressed and a
+ * rail fills. The two `next` presses are short because a press is short, and `read` is
+ * where the payoff sits still long enough to be seen: slide 3 has arrived and its notes
+ * were there first.
  *
- * The overlay act is the shortest despite being the signature one: it lands in a second
- * and a half and holding it longer only delays the reveal that there is more here than a
- * hover effect.
+ * `lift` is sized to the card's 900ms flight and `landed` exists so that the label about
+ * the card is pinned to a card that has stopped moving; a label measured from a box in
+ * flight is placed wrong, and the component only re-measures on a beat change.
  *
- * The beats that ask you to *read something* carry the time; the ones that are a pointer
- * moving or a panel swapping stay short. That split was the fix for a report that the
- * page moved text too fast, and none of those figures have been touched here: `resting`
- * is 1500ms because 0.26 opacity is the whole mechanism, `answer` is 2300ms because it is
- * three lines of prose, `verdict` 2100ms because it is a question, four options and the
- * reasoning at once.
- *
- * 24.6s, which makes this comfortably the longest scene on the page and the one the lap
- * window in `scripts/drive-site.mjs` is sized against. It is long because it is now
- * showing five things rather than four, and the alternative — trimming the reading beats
- * to buy the room — is undoing a fix that was asked for twice.
- *
- * The twelve short beats in the practice act are all the same shape and are all sized the
- * same way: a flight, 90ms to settle, 150ms of press, and enough of the 460ms ring to see
- * it before the next click's ring replaces it. See the note in `scene/cursor.tsx` for why
- * that arithmetic lives here at all.
+ * `select` is a drag rather than a click, so it is the one gesture here the cursor does
+ * not press for: the pointer lands on the first word during `aim` and travels to the last
+ * during `select`, with the highlight following it. `answer` is the still, and the
+ * longest beat, because it is a paragraph.
  */
 const BEATS: readonly Beat<BeatName>[] = [
-  // I. the notes overlay
-  // The slide alone, and the only chance to take in what the deck is about before
-  // something covers half of it.
-  { name: "slide", ms: 1800 },
-  { name: "arrive", ms: 600 },
-  // 0.26 opacity is the whole mechanism, and 900ms was not long enough for anyone to
-  // notice the card was faint before it stopped being faint.
-  { name: "resting", ms: 1500 },
-  { name: "reach", ms: 600 },
-  { name: "awake", ms: 2100 },
-  // II. the tutor
-  { name: "split", ms: 700 },
-  { name: "ask", ms: 950 },
-  { name: "thinking", ms: 850 },
-  // Three lines of answer. At 1800ms it was gone before the last one was read.
-  { name: "answer", ms: 2300 },
-  // III. practice, first item: multiple choice
-  /* Not a bare cut, because this is the beat that presses the Practice tab. At 600ms the
-     panel had already swapped while the pointer was still crossing the frame — filming it
-     showed the cursor 45px under the tab it was supposed to be clicking. It is the
-     longest flight in the scene, being the only one that starts from outside the frame. */
-  { name: "to-practice", ms: 1150 },
-  // Practice tab to the answer, which is a short hop, then the press.
-  { name: "pick", ms: 900 },
-  // A question, four options and the reasoning underneath, all at once.
-  { name: "verdict", ms: 2100 },
-  // III. practice, second item: match the pairs
-  /* The card swaps in and the pointer crosses to the first term. It does not press here —
-     the press is the next beat — because a card that mounts with a 340ms entrance
-     transform is a card that has not finished arriving when the beat starts. */
-  { name: "to-match", ms: 700 },
-  /* Six taps: a term, then its definition, three times over. The real game is exactly
-     this — `pickConcept` then `pickDefinition`, and a matching pair locks green — and the
-     scene used to do one of the six, which is what got reported.
-     600ms each. Long enough for a cross-column hop (about 250ms), the settle and the
-     press, and to leave the ring most of its 460ms before the next tap starts a new one. */
-  { name: "term-a", ms: 600 },
-  { name: "pair-a", ms: 600 },
-  { name: "term-b", ms: 600 },
-  { name: "pair-b", ms: 600 },
-  { name: "term-c", ms: 600 },
-  { name: "pair-c", ms: 600 },
-  // "Matched with no misses", and the board green.
-  { name: "matched", ms: 1300 },
-  // III. practice, third item: fill in the blank
-  // The pointer crosses to the field and clicks into it.
-  { name: "to-blank", ms: 700 },
-  // The answer typed, on a `steps()` reveal. See `.pdfx-typed`.
-  { name: "typing", ms: 1100 },
-  { name: "check", ms: 700 },
-  // The blank filled, and the last of the three items done.
-  { name: "solved", ms: 1600 },
+  { name: "open", ms: 1600 },
+  { name: "ahead", ms: 1300 },
+  { name: "next", ms: 900 },
+  { name: "next-2", ms: 900 },
+  { name: "read", ms: 1600 },
+  { name: "review", ms: 900 },
+  { name: "lift", ms: 900 },
+  { name: "landed", ms: 900 },
+  { name: "aim", ms: 700 },
+  { name: "select", ms: 900 },
+  { name: "chip", ms: 900 },
+  { name: "ask", ms: 800 },
+  { name: "thinking", ms: 900 },
+  { name: "answer", ms: 2600 },
 ];
 
 /**
- * Which act each beat belongs to. Drives the rail and the panel's contents.
+ * Where the pointer is.
  *
- * Every practice beat is act 2, which is the correction: twelve of these used to be
- * spread across acts 2 and 3 as though a quiz and a matching game were different parts of
- * the application.
- */
-const ACT: Record<BeatName, 0 | 1 | 2> = {
-  slide: 0,
-  arrive: 0,
-  resting: 0,
-  reach: 0,
-  awake: 0,
-  split: 1,
-  ask: 1,
-  thinking: 1,
-  answer: 1,
-  "to-practice": 2,
-  pick: 2,
-  verdict: 2,
-  "to-match": 2,
-  "term-a": 2,
-  "pair-a": 2,
-  "term-b": 2,
-  "pair-b": 2,
-  "term-c": 2,
-  "pair-c": 2,
-  matched: 2,
-  "to-blank": 2,
-  typing: 2,
-  check: 2,
-  solved: 2,
-};
-
-const ACT_NAMES = ["Notes overlay", "Tutor", "Practice"] as const;
-
-/** Which kind of practice item is on screen, for the beats inside act 2. */
-const MODE: Partial<Record<BeatName, Kind>> = {
-  "to-practice": "quiz",
-  pick: "quiz",
-  verdict: "quiz",
-  "to-match": "match",
-  "term-a": "match",
-  "pair-a": "match",
-  "term-b": "match",
-  "pair-b": "match",
-  "term-c": "match",
-  "pair-c": "match",
-  matched: "match",
-  "to-blank": "cloze",
-  typing: "cloze",
-  check: "cloze",
-  solved: "cloze",
-};
-
-/**
- * Where the pointer is. Reaching for a thing is what makes it happen.
- *
- * The beat that opens the practice panel used to send it to `figure`, a diagram on the
- * slide that nothing in that beat has anything to do with. The panel swapped from a tutor
- * conversation to a quiz card with the pointer parked on an unrelated drawing, so the one
- * beat in the scene where the whole right-hand side changes had no cause on screen. It
- * goes to the Practice tab instead, and presses it.
- *
- * The matching run is twelve entries for six taps, and it is written out rather than
- * generated because the pointer's route is the design: the definitions are shown out of
- * order (`MATCH.order`), so each pair is a diagonal across the card rather than a step
- * down a list, and it is worth being able to read that route off the page.
- *
- * Each pair is aimed a beat early — `to-match` sends the pointer to the first term, and
- * `term-a` is the beat that presses it. The component times a press against its own
- * flight now, so this is no longer strictly necessary; it is kept because a card that
- * mounts with an entrance transform has not finished arriving when its beat begins, and a
- * beat of approach absorbs that.
+ * It enters on `ahead`, parked on the toolbar's next button, so the two presses that
+ * follow are presses rather than arrivals. It leaves during `read` — the beat is about the
+ * panel, not the hand — and comes back for the Review tab. `aim` and `select` are the two
+ * ends of the drag; `chip` holds on the last word while the chip pops; `ask` presses it.
+ * Nothing after that: the chip is gone once pressed, and the answer needs no hand.
  */
 const CURSOR: Partial<Record<BeatName, string>> = {
-  reach: "notes",
-  awake: "notes",
+  ahead: "next",
+  next: "next",
+  "next-2": "next",
+  review: "review-tab",
+  lift: "review-tab",
+  landed: "review-tab",
+  aim: "sel-start",
+  select: "sel-end",
+  chip: "sel-end",
   ask: "chip",
-  thinking: "chip",
-  "to-practice": "practice-tab",
-  pick: "option",
-  verdict: "option",
-  "to-match": "term-0",
-  "term-a": "term-0",
-  "pair-a": "def-0",
-  "term-b": "term-1",
-  "pair-b": "def-1",
-  "term-c": "term-2",
-  "pair-c": "def-2",
-  // Stays on the last pair while the finished board is read, rather than leaving and
-  // coming back for the sake of it.
-  matched: "def-2",
-  "to-blank": "field",
-  typing: "field",
-  check: "check",
-  /* Nothing on `solved`: the Check button is replaced by "That is it" the moment the
-     answer lands, so a pointer aimed at it would be aimed at an element that no longer
-     exists — which the component handles by leaving the frame, but leaving the frame is
-     the right thing to *say* rather than to fall into. The set is done. */
 };
 
-/** The beats that carry a click. Eleven of them, which is what the scene is about. */
-const PRESSES: ReadonlySet<BeatName> = new Set<BeatName>([
-  "ask",
-  "to-practice",
-  "pick",
-  "term-a",
-  "pair-a",
-  "term-b",
-  "pair-b",
-  "term-c",
-  "pair-c",
-  "to-blank",
-  "check",
-]);
+/** The four beats that carry a click. */
+const PRESSES: ReadonlySet<BeatName> = new Set<BeatName>(["next", "next-2", "review", "ask"]);
 
 /**
- * The beats whose visible change is *caused* by that click, and which therefore wait for
- * it. See `usePressGate`.
- *
- * This is the subset of `PRESSES` above, and the two entries missing from it are the
- * interesting part.
- *
- * `to-blank` clicks into the field inside the blanks card, and the blanks card is what that
- * beat swaps in. Gating it would deadlock the gesture — the card would be waiting for a
- * press aimed at an element not in the document. The card arriving is the setup for the
- * click, not its consequence.
- *
- * `check` presses the Check button and the answer lands on `solved`, a beat later, so there
- * is nothing on `check` to hold back. Gating it would render `check` as `typing` and take
- * the typed answer off the screen until the button was pressed, which is a new fault rather
- * than a fix for the old one.
- *
- * Nine of the remaining beats are the ones the old choreography could not pay for: the
- * pointer crosses the card and clicks in the same 600ms, and the term used to light up
- * about 370ms before the pointer reached it.
+ * All four wait for their press. See `usePressGate`: until the pointer has actually gone
+ * down, each of these renders as the beat before it — slide 2 does not arrive before the
+ * next button is pressed, the panel does not swap to Review before the tab is, the chat
+ * does not open before the chip is. The pointer is already standing on the button for
+ * the two `next` presses, so those wait 90ms; the other two wait a short flight.
  */
-const CLICK_EFFECTS: ReadonlySet<BeatName> = new Set<BeatName>([
-  "ask",
-  "to-practice",
-  "pick",
-  "term-a",
-  "pair-a",
-  "term-b",
-  "pair-b",
-  "term-c",
-  "pair-c",
-]);
+const CLICK_EFFECTS: ReadonlySet<BeatName> = PRESSES;
 
 /**
- * There is no caption under this scene, and getting to that took three attempts.
+ * Four claims, each on the thing making it.
  *
- * It began as one line per act, which described four acts rather than seventeen frames.
- * That became one line per beat, which put a fresh sentence under beats sized for a
- * 600ms cursor glide. Then the narration was stripped out and what remained was worse
- * than either: "It wakes on approach", "Nobody had to tell it which slide you are on" —
- * implementation notes, phrased as though a visitor might be impressed that software
- * knows which page it is displaying.
- *
- * The real problem was never the wording. This section already carries a headline, a
- * reason, an invitation and three notes, and the notes say "Notes sit over the slide,
- * faint until you move towards them" and "Ask it questions about the slide you are
- * looking at" — so the caption was a fifth layer of prose restating the fourth, four
- * inches away, while the scene demonstrated it. And the rail across the top of the frame
- * already names the parts and lights the one playing.
- *
- * So it is gone. The `ACT_NAMES` rail is the label.
+ * "Explained before you get there" hangs off the fifth thumbnail — the last slide, which
+ * the reader never reaches and whose rail is filling anyway — and reads into the empty
+ * band of the stage under the slide. Fourteen pixels below the thumbnail's middle, still
+ * on its edge: at 2560 the stage is wider, the slide taller, and its bottom edge came
+ * down to exactly the thumbnail's centre line, so a plate read out at that height lay
+ * along the edge of the slide. "Questions written from your own slides" reads out
+ * of the card once it has landed under the window, rightward, into the space under the
+ * panel it came from. "Highlight a phrase to ask about it" hangs under the answer, inside
+ * the Ask panel, which has nothing but air between the reply and the composer; it arrives
+ * with the answer rather than with the question because the answer is the element that
+ * is there at every width — it hung off the panel's left edge at a height of its own
+ * until a 768px frame put it squarely across the rail's label. "Your own key, kept in
+ * your browser" is the claim no frame can show. Its dot sits a hair above the settings
+ * gear, where the key is entered, and the plate reads left along the window's top edge:
+ * centred above the gear it ran off the right of any window narrower than 900px, and
+ * reading left at the gear's own height it covered the count beside it.
  */
-/**
- * Two claims, on the two things making them.
- *
- * The act rail names the parts and lights the one playing, which is why this scene never
- * needed a caption. What it did need, and what was sitting in a column beside it instead,
- * was the *point* of two of those parts. "Notes sit over the slide, faint until you move
- * towards them" is a description of a mechanism the frame performs but does not name — the
- * card prints `0.26` and then `1.00`, which is the number, not the reason. And "It writes
- * quizzes and flashcards from your own deck" is the one claim in this section that nothing
- * on screen can support: a practice card looks exactly the same whether a person typed it
- * or the deck produced it.
- *
- * There is no third label naming the three kinds of practice item, and that is deliberate:
- * the panel's own filter row prints `Quiz 1 · Match 1 · Blanks 1` in the three tints the
- * cards are drawn in. A label restating a control that is already on screen is the exact
- * failure this component was built to remove.
- *
- * Coordinates are percentages of `.pdfx-stage`, not of the pod. The stage is the
- * positioned box the slide and the panel live in — the same box `PhantomCursor` is handed,
- * for the same reason, and there is a long note on `frameRef` below about what happens when
- * something in this scene is measured against the wrong one.
- */
-/* Both are anchored a couple of pixels *outside* the left edge of the panel they are about
-   and read away from it, into the slide. Inside, they cover the thing they are pointing at:
-   the notes card is a solid block of type with no gap big enough, and on the quiz the only
-   free space was the kicker row, where the label landed squarely on the chip. The slide
-   beside them is a title and three short bullets with room to spare. */
-/* Both take their x from the panel and keep their own y — `axis: "x"`. The edge they hang
-   off moves with the window, which is what the measurement is for; the height is a
-   decision about the picture that no element's box knows, which is the paragraph below.
-   Measured, the notes card's left edge is at 55.8% of the stage at a 1440px window and
-   57.1% at 2560, so the pair of hand-tuned 56 and 57 were each right at one width and
-   inside the panel they are supposed to be pointing at from outside at the other. */
 const SPECS: readonly SpecTag<BeatName>[] = [
   {
-    at: "resting",
-    text: "Faint until you reach for it",
-    x: 56,
-    y: 62,
-    anchor: "notes",
-    grip: "left",
-    axis: "x",
-    side: "left",
-    until: "split",
+    at: "read",
+    text: "Explained before you get there",
+    x: 14,
+    y: 77,
+    anchor: "thumb-5",
+    grip: "right",
+    nudge: { y: 14 },
+    side: "right",
   },
-  /* Low enough to clear the slide's title. At y 30 the plate ran straight through "Signal
-     Time-of-Flight", which is the one piece of text on that side of the frame a visitor is
-     actually reading; down here it crosses the figure, which is decorative line art.
-     It read "Quizzes made from your slides", which named one of the three kinds as though
-     it were the whole panel. */
   {
-    at: "to-practice",
-    text: "Practice written from your slides",
-    x: 57,
-    y: 55,
-    anchor: "practice",
-    grip: "left",
-    axis: "x",
+    at: "landed",
+    text: "Questions written from your own slides",
+    x: 62,
+    y: 118,
+    anchor: "card",
+    grip: "right",
+    side: "right",
+  },
+  {
+    at: "answer",
+    text: "Highlight a phrase to ask about it",
+    x: 80,
+    y: 56,
+    anchor: "answer",
+    grip: "bottom",
+    side: "below",
+  },
+  {
+    at: "thinking",
+    text: "Your own key, kept in your browser",
+    x: 95,
+    y: 0,
+    anchor: "settings",
+    grip: "top",
+    nudge: { y: -18 },
     side: "left",
-    until: "to-match",
   },
 ];
 
+/* -------------------------------------- icons -------------------------------------- */
+
+function Icon({ d, className }: { d: string; className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d={d}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+const ICON = {
+  close: "M6 6l12 12M18 6L6 18",
+  download: "M12 4v11m-5-4 5 5 5-5M5 20h14",
+  keyboard: "M3 7h18v10H3zM7 11h1m3 0h1m3 0h1m-9 4h8",
+  gear: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm7.4 3.5-1.6-.4a6 6 0 0 0-.5-1.2l.9-1.4-1.7-1.7-1.4.9a6 6 0 0 0-1.2-.5L13.5 4.6h-3l-.4 1.6a6 6 0 0 0-1.2.5l-1.4-.9-1.7 1.7.9 1.4a6 6 0 0 0-.5 1.2L4.6 12l1.6.4a6 6 0 0 0 .5 1.2l-.9 1.4 1.7 1.7 1.4-.9c.4.2.8.4 1.2.5l.4 1.6h3l.4-1.6c.4-.1.8-.3 1.2-.5l1.4.9 1.7-1.7-.9-1.4c.2-.4.4-.8.5-1.2z",
+  collapse: "M4 5h16v14H4zM9 5v14M6.5 12h5m-2-2 2 2-2 2",
+  book: "M4 5.5h6a2 2 0 0 1 2 2v11a2 2 0 0 0-2-2H4zm16 0h-6a2 2 0 0 0-2 2v11a2 2 0 0 1 2-2h6z",
+  chat: "M5 5h14v10H10l-4 4v-4H5z",
+  target: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
+  pause: "M8 5v14M16 5v14",
+  refresh: "M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5",
+  chevronDown: "M6 9l6 6 6-6",
+  chevronLeft: "M15 5l-7 7 7 7",
+  chevronRight: "M9 5l7 7-7 7",
+  zoomOut: "M10 3.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM7 10h6m2 5 5 5",
+  zoomIn: "M10 3.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM7 10h6m-3-3v6m5 2 5 5",
+  search: "M10.5 3.5a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm5 12 5 5",
+  split: "M4 5h16v14H4zM12 5v14",
+  bulb: "M9 18h6m-5 3h4M12 3a6 6 0 0 0-3.5 10.9c.7.6 1 1.3 1 2.1h5c0-.8.3-1.5 1-2.1A6 6 0 0 0 12 3z",
+  askChip: "M12 3a9 9 0 0 0-7.8 13.5L3 21l4.5-1.2A9 9 0 1 0 12 3zm-1 5.5a2.3 2.3 0 0 1 3.3 2c0 1.5-2.3 1.7-2.3 3.2M12 16.5v.3",
+  send: "M12 19V5m-6 6 6-6 6 6",
+  retry: "M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5",
+  trash: "M5 7h14M9 7V4h6v3m-7 0v13h8V7",
+  edit: "M4 20h4l11-11-4-4L4 16zM13 7l4 4",
+} as const;
+
+/* ------------------------------------- the slide ----------------------------------- */
+
+/** Two loss curves: the smooth one is batch, the jagged one is stochastic. */
+function LossFigure() {
+  return (
+    <svg className="pdfx-figure" viewBox="0 0 150 82" aria-hidden="true">
+      <path d="M12 6v66h130" className="pdfx-figure-axis" />
+      <path d="M14 14 C40 22 60 46 138 56" className="pdfx-figure-batch" />
+      <path
+        d="M14 12l7 6-2 -5 8 11-3 -3 9 12-4 -2 9 8-2 -5 10 9-3 -1 9 6-1 -3 10 5-2 -2 9 3-1 -2 9 2-2 -3 10 3-1 -1 10 1-1 -2 12 2"
+        className="pdfx-figure-sgd"
+      />
+      <text x="18" y="78" className="pdfx-figure-label">
+        steps
+      </text>
+      <text x="4" y="12" className="pdfx-figure-label">
+        J
+      </text>
+    </svg>
+  );
+}
+
 /**
- * The pseudorange equation, typeset.
+ * One slide, drawn the same way at two sizes: full size on the stage, and at a fixed
+ * basis scaled down into the filmstrip, which is how the application's thumbnails are
+ * made — a render of the page, not a stand-in for one.
  *
- * It was the string `"dᵢ = c · (t_receive − t_transmit)"`, and printing a LaTeX source
- * fragment is a strange thing for this section of all sections to do: the app it is a film
- * about renders maths with KaTeX, so a visitor is being shown the one place its output
- * would look wrong. Underscores are the notation you type, not the notation you read.
- *
- * Real `<sub>` elements rather than Unicode subscripts, because the alphabet does not go
- * far enough — there is no subscript r, c or v, so "receive" cannot be spelled that way at
- * all. Which is presumably how it ended up as an underscore.
+ * `live` marks the copy on the stage. Only that one carries the pointer's targets and
+ * the selectable phrase; the thumbnails render the same text without them, so a target
+ * name never matches twice.
  */
-function RangeEquation() {
+function Slide({
+  n,
+  live,
+  selection,
+}: {
+  n: number;
+  live?: boolean;
+  selection?: { ref: RefObject<HTMLSpanElement | null>; chip: boolean };
+}) {
+  const slide = DECK.slides[n - 1];
+
+  return (
+    <div className="pdfx-slide" data-figure={"figure" in slide ? "" : undefined}>
+      <span className="pdfx-slide-rule" aria-hidden="true" />
+      <h4>{slide.title}</h4>
+      {"equation" in slide && (
+        <p className="pdfx-slide-eq">
+          θ ← θ − η ∇<sub>θ</sub> J(θ)
+        </p>
+      )}
+      <ul>
+        {slide.bullets.map((bullet, order) => (
+          <li key={bullet}>
+            {live && selection && n === SELECTION.slide && order === SELECTION.bullet ? (
+              <Selectable text={bullet} selRef={selection.ref} chip={selection.chip} />
+            ) : (
+              bullet
+            )}
+          </li>
+        ))}
+      </ul>
+      {"figure" in slide && <LossFigure />}
+      <span className="pdfx-slide-foot">
+        {DECK.foot} · slide {n} of {TOTAL}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The bullet with the phrase in it, split so the phrase is its own span: the highlight is
+ * painted on it, the chip pops out of it, and the first and last words are what the
+ * pointer aims at — the two ends of a drag.
+ */
+function Selectable({
+  text,
+  selRef,
+  chip,
+}: {
+  text: string;
+  selRef: RefObject<HTMLSpanElement | null>;
+  chip: boolean;
+}) {
+  const start = text.indexOf(SELECTION.phrase);
+  const before = text.slice(0, start);
+  const after = text.slice(start + SELECTION.phrase.length);
+  const words = SELECTION.phrase.split(" ");
+
   return (
     <>
-      d<sub>i</sub> = c · (t<sub>receive</sub> − t<sub>transmit</sub>)
+      {before}
+      <span className="pdfx-sel" ref={selRef}>
+        {words.map((word, order) => (
+          <span
+            key={word}
+            data-target={
+              order === 0 ? "sel-start" : order === words.length - 1 ? "sel-end" : undefined
+            }
+          >
+            {order > 0 ? " " : ""}
+            {word}
+          </span>
+        ))}
+        {/* The chip, from `SlideStage.tsx`: a dark pill centred 8px above the selection,
+            with the cyan ask icon. It is a button in the application. */}
+        {chip && (
+          <span className="pdfx-ask-chip" data-target="chip">
+            <Icon d={ICON.askChip} />
+            Ask about this
+          </span>
+        )}
+      </span>
+      {after}
     </>
   );
 }
 
-const LETTERS = ["A", "B", "C", "D"];
+/* ------------------------------------- the cards ----------------------------------- */
+
+/** `QuizCard`: a kicker, the question, three options. Unanswered here, on purpose. */
+function QuizCard() {
+  return (
+    <section className="pdfx-card pdfx-card--violet">
+      <p className="pdfx-card-kicker">
+        <span className="pdfx-chip pdfx-chip--violet">{QUIZ.kicker}</span>
+        Slide {QUIZ.slide}
+      </p>
+      <p className="pdfx-question">{QUIZ.question}</p>
+      <div className="pdfx-options">
+        {QUIZ.options.map((option, order) => (
+          <span className="pdfx-option" key={option}>
+            <span className="pdfx-option-letter">{"ABC"[order]}</span>
+            {option}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** `ClozeCard`: the dashed blank, the field, the Check button. */
+function ClozeCard() {
+  return (
+    <section className="pdfx-card pdfx-card--amber">
+      <p className="pdfx-card-kicker">
+        <span className="pdfx-chip pdfx-chip--amber">
+          <Icon d={ICON.edit} />
+          Fill in the blank
+        </span>
+        Slide {CLOZE.slide}
+      </p>
+      <p className="pdfx-cloze">
+        {CLOZE.before} <span className="pdfx-cloze-blank">?????</span> {CLOZE.after}
+      </p>
+      <div className="pdfx-cloze-row">
+        <span className="pdfx-field">Type the missing term</span>
+        <span className="pdfx-check">Check</span>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------- the pod ------------------------------------ */
 
 export function PdfExplainerDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  /**
-   * The box the cursor is *positioned inside*, which is not the box the scene is
-   * measured by.
-   *
-   * `PhantomCursor` converts its target's position into percentages of whatever
-   * element it is handed, and writes them as `left`/`top` — which the browser then
-   * resolves against the nearest positioned ancestor. Here the cursor is rendered
-   * inside `.pdfx-stage` while every other hook wants the root `.pdfx`, and the root
-   * is taller than the stage by an act rail and a caption. Handing it the root meant
-   * every percentage was computed against one box and applied to a shorter one, so
-   * the pointer landed progressively further below its target the nearer the target
-   * was to the top of the frame. It was tolerable while the highest thing it aimed at
-   * was the notes card, which sits near the middle; it became obvious the moment it
-   * was asked to press a tab in the panel's top row and landed 45px under it.
-   *
-   * Two refs, then. This one for the cursor's geometry, `stageRef` for everything
-   * else — `--beat-t`, the intersection observer and the section's beat attributes all
-   * belong to the root.
-   */
-  const frameRef = useRef<HTMLDivElement | null>(null);
   const onScreen = useOnScreen(stageRef);
-  /* Starts on focus, not on approach. Three parts in twenty-five seconds is a scene a
-     visitor has to catch from the top; joining it at the tutor is joining it halfway. */
+  /* Starts on focus. The whole point of the first three seconds is a deck at rest with
+     its rail filling; joining at the drag is joining after the setup. */
   const running = useSceneRun(useSectionFocused(stageRef), onScreen);
   const state = useStoryboard(BEATS, {
     running,
     stage: stageRef,
-    // The still that carries the argument: notes awake, slide still visible.
-    stillBeat: "awake",
+    // The still: the answer in, the phrase quoted, the rail filled, the question landed.
+    stillBeat: "answer",
   });
-  /* No `index` here on purpose: every accumulating state in this scene is measured by
-     `reached` below, because nine of its eleven clicks are what cause the thing they
-     accumulate. See `CLICK_EFFECTS`. */
-  const { beat, run, still } = state;
+  const { beat, index, run, still } = state;
 
-  // Notes, tutor and practice fragments reorganise around the whole section.
+  // The section's wash follows the panel: violet for notes, amber for review, blue for ask.
   useSectionBeat(stageRef, beat, BEATS);
 
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
-
-  /**
-   * Everything below is derived from `did`/`reached` rather than from `beat`/`index`, and
-   * the difference is one beat while a click is in the air. See `usePressGate` and
-   * `CLICK_EFFECTS`.
-   *
-   * `beat` itself is still the truth about *where the pointer is going* — `CURSOR` and
-   * `PRESSES` are read from it, and the section's own ambience follows it — because the
-   * pointer has to set off at the start of the beat in order to arrive during it. Only
-   * what the press does waits for the press.
-   */
   const { did, reached, onPress } = usePressGate(BEATS, state, CLICK_EFFECTS);
-  const act = ACT[did];
-  const mode = MODE[did];
-
-  const notesPresent = reached >= at("arrive") && act === 0;
-  /* Not gated: reaching for something is the beat, not a consequence of a click. */
-  const awake = beat === "reach" || beat === "awake";
-  const split = act > 0;
-
-  const asked = reached >= at("ask");
-  const thinking = beat === "thinking";
-  const answered = reached >= at("answer") && act === 1;
-
-  const picked = reached >= at("pick");
-  const revealed = reached >= at("verdict");
 
   /**
-   * The matching board, as two numbers.
-   *
-   * `paired` is how many pairs are locked in, `holding` is the term that has been tapped
-   * and is waiting for its definition. That is the real game's state exactly —
-   * `matched: number[]` and `pickedConcept: number | null` in `MatchGame.tsx` — and
-   * expressing it this way is what makes six taps six taps: each odd beat sets `holding`,
-   * each even one clears it and increments `paired`.
-   *
-   * It used to be three booleans read off three beats, which could only ever describe a
-   * board that filled itself in.
+   * How far the read-ahead has got, in slides. Two are explained when the deck opens —
+   * the first batch — the third lands on `ahead` while the reader is still on slide 1,
+   * and the fourth while they press through to slide 2. The fifth is in flight for the
+   * rest of the film, which is the header's "Explaining ahead…" and the pulsing rail.
    */
-  const paired =
-    reached >= at("pair-c") ? 3 : reached >= at("pair-b") ? 2 : reached >= at("pair-a") ? 1 : 0;
-  const holding = did === "term-a" ? 0 : did === "term-b" ? 1 : did === "term-c" ? 2 : null;
+  const explained = reached >= at("next") ? 4 : reached >= at("ahead") ? 3 : 2;
+  const current: 1 | 2 | 3 = reached >= at("next-2") ? 3 : reached >= at("next") ? 2 : 1;
+  const tab = reached >= at("ask") ? "ask" : reached >= at("review") ? "review" : "notes";
 
-  const typed = reached >= at("typing");
-  const solved = reached >= at("solved");
+  /* The drag and what follows it. `index` rather than `reached` for the highlight,
+     because a drag is not a click and nothing gates it; `reached` for where it ends,
+     because the press on the chip is what clears it. */
+  const selecting = index >= at("select") && reached < at("ask");
+  const chipUp = did === "chip";
+  const lifted = reached >= at("lift");
+  const asked = reached >= at("ask");
+  const thinking = did === "thinking";
+  const answered = reached >= at("answer");
 
-  /* How much of the review set is done, which is the line the real panel leads with. It
-     is also the only thing on screen that ties the three cards together into one set. */
-  const done = (revealed ? 1 : 0) + (paired === 3 ? 1 : 0) + (solved ? 1 : 0);
+  const practice = explained * PRACTICE_PER_SLIDE;
+
+  /** The rail beside each thumbnail: `Filmstrip.tsx`'s three states. */
+  const rail = (n: number) => (n <= explained ? "done" : n === explained + 1 ? "flight" : "todo");
+
+  const selRef = useRef<HTMLSpanElement | null>(null);
+  const quoteRef = useRef<HTMLElement | null>(null);
+  const phraseRef = useRef<HTMLSpanElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const liftRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * The phrase leaving the slide for the panel.
+   *
+   * Where a span of text is cannot be written as a percentage — it depends on the font,
+   * the slide's width and the bullet's wrap — so the flight is measured on the beat it
+   * happens: the selection's box and the quote's box, both against the pod, written onto
+   * the flyer as custom properties before paint. The quote in the bubble holds its ink
+   * back until the flyer has arrived; see `.pdfx-quote`.
+   */
+  useLayoutEffect(() => {
+    if (!asked) return;
+    const root = stageRef.current;
+    const from = selRef.current;
+    const to = quoteRef.current;
+    const flyer = phraseRef.current;
+    if (!root || !from || !to || !flyer) return;
+    const box = root.getBoundingClientRect();
+    const a = from.getBoundingClientRect();
+    const b = to.getBoundingClientRect();
+    flyer.style.setProperty("--from-x", `${a.left - box.left}px`);
+    flyer.style.setProperty("--from-y", `${a.top - box.top}px`);
+    flyer.style.setProperty("--to-x", `${b.left - box.left}px`);
+    flyer.style.setProperty("--to-y", `${b.top - box.top}px`);
+  }, [asked, run]);
+
+  /**
+   * The question leaving the panel for the section.
+   *
+   * Same arrangement: the card in the panel is measured on the beat it lifts and the
+   * flyer starts exactly there, then transitions to a landing spot the stylesheet owns.
+   * The in-panel card goes `visibility: hidden` rather than unmounting, so it still has
+   * the box this reads. On a held frame the panel may already be on Ask and the card
+   * gone; the flyer then takes the stylesheet's fallback origin and lands without a
+   * flight, which is the honest frame for a still — the world after the gesture.
+   */
+  useLayoutEffect(() => {
+    if (!lifted) return;
+    const root = stageRef.current;
+    const flyer = liftRef.current;
+    if (!root || !flyer) return;
+    const from = cardRef.current;
+    if (!from) {
+      flyer.dataset.settled = "true";
+      flyer.dataset.flown = "true";
+      return;
+    }
+    const box = root.getBoundingClientRect();
+    const a = from.getBoundingClientRect();
+    flyer.style.setProperty("--from-x", `${a.left - box.left}px`);
+    flyer.style.setProperty("--from-y", `${a.top - box.top}px`);
+    flyer.style.setProperty("--from-w", `${a.width}px`);
+    const frame = requestAnimationFrame(() => {
+      flyer.dataset.flown = "true";
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [lifted, run]);
+
+  const note = NOTES[current];
 
   return (
     <div
       className="pdfx"
       ref={stageRef}
       data-beat={beat}
-      data-act={act}
+      data-did={did}
       data-lap={run}
-      data-mode={mode}
+      data-tab={tab}
+      data-selected={selecting}
       role="img"
       aria-label={
-        "Three parts of a lecture-study workspace in sequence. A notes card floats " +
-        "over a slide at a quarter opacity and becomes fully legible when the " +
-        "pointer approaches it. A tutor panel answers a question about the slide. " +
-        "A practice panel then works through a review set built from the deck: a " +
-        "multiple-choice question is answered and marked, three terms are matched " +
-        "to their definitions one tap at a time, and a missing term is typed into a " +
-        "fill-in-the-blank sentence."
+        "A lecture-study workspace: a filmstrip of five slides on the left, the current " +
+        "slide in the middle, and a notes panel on the right. Notes for slide 1 are open " +
+        "while the filmstrip's rail fills in beside the slides ahead and the panel header " +
+        "reads Explaining ahead. The reader presses on to slide 3 and its notes are already " +
+        "there. Review builds a multiple-choice question from that slide, and the card " +
+        "lifts out of the panel to rest under the window. The pointer then drags across a " +
+        "phrase on the slide, an Ask about this chip appears above it, and the Ask panel " +
+        "answers with the phrase quoted."
       }
     >
-      {/* The rail. Not navigation — a label, so three parts read as three parts. */}
-      <ol className="pdfx-acts" aria-hidden="true">
-        {ACT_NAMES.map((name, order) => (
-          <li key={name} data-on={order === act} data-done={order < act}>
-            <span className="pdfx-act-dot" />
-            {name}
-          </li>
-        ))}
-      </ol>
-
-      <div className="pdfx-stage" ref={frameRef} data-split={split}>
-        {/* The slide never gives up a pixel to the overlay; it makes room only when
-            the workspace splits for a panel, which is what the app does too. */}
-        <div className="pdfx-slide">
-          <span className="pdfx-slide-rule" aria-hidden="true" />
-          <h4>{SLIDE.title}</h4>
-          <ul>
-            {SLIDE.bullets.map((bullet) => (
-              <li key={bullet}>{bullet}</li>
-            ))}
-          </ul>
-
-          {/* The thing the notes must not cover up. */}
-          <div className="pdfx-figure" data-target="figure" aria-hidden="true">
-            <svg viewBox="0 0 260 120" role="presentation">
-              <g fill="none" stroke="currentColor" strokeWidth="1.4">
-                <circle cx="42" cy="26" r="9" />
-                <circle cx="130" cy="18" r="9" />
-                <circle cx="216" cy="30" r="9" />
-                <path d="M42 35 L128 98" strokeDasharray="4 4" />
-                <path d="M130 27 L130 96" strokeDasharray="4 4" />
-                <path d="M216 39 L132 98" strokeDasharray="4 4" />
-                <rect x="118" y="98" width="24" height="14" rx="3" />
-              </g>
-              <text x="130" y="70" fontSize="9" textAnchor="middle" fill="currentColor">
-                d = c · Δt
-              </text>
-            </svg>
-          </div>
-
-          <span className="pdfx-slide-number" aria-hidden="true">
-            {SLIDE.number} / {SLIDE.total}
+      <div className="pdfx-window">
+        {/* ------------------------------------------------------------- top bar */}
+        <header className="pdfx-top">
+          <span className="pdfx-close">
+            <Icon d={ICON.close} />
           </span>
-        </div>
-
-        {/* ------------------------------------------------- I. notes overlay */}
-        <div
-          className="pdfx-notes"
-          data-spec-anchor="notes"
-          data-present={notesPresent}
-          data-awake={awake}
-          data-target="notes"
-          aria-hidden="true"
-        >
-          <span className="pdfx-notes-backing" />
-
-          <div className="pdfx-notes-bar">
-            <span className="pdfx-notes-eyebrow">Notes overlay</span>
-            <span className="pdfx-opacity">{awake ? "1.00" : "0.26"}</span>
+          <div className="pdfx-title">
+            <b>{DECK.name}</b>
+            <small>
+              Slide {current} of {TOTAL} · <em>0/{practice} practice done</em>
+            </small>
           </div>
-
-          <div className="pdfx-notes-body">
-            <div className="pdfx-chips">
-              <span className="pdfx-chip pdfx-chip--violet">Slide {SLIDE.number}</span>
-            </div>
-            <h5>{NOTE.summary}</h5>
-            <p>{NOTE.lead}</p>
-            <p className="pdfx-equation">
-              <RangeEquation />
-            </p>
-            <dl className="pdfx-sensitivity">
-              {NOTE.sensitivity.map(([error, effect]) => (
-                <div key={error}>
-                  <dt>{error} of clock error</dt>
-                  <dd>{effect}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </div>
-
-        {/* ------------------------------- II–IV. the panel beside the slide */}
-        <aside
-          className="pdfx-panel"
-          data-spec-anchor="practice"
-          data-open={split}
-          aria-hidden="true"
-        >
-          {/* `STUDY_TABS` in `src/workspace/StudyPanel.tsx`, verbatim and in its order.
-              This strip read "Tutor · Practice", which named the two acts the scene plays
-              rather than the two tabs the application draws — the app has three, and calls
-              them Notes, Ask and Review. The act names live on the rail above the stage,
-              which is the scene's own device and may use the scene's own words; a control
-              drawn inside a reconstruction of the interface may not.
-              `Notes` lights during act 0, when the overlay on the slide is what is being
-              read, so all three carry a state rather than one sitting permanently dead. */}
-          <div className="pdfx-panel-tabs">
-            <span data-on={act === 0}>Notes</span>
-            <span data-on={act === 1}>Ask</span>
-            {/* Named as a cursor target so the beat that swaps this panel's whole
-                contents has something visible causing it. See `CURSOR`. */}
-            <span data-on={act >= 2} data-target="practice-tab">
-              Review
+          <div className="pdfx-top-tools">
+            {/* The ring that counts explained slides, violet until the deck is done. */}
+            <span
+              className="pdfx-ring"
+              style={{ "--fill": explained / TOTAL } as CSSProperties}
+              aria-hidden="true"
+            >
+              <i />
+            </span>
+            <span className="pdfx-ring-count">
+              {explained}/{TOTAL}
+            </span>
+            <span className="pdfx-top-icon">
+              <Icon d={ICON.download} />
+            </span>
+            <span className="pdfx-top-icon">
+              <Icon d={ICON.keyboard} />
+            </span>
+            {/* Settings, which is where the key goes. The one label that cannot point at
+                a frame points here. */}
+            <span className="pdfx-top-icon" data-spec-anchor="settings">
+              <Icon d={ICON.gear} />
             </span>
           </div>
+        </header>
 
-          {act === 1 && (
-            <div className="pdfx-chat" key={`chat-${run}`}>
-              {asked && (
-                <p className="pdfx-bubble pdfx-bubble--user">{CHAT.asked}</p>
-              )}
-
-              {thinking && (
-                <p className="pdfx-bubble pdfx-bubble--bot pdfx-thinking">
-                  <i />
-                  <i />
-                  <i />
-                </p>
-              )}
-
-              {answered && (
-                <p className="pdfx-bubble pdfx-bubble--bot">{CHAT.reply}</p>
-              )}
-
-              <div className="pdfx-suggest">
-                {CHAT.chips.map((chip, order) => (
-                  <span
-                    key={chip}
-                    data-target={order === 0 ? "chip" : undefined}
-                    data-picked={order === 0 && asked}
-                  >
-                    {chip}
-                  </span>
-                ))}
-              </div>
-
-              <p className="pdfx-composer">Ask about slide {SLIDE.number}…</p>
+        <div className="pdfx-body">
+          {/* ----------------------------------------------------------- filmstrip */}
+          <aside className="pdfx-strip">
+            <div className="pdfx-strip-head">
+              <span>Slides</span>
+              <b className="pdfx-pill">
+                {explained}/{TOTAL}
+              </b>
+              <i className="pdfx-collapse">
+                <Icon d={ICON.collapse} />
+              </i>
             </div>
-          )}
+            <ol className="pdfx-thumbs">
+              {DECK.slides.map((slide, order) => {
+                const n = order + 1;
+                return (
+                  <li
+                    key={slide.title}
+                    data-current={n === current}
+                    data-rail={rail(n)}
+                    data-spec-anchor={`thumb-${n}`}
+                  >
+                    {/* The 3px rail: violet when explained, violet at 45% and pulsing
+                        while its batch is in flight, a hairline otherwise. */}
+                    <i className="pdfx-rail" />
+                    <span className="pdfx-thumb">
+                      <span className="pdfx-thumb-scale" aria-hidden="true">
+                        <Slide n={n} />
+                      </span>
+                      <b className="pdfx-thumb-n">{n}</b>
+                      {n <= explained && <i className="pdfx-thumb-dot" />}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </aside>
 
-          {/* --------------------------------------------- III. the review set
-              One panel, one set, three kinds of item. The header is what says so: the
-              real panel leads with how much of the set is done and a filter row that
-              counts each kind, and those two lines are the reason this act no longer
-              needs to pretend that matching is a separate feature.
+          {/* --------------------------------------------------------------- stage */}
+          <div className="pdfx-stage">
+            <div className="pdfx-stage-slide" key={`slide-${current}`}>
+              <Slide n={current} live selection={{ ref: selRef, chip: chipUp }} />
+            </div>
 
-              The selected filter follows the card on screen, which is a small liberty
-              taken for a reason: filtering to `Match` in the application shows exactly
-              what this frame shows, one matching card, so the state is consistent with
-              the picture rather than decorative. */}
-          {act === 2 && (
-            <div className="pdfx-practice">
-              <div className="pdfx-practice-head">
-                <p className="pdfx-practice-score">
-                  {done} of 3 done
-                  {/* `{correct}/{quizzes} correct`, which is the chip `PracticePanel.tsx`
-                      prints beside "n of m done" once anything has been answered. It said
-                      "set complete", which is not a string the application has. One of the
-                      three items in this set is `kind: "quiz"` — `stats.quizzes` counts only
-                      those — and the scene answers it correctly, so the app's own figure
-                      here is 1/1. */}
-                  {done === 3 && <span className="pdfx-practice-all">1/1 correct</span>}
-                </p>
-                <span className="pdfx-progress" aria-hidden="true">
-                  <i style={{ width: `${(done / 3) * 100}%` }} />
+            {/* The floating pill: page, zoom, search, split. */}
+            <div className="pdfx-tools">
+              <span className="pdfx-tool" data-dim={current === 1}>
+                <Icon d={ICON.chevronLeft} />
+              </span>
+              <span className="pdfx-tool-page">
+                <b>{current}</b>/ {TOTAL}
+              </span>
+              <span className="pdfx-tool" data-target="next">
+                <Icon d={ICON.chevronRight} />
+              </span>
+              <i className="pdfx-tool-sep" />
+              <span className="pdfx-tool">
+                <Icon d={ICON.zoomOut} />
+              </span>
+              <span className="pdfx-tool-zoom">100%</span>
+              <span className="pdfx-tool">
+                <Icon d={ICON.zoomIn} />
+              </span>
+              <i className="pdfx-tool-sep" />
+              <span className="pdfx-tool pdfx-tool--label">
+                <Icon d={ICON.search} />
+                Search
+              </span>
+              <span className="pdfx-tool pdfx-tool--label">
+                <Icon d={ICON.split} />
+                Split
+              </span>
+            </div>
+          </div>
+
+          {/* --------------------------------------------------------------- panel */}
+          <aside className="pdfx-panel" data-spec-anchor="panel">
+            <div className="pdfx-panel-head">
+              {/* `STUDY_TABS`, verbatim and in order. */}
+              <div className="pdfx-tabs">
+                <span data-on={tab === "notes"}>
+                  <Icon d={ICON.book} />
+                  Notes
                 </span>
-                <div className="pdfx-filters">
-                  <span data-on={false}>
-                    All<b>3</b>
-                  </span>
-                  {KINDS.map((kind) => (
-                    <span
-                      key={kind.id}
-                      className={`pdfx-chip--${kind.tint}`}
-                      data-on={mode === kind.id}
-                    >
-                      {kind.filter}
-                      <b>1</b>
-                    </span>
-                  ))}
-                </div>
+                <span data-on={tab === "ask"}>
+                  <Icon d={ICON.chat} />
+                  Ask
+                </span>
+                <span data-on={tab === "review"} data-target="review-tab">
+                  <Icon d={ICON.target} />
+                  Review
+                </span>
               </div>
+              {/* Read-ahead's status, right of the control: a spinner, the line, and the
+                  pause button. It stays up for the whole film because the fifth slide's
+                  batch never lands inside it. */}
+              <div className="pdfx-status">
+                <i className="pdfx-spinner" />
+                Explaining ahead…
+                <span className="pdfx-pause">
+                  <Icon d={ICON.pause} />
+                </span>
+              </div>
+            </div>
 
-              {mode === "quiz" && (
-                <section className="pdfx-card pdfx-card--violet" key={`quiz-${run}`}>
-                  <p className="pdfx-card-kicker">
-                    {/* `Q1` rather than the kind's name: that is the label the real
-                        `QuizCard` is handed, and the kind is named by the filter row. */}
-                    <span className="pdfx-chip pdfx-chip--violet">Q1</span>
-                    Slide {SLIDE.number}
-                  </p>
-                  <p className="pdfx-question">{QUIZ.question}</p>
-
-                  <div className="pdfx-options">
-                    {QUIZ.options.map((option, order) => {
-                      const isAnswer = order === QUIZ.answer;
-                      const chosen = picked && isAnswer;
-                      const state = revealed && isAnswer ? "reveal" : revealed ? "dim" : chosen ? "chosen" : "idle";
-                      return (
-                        <span
-                          key={option}
-                          className="pdfx-option"
-                          data-state={state}
-                          data-target={isAnswer ? "option" : undefined}
-                        >
-                          <span className="pdfx-option-letter">
-                            {revealed && isAnswer ? "✓" : LETTERS[order]}
-                          </span>
-                          {option}
-                        </span>
-                      );
-                    })}
-                  </div>
-
-                  {revealed && (
-                    <p className="pdfx-verdict">
-                      {/* No full stop. `QuizCard.tsx` renders the bare word. */}
-                      <strong>Correct</strong> {QUIZ.explanation}
-                    </p>
-                  )}
-                </section>
-              )}
-
-              {mode === "match" && (
-                <section className="pdfx-card pdfx-card--teal" key={`match-${run}`}>
-                  <p className="pdfx-card-kicker">
-                    {MATCH.title}
-                    {/* The counter the real game leads with, and the only thing on screen
-                        that proves six taps happened rather than one. */}
-                    <span className="pdfx-card-count">
-                      {paired === 3 ? "Matched with no misses" : `${paired} of 3 matched`}
+            <div className="pdfx-panel-body">
+              {tab === "notes" && (
+                <div className="pdfx-notes" key={`notes-${current}-${run}`}>
+                  <div className="pdfx-note-head">
+                    <span className="pdfx-chip pdfx-chip--violet">Slide {current}</span>
+                    <span className="pdfx-chip pdfx-chip--amber">0/{PRACTICE_PER_SLIDE} practice</span>
+                    <span className="pdfx-reexplain">
+                      <Icon d={ICON.refresh} />
+                      Re-explain
+                      <Icon d={ICON.chevronDown} />
                     </span>
-                  </p>
-
-                  <div className="pdfx-match">
-                    <ul>
-                      {MATCH.pairs.map(([term], pair) => (
-                        <li
-                          key={term}
-                          data-matched={pair < paired}
-                          data-held={pair === holding}
-                          data-target={`term-${pair}`}
-                        >
-                          {term}
-                          <i className="pdfx-tick">✓</i>
-                        </li>
-                      ))}
-                    </ul>
-                    {/* Shown out of order, so each pair is a diagonal across the card.
-                        `MATCH.order` holds pair indices in display positions. */}
-                    <ul>
-                      {MATCH.order.map((pair) => (
-                        <li
-                          key={MATCH.pairs[pair][1]}
-                          data-matched={pair < paired}
-                          data-target={`def-${pair}`}
-                        >
-                          {MATCH.pairs[pair][1]}
-                          <i className="pdfx-tick">✓</i>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
-                </section>
-              )}
-
-              {mode === "cloze" && (
-                <section className="pdfx-card pdfx-card--amber" key={`cloze-${run}`}>
-                  <p className="pdfx-card-kicker">
-                    <span className="pdfx-chip pdfx-chip--amber">Fill in the blank</span>
-                    Slide {SLIDE.number}
-                  </p>
-
-                  <p className="pdfx-cloze">
-                    {CLOZE.before}{" "}
-                    {solved ? (
-                      <b className="pdfx-cloze-filled">{CLOZE.answer}</b>
-                    ) : (
-                      /* The blank is a control in the real card — the most obvious thing
-                         to press when you are stuck is the thing you are stuck on. */
-                      <span className="pdfx-cloze-blank">?????</span>
-                    )}
-                    {CLOZE.after}
-                  </p>
-
-                  {solved ? (
-                    <p className="pdfx-cloze-verdict">
-                      <i>✓</i> That is it
-                    </p>
-                  ) : (
-                    <div className="pdfx-cloze-row">
-                      <span className="pdfx-field" data-target="field" data-typed={typed}>
-                        {typed ? (
-                          /* A `steps()` reveal of the answer's own width, keyed per lap so
-                             it retypes each time round. Nothing here simulates keystrokes;
-                             the width is the typing. */
-                          <b
-                            className="pdfx-typed"
-                            key={`typed-${run}`}
-                            /* The reveal animates to this many characters wide. Published
-                               rather than written into the stylesheet, so editing `CLOZE`
-                               cannot leave the animation stopping short of its own text. */
-                            style={{ "--chars": CLOZE.answer.length } as CSSProperties}
-                          >
-                            {CLOZE.answer}
-                          </b>
-                        ) : (
-                          <em>Type the missing term</em>
-                        )}
-                      </span>
-                      <span className="pdfx-check" data-target="check">
-                        Check
-                      </span>
+                  <h5>{note.head}</h5>
+                  <p>{note.lead}</p>
+                  {note.equation && <p className="pdfx-equation">{note.equation}</p>}
+                  {note.body && <p>{note.body}</p>}
+                  {note.callout && (
+                    <div className="pdfx-callout">
+                      <b>
+                        <Icon d={ICON.bulb} />
+                        Intuition
+                      </b>
+                      <p>{note.callout}</p>
                     </div>
                   )}
-                </section>
+                  {note.quiz && (
+                    <>
+                      <p className="pdfx-section-head">Check yourself</p>
+                      <QuizCard />
+                    </>
+                  )}
+                  <p className="pdfx-note-foot">
+                    <i className="pdfx-spinner" />
+                    Explaining ahead from slide {explained + 1}…
+                  </p>
+                </div>
+              )}
+
+              {tab === "review" && (
+                <div className="pdfx-review" key={`review-${run}`}>
+                  <div className="pdfx-review-head">
+                    <p className="pdfx-review-score">0 of {practice} done</p>
+                    <span className="pdfx-progress" aria-hidden="true">
+                      <i />
+                    </span>
+                    {/* `FILTERS`, counting the kinds in the set. */}
+                    <div className="pdfx-filters">
+                      <span data-on="true">
+                        All<b>{practice}</b>
+                      </span>
+                      <span className="pdfx-chip--violet">
+                        Quiz<b>{explained}</b>
+                      </span>
+                      <span className="pdfx-chip--teal">
+                        Match<b>{Math.ceil(explained / 2)}</b>
+                      </span>
+                      <span className="pdfx-chip--amber">
+                        Blanks<b>{Math.floor(explained / 2)}</b>
+                      </span>
+                    </div>
+                  </div>
+                  {/* The card that leaves. Hidden rather than unmounted once it has, so it
+                      keeps the box the flight is measured from, and collapsed a moment
+                      later so the blanks card below moves up into its place. */}
+                  <div className="pdfx-card-slot" ref={cardRef} data-lifted={lifted}>
+                    <QuizCard />
+                  </div>
+                  <ClozeCard />
+                </div>
+              )}
+
+              {tab === "ask" && (
+                <div className="pdfx-chat" key={`chat-${run}`}>
+                  <div className="pdfx-thread">
+                    <p className="pdfx-bubble pdfx-bubble--user">
+                      <i className="pdfx-quote" ref={quoteRef}>
+                        {ASK.quote}
+                      </i>
+                      {ASK.ask}
+                    </p>
+                    {thinking && (
+                      <p className="pdfx-bubble pdfx-bubble--bot pdfx-thinking">
+                        <i />
+                        <i />
+                        <i />
+                      </p>
+                    )}
+                    {answered && (
+                      <p className="pdfx-bubble pdfx-bubble--bot" data-spec-anchor="answer">
+                        {ASK.reply}
+                      </p>
+                    )}
+                  </div>
+                  <div className="pdfx-composer">
+                    <span className="pdfx-composer-field">Ask about slide {current}…</span>
+                    <span className="pdfx-composer-send">
+                      <Icon d={ICON.send} />
+                    </span>
+                  </div>
+                  <p className="pdfx-composer-hint">
+                    <span>Enter to send · Shift + Enter for a new line</span>
+                    <span>
+                      <Icon d={ICON.retry} />
+                      Retry
+                    </span>
+                    <span>
+                      <Icon d={ICON.trash} />
+                      Clear
+                    </span>
+                  </p>
+                </div>
               )}
             </div>
-          )}
-        </aside>
-
-        {!still && (
-          <PhantomCursor
-            stage={frameRef}
-            target={CURSOR[beat] ?? null}
-            pressing={PRESSES.has(beat)}
-            onPress={onPress}
-            token={`${run}-${beat}`}
-          />
-        )}
-
-        {/* Inside the stage, for the same reason the cursor is: these are percentages of
-            the box the slide and the panel are laid out in, and the pod around it is taller
-            by an act rail. See `SPECS`. */}
-        <SpecTags beats={BEATS} beat={beat} tags={SPECS} className="pdfx-specs" />
+          </aside>
+        </div>
       </div>
 
-      {/* Still no caption. The act rail across the top names the three parts and lights
-          the one you are watching, the practice panel's own filter row names its three
-          kinds of item, and the two labels inside the stage carry the only claims the
-          frame cannot make on its own. */}
+      {/* ------------------------------------------------------------ out of frame
+          Both flyers are siblings of the window rather than children of it, because the
+          window clips its contents and these have to leave it. */}
+      {lifted && (
+        <div className="pdfx-lift" ref={liftRef} key={`lift-${run}`} data-spec-anchor="card">
+          <QuizCard />
+        </div>
+      )}
+      {asked && !answered && (
+        <span className="pdfx-phrase" ref={phraseRef} key={`phrase-${run}`} aria-hidden="true">
+          {ASK.quote}
+        </span>
+      )}
+
+      {!still && (
+        <PhantomCursor
+          stage={stageRef}
+          target={CURSOR[beat] ?? null}
+          pressing={PRESSES.has(beat)}
+          onPress={onPress}
+          token={`${run}-${beat}`}
+        />
+      )}
+
+      <SpecTags beats={BEATS} beat={beat} tags={SPECS} className="pdfx-specs" />
     </div>
   );
 }

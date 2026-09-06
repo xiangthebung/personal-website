@@ -17,8 +17,11 @@
 /**
  * Choir Practice — the pod around the real application
  *
- * The frame, the four voices, and the leader lines onto the app's own controls.
- * The application itself is vendored under public/demos/choir and styles itself.
+ * The frame, the four voices on their staves, and the leader lines onto the app's own
+ * controls. The application itself is vendored under public/demos/choir and styles
+ * itself; what is staged here is the room around it, keyed off the beats the pod
+ * publishes onto its section — `score`, `passage`, `count-in`, `singing` — which are
+ * read off the application rather than off a clock.
  */
 
 /* Tall enough for the application to fit inside it.
@@ -162,23 +165,29 @@
   flex: none;
 }
 
-/* --- pointing at the pitch control ----------------------------------------
-   A label on a leader line, hung off the application's own microphone button.
+/* --- pointing at the application's controls --------------------------------
+   Labels on leader lines, hung off the application's own controls: the loop band on
+   the bar ruler, the tempo readout, the Share button and the microphone button.
 
-   This replaces a second microphone button that the pod carried itself, reading "Sing
-   into it / your browser will ask for the microphone". Both halves were wrong. Warning
-   a visitor that a browser is about to ask for permission is a site apologising for
-   something every site does, and it draws attention to the prompt rather than to the
-   feature. And a duplicate control means somebody who later finds the real one in the
-   transport has no way of knowing they are the same thing — a label teaches where a
-   feature lives, a button hides it.
+   The first of them replaced a second microphone button that the pod carried itself,
+   reading "Sing into it / your browser will ask for the microphone". Both halves were
+   wrong. Warning a visitor that a browser is about to ask for permission is a site
+   apologising for something every site does, and it draws attention to the prompt
+   rather than to the feature. And a duplicate control means somebody who later finds
+   the real one in the transport has no way of knowing they are the same thing — a
+   label teaches where a feature lives, a button hides it. The three that joined it
+   follow the same rule for the same reason.
 
-   `--cue-x` and `--cue-y` are the button's centre inside the frame, measured by
-   `findMicSpot` and given in the stand's coordinates. The label sits up and to the left
-   of it so it never covers the transport it is describing.
+   `--cue-x` and `--cue-y` are a point on the control, measured inside the frame by
+   `findSpot` (or, for the band, computed out of the engraver by `passageSpot`) and
+   given in the stand's coordinates. The dot lands exactly on that point; `data-side`
+   says which way the plate reads out of it, and the transform below is what puts the
+   dot on the point for each side. `--cue-gap` is the standoff between the dot and the
+   plate's lead.
 
    `pointer-events: none` throughout: the thing to click is underneath. */
 .choir-cue {
+  --cue-gap: 2px;
   position: absolute;
   z-index: 6;
   top: var(--cue-y);
@@ -186,38 +195,118 @@
   display: flex;
   align-items: center;
   pointer-events: none;
-  /* Sits to the left of the button, vertically centred on it. */
-  transform: translate(calc(-100% - 14px), -50%);
   animation: choir-cue-in 520ms cubic-bezier(0.16, 0.86, 0.18, 1.06) both;
+  transition: opacity 260ms ease;
 }
 
-/* The leader. Ends in a dot on the button rather than an arrowhead — an arrow at this
+/* Plate, then lead, then the dot on the control: the container's right edge is the
+   point. */
+.choir-cue[data-side="left"] {
+  flex-direction: row;
+  transform: translate(calc(-100% - var(--cue-gap)), -50%);
+}
+
+.choir-cue[data-side="right"] {
+  flex-direction: row-reverse;
+  transform: translate(var(--cue-gap), -50%);
+}
+
+/* Plate above the lead, the dot at the lead's foot. */
+.choir-cue[data-side="above"] {
+  flex-direction: column;
+  transform: translate(-50%, calc(-100% - var(--cue-gap)));
+}
+
+.choir-cue[data-side="below"] {
+  flex-direction: column-reverse;
+  transform: translate(-50%, var(--cue-gap));
+}
+
+/* The passage's label follows the band while the score scrolls, and the band can
+   scroll clean out of view behind the part-name gutter for a moment at the end of a
+   pass. A label pointing at nothing is the one thing this component must never do, so
+   it goes with it. */
+.choir-cue[data-away="true"] {
+  opacity: 0;
+}
+
+/* The leader. Ends in a dot on the control rather than an arrowhead — an arrow at this
    size reads as a chevron, and a dot reads as "this one". */
 .choir-cue-line {
   position: relative;
   display: block;
-  width: 26px;
-  height: 2px;
-  order: 2;
+  flex: none;
   background: linear-gradient(90deg, rgba(232, 250, 240, 0.9), rgba(232, 250, 240, 0.5));
 }
 
+.choir-cue[data-side="left"] .choir-cue-line,
+.choir-cue[data-side="right"] .choir-cue-line {
+  width: 26px;
+  height: 2px;
+}
+
+.choir-cue[data-side="right"] .choir-cue-line {
+  background: linear-gradient(270deg, rgba(232, 250, 240, 0.9), rgba(232, 250, 240, 0.5));
+}
+
+.choir-cue[data-side="above"] .choir-cue-line,
+.choir-cue[data-side="below"] .choir-cue-line {
+  width: 2px;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(232, 250, 240, 0.5), rgba(232, 250, 240, 0.9));
+}
+
+.choir-cue[data-side="below"] .choir-cue-line {
+  background: linear-gradient(0deg, rgba(232, 250, 240, 0.5), rgba(232, 250, 240, 0.9));
+}
+
+/* The dot, centred on the end of the lead that touches the control. */
 .choir-cue-line::after {
   position: absolute;
-  top: 50%;
-  right: -3px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: rgba(232, 250, 240, 0.95);
+  box-shadow: 0 0 0 1.5px rgba(13, 26, 22, 0.35);
   content: "";
+}
+
+.choir-cue[data-side="left"] .choir-cue-line::after {
+  top: 50%;
+  right: -3.5px;
   transform: translateY(-50%);
 }
 
+.choir-cue[data-side="right"] .choir-cue-line::after {
+  top: 50%;
+  left: -3.5px;
+  transform: translateY(-50%);
+}
+
+.choir-cue[data-side="above"] .choir-cue-line::after {
+  bottom: -3.5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.choir-cue[data-side="below"] .choir-cue-line::after {
+  top: -3.5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* A fade only. The travel used to be in here too, as a transform, and a transform in
+   a keyframe overrides the per-side one above for the whole entrance — so a label
+   would fly in from the wrong side and jump. The plate carries its own pop instead. */
 @keyframes choir-cue-in {
   from {
     opacity: 0;
-    transform: translate(calc(-100% - 2px), -50%);
+  }
+}
+
+@keyframes choir-cue-plate-in {
+  from {
+    transform: scale(0.92);
   }
 }
 
@@ -254,13 +343,91 @@
   position: absolute;
   z-index: 5;
   right: -2%;
-  bottom: -10px;
+  bottom: -13px;
   left: -2%;
-  height: 22px;
+  display: flex;
+  height: 28px;
+  align-items: center;
+  justify-content: flex-end;
+  /* The ruler sits under the score column, which is the right two thirds of the
+     frame with the parts panel open. */
+  padding-right: 4.2%;
   border-radius: 4px 4px 10px 10px;
   background: linear-gradient(#2c3934, #101715);
   box-shadow: 0 12px 20px -10px rgba(8, 13, 11, 0.7);
   pointer-events: none;
+}
+
+/* --- the bar ruler, echoed on the ledge --------------------------------------
+   Nine cells for the nine bars of the score, in the application's own loop ink — its
+   dark-theme `--score-loop-fill` and `--score-loop-handle`, since the ledge is dark —
+   copied rather than referenced because the app's stylesheet lives inside the frame.
+   `data-looped` marks the passage the pod put on the app's ruler, with the handle at
+   whichever end that cell is; `data-now` is the bar the transport is in, rewritten as
+   the music moves. Both are written by the pod. Nothing here shows before the score is
+   open: the cells are all one dim grey until the pod has something to say on them. */
+.choir-ledger {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.choir-ledger small {
+  margin-right: 0.4rem;
+  color: rgba(214, 232, 224, 0.5);
+  font-size: 0.5rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.choir-ledger i {
+  display: grid;
+  width: 1.55rem;
+  height: 1.15rem;
+  place-items: center;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(214, 232, 224, 0.58);
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 650;
+  transition:
+    background 320ms ease,
+    color 320ms ease,
+    box-shadow 320ms ease;
+}
+
+/* The looped passage, and its two handles. */
+.choir-ledger i[data-looped] {
+  background: rgba(10, 132, 255, 0.26);
+  color: #8ec5ff;
+}
+
+.choir-ledger i[data-looped="start"] {
+  box-shadow: inset 2px 0 0 #0a84ff;
+}
+
+.choir-ledger i[data-looped="end"] {
+  box-shadow: inset -2px 0 0 #0a84ff;
+}
+
+.choir-ledger i[data-looped="both"] {
+  box-shadow:
+    inset 2px 0 0 #0a84ff,
+    inset -2px 0 0 #0a84ff;
+}
+
+/* The bar the transport is in. */
+.choir-ledger i[data-now] {
+  background: rgba(232, 250, 240, 0.92);
+  color: #0d1a16;
+}
+
+.choir-ledger i[data-now][data-looped] {
+  background: #0a84ff;
+  color: #fff;
 }
 
 .choir-stand-base {
@@ -546,11 +713,17 @@
   border-radius: 8px;
   color: #0d1a16;
   background: rgba(232, 250, 240, 0.94);
-  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.8);
+  /* The hairline is for the two plates that stand outside the frame, on the section's
+     own mint: a pale plate on pale paper needs an edge, and over the dark transport it
+     costs nothing. */
+  box-shadow:
+    0 0 0 1px rgba(13, 26, 22, 0.16),
+    0 10px 26px -14px rgba(0, 0, 0, 0.8);
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   white-space: nowrap;
+  animation: choir-cue-plate-in 520ms cubic-bezier(0.16, 0.86, 0.18, 1.06) both;
 }
 
 .choir-score-leaf > small {
@@ -615,36 +788,80 @@
     transform 680ms cubic-bezier(0.16, 0.86, 0.18, 1.12);
 }
 
+/* --- each voice's own stave -----------------------------------------------
+   Five rules under the disc, so a disc is a notehead on a line rather than a badge
+   floating beside a frame. Drawn as a pseudo-element on the row: the lines rule
+   themselves across as the score opens, the disc drops onto them a beat later (the
+   entrance below), and while the piece plays the disc lifts off its line by however
+   hard that voice is singing — see the `singing` rules further down.
+
+   Behind the disc but in front of the stand: `.choir-part-cues` is its own stacking
+   context, so `z-index: -1` here goes to the back of the rack and no further. The
+   right-hand rows' staves run leftward from their discs, which is where the room is. */
+.choir-part-cues li::after {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  width: 4.1rem;
+  height: 17px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(23, 63, 54, 0.34) 0 1px,
+    transparent 1px 4px
+  );
+  content: "";
+  transform: translateY(-50%) scaleX(0);
+  transition: transform 720ms cubic-bezier(0.16, 0.86, 0.18, 1.02);
+}
+
+.choir-part-cues li:nth-child(odd)::after {
+  left: -0.7rem;
+  transform-origin: left center;
+}
+
+.choir-part-cues li:nth-child(even)::after {
+  right: -0.7rem;
+  transform-origin: right center;
+}
+
+/* Each disc arrives from above its stave and settles onto it. */
 .choir-part-cues li:nth-child(1) {
   top: 13%;
   left: 0;
-  transform: translateX(-1rem);
+  transform: translateY(-1.1rem);
 }
 
 .choir-part-cues li:nth-child(2) {
   top: 35%;
   right: 0;
   flex-direction: row-reverse;
-  transform: translateX(1rem);
+  transform: translateY(-1.1rem);
 }
 
 .choir-part-cues li:nth-child(3) {
   top: 58%;
   left: -1%;
-  transform: translateX(-1rem);
+  transform: translateY(-1.1rem);
 }
 
 .choir-part-cues li:nth-child(4) {
   top: 78%;
   right: -1%;
   flex-direction: row-reverse;
-  transform: translateX(1rem);
+  transform: translateY(-1.1rem);
 }
 
+/* Soprano first, bass last, a beat apart — the order the voices enter a chord in. The
+   stave rules itself out just ahead of the disc landing on it. */
 #choir-practice[data-scene-reached~="score"] .choir-part-cues li {
   opacity: 0.76;
   transform: none;
-  transition-delay: calc(var(--part) * 100ms);
+  transition-delay: calc(140ms + var(--part) * 140ms);
+}
+
+#choir-practice[data-scene-reached~="score"] .choir-part-cues li::after {
+  transform: translateY(-50%) scaleX(1);
+  transition-delay: calc(var(--part) * 140ms);
 }
 
 /* --- the four rows, driven by the four voices -----------------------------
@@ -665,31 +882,47 @@
    fighting the first — the attacks are the part worth seeing and a transition is exactly
    what rounds them off. */
 
-/* Brighter, and standing slightly proud of the page. `--part` is the row's index and
-   already sets the side each row sits on, so the lean has to be signed per row; rows 2
-   and 4 are on the right and lean the other way. */
+/* Brighter while it sings. The row itself no longer leans sideways — the disc lifts off
+   its stave instead, below, which is the same reading with a subject: a voice rising
+   off its line. */
 #choir-practice[data-scene-beat="singing"] .choir-part-cues li {
   opacity: calc(0.72 + var(--v, 0) * 0.28);
 }
 
-#choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(odd) {
-  transform: translateX(calc(var(--v, 0) * 0.7rem));
-}
-
-#choir-practice[data-scene-beat="singing"] .choir-part-cues li:nth-child(even) {
-  transform: translateX(calc(var(--v, 0) * -0.7rem));
-}
-
-/* The disc is the loudest signal, so it carries the most of it: it swells and throws a
-   halo *in its own colour* at the top of its range. Relative colour syntax rather than
-   `color-mix` with a calculated percentage, because the alpha is the thing being driven
-   and `rgb(from …)` takes a plain `calc()` there. */
+/* The disc is the loudest signal, so it carries the most of it: it swells, lifts off its
+   stave and throws a halo *in its own colour* at the top of its range. Relative colour
+   syntax rather than `color-mix` with a calculated percentage, because the alpha is the
+   thing being driven and `rgb(from …)` takes a plain `calc()` there. */
 #choir-practice[data-scene-beat="singing"] .choir-part-cues b {
   box-shadow:
     0 0 0 2px rgba(255, 255, 255, 0.62),
     0 4px 14px -6px rgb(from var(--part-color) r g b / 0.55),
     0 0 calc(8px + var(--v, 0) * 34px) rgb(from var(--part-color) r g b / calc(var(--v, 0) * 0.8));
-  transform: scale(calc(1 + var(--v, 0) * 0.18));
+  transform: translateY(calc(var(--v, 0) * -0.45rem)) scale(calc(1 + var(--v, 0) * 0.18));
+}
+
+/* --- the count-in ---------------------------------------------------------
+   Between the press and the first note the application counts a bar in, over the score,
+   and the pod publishes each beat of it as `--count-t` — how far through the bar the
+   count has got. The four rings fill by that much, in steps, because a count is a thing
+   in steps: "1 · 2 · 3" is not a ramp. A conic gradient does not animate anyway, and
+   here that is the right behaviour rather than a limitation. The discs swell a little
+   with each beat too, and a small ring goes off every one of them — see `ripple` in the
+   pod — so the room is keeping time before anyone sings. */
+#choir-practice[data-scene-beat="count-in"] .choir-part-cues b::before {
+  background: conic-gradient(
+    var(--part-color, #31594d) calc(var(--count-t, 0) * 360deg),
+    rgba(255, 255, 255, 0.42) 0
+  );
+}
+
+#choir-practice[data-scene-beat="count-in"] .choir-part-cues b {
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.62),
+    0 4px 14px -6px rgb(from var(--part-color) r g b / 0.55),
+    0 0 calc(6px + var(--count-t, 0) * 16px) rgb(from var(--part-color) r g b / calc(var(--count-t, 0) * 0.45));
+  transform: scale(calc(1 + var(--count-t, 0) * 0.08));
+  transition: transform 90ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
 }
 
 /* --- the disc ------------------------------------------------------------
@@ -804,6 +1037,78 @@
     .choir-part-cues li:nth-child(4) {
       right: -0.55rem;
     }
+
+    /* The discs sit on the frame's edge here, so a stave under each would run across
+       the application. The discs still lift and fill; they just have nothing to sit on. */
+    .choir-part-cues li::after {
+      display: none;
+    }
+
+}
+
+/* --- the cues as chips ----------------------------------------------------
+   Below 900px the leader lines stop pointing and the same four cues become a row of
+   chips under the frame, which is the fallback every other scene's labels make on a
+   narrow window (`.speclayer` in globals.css, at 760px) and for the same reason: the
+   pointing is what is lost, not the reading.
+
+   900 rather than the site's 760, because the thing that decides it is the width of the
+   *frame*, not the window. Under 900px the stand is 92% of a one-column section, which
+   puts the iframe under 700px at every width the page lays out — and 700px is the
+   application's own compact breakpoint, evaluated against the frame's viewport. Inside
+   it the transport wraps to two rows, the app bar is icons and the zoom pill sits at
+   ruler height over the end of the band, so at 768px every one of the four plates
+   landed on a control it was not about: the count's plate over the microphone, the
+   microphone's over the loop and the parts buttons, the two of them overlapping. */
+.choir-cue-row {
+  display: none;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.85rem 0.1rem 0;
+}
+
+.choir-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  padding: 0.3rem 0.58rem;
+  border-radius: 8px;
+  color: #0d1a16;
+  background: rgba(232, 250, 240, 0.94);
+  box-shadow:
+    0 0 0 1px rgba(13, 26, 22, 0.16),
+    0 8px 18px -12px rgba(0, 0, 0, 0.6);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  animation: choir-cue-in 420ms ease both;
+}
+
+/* The dot stays, as it does on the other scenes' chips: the pin without its lead. */
+.choir-chip i {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: #31594d;
+  box-shadow: 0 0 0 1.5px rgba(232, 250, 240, 0.8);
+}
+
+@media (max-width: 900px) {
+  .choir-cue {
+    display: none;
+  }
+
+  .choir-cue-row {
+    display: flex;
+  }
+
+  /* And with the parts panel beneath the score rather than beside it, the score is the
+     whole width of the frame, so the ruler on the ledge is centred under it. */
+  .choir-stand-lip {
+    justify-content: center;
+    padding-right: 0;
+  }
 }
 
 /* The one remaining acoustic breath belongs only to the focused Choir section. */

@@ -21,8 +21,10 @@ noticed.
 
 So each project section mounts a **scene** instead: a short film of the software
 doing the thing it exists to do, driven by a storyboard of timed beats. Nine are
-staged reconstructions. Choir Practice is the actual application, vendored into
-`public/demos/choir/` and driven by the pod that frames it.
+staged reconstructions, each drawn from the product's own stylesheet, strings and
+screenshots after its September 2026 improvement pass, so the popup on the page is
+the popup in the store listing. Choir Practice is the actual application, vendored
+into `public/demos/choir/` and driven by the pod that frames it.
 
 **The scenes explain themselves.** Every project used to carry three written notes
 in a column beside its scene, and nobody reads prose next to something that is
@@ -155,9 +157,10 @@ wherever it happens to be, which for nine of the ten is a transitional frame tha
 argues nothing — a cursor halfway to a button, a card mid-flight. Held reads the
 `stillBeat` every scene has always declared, cuts to the frame that carries its
 argument, and leaves every accumulated in-frame label pinned to its evidence. The
-page stops being ten films and becomes ten labelled diagrams: Decaf's feed
-under its notice card, PagePack's pack being read with the network down, Night
-Neutralizer's explosion blown out on one side and levelled on the other.
+page stops being ten films and becomes ten labelled diagrams: Decaf's popup
+receipt with its ring on the page, PagePack's save open in the reader with the
+network down, Night Neutralizer's comparison settled with the popup's meter
+reading what it is applying.
 
 **And a held film is in your hands.** Drag across any stage and the storyboard
 scrubs, the stage's own width mapping the first beat to the last, backwards

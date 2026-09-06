@@ -73,7 +73,10 @@ const BASE = `http://localhost:${PORT}`;
 const SCENES = [
   {
     id: "decaf",
-    beats: ["drain", "dashes", "calm", "pause"],
+    /* The four the switch's labels land on, then the four the popup's do: the receipt,
+       the still (the ring on the card and the meter under the window), the hold, and
+       the counter once the feed is open. */
+    beats: ["drain", "dashes", "calm", "pause", "receipt", "spot", "hold", "settle"],
     want: [
       ".dc-media",
       ".dc-play",
@@ -85,16 +88,22 @@ const SCENES = [
       ".dc-suggest-head",
       ".dc-toolbar",
       ".dc-feed",
+      ".dc-notice",
+      ".dc-notice-hint",
+      ".dc-hold",
+      ".dc-popup-window",
+      ".dc-popup-eyebrow",
+      ".dc-popup-meter",
+      ".dc-counter",
     ],
   },
   {
     id: "pagepack",
-    beats: ["read", "collect"],
+    beats: ["sheet", "read", "caught", "read-offline"],
     want: [
       ".pp-popup",
       ".pp-target",
       ".pp-primary",
-      ".pp-options",
       ".pp-progress",
       ".pp-page",
       ".pp-browser",
@@ -106,7 +115,7 @@ const SCENES = [
        pinned inside a panel that is animating open — a `grid-template-rows` 0fr→1fr
        — and a plate placed from a box that is still growing is placed wrong. This is
        the beat after the press, where it has finished. */
-    beats: ["street", "stops", "later"],
+    beats: ["street", "stops", "strip", "late", "results"],
     want: [
       ".gx-action",
       ".gx-badge",
@@ -123,8 +132,18 @@ const SCENES = [
   },
   {
     id: "pdf-explainer",
-    beats: ["resting", "pick"],
-    want: [".pdfx-notes", ".pdfx-slide", ".pdfx-panel", ".pdfx-figure", ".pdfx-stage"],
+    /* `read` is where the rail label lands, `landed` is the lifted question once it has
+       stopped moving, and `answer` is the still — the frame every label has to share. */
+    beats: ["read", "landed", "answer"],
+    want: [
+      ".pdfx-thumbs > li",
+      ".pdfx-slide",
+      ".pdfx-panel",
+      ".pdfx-tools",
+      ".pdfx-lift",
+      ".pdfx-top-tools",
+      ".pdfx-window",
+    ],
   },
   /* The three added with the eighth, ninth and tenth projects. A scene absent from this
      list is not skipped loudly — it reports nothing and the run exits clean, which reads
@@ -132,12 +151,11 @@ const SCENES = [
      why `--all` below refuses to run when a scene directory has no entry here. */
   {
     id: "two-factor-paster",
-    beats: ["pick", "why"],
+    beats: ["mail", "fill", "why", "hold", "offer"],
     want: [
       ".tfa-pay",
       ".tfa-boxes",
       ".tfa-cvv",
-      ".tfa-danger",
       ".tfa-pop",
       ".tfa-mail-row",
       ".tfa-browser",
@@ -149,22 +167,60 @@ const SCENES = [
     want: [".tot-phone", ".tot-list", ".tot-glyph", ".tot-switch"],
   },
   {
-    id: "byte-budget",
-    /* `split` is the still. `refuse` is where the dashed run past the cap grows, which is
-       the one anchor whose box changes size all beat — the case that placed a plate from
-       where the run *starts* and put it over its neighbour. */
-    beats: ["warn", "refuse", "split"],
+    id: "night-neutralizer",
+    /* Its four labels are all pinned to the After panel's frame: `dark` is where the
+       first arrives, `compare` and `release` swap the bottom-right one, `protected` adds
+       the last, and `hold` is the still. The popup carries no labels of its own. */
+    beats: ["dark", "compare", "release", "protected", "hold"],
     want: [
-      ".bb-rail",
-      ".bb-refused",
-      ".bb-tick",
+      ".nn-frame",
+      ".nn-panel",
+      ".nn-say",
+      ".nn-verdict",
+      ".nn-popup",
+      ".nn-pop-meter",
+      ".nn-pop-compare",
+      ".nn-pop-desc",
+    ],
+  },
+  {
+    id: "byte-budget",
+    /* `split` is the still. `refuse` is where the limit card gains its refused line and
+       the live panel still has four rows; `hold` is where the panel loses two of them and
+       gains the hold line, so every label pinned to the popup moves between the two. */
+    beats: ["live", "climb", "refuse", "hold", "split"],
+    want: [
+      ".bb-badge",
+      ".bbx-meta",
+      ".bbx-live-head",
+      ".bbx-live-hold",
+      ".bbx-limit-prevented",
       ".bb-popup",
-      ".bb-legend",
-      ".bb-figure",
       /* Not an anchor for any label — measured so the popup can be compared against the
          window it hangs off. A Chrome popup is clamped inside its own window, and GRT's
          was found overhanging by 25px exactly this way. */
       ".bb-browser",
+    ],
+  },
+  {
+    id: "n-back",
+    /* `cue-3` has both strip labels up with the pointer waiting on the slot; the two
+       match beats put one label on each key; `results` and `ledger` are different
+       screens in the same box, so their labels — and their anchors — exist only there. */
+    beats: ["cue-3", "match-square", "match-letter", "results", "ledger"],
+    want: [
+      ".nb-slot",
+      ".nb-card",
+      ".nb-bracket",
+      ".nb-key",
+      ".nb-keys",
+      ".nb-strip",
+      ".nb-board",
+      ".nb-table-lure",
+      ".nb-table-row",
+      ".nb-ledger-head",
+      ".nb-ledger",
+      ".nb-app",
     ],
   },
 ];
@@ -187,12 +243,13 @@ async function assertEverySceneListed() {
   const missing = [];
   for (const dir of dirs) {
     if (listed.has(dir)) continue;
-    /* Only scenes that actually pin a label to a measured element need an entry. Three
+    /* Only scenes that actually pin a label to a measured element need an entry. Two
        legitimately do not: Choir Practice frames a real application and annotates it from
-       outside, N-Back's chips sit beside the board rather than on it, and Night
-       Neutralizer labels its two panels through a `VERDICT` table because they stack on a
-       narrow screen and a percentage would land in the wrong one. Requiring an entry from
-       them would mean inventing anchors to satisfy a checker, which is how a checker
+       outside, and Night Neutralizer labels its two panels through a `VERDICT` table
+       because they stack on a narrow screen and a percentage would land in the wrong one.
+       (N-Back was a third while its chips sat beside the board; its labels now pin to the
+       strip's slots, the keys and the results card, so it is listed.) Requiring an entry
+       from them would mean inventing anchors to satisfy a checker, which is how a checker
        starts costing more than it catches. */
     const source = await readFile(path.join(root, "app", "demos", dir, "demo.tsx"), "utf8");
     if (source.includes("data-spec-anchor")) missing.push(dir);

@@ -1,21 +1,27 @@
 /* ===========================================================================
-   Totem — "the switch, and what it does to the list"
+   Totem — "a totem is dealt, the words go, and the app asks for them back"
    ---------------------------------------------------------------------------
-   Three things in one frame, and the arrangement is the argument: the control
-   on one side, the list it changes in the middle, and a diagram of the sound
-   each symbol makes on the other. A film that showed the switch and the list on
-   separate screens would be showing a weaker thing than one that shows them
-   together, which is the whole reason the Settings card is stood beside the
-   phone instead of being one of its screens.
+   One device, held still, running three of its own screens: the tour's first
+   step, the Today list with the eye in its header, and the recall card. Beside
+   it, a diagram of the sound each symbol makes, which is the one thing here
+   that is not a screen of the application.
 
-   Everything moves from `data-beat`, `data-hidden`, `data-screen` and `data-on`
-   on the root and on four elements. The only continuous motion is the totems'
-   own idling, which is CSS keyframes at the loop lengths the app gives them.
+   THE SCREEN IS THE APP'S OWN SIZE. Everything inside `.tot-phone-screen` is
+   laid out at 390x844 in the app's own points — 34pt title, 17pt body, 44pt
+   slots, 16pt card radius, 24pt and 40pt glyphs — and the whole screen is
+   scaled down as one piece by `--s`. So the numbers in this file are the
+   numbers in `lib/palette.ts` and `components/TaskRow.tsx`, not a miniature
+   of them, and a change in the app is a change to one variable here.
+
+   Everything moves from `data-beat`, `data-screen`, `data-hidden` and `data-on`
+   on the root and on a handful of elements. The continuous motion is the
+   totems' own idling, which is CSS keyframes at the loop lengths the app gives
+   them; the rings and the ghosts play once per lap.
 
    RESTRAINT IS THE POINT. The app is drawn near-black precisely so the totems
    are the only saturated things on screen, and that contrast is what this scene
    is about — so nothing here is tinted, gradiented or glowing except a glyph, a
-   dot on the grid, and the one accent the app itself uses.
+   dot on the grid, a ring of sound, and the one accent the app itself uses.
    =========================================================================== */
 
 .tot {
@@ -23,7 +29,7 @@
   --page: #0b0b10;
   --card: #16161e;
   --card-alt: #20202b;
-  --chrome: #12121a;
+  --chrome: rgba(18, 18, 25, 0.94);
   --line: rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.16);
   --ink: #f3f3f7;
@@ -31,19 +37,17 @@
   --faint: #868696;
   --accent: #8a83ff;
   --accent-soft: rgba(138, 131, 255, 0.16);
+  /* Darkened, not lightened: the fill white sits on. See the note on
+     `accentFill` in the app's palette. */
+  --accent-fill: #706acf;
   --danger: #f4636d;
   --success: #3ed694;
-  /* What a glyph's cut-out eyes are filled with. Overridden wherever a glyph
-     sits on something other than a card. */
-  --tot-ground: var(--card);
-
-  /* Floored at 296px and not a pixel less. The screen inside is laid out in
-     fixed type sizes, so a narrower device is not a smaller picture of the same
-     thing — it is the same picture in a shorter box, with the tab bar sitting on
-     the last two rows of the list. Measured: at 232px the phone is 480px tall
-     and its content is 620. */
-  --phone-w: clamp(296px, 23vw, 330px);
-  --phone-h: calc(var(--phone-w) * 2.07);
+  /* The one number the whole device hangs off: how much of the app's 390x844
+     screen fits the well. Stepped by viewport rather than fluid, so the phone is
+     the same size in every photograph of a given width. */
+  --s: 0.68;
+  --phone-w: calc(390px * var(--s));
+  --phone-h: calc(844px * var(--s));
 
   position: relative;
   width: 100%;
@@ -55,84 +59,121 @@
   line-height: 1.35;
 }
 
+@media (min-width: 561px) {
+  .tot {
+    --s: 0.72;
+  }
+}
+@media (min-width: 1100px) {
+  .tot {
+    --s: 0.8;
+  }
+}
+@media (min-width: 1700px) {
+  .tot {
+    --s: 0.86;
+  }
+}
+
 /* --- the arrangement -------------------------------------------------------
    Stacked by default, because the narrowest thing this has to survive is a
    phone-shaped column — which is, conveniently, the shape of the thing it is
-   about. Two columns once there is room for the plate beside the device, three
-   once the Settings card can stand on the other side of it without its one long
-   row label breaking into four lines.
-
-   The breakpoints are viewport widths rather than container widths, and the
-   section around this collapses to a single column below 900px — so the well
-   is actually *wider* at 880px than at 940px. The stacked layout covers both. */
+   about. From 761px the device gets an empty column beside it, because three of
+   the five labels read leftward out of the phone and need air on that side; the
+   plate sits under the device until there is room for it on the other side,
+   which there is from 1100px, where the well is wide enough for air, device and
+   diagram in a row. Below 760px the label layer stops being a layer and becomes
+   a row of chips under the scene, which `globals.css` handles, so nothing down
+   there depends on the air. */
 .tot-frame {
   display: grid;
   grid-template-areas:
     "phone"
-    "tone"
-    "switch";
-  justify-items: stretch;
+    "tone";
+  justify-items: center;
   gap: clamp(0.9rem, 2vw, 1.4rem);
   width: 100%;
-  max-width: 420px;
   margin: 0 auto;
 }
 
-/* Three columns, and only three: the switch on one side of the device and the
-   plate on the other. Two columns was tried, with the phone on the left and both
-   panels stacked on the right, and it fails for a reason that is not about
-   composition at all. The label about the list hangs off the *left* edge of the
-   rows and reads away from them, so a phone against the left wall leaves it
-   nowhere to go — photographed at 1024 it ran off the side of the page and read
-   "...ymbols". A device in the middle gives every label an outside to read into,
-   which is the only arrangement here that does.
-
-   Three columns need about 700px of well, and the well does not reach that until
-   the window is around 1100 wide — the section beside this scene keeps a 21rem
-   heading column until it collapses at 900, so the scene is at its narrowest
-   just *above* the width at which the rest of the page gives up. Everything
-   between 761 and 1099 gets two columns instead, and below 760 the label layer
-   stops being a layer and becomes a row of chips under the scene, which
-   globals.css handles — so nothing down there depends on this geometry. */
-@media (min-width: 1100px) {
+@media (min-width: 761px) {
   .tot-frame {
-    grid-template-areas: "switch phone tone";
-    /* Not equal. The plate has a fixed minimum — twelve columns of dots and a
-       column of names — while the Settings card only wants enough to keep its
-       longest row off four lines. */
-    grid-template-columns: minmax(0, 0.92fr) auto minmax(0, 1fr);
-    grid-template-rows: auto;
-    align-items: stretch;
-    max-width: none;
-    gap: clamp(0.8rem, 2.2vw, 2.4rem);
+    grid-template-areas:
+      "air phone"
+      "air tone";
+    /* Capped, so that on a full-width well between 761 and 900 the device does
+       not end up against the right wall with half a screen of nothing on its
+       left: the frame is centred and the air is only as wide as a label needs. */
+    grid-template-columns: minmax(170px, 300px) auto;
+    justify-content: center;
+    column-gap: 0.5rem;
+    /* Room above the device for the one label that hangs over its top edge, and
+       below the plate for the one that hangs under it while the plate is stacked. */
+    padding: 40px 0 44px;
   }
 }
 
-/* The band three columns cannot reach: 761px to 1099px. A device that cannot go
-   under 296px, plus a plate that cannot go under about 190px before its twelve
-   pitch names run into each other, plus a settings card, is more well than there
-   is — so here the two panels stack beside the device instead.
-
-   The card goes above the plate, and the frame carries a band of padding top and
-   bottom, because that is where the two outside labels live: the switch's reads
-   up out of the card and the plate's reads down out of the plate. Packed the
-   other way round they both landed in the one gap in the middle, on each other. */
-@media (min-width: 761px) and (max-width: 1099px) {
+@media (min-width: 1100px) {
   .tot-frame {
-    grid-template-areas:
-      "phone switch"
-      "phone tone";
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
+    grid-template-areas: "air phone tone";
+    /* The two outside columns share what the device leaves, so the phone sits
+       in the middle of the well and both the air and the plate have the same
+       room; the plate itself is capped and centred in its column. */
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: start;
-    max-width: none;
-    padding: 46px 0;
-    gap: 0.9rem clamp(0.8rem, 1.6vw, 1.4rem);
+    column-gap: clamp(0.8rem, 2vw, 2rem);
+    /* The plate is beside the device again, and its label has the device's own
+       height to hang in. */
+    padding-bottom: 0;
   }
-  /* Shorter here, so the two panels and the two label bands fit the column the
-     device sets the height of. */
-  .tot-grid {
-    max-width: 232px;
+}
+
+/* ===========================================================================
+   The mark
+   ---------------------------------------------------------------------------
+   The app's icon, in the corner of the well's air: the owl the home screen and
+   the splash carry, on their indigo. Small and set back, and a little brighter
+   once the names are hidden, which is the moment the owl is all a row has left.
+   Not below 761px, where there is no air for it to sit in.
+   =========================================================================== */
+
+.tot-mark {
+  --tot-mark-eye: #8f89ec;
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  z-index: 2;
+  display: none;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  background: linear-gradient(150deg, #6d66ea 0%, #5b54de 56%, #4c46c8 100%);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 14px 30px -14px rgba(91, 84, 222, 0.9);
+  opacity: 0.82;
+  transition:
+    opacity 700ms ease,
+    box-shadow 700ms ease;
+}
+.tot-mark svg {
+  position: absolute;
+  inset: 15%;
+  width: 70%;
+  height: 70%;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8));
+}
+.tot[data-hidden="true"] .tot-mark {
+  opacity: 1;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 36px rgba(91, 84, 222, 0.6),
+    0 14px 30px -14px rgba(91, 84, 222, 0.9);
+}
+@media (min-width: 761px) {
+  .tot-mark {
+    display: block;
   }
 }
 
@@ -140,48 +181,82 @@
    The phone
    =========================================================================== */
 
-.tot-phone {
+/* The device's cell: the clipped phone and, beside it in the same box, the rings
+   that have to leave it. Nothing here clips, which is why the bezel lives here:
+   a dark ring, a hairline of rim light, and a deep drop, drawn as shadows
+   around the box the glass is cut from. A drawn notch and buttons would be
+   three more things competing with the one thing on the screen that is allowed
+   to be loud. */
+.tot-device {
   grid-area: phone;
   position: relative;
-  justify-self: center;
+  z-index: 3;
   width: var(--phone-w);
   height: var(--phone-h);
   flex: none;
-}
-
-/* The device: a hairline shell with a soft rim light, and nothing else. A
-   drawn bezel with buttons and a notch would be four more things competing
-   with the one thing on the screen that is allowed to be loud. */
-.tot-phone-shell {
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 38px;
+  border-radius: calc(54px * var(--s));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 30px 60px -34px rgba(0, 0, 0, 0.9);
-  pointer-events: none;
+    0 0 0 calc(6px * var(--s)) #17171f,
+    0 0 0 calc(7px * var(--s)) rgba(255, 255, 255, 0.13),
+    0 46px 90px -40px rgba(0, 0, 0, 0.92);
 }
 
-.tot-phone-screen {
-  position: absolute;
-  inset: 4px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 34px;
+/* The glass: it clips the screen to its corners so the tour, the list and the
+   card can push past each other without showing outside it.
+
+   A clip path rather than `overflow: hidden`, and that is a rendering decision
+   rather than a taste. Playwright's element capture — the review tools' path,
+   not a browser's — drew a half-quad of the page through an overflow clip at
+   one corner while the rings were crossing it, on every photograph of the deal
+   and on none of the viewport; a clip path takes a different route through the
+   compositor and photographs clean. It also clips shadows, which is why the
+   bezel is on the box above rather than here. */
+.tot-phone {
+  position: relative;
+  width: var(--phone-w);
+  height: var(--phone-h);
+  clip-path: inset(0 round calc(54px * var(--s)));
   background: var(--page);
 }
 
+/* The screen: the app's own size, scaled as one piece. `zoom` rather than a
+   transform, and that is a rendering decision rather than a taste: a transformed
+   layer under a rounded clip with a shadow on it was photographed with a
+   half-quad of the page showing through at one corner — a compositor seam, not a
+   layout — and `zoom` scales in layout, so the clip above it is an ordinary
+   paint clip on an ordinary box. */
+.tot-phone-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 390px;
+  height: 844px;
+  zoom: var(--s);
+  background: var(--page);
+  /* The app runs in the system face — San Francisco, Roboto, Segoe — and so
+     does this screen; the site's own type stays outside the glass. */
+  color: var(--ink);
+  font-family: -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif;
+  font-size: 17px;
+  line-height: 1.24;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- the status bar --------------------------------------------------------- */
+
 .tot-status {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 4;
   display: flex;
-  flex: none;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 20px 2px;
-  color: var(--ink);
-  font-size: 10px;
-  font-weight: 650;
+  height: 44px;
+  padding: 0 30px 0 32px;
+  font-size: 15px;
+  font-weight: 600;
 }
 .tot-status b {
   font-variant-numeric: tabular-nums;
@@ -189,257 +264,525 @@
 .tot-status-icons {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 .tot-sig,
 .tot-wifi,
 .tot-batt {
   display: block;
-  background: rgba(243, 243, 247, 0.72);
+  background: rgba(243, 243, 247, 0.82);
 }
 .tot-sig {
-  width: 11px;
-  height: 8px;
+  width: 17px;
+  height: 12px;
   clip-path: polygon(0 62%, 22% 62%, 22% 100%, 0 100%, 28% 38%, 50% 38%, 50% 100%, 28% 100%, 56% 14%, 78% 14%, 78% 100%, 56% 100%, 84% 0, 100% 0, 100% 100%, 84% 100%);
 }
 .tot-wifi {
-  width: 10px;
-  height: 8px;
+  width: 16px;
+  height: 12px;
   clip-path: polygon(50% 100%, 0 34%, 12% 22%, 50% 62%, 88% 22%, 100% 34%);
 }
 .tot-batt {
-  width: 15px;
-  height: 8px;
-  border-radius: 2px;
-  background: none;
-  border: 1px solid rgba(243, 243, 247, 0.5);
   position: relative;
+  width: 25px;
+  height: 12px;
+  border: 1.5px solid rgba(243, 243, 247, 0.5);
+  border-radius: 4px;
+  background: none;
 }
 .tot-batt::after {
   content: "";
   position: absolute;
-  inset: 1.5px;
-  right: 4px;
-  border-radius: 1px;
-  background: rgba(243, 243, 247, 0.8);
+  inset: 2px;
+  right: 5px;
+  border-radius: 1.5px;
+  background: rgba(243, 243, 247, 0.85);
 }
 
-/* Both screens live in one positioned box and cross-push. */
+/* --- the three screens ------------------------------------------------------
+   One positioned box under the status bar, and three screens stacked in it. The
+   tour is on top and drops away; the card comes in from the right as the list
+   slides a little left, which is the push a phone does. */
 .tot-screens {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
+  position: absolute;
+  top: 44px;
+  right: 0;
+  bottom: 0;
+  left: 0;
 }
+.tot-tour,
 .tot-today,
-.tot-drill {
+.tot-recall {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
+  background: var(--page);
   transition:
-    opacity 300ms ease,
-    transform 420ms cubic-bezier(0.22, 0.84, 0.3, 1);
+    opacity 320ms ease,
+    transform 440ms cubic-bezier(0.22, 0.84, 0.3, 1);
 }
 .tot-today {
+  z-index: 1;
+}
+.tot-recall {
+  z-index: 2;
   opacity: 0;
-  transform: translateX(-16%);
+  transform: translateX(100%);
+}
+.tot-recall[data-on="true"] {
+  opacity: 1;
+  transform: none;
+}
+.tot[data-screen="recall"] .tot-today {
+  opacity: 0;
+  transform: translateX(-14%);
+}
+.tot-tour {
+  z-index: 3;
+}
+.tot-tour[data-on="false"] {
+  opacity: 0;
+  transform: scale(0.96);
   pointer-events: none;
 }
-.tot-today[data-on="true"] {
-  opacity: 1;
-  transform: none;
-}
-.tot-drill {
-  opacity: 0;
-  transform: translateX(20%);
-}
-.tot-drill[data-on="true"] {
-  opacity: 1;
-  transform: none;
+
+/* --- the app's controls ----------------------------------------------------- */
+
+.tot-ico {
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex: none;
 }
 
-/* --- Today ---------------------------------------------------------------- */
+/* `IconButton`, `tone="filled"`: a 44pt pressable with a 36pt chip inside it. */
+.tot-iconbtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+.tot-iconbtn-chip {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--card-alt);
+  color: var(--dim);
+  font-size: 20px;
+  font-style: normal;
+}
+.tot-iconbtn-chip .tot-ico {
+  grid-area: 1 / 1;
+}
+
+/* `Button`: 46pt, 12pt corners, the label semibold at 15. */
+.tot-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+.tot-btn .tot-ico {
+  font-size: 17px;
+}
+.tot-btn--primary {
+  background: var(--accent-fill);
+  color: #fff;
+}
+/* Painted in the totem's own hue through `fillPair`, which leaves violet where
+   it is: white on `#AB39E8` is 4.7:1. */
+.tot-btn--hue {
+  background: var(--hue);
+  color: #fff;
+}
+.tot-btn--reveal {
+  border: 1px solid var(--line);
+  color: var(--dim);
+}
+
+/* `Chip`: 32pt, pill, on the raised surface. */
+.tot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--card-alt);
+  color: var(--dim);
+  font-size: 15px;
+  font-weight: 600;
+}
+.tot-chip .tot-ico {
+  font-size: 13px;
+}
+
+/* ===========================================================================
+   The tour — step one
+   =========================================================================== */
+
+.tot-tour-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 8px 8px 8px 16px;
+}
+.tot-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tot-dots i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line-strong);
+}
+.tot-dots i[data-on="true"] {
+  width: 18px;
+  background: var(--accent);
+}
+
+.tot-tour-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 0 16px 16px;
+}
+
+/* The stage the deal sits on, 200pt, and the 200pt the recall card draws. */
+.tot-disc {
+  position: relative;
+  display: block;
+  width: 200px;
+  height: 200px;
+  flex: none;
+}
+
+/* `font.heading`, in the totem's own hue. */
+.tot-tour-phrase {
+  margin: 0;
+  color: var(--hue);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  text-align: center;
+}
+/* "sounds like a hoot": a pill tinted in the same hue. */
+.tot-soundpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--hue) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hue) 16%, transparent);
+  color: var(--hue);
+  font-size: 12px;
+}
+.tot-soundpill .tot-ico {
+  font-size: 14px;
+}
+.tot-tour-title {
+  margin: 16px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  line-height: 34px;
+  text-align: center;
+}
+.tot-tour-copy {
+  max-width: 340px;
+  margin: 0;
+  color: var(--dim);
+  font-size: 16px;
+  line-height: 23px;
+  text-align: center;
+}
+.tot-tour-foot {
+  flex: none;
+  padding: 12px 16px 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* ===========================================================================
+   Today
+   =========================================================================== */
 
 .tot-today-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 10px 16px 8px;
-}
-.tot-today-head h4 {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 720;
-  letter-spacing: -0.02em;
-}
-.tot-today-head p {
-  margin: 1px 0 0;
-  color: var(--faint);
-  font-size: 11px;
-}
-.tot-cog {
-  width: 30px;
-  height: 30px;
   flex: none;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, transparent 2.6px, var(--dim) 2.7px, var(--dim) 4.6px, transparent 4.8px),
-    var(--card-alt);
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 16px;
 }
-
-.tot-drillbar {
-  position: relative;
+.tot-screen-title {
+  padding: 8px 16px 12px;
+}
+.tot-screen-title h4 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  line-height: 41px;
+}
+.tot-screen-title p {
+  margin: 4px 0 0;
+  color: var(--faint);
+  font-size: 13px;
+}
+.tot-head-btns {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin: 0 16px 10px;
-  padding: 0 10px;
-  height: 40px;
-  border: 1px solid var(--line);
+  gap: 8px;
+}
+
+/* The eye. Two glyphs on one chip; the crossed one takes over, in the accent,
+   a beat after the finger lands — the app tints the button once the names are
+   hidden, and a control that changes the instant it is touched reads as the
+   frame changing rather than as a press. */
+.tot-eye .tot-ico {
+  transition:
+    opacity 200ms ease 180ms,
+    color 200ms ease 180ms;
+}
+.tot-eye .tot-ico:last-child {
+  opacity: 0;
+}
+.tot-eye[data-on="true"] .tot-ico:first-child {
+  opacity: 0;
+}
+.tot-eye[data-on="true"] .tot-ico:last-child {
+  color: var(--accent);
+  opacity: 1;
+}
+.tot-eye[data-on="true"] .tot-iconbtn-chip {
+  background: var(--accent-soft);
+  transition: background 200ms ease 180ms;
+}
+
+/* --- the nudge --------------------------------------------------------------
+   Its slot opens from nothing, so the list moves down rather than jumping. */
+.tot-nudge-slot {
+  display: grid;
+  flex: none;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 460ms cubic-bezier(0.22, 0.84, 0.3, 1);
+}
+.tot-nudge-slot[data-on="true"] {
+  grid-template-rows: 1fr;
+}
+.tot-nudge {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  margin: 0 16px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 12px;
   background: var(--card);
+  opacity: 0;
+  transform: translateY(-8px);
   transition:
-    background 160ms ease,
-    border-color 160ms ease;
+    opacity 320ms ease 120ms,
+    transform 420ms cubic-bezier(0.22, 0.84, 0.3, 1) 120ms;
 }
-.tot-drillbar[data-pressed="true"] {
-  background: var(--card-alt);
-  border-color: var(--accent-soft);
+.tot-nudge-slot[data-on="true"] .tot-nudge {
+  opacity: 1;
+  transform: none;
 }
-.tot-drillbar b {
-  flex: 1 1 auto;
-  font-size: 11.5px;
-  font-weight: 620;
-}
-.tot-drillbar em {
-  color: var(--faint);
-  font-size: 10px;
-  font-style: normal;
-}
-.tot-brain {
-  width: 15px;
-  height: 15px;
+.tot-nudge-icon {
+  display: grid;
   flex: none;
-  border-radius: 50% 50% 46% 46%;
-  border: 1.6px solid var(--accent);
-  border-bottom-width: 3px;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 12px 0 12px 12px;
+  border-radius: 17px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 18px;
+}
+.tot-nudge-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 0 12px 12px;
+}
+.tot-nudge-text b {
+  font-size: 15px;
+  font-weight: 600;
+}
+.tot-nudge-text small {
+  color: var(--faint);
+  font-size: 13px;
+  line-height: 17px;
+}
+.tot-nudge-go {
+  color: var(--faint);
+  font-size: 18px;
+  padding-left: 8px;
+}
+.tot-nudge-dismiss {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  align-self: stretch;
+  color: var(--faint);
+  font-size: 16px;
+}
+
+/* --- the list ------------------------------------------------------------- */
+
+.tot-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 16px;
 }
 
 .tot-progress {
-  margin: 0 16px 12px;
-  padding: 11px 13px;
+  margin-bottom: 4px;
+  padding: 16px;
   border-radius: 16px;
   background: var(--card);
 }
 .tot-progress p {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   margin: 0 0 8px;
-  font-size: 11.5px;
 }
 .tot-progress b {
-  font-weight: 620;
+  font-size: 15px;
+  font-weight: 600;
 }
 .tot-progress em {
   color: var(--faint);
-  font-size: 10px;
+  font-size: 13px;
   font-style: normal;
   font-variant-numeric: tabular-nums;
 }
 .tot-track {
   display: block;
-  height: 5px;
-  border-radius: 999px;
+  height: 6px;
+  border-radius: 3px;
   background: var(--card-alt);
 }
 .tot-track i {
   display: block;
   width: 20%;
   height: 100%;
-  border-radius: 999px;
+  border-radius: 3px;
   background: var(--accent);
 }
 
-.tot-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 0 16px;
-}
-.tot-section-head {
-  margin: 0 0 5px 2px;
-  color: var(--faint);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-.tot-section-head[data-tone="late"] {
-  color: var(--danger);
-}
-
+/* One card, the rows inside it separated by a hairline inset past both
+   controls — `space.lg + HIT * 2 + space.md * 2`. */
 .tot-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: 0;
+  margin: 8px 0 0;
   padding: 0;
+  border-radius: 16px;
+  background: var(--card);
   list-style: none;
+  overflow: hidden;
 }
-
 .tot-row {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: var(--card);
+  gap: 12px;
+  min-height: 68px;
+  padding: 12px 16px;
+}
+.tot-row + .tot-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 128px;
+  height: 1px;
+  background: var(--line);
 }
 
-/* The checkbox, and its priority ring. A flag that changes hue between themes
-   stops being a shared vocabulary, so these are the app's own priority colours
-   rather than a tint of the accent. */
-.tot-check {
-  width: 19px;
-  height: 19px;
+/* Both leading controls get the same 44pt square. */
+.tot-control {
+  position: relative;
+  display: grid;
   flex: none;
-  border: 1.7px solid var(--faint);
+  place-items: center;
+  width: 44px;
+  height: 44px;
+}
+
+/* The tick box, carrying the task's priority as its outline. A repeating task
+   never really completes, so its box is a rounded square with a repeat mark. */
+.tot-check {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--faint);
   border-radius: 50%;
+  color: var(--faint);
+  font-size: 12px;
 }
 .tot-check[data-priority="1"] {
+  border-width: 2px;
   border-color: #5fa8ff;
 }
 .tot-check[data-priority="2"] {
+  border-width: 2px;
   border-color: #ffb84d;
 }
 .tot-check[data-priority="3"] {
+  border-width: 2px;
   border-color: var(--danger);
 }
-
-.tot-row-glyph {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  flex: none;
+.tot-check[data-repeat="true"] {
+  border-radius: 7.5px;
 }
 
 .tot-row-body {
-  display: block;
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
   min-width: 0;
+  min-height: 44px;
 }
 
 /* --- the dissolve ---------------------------------------------------------
    Both lines are always in the document, stacked, and the beat crossfades
    between them on a per-row stagger. The title blurs upward as it goes and the
    phrase resolves out of a blur underneath it, which is the difference between
-   a word being replaced and a word being taken away.
-
-   The two are laid out one over the other with `grid-area: 1 / 1` rather than
-   with `position: absolute`, so the row's height is the taller of the two and
-   nothing reflows halfway through the transition. */
+   a word being replaced and a word being taken away. Laid out one over the
+   other with `grid-area: 1 / 1` rather than `position: absolute`, so the row's
+   height is the taller of the two and nothing reflows halfway through. */
 .tot-title {
   display: grid;
   min-width: 0;
@@ -448,8 +791,6 @@
 .tot-title-hidden {
   grid-area: 1 / 1;
   overflow: hidden;
-  font-size: 12.5px;
-  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
   transition:
@@ -460,20 +801,25 @@
 }
 .tot-title-plain {
   color: var(--ink);
+  font-size: 17px;
+  font-weight: 400;
 }
-/* The phrase reads as standing in for a sentence somebody wrote, so it is
-   capitalised and set in italics — the app's own treatment of a hidden row. */
+/* `font.meta`, italic: it stands in for the user's own words rather than
+   being them, and it is demoted to a caption on the picture now that the
+   picture is the thing you are meant to read. */
 .tot-title-hidden {
   color: var(--dim);
+  font-size: 13px;
   font-style: italic;
+  line-height: 22px;
   opacity: 0;
   filter: blur(6px);
-  transform: translateY(5px);
+  transform: translateY(6px);
 }
 .tot[data-hidden="true"] .tot-title-plain {
   opacity: 0;
   filter: blur(6px);
-  transform: translateY(-5px);
+  transform: translateY(-6px);
 }
 .tot[data-hidden="true"] .tot-title-hidden {
   opacity: 1;
@@ -481,318 +827,134 @@
   transform: none;
 }
 
+/* The metadata, ranked: the due time leads at `font.meta`, the rest sit a step
+   down at `font.caption`. */
 .tot-row-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
-  margin-top: 2px;
-  color: var(--faint);
-  font-size: 9.5px;
-  font-style: normal;
+  gap: 8px;
+  color: var(--dim);
+  font-size: 13px;
 }
 .tot-row-meta em {
-  font-style: normal;
-}
-.tot-due::before,
-.tot-repeat::before,
-.tot-subs::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 3px;
-  vertical-align: -1px;
-  border: 1.2px solid currentcolor;
-  border-radius: 2px;
-}
-.tot-repeat::before {
-  border-radius: 50%;
-  border-style: dashed;
-}
-.tot-subs::before {
-  border-radius: 1px;
-  border-style: solid;
-  border-left-width: 3px;
-}
-/* Larger and in the danger colour once it is late: the due date is the only
-   thing on a row that can make you reorder your day. */
-.tot-due[data-late="true"] {
-  color: var(--danger);
-  font-size: 10.5px;
-  font-weight: 640;
-}
-.tot-due[data-late="true"]::before {
-  border-radius: 50%;
-}
-
-.tot-tag {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 1px 6px 1px 5px;
-  border-radius: 999px;
-  background: rgba(138, 131, 255, 0.14);
-  color: #b9b4ff;
-  transition:
-    padding 420ms ease,
-    background 420ms ease;
+  gap: 4px;
+  font-style: normal;
 }
-.tot-tag i {
-  width: 7px;
-  height: 7px;
-  flex: none;
-  border-radius: 1.5px;
-  background: currentcolor;
-  transform: rotate(45deg);
+.tot-due .tot-ico {
+  font-size: 13px;
 }
-.tot-tag span {
-  display: inline-block;
-  max-width: 4em;
-  overflow: hidden;
-  transition:
-    max-width 420ms ease,
-    opacity 260ms ease;
+.tot-repeat {
+  color: var(--faint);
+  font-size: 12px;
 }
-/* Collapsed to its mark while the names are hidden. The grouping stays visible
-   without being named, which is what the app does with it. */
-.tot[data-hidden="true"] .tot-tag {
-  padding: 1px 4px;
-  background: none;
-}
-.tot[data-hidden="true"] .tot-tag span {
-  max-width: 0;
-  opacity: 0;
+.tot-repeat .tot-ico {
+  font-size: 12px;
 }
 
-/* The 56pt circular accent button, bottom right, over the list. */
+/* A tag: named in a tinted chip while the titles show, and collapsed to one
+   12pt mark in its own colour while they are hidden — the grouping stays
+   visible without being spelled out, which is what the app does with it. */
+.tot-tag {
+  position: relative;
+  display: inline-grid;
+  place-items: center start;
+  color: var(--tag);
+}
+.tot-tag-chip,
+.tot-tag-mark {
+  grid-area: 1 / 1;
+  transition:
+    opacity 320ms ease,
+    transform 320ms ease;
+  transition-delay: calc(var(--row, 0) * 150ms + 200ms);
+}
+.tot-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tag) 14%, transparent);
+  font-size: 12px;
+}
+.tot-tag-mark {
+  display: inline-flex;
+  font-size: 12px;
+  opacity: 0;
+  transform: scale(0.6);
+}
+.tot[data-hidden="true"] .tot-tag-chip {
+  opacity: 0;
+  transform: scale(0.8);
+}
+.tot[data-hidden="true"] .tot-tag-mark {
+  opacity: 1;
+  transform: none;
+}
+
+/* The heading over the collapsed "Completed today" group: `font.overline` in
+   the success colour, the count beside it, the whole rule 44pt tall. */
+.tot-done-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 12px 0 0;
+  padding: 0 4px;
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.tot-done-head .tot-ico:first-child {
+  font-size: 14px;
+}
+.tot-done-head b {
+  flex: 1 1 auto;
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.tot-done-head .tot-ico:last-child {
+  color: var(--faint);
+  font-size: 18px;
+}
+
+/* The 56pt composer button, above the tab bar. */
 .tot-fab {
   position: absolute;
   right: 16px;
-  bottom: 14px;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background:
-    linear-gradient(var(--page), var(--page)) content-box,
-    var(--accent);
-  box-shadow: 0 10px 24px -10px rgba(138, 131, 255, 0.8);
-}
-.tot-fab::before,
-.tot-fab::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  background: #fff;
-  border-radius: 1px;
-  transform: translate(-50%, -50%);
-}
-.tot-fab::before {
-  width: 15px;
-  height: 2px;
-}
-.tot-fab::after {
-  width: 2px;
-  height: 15px;
-}
-
-/* --- the drill ------------------------------------------------------------ */
-
-.tot-drill {
-  --tot-ground: var(--page);
-  align-items: stretch;
-  padding: 0 16px;
-}
-.tot-drill-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0 6px;
-}
-.tot-drill-head b {
-  color: var(--dim);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-.tot-close,
-.tot-pencil {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--card-alt);
-  position: relative;
-}
-.tot-close::before,
-.tot-close::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 11px;
-  height: 1.6px;
-  background: var(--dim);
-  border-radius: 1px;
-}
-.tot-close::before {
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-.tot-close::after {
-  transform: translate(-50%, -50%) rotate(-45deg);
-}
-.tot-pencil::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 11px;
-  height: 3px;
-  background: var(--dim);
-  border-radius: 1px 2px 2px 1px;
-  transform: translate(-50%, -50%) rotate(-45deg);
-}
-
-.tot-drill-track {
-  display: block;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--card-alt);
-}
-.tot-drill-track i {
-  display: block;
-  width: 33%;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--accent);
-}
-
-/* The glyph and the question float together between the progress bar and the
-   buttons rather than sitting under the bar with two hundred pixels of nothing
-   below them. Two auto margins — one here, one on `.tot-grades` — split the
-   free space, so the card reads as centred on the thing being asked about. */
-.tot-drill-stage {
+  bottom: 70px;
+  z-index: 3;
   display: grid;
   place-items: center;
-  margin-top: auto;
-  padding: 14px 0 10px;
-}
-
-.tot-ask {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 680;
-  text-align: center;
-}
-.tot-asksub {
-  margin: 5px 0 0;
-  color: var(--faint);
-  font-size: 10px;
-  line-height: 1.45;
-  text-align: center;
-}
-
-/* The question and the answer take the same slot: one leaves as the other
-   arrives, and only ever one of them is in the document. */
-.tot-drill-ask,
-.tot-drill-said {
-  min-width: 0;
-  flex: none;
-}
-.tot-drill[data-revealed="false"] .tot-drill-said,
-.tot-drill[data-revealed="true"] .tot-drill-ask {
-  display: none;
-}
-
-.tot-phrase {
-  margin: 0;
-  color: var(--faint);
-  font-size: 10.5px;
-  font-style: italic;
-  text-align: center;
-}
-.tot-answer {
-  margin: 8px 0 0;
-  padding: 12px 13px;
-  border-radius: 14px;
-  background: var(--card);
-}
-.tot-answer b {
-  font-size: 15px;
-  font-weight: 660;
-}
-
-/* Each grade prints the interval it will produce, which is the spacing being
-   operated rather than described. */
-.tot-grades {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin-top: auto;
-  padding: 12px 0 0;
-}
-.tot-grade {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 38px;
-  border: 1px solid var(--line-strong);
-  border-radius: 11px;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 620;
-}
-.tot-grade[data-solid="true"] {
-  border-color: transparent;
-  background: var(--accent);
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: var(--accent-fill);
   color: #fff;
-}
-.tot-tick,
-.tot-eye {
-  width: 12px;
-  height: 12px;
-  flex: none;
-}
-.tot-tick {
-  border-bottom: 1.9px solid currentcolor;
-  border-right: 1.9px solid currentcolor;
-  width: 6px;
-  height: 10px;
-  transform: rotate(42deg) translate(-1px, -1px);
-}
-.tot-eye {
-  border: 1.6px solid currentcolor;
-  border-radius: 50% 0;
-  transform: rotate(45deg);
-}
-/* Once the answer is on screen the second button is the other half of the same
-   honest pair — "I needed the text" — and neither is the right answer, so the
-   first one loses its fill. */
-.tot-grade--said {
-  display: none;
-}
-.tot-drill[data-revealed="true"] .tot-grade--alt {
-  display: none;
-}
-.tot-drill[data-revealed="true"] .tot-grade--said {
-  display: flex;
+  font-size: 26px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
-.tot-skip {
-  margin: 9px 0 12px;
-  color: var(--faint);
-  font-size: 9.5px;
-  text-align: center;
-}
-
-/* --- the tab bar ---------------------------------------------------------- */
+/* --- the tab bar: 58pt on the web build, four tabs, labels at 11. ----------- */
 
 .tot-tabs {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
   display: flex;
-  flex: none;
   align-items: center;
   justify-content: space-around;
-  padding: 6px 6px 10px;
+  height: 58px;
   border-top: 1px solid var(--line);
   background: var(--chrome);
 }
@@ -800,44 +962,163 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   color: var(--faint);
-  font-size: 8.5px;
-  font-weight: 560;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
 }
-.tot-tab i {
-  width: 15px;
-  height: 15px;
-  border: 1.5px solid currentcolor;
-  border-radius: 4px;
-}
-.tot-tab:nth-child(2) i {
-  border-radius: 3px;
-  border-top-width: 4px;
-}
-.tot-tab:nth-child(3) i {
-  border-radius: 3px 6px 3px 3px;
-}
-.tot-tab:nth-child(4) i {
-  border-radius: 50%;
-  border-bottom-right-radius: 1px;
+.tot-tab .tot-ico {
+  font-size: 24px;
 }
 .tot-tab[data-on="true"] {
   color: var(--accent);
 }
 
 /* ===========================================================================
+   The recall card
+   =========================================================================== */
+
+.tot-recall-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 8px 16px;
+}
+.tot-recall-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  padding: 0 16px 24px;
+}
+/* The timing chips under the glyph — `Fact`: 30pt pills on the card surface. */
+.tot-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+.tot-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--dim);
+  font-size: 13px;
+}
+.tot-fact .tot-ico {
+  color: var(--faint);
+  font-size: 13px;
+}
+.tot-strength {
+  margin: 12px 0 0;
+  color: var(--faint);
+  font-size: 13px;
+}
+.tot-recall-ask {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tot-ask {
+  margin: 16px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  text-align: center;
+}
+.tot-asksub {
+  margin: 8px 0 0;
+  padding: 0 12px;
+  color: var(--faint);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+}
+/* The ladder of hints, every rung always available. */
+.tot-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 24px;
+}
+.tot-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--hue) 40%, transparent);
+  border-radius: 16px;
+  background: var(--card);
+}
+.tot-answer em {
+  color: var(--faint);
+  font-size: 13px;
+  font-style: italic;
+}
+.tot-answer b {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.tot-recall-foot {
+  margin: 24px 0 0;
+  padding: 0 12px;
+  color: var(--faint);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+}
+.tot-recall-bar {
+  flex: none;
+  padding: 16px;
+  border-top: 1px solid var(--line);
+  background: var(--page);
+}
+
+/* The question and its two rungs leave; the claim and the card arrive, a beat
+   after the finger lands on "Show me what it is". */
+.tot-recall[data-revealed="false"] [data-when="named"],
+.tot-recall[data-revealed="true"] [data-when="ask"],
+.tot-recall[data-revealed="true"] .tot-recall-ask {
+  display: none;
+}
+.tot-recall[data-revealed="true"] [data-when="named"] {
+  animation: tot-reveal 420ms cubic-bezier(0.2, 0.9, 0.3, 1) 180ms both;
+}
+@keyframes tot-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===========================================================================
    The glyphs
    ---------------------------------------------------------------------------
-   A flat single-hue silhouette with a soft same-hue bloom behind it. There is
-   no tile: a white glyph on a coloured square is the shape of an app icon and
-   reads as generic, and the colour has to belong to the object rather than to a
-   container behind it. A violet owl is a violet owl.
+   A flat single-hue silhouette with a soft same-hue bloom behind it, which is
+   `TotemGlyph`'s own arithmetic: the stage is the box, the artwork is drawn at
+   seven tenths of it so its motion has somewhere to go, and the bloom is 1.18
+   of the artwork with a shadow a quarter of the artwork wide. No tile: a white
+   glyph on a coloured square is the shape of an app icon.
 
-   The four motions are four of the five a totem can be dealt, at the loop
+   The four motions are four of the thirteen a totem can be dealt, at the loop
    lengths `components/motion.ts` gives them — 6.5s for a spin, 4.2s for a tick,
    3.4s for a flip, 1.5s for a hop. Each has a different *mechanism*, which is
-   what keeps five of them apart at a size where amplitude cannot.
+   what keeps them apart at a size where amplitude cannot.
    =========================================================================== */
 
 .tot-glyph {
@@ -849,7 +1130,7 @@
 }
 .tot-glyph-move {
   position: absolute;
-  inset: 0;
+  inset: 15%;
   transform-style: preserve-3d;
   animation-delay: var(--phase, 0ms);
   animation-iteration-count: infinite;
@@ -877,17 +1158,14 @@
 
 .tot-glyph-bloom {
   position: absolute;
-  left: 50%;
   top: 50%;
+  left: 50%;
   width: 118%;
   height: 118%;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--hue) 46%, transparent) 0%,
-    color-mix(in srgb, var(--hue) 14%, transparent) 46%,
-    transparent 70%
-  );
+  background: color-mix(in srgb, var(--hue) 10%, transparent);
+  box-shadow: 0 0 calc(var(--glyph) * 0.17) calc(var(--glyph) * 0.021)
+    color-mix(in srgb, var(--hue) 32%, transparent);
   opacity: var(--bloom, 1);
   transform: translate(-50%, -50%);
   pointer-events: none;
@@ -898,6 +1176,26 @@
   width: 100%;
   height: 100%;
   fill: var(--hue);
+}
+
+/* A row's glyph: 24pt beside a title, with the bloom off so a column of haloes
+   does not muddy the list; 40pt with its bloom once the glyph is the row. The
+   growth is staggered with the dissolve, row by row. */
+.tot-row .tot-glyph {
+  --glyph: 24px;
+  --bloom: 0;
+  transition:
+    width 520ms cubic-bezier(0.2, 0.9, 0.3, 1.1),
+    height 520ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  transition-delay: calc(var(--row, 0) * 150ms);
+}
+.tot-row .tot-glyph-bloom {
+  transition: opacity 620ms ease;
+  transition-delay: calc(var(--row, 0) * 150ms + 120ms);
+}
+.tot[data-hidden="true"] .tot-row .tot-glyph {
+  --glyph: 40px;
+  --bloom: 1;
 }
 
 /* A spinning top: the rate surges and eases twice a turn rather than running at
@@ -1007,199 +1305,218 @@
    The tap
    ---------------------------------------------------------------------------
    Not a phantom cursor. Every other scene on this page is a browser and gets an
-   arrow that travels to a control and lands on it, and the travel is why those
-   scenes buy a beat of approach per click. A finger does not travel across a
-   frame, so contact and consequence belong in the same beat, and an arrow on a
-   phone would be the wrong hand entirely.
+   arrow that travels to a control and lands on it. A finger does not travel
+   across a frame, so contact and consequence belong in the same beat, and an
+   arrow on a phone would be the wrong hand entirely.
 
-   Two parts, for the reason the ring in `cursor.tsx` is keyed: the contact point
-   is static and survives a held or scrubbed frame, and the ring is the transient
-   that says a press just happened.
+   Two parts, for the reason the ring in `cursor.tsx` is keyed: the contact
+   point is static and survives a held or scrubbed frame, and the ring is the
+   transient that says a press just happened. `--tap` is how long after the beat
+   begins the finger lands.
    =========================================================================== */
 
-/* Mostly a ring. It was a 30px disc at 16% white and it sat over the middle of
-   whatever it was pressing — the switch's own colour, the words "3 symbols to
-   practise" — which is the one thing a contact point must not do. */
 .tot-touch {
   position: absolute;
-  left: 50%;
   top: 50%;
-  width: 26px;
-  height: 26px;
+  left: 50%;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
   border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.46);
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0;
   transform: translate(-50%, -50%);
+  /* Lands, rests, lifts. A finger that stayed on the dealt owl for the rest of
+     the beat read as a mark on its face. */
+  animation: tot-tap 1400ms ease-out forwards;
+  animation-delay: var(--tap, 0ms);
   pointer-events: none;
 }
 .tot-touch-ring {
   position: absolute;
-  left: 50%;
   top: 50%;
-  width: 26px;
-  height: 26px;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
   border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  opacity: 0;
   transform: translate(-50%, -50%);
-  animation: tot-ping 620ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  animation: tot-ping 640ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  animation-delay: var(--tap, 0ms);
 }
-@keyframes tot-ping {
+@keyframes tot-tap {
   0% {
-    opacity: 0.75;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.6);
+  }
+  18%,
+  62% {
+    opacity: 1;
     transform: translate(-50%, -50%) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(2.6);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes tot-ping {
+  0% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.8);
   }
 }
 
 /* ===========================================================================
-   The Settings card
+   The sound, as rings
    ---------------------------------------------------------------------------
-   The one card out of the Symbols section of Settings, stood beside the device.
-   All four of its rows, because a switch on its own is a prop and a switch in
-   its own section of its own settings screen is a control — and because the
-   third row is the one that says these things have sounds at all, which is what
-   the plate on the other side of the frame is a diagram of.
+   The tone this page cannot play, drawn: rings in the totem's own colour,
+   expanding out of the glyph, across the device's edge and over the well, at a
+   period set by the totem's rung on the pitch ladder — a higher pitch rings
+   faster. Positioned on the phone box, which does not clip, at the point the
+   scene measured the dealt glyph to be; the recall card's stage is a fixed
+   200pt under a fixed 60pt header, so that one is a number.
    =========================================================================== */
 
-.tot-settings {
-  grid-area: switch;
-  align-self: start;
-  justify-self: center;
-  /* Capped, like the plate opposite it. A settings row stretched to 380px puts
-     half a screen of nothing between a label and the switch it belongs to, and
-     the two panels growing with the window was the only thing that changed
-     between a composed frame at 1440 and a thin one at 2560. */
-  width: 100%;
-  max-width: 306px;
-  min-width: 0;
+.tot-pulse {
+  position: absolute;
+  top: var(--py, 40%);
+  left: var(--px, 50%);
+  z-index: 5;
+  width: 0;
+  height: 0;
+  /* How wide the sound gets. Capped against the viewport so a ring out of a
+     phone in a narrow well cannot scroll the page sideways. */
+  --d: min(calc(var(--phone-w) * 2.9), 92vw);
+  --period: calc(560ms - var(--rung, 0) * 30ms);
+  --tap: 760ms;
+  --peak: 0.85;
+  pointer-events: none;
 }
-/* Where the card sits in its column, and it is a label decision as much as a
-   composition one: the one claim on this page that has to survive into the still
-   frame hangs *above* the switch, so there has to be air up there.
-
-   These live here rather than beside the layout at the top of the file, and that
-   is not tidiness. A media query adds no specificity, so `align-self: center` in
-   a query three hundred lines above this rule loses to the `align-self: start`
-   in it — which is exactly what happened, and the card sat at the top of a 683px
-   column with the label lying across its own section heading. */
-/* Bottom of its own column, which puts the weight of the frame on a diagonal —
-   card low on the left, plate high on the right, device between them — and
-   leaves the top half of that column clear. Both labels on this side live in
-   the space that makes: the switch's above the card, the list's off the left
-   edge of the rows and reading into the air beside it. Centring the card was
-   tried and it put the second label straight across the third settings row. */
-@media (min-width: 1100px) {
-  .tot-settings {
-    align-self: end;
+.tot-pulse[data-recall="true"] {
+  top: calc(204px * var(--s));
+  left: 50%;
+  --d: min(calc(var(--phone-w) * 2.2), 92vw);
+  --tap: 480ms;
+  --peak: 0.5;
+}
+.tot-pulse i {
+  position: absolute;
+  top: calc(var(--d) / -2);
+  left: calc(var(--d) / -2);
+  width: var(--d);
+  height: var(--d);
+  border: 2px solid var(--hue);
+  border-radius: 50%;
+  box-shadow:
+    0 0 26px color-mix(in srgb, var(--hue) 45%, transparent),
+    inset 0 0 26px color-mix(in srgb, var(--hue) 28%, transparent);
+  opacity: 0;
+  transform: scale(0.04);
+  animation: tot-ring 1900ms cubic-bezier(0.15, 0.6, 0.3, 1) forwards;
+  animation-delay: calc(var(--tap) + var(--i, 0) * var(--period));
+}
+.tot-pulse[data-recall="true"] i:nth-child(n + 3) {
+  display: none;
+}
+@keyframes tot-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.04);
+  }
+  10% {
+    opacity: var(--peak);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
   }
 }
-.tot-settings-head {
-  margin: 0 0 7px 2px;
-  color: var(--faint);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-.tot-settings-rows {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0 11px;
-  list-style: none;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
-}
-.tot-settings-row {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 9px 0;
-  min-height: 40px;
-  box-sizing: border-box;
-}
-.tot-settings-row + .tot-settings-row {
-  border-top: 1px solid var(--line);
-}
-.tot-settings-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 11px;
-  line-height: 1.3;
-}
-/* The row this film is about is the only one drawn at full strength; the other
-   three are context and are dimmed so they do not compete with it. */
-.tot-settings-row:not([data-key="hide"]) .tot-settings-label,
-.tot-settings-row:not([data-key="hide"]) .tot-ico {
-  color: var(--faint);
-}
-.tot-ico {
-  width: 17px;
-  height: 17px;
-  flex: none;
-  color: var(--dim);
-}
-.tot-settings-row[data-key="hide"] .tot-ico {
-  color: var(--dim);
-  transition: color 260ms ease;
-}
-.tot-settings[data-on="true"] .tot-settings-row[data-key="hide"] .tot-ico {
-  color: var(--accent);
-}
 
-.tot-settings-note {
-  margin: 8px 2px 0;
-  color: var(--faint);
-  font-size: 10px;
-  line-height: 1.5;
-}
+/* ===========================================================================
+   The ghosts
+   ---------------------------------------------------------------------------
+   The four symbols, leaving the phone as the names go. Placed over their rows
+   by the scene, each drifts out past the device's left edge to its own authored
+   spot in the air, grows, and hangs there faint until the recall card takes
+   over. Two elements: the outer one fades, the inner one flies, because a
+   `forwards` animation and a transition cannot share an opacity.
+   =========================================================================== */
 
-.tot-switch {
-  position: relative;
-  width: 34px;
-  height: 20px;
-  flex: none;
-  border-radius: 999px;
-  background: var(--card-alt);
-  transition: background 240ms ease;
-}
-.tot-switch[data-on="true"] {
-  background: var(--accent);
-}
-.tot-switch i {
+.tot-drift {
   position: absolute;
-  left: 2px;
-  top: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-  transition: transform 240ms cubic-bezier(0.3, 1.4, 0.5, 1);
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
 }
-.tot-switch[data-on="true"] i {
-  transform: translateX(14px);
+.tot-drift-glyph {
+  position: absolute;
+  top: var(--gy, -200px);
+  left: var(--gx, -200px);
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  opacity: 0;
+  transition: opacity 480ms ease;
 }
-/* The switch is the effect, and it follows the touch rather than racing it: a
-   tap that lands and a thing that moves at the same instant reads as the frame
-   changing, not as a press. */
-.tot-settings-row[data-key="hide"] .tot-switch,
-.tot-settings-row[data-key="hide"] .tot-switch i {
-  transition-delay: 180ms;
+.tot-drift[data-on="true"] .tot-drift-glyph[data-measured="true"] {
+  opacity: 1;
 }
-
-.tot-chev {
-  width: 7px;
-  height: 7px;
-  flex: none;
-  border-top: 1.5px solid var(--faint);
-  border-right: 1.5px solid var(--faint);
-  transform: rotate(45deg);
+.tot-drift-fly {
+  display: block;
+  width: 40px;
+  height: 40px;
+  opacity: 0;
+  transform: translate(0, 0) scale(0.6);
+}
+.tot-drift-fly .tot-glyph {
+  --glyph: 40px;
+}
+.tot-drift[data-on="true"] .tot-drift-fly {
+  animation: tot-drift-out 1500ms cubic-bezier(0.2, 0.7, 0.25, 1) forwards;
+  animation-delay: calc(360ms + var(--row, 0) * 150ms);
+}
+/* Where each one lands, beyond the edge. Authored, not random: a random four
+   clumps, and clumps on the phone. */
+.tot-drift-glyph:nth-child(1) {
+  --out: 80px;
+  --oy: 16px;
+}
+.tot-drift-glyph:nth-child(2) {
+  --out: 160px;
+  --oy: 6px;
+}
+.tot-drift-glyph:nth-child(3) {
+  --out: 96px;
+  --oy: 26px;
+}
+.tot-drift-glyph:nth-child(4) {
+  --out: 172px;
+  --oy: 51px;
+}
+@keyframes tot-drift-out {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  18% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.55;
+    transform: translate(calc(var(--edge, 0px) - var(--out)), var(--oy)) scale(var(--grow, 1.5));
+  }
+}
+/* A held or scrubbed frame is a diagram of the world after the gesture, so the
+   ghosts are already where they land. */
+.tot[data-still="true"] .tot-drift-fly {
+  animation-duration: 1ms;
+  animation-delay: 0ms;
 }
 
 /* ===========================================================================
@@ -1223,6 +1540,7 @@
   grid-area: tone;
   align-self: start;
   justify-self: center;
+  z-index: 2;
   /* The grid inside this is 12 columns by 14 rows of dots, and a dot lattice has
      a density it wants: stretched to 380px the columns went to 26px apart and
      the plate stopped reading as a field with four things plotted on it. */
@@ -1274,11 +1592,6 @@
   text-align: center;
   transition: color 320ms ease;
 }
-/* The four values on the list are legible; the rest are the vocabulary they
-   were drawn from and are set back. */
-.tot-grid-pitches span[data-on="true"] {
-  color: var(--dim);
-}
 .tot-grid-families {
   grid-area: 2 / 1;
   display: grid;
@@ -1293,19 +1606,19 @@
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: clamp(6.5px, 0.58vw, 8.5px);
   letter-spacing: -0.02em;
+  transition: color 320ms ease;
 }
-.tot-grid-families span[data-on="true"] {
+/* The values on the list are legible; the rest are the vocabulary they were
+   drawn from and are set back. While the tour is dealing one totem, and again
+   while the card is asking about it, only that one's two values are lit — so
+   the only bright things on the plate are a pitch, a timbre and the point
+   where they cross. That is the claim beside it, performed. */
+.tot-tone[data-mode="all"] .tot-grid-pitches span[data-on="true"],
+.tot-tone[data-mode="all"] .tot-grid-families span[data-on="true"] {
   color: var(--dim);
 }
-/* Once the drill has dealt a card the plate reads one totem rather than four, so
-   the only bright things left on it are its pitch, its timbre and the point they
-   cross at. That is the claim beside it, performed. */
-.tot-tone[data-solo="true"] .tot-grid-pitches span[data-on="true"],
-.tot-tone[data-solo="true"] .tot-grid-families span[data-on="true"] {
-  color: rgba(134, 134, 150, 0.62);
-}
-.tot-tone[data-solo="true"] .tot-grid-pitches span[data-focus="true"],
-.tot-tone[data-solo="true"] .tot-grid-families span[data-focus="true"] {
+.tot-grid-pitches span[data-focus="true"],
+.tot-grid-families span[data-focus="true"] {
   color: var(--ink);
 }
 .tot-grid-field {
@@ -1316,6 +1629,7 @@
 }
 
 .tot-cell {
+  position: relative;
   display: grid;
   place-items: center;
   aspect-ratio: 1;
@@ -1323,6 +1637,7 @@
 }
 .tot-cell::before {
   content: "";
+  grid-area: 1 / 1;
   width: 2px;
   height: 2px;
   border-radius: 50%;
@@ -1338,9 +1653,19 @@
   height: 9px;
   background: var(--hue);
   box-shadow: 0 0 9px 1px color-mix(in srgb, var(--hue) 42%, transparent);
+}
+/* The dealt point lands as the finger does; the other three plot themselves as
+   the list arrives, each as its own row is read. */
+.tot-tone[data-mode="deal"] .tot-cell[data-hit="true"]:not([data-focus="true"])::before {
+  opacity: 0;
+  transform: scale(0.2);
+}
+.tot-tone[data-mode="deal"] .tot-cell[data-focus="true"]::before {
+  animation: tot-plot 520ms cubic-bezier(0.2, 0.9, 0.3, 1) 820ms backwards;
+}
+.tot-tone[data-mode="all"] .tot-cell[data-hit="true"]:not([data-focus="true"])::before {
   animation: tot-plot 520ms cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
-  /* Each dot lands as its own row is read, in list order. */
-  animation-delay: calc(340ms + var(--n, 0) * 190ms);
+  animation-delay: calc(300ms + var(--n, 0) * 190ms);
 }
 @keyframes tot-plot {
   0% {
@@ -1352,9 +1677,34 @@
     transform: scale(1);
   }
 }
-/* Once the drill has dealt one card, the other three step back — the plate is
+/* The dealt point rings with the phone, on the same clock. */
+.tot-tone[data-mode="deal"] .tot-cell[data-focus="true"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--hue);
+  border-radius: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1);
+  animation: tot-cell-ring 1300ms ease-out 3;
+  animation-delay: 900ms;
+}
+@keyframes tot-cell-ring {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(4.2);
+  }
+}
+/* Once the card has dealt one totem, the other three step back — the plate is
    reading the totem on screen rather than the whole list. */
-.tot-tone[data-solo="true"] .tot-cell[data-hit="true"]:not([data-focus="true"])::before {
+.tot-tone[data-mode="solo"] .tot-cell[data-hit="true"]:not([data-focus="true"])::before {
   width: 5px;
   height: 5px;
   opacity: 0.3;
@@ -1430,17 +1780,37 @@ i.tot-swatch {
   letter-spacing: 0.01em;
 }
 
+/* Under the device between 761 and 1099, where it has the device's own width. */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .tot-tone {
+    max-width: 296px;
+  }
+  .tot-grid {
+    max-width: 240px;
+  }
+}
+/* Beside it from 1100, level with the dealt glyph: the plate's top lines up with
+   the device's, so the lit point on the grid sits about where the rings leave the
+   glyph and the two read as one event. */
+@media (min-width: 1100px) {
+  .tot-tone {
+    margin-top: 0;
+  }
+}
+
 /* ===========================================================================
    The labels
    ---------------------------------------------------------------------------
    iOS furniture: a pill, sentence case, no tracking, and a near-black plate
    with a violet hairline so it belongs to this application rather than to the
-   frosted white one two sections up. The dot is the app's accent.
+   frosted white one two sections up. The dot is the app's accent. The lead is
+   a little longer than the page's default, because three of these read out of
+   a device edge and want to stand clear of the bezel.
    =========================================================================== */
 
 .tot-specs {
   --spec-ink: #efedff;
-  --spec-paper: rgba(20, 20, 30, 0.93);
+  --spec-paper: rgba(20, 20, 30, 0.94);
   --spec-edge: rgba(138, 131, 255, 0.42);
   --spec-gloss: rgba(255, 255, 255, 0.12);
   --spec-dot: #8a83ff;
@@ -1449,7 +1819,7 @@ i.tot-swatch {
   --spec-pad: 0.28rem 0.66rem;
   --spec-weight: 600;
   --spec-tracking: 0;
-  --spec-lead: 16px;
+  --spec-lead: 20px;
 }
 
 /* ===========================================================================
@@ -1457,19 +1827,36 @@ i.tot-swatch {
    ---------------------------------------------------------------------------
    Below 760px the label layer stops being a layer and becomes a row of chips
    under the scene, which is handled in `globals.css`. What is left here is the
-   scene itself: one column, and a device small enough to leave the plate room
-   to keep its twelve columns.
+   scene itself: one column, a device small enough to leave the plate its
+   twelve columns, and ghosts that do not wander off the side of the page.
    =========================================================================== */
 
+@media (max-width: 760px) {
+  .tot-drift-glyph {
+    --grow: 1.25;
+  }
+  .tot-drift-glyph:nth-child(1) {
+    --out: 18px;
+    --oy: 14px;
+  }
+  .tot-drift-glyph:nth-child(2) {
+    --out: 36px;
+    --oy: 4px;
+  }
+  .tot-drift-glyph:nth-child(3) {
+    --out: 22px;
+    --oy: 24px;
+  }
+  .tot-drift-glyph:nth-child(4) {
+    --out: 38px;
+    --oy: 48px;
+  }
+}
 @media (max-width: 560px) {
   .tot {
-    --phone-w: min(268px, 82vw);
     font-size: 12px;
   }
   .tot-frame {
     gap: 0.8rem;
-  }
-  .tot-settings-note {
-    display: none;
   }
 }

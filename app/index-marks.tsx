@@ -33,10 +33,17 @@ function step(index: number): CSSProperties {
   return { "--step": index } as CSSProperties;
 }
 
-/** Choir Practice: a stave, and a voice moving over it. */
+/**
+ * Choir Practice: a stave, a passage marked on it, and a voice moving over it.
+ *
+ * The band is the application's loop, in its own loop blue — the newest thing the
+ * scene below shows, and the one mark on the stave that is not a line. First in the
+ * markup so it paints under the ruling and the voice crosses it.
+ */
 function ChoirMark() {
   return (
     <span className="imark imark--choir">
+      <span className="imark-band" />
       {[0, 1, 2, 3].map((line) => (
         <span className="imark-stave" key={line} style={step(line)} />
       ))}
@@ -56,10 +63,21 @@ function DecafMark() {
   );
 }
 
-/** PDF Explainer: a note settling onto a slide. */
+/**
+ * PDF Explainer: the filmstrip's rail filling in ahead of the reader.
+ *
+ * It was a note settling onto a slide, which was the overlay the old scene was about.
+ * The product's centrepiece now is that notes are written before you reach the slide,
+ * and the filmstrip shows it as a rail that fills a slide or two ahead of where you are
+ * reading — so that is the mark: four rails going violet in turn, and a pale bar stepping
+ * down the page behind them.
+ */
 function PdfMark() {
   return (
     <span className="imark imark--pdf">
+      {[0, 1, 2, 3].map((rail) => (
+        <span className="imark-rail" key={rail} style={step(rail)} />
+      ))}
       <span className="imark-slide" />
       <span className="imark-note" />
     </span>

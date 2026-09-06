@@ -1,10 +1,10 @@
 /* ===========================================================================
    Decaf — "not blocked, three seconds away"
    ---------------------------------------------------------------------------
-   A feed losing its grip, in ten seconds. Everything is driven from `data-beat`
-   plus three cumulative flags on the root — `data-grey`, `data-paused`,
-   `data-on` — because most of what happens here is a state the page stays in
-   rather than a moment it passes through.
+   A feed losing its grip, and then the extension accounting for it. Everything is
+   driven from `data-beat` plus a few cumulative flags on the root — `data-grey`,
+   `data-paused`, `data-on`, `data-popup`, `data-feed-open` — because most of what
+   happens here is a state the page stays in rather than a moment it passes through.
 
    The layout constraint is the interesting one. The header and both sidebars
    must not move a pixel while the feed empties, because "the page does not jump"
@@ -557,6 +557,37 @@
   --spec-lead: 12px;
 }
 
+/* The stagger is positional — the component writes each label's index in `SPECS` as
+   `--spec-order`, and the flight and the pop wait `order × --spec-step` — and it was
+   designed for a scene whose labels all leave one press together. Five of these do.
+   The six after them come out on five different beats, and by the eleventh the delay
+   alone is 1300ms: "Five minutes, then paused again" set off 1300ms into a 1600ms beat
+   and landed after the loop had restarted, and "Not blocked" was photographed halfway
+   down from the toolbar. So the labels after the switch's five are numbered by the
+   beat they share, which is what the stagger means. `!important` because the index is
+   written inline, and this is the one place a scene may disagree with it. */
+.dc-specs .spectag:nth-child(5) {
+  --spec-order: 0 !important; /* pause: "Suggestions gone" */
+}
+.dc-specs .spectag:nth-child(6) {
+  --spec-order: 1 !important; /* pause: "Longer each pass." */
+}
+.dc-specs .spectag:nth-child(7) {
+  --spec-order: 0 !important; /* receipt */
+}
+.dc-specs .spectag:nth-child(8) {
+  --spec-order: 0 !important; /* spot: the ring */
+}
+.dc-specs .spectag:nth-child(9) {
+  --spec-order: 1 !important; /* spot: the meter */
+}
+.dc-specs .spectag:nth-child(10) {
+  --spec-order: 0 !important; /* hold */
+}
+.dc-specs .spectag:nth-child(11) {
+  --spec-order: 0 !important; /* settle */
+}
+
 /* --- Decaf: the deluge ----------------------------------------------------
    Portalled to the viewport, and held inside Decaf's own band of the page by a mask
    rather than by a clip.
@@ -927,20 +958,49 @@
   display: none;
 }
 
-/* --- the notice that takes the feed's place ------------------------------- */
+/* --- the notice that takes the feed's place -------------------------------
+   Decaf's own card, as `content.css` draws it, at four fifths: the page around it is
+   drawn at about that scale, and the card is the page's. So 24px of padding is 19, the
+   19px title is 15, the 30px ring is 24, and the palette is untouched — `#fffefc` on a
+   `#e7e0d5` hairline, coffee `#6f4e37` for the ring, `#6d675f` for everything that is
+   not the title. The extension's card is `margin: 32px auto` in a page; here it sits
+   centred in the box the feed left behind, which is the nearest thing to that inside a
+   268px window.
 
+   It used to be a dashed grey placeholder with the copy centred, which was a picture of
+   "a notice" rather than a picture of this one. */
 .dc-notice {
+  --card-ink: #1d1b19;
+  --card-muted: #6d675f;
+  --card-coffee: #6f4e37;
+  position: relative;
   display: flex;
-  height: 100%;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 18px;
-  border: 1px dashed rgba(0, 0, 0, 0.16);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.015);
-  text-align: center;
+  align-items: stretch;
+  /* `width: 100%; max-width: 544px; margin: 32px auto` in the page, so at four fifths
+     the card is 435 wide and centred in the box the feed left behind. `width` as well
+     as `max-width`: this is a flex item with auto margins, and without it the card
+     shrank to its longest line. */
+  width: 100%;
+  max-width: 435px;
+  margin: auto;
+  padding: 19px;
+  border: 1px solid #e7e0d5;
+  border-radius: 13px;
+  background: #fffefc;
+  color: var(--card-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+  /* The ring the popup puts on it. Declared here at zero so the attribute below can
+     fade it up rather than snap it on. */
+  outline: 2px solid transparent;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px rgba(111, 78, 55, 0);
+  transition:
+    outline-color 160ms ease,
+    box-shadow 160ms ease;
   animation: dc-notice-in 420ms ease-out;
 }
 @keyframes dc-notice-in {
@@ -948,62 +1008,110 @@
     opacity: 0;
   }
 }
-.dc-notice-head {
+/* The extension's `.decaf-spot`, to the pixel: a 2px coffee outline three pixels out
+   (four on the card), over a six-pixel halo at 18%. The one coloured thing on a page
+   that has lost its colour, which is what makes it read as the popup pointing. */
+.dc-notice[data-spot="true"] {
+  outline-color: var(--card-coffee);
+  box-shadow: 0 0 0 6px rgba(111, 78, 55, 0.18);
+}
+/* The feed box clips its reel and must not clip the ring on the card. Scoped to the
+   card being present, so the reel is clipped exactly as before whenever it is back. */
+.dc-feed:has(> .dc-notice) {
+  overflow: visible;
+}
+.dc-notice-title {
   margin: 0;
-  font-size: 12.5px;
-  font-weight: 650;
+  font-size: 15px;
+  font-weight: 620;
+  letter-spacing: -0.2px;
+  line-height: 1.3;
 }
 .dc-notice-body {
-  max-width: 34ch;
-  margin: 0;
-  color: var(--ink-2);
-  font-size: 10.5px;
-  line-height: 1.5;
+  margin: 6px 0 0;
+  color: var(--card-muted);
+  font-size: 11px;
 }
-.dc-notice-foot {
-  margin: 0;
-  color: var(--ink-3);
-  font-size: 9.5px;
+.dc-notice-hint,
+.dc-notice-status {
+  margin: 8px 0 0;
+  color: var(--card-muted);
+  font-size: 11px;
+}
+/* Keeps its box while empty, as the extension's does, so the card does not jump the
+   moment it speaks. */
+.dc-notice-status {
+  min-height: 16px;
+}
+.dc-notice-escape {
+  align-self: flex-start;
+  margin-top: 10px;
+  color: var(--card-muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+  text-decoration: underline;
 }
 
-/* The hold. A ring that fills while the button is held down — the whole design
-   in one control: the feed is not blocked, it just costs three seconds, and
-   seven tomorrow. */
+/* The hold. A ring that fills while the button is held down — the whole design in one
+   control: the feed is not blocked, it just costs three seconds, and seven the next
+   time today. The extension's `.decaf-notice-hold`: a full-width button, the ring at
+   its left and the label beside it, on a `#faf8f5` field with a `#ded7cc` hairline. */
 .dc-hold {
   position: relative;
-  display: grid;
-  width: 44px;
-  height: 44px;
-  margin: 3px 0;
-  place-items: center;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 9px 13px;
+  border: 1px solid #ded7cc;
+  border-radius: 10px;
+  background: #faf8f5;
+  color: var(--card-ink);
+  font-size: 13px;
+  font-weight: 560;
+  text-align: center;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+/* The pointer resting on it, which is the extension's own hover — only while idle, since
+   mid-hold the ring is the feedback and a shift underneath it reads as flicker. */
+.dc-hold[data-aimed="true"]:not([data-holding="true"]) {
+  border-color: #b9ae9f;
+  background: #f4f0e9;
+}
+.dc-hold[data-holding="true"] {
+  border-color: #c9bfae;
 }
 .dc-hold svg {
-  position: absolute;
-  inset: 0;
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  /* Starts the sweep at twelve o'clock instead of three. */
   transform: rotate(-90deg);
 }
 .dc-hold-track,
 .dc-hold-fill {
   fill: none;
-  stroke-width: 3;
+  stroke-width: 3.5;
+  stroke-linecap: round;
 }
 .dc-hold-track {
-  stroke: rgba(0, 0, 0, 0.1);
+  stroke: #e2dbd0;
 }
 .dc-hold-fill {
-  stroke: var(--accent);
-  stroke-linecap: round;
+  stroke: var(--card-coffee);
   /* 2πr for r=19. */
   stroke-dasharray: 119.4;
   stroke-dashoffset: 119.4;
 }
 .dc-hold[data-holding="true"] .dc-hold-fill {
-  /* Three seconds, which is the real first-pass duration. */
+  /* The real first hold is three seconds. The film compresses it to what fits inside
+     the beat after the press has landed, and the card's own hint says the true number. */
   animation: dc-fill 1800ms linear forwards;
-}
-.dc-hold[data-done="true"] .dc-hold-fill {
-  stroke-dashoffset: 0;
-  stroke: #1f8f4e;
 }
 @keyframes dc-fill {
   to {
@@ -1011,13 +1119,456 @@
   }
 }
 .dc-hold-label {
-  color: var(--ink-2);
-  font-size: 8.5px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
+  font-weight: 560;
 }
-.dc-hold[data-done="true"] .dc-hold-label {
-  color: #1f8f4e;
+
+/* --- the popup ------------------------------------------------------------
+   The extension's own window, transcribed from `Decaf/popup.css` and `popup.html`: a
+   328px column of warm paper, the wordmark uppercase and letterspaced, cards on
+   `#fffdfa` with a 14px radius, pill badges, a 38×22 switch with a 16px knob, the
+   receipt in two columns with its numbers in the coffee, the week as bars. Drawn at
+   1:1, not at the page's four fifths — a popup is a separate window, and it does not
+   scale with the page it opened over.
+
+   Two elements. `.dc-popup` is positioned, hanging two pixels under the tab strip with
+   its right edge on the toolbar icon's, which is where Chrome puts an action popup.
+   `.dc-popup-window` is the one that is zoomed and cut: `zoom` multiplies every length
+   on the element it sits on, offsets included, so a zoomed popup positioned by its own
+   `top` would drift up the tab strip as it shrank. The zoom and the room come from the
+   demo, measured against the section — see the effect that writes them.
+
+   Outside `.dc-browser` on purpose. The browser clips its contents and this has to hang
+   below the window: Chrome clamps a popup to the screen, not to the window it came
+   from, and a 600px popup off a short window is exactly this picture.
+
+   The closed state is a translation and a clip, never a scale. The demo measures the
+   popup's natural height while it is closed, and a `scale(0.94)` there would have
+   reported the meter's bottom edge six percent early. */
+.dc-popup {
+  position: absolute;
+  z-index: 10;
+  top: 40px;
+  right: 8px;
+  width: 328px;
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 -8px;
+  clip-path: inset(0 0 55% 0 round 8px);
+  transition:
+    opacity 180ms ease,
+    translate 320ms cubic-bezier(0.16, 0.86, 0.18, 1.1),
+    clip-path 360ms cubic-bezier(0.2, 0.86, 0.24, 1),
+    visibility 0s linear 180ms;
+}
+.dc-popup[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  clip-path: inset(0 0 0 0 round 8px);
+  transition:
+    opacity 140ms ease,
+    translate 320ms cubic-bezier(0.16, 0.86, 0.18, 1.1),
+    clip-path 360ms cubic-bezier(0.2, 0.86, 0.24, 1),
+    visibility 0s;
+}
+
+.dc-popup-window {
+  --pop-bg: #f7f4ef;
+  --pop-card: #fffdfa;
+  --pop-text: #201d1a;
+  --pop-muted: #6e675e;
+  --pop-line: #e8e1d6;
+  --pop-accent: #6f4e37;
+  --pop-accent-text: #fdfbf8;
+  --pop-hover: #f1ebe1;
+  --pop-track-off: #ded5c6;
+  --pop-shadow: 0 1px 2px rgba(32, 25, 18, 0.14);
+  zoom: var(--dc-popup-zoom, 1);
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 8px;
+  /* Chrome's 600px ceiling, or the section's own room under the window, whichever is
+     less — divided back out of the zoom, because a length on a zoomed element is
+     multiplied by it and the room was measured in screen pixels. */
+  max-height: calc(min(600px, var(--dc-popup-room, 600px)) / var(--dc-popup-zoom, 1));
+  padding: 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--pop-bg);
+  color: var(--pop-text);
+  box-shadow:
+    0 0 0 1px rgba(32, 25, 18, 0.13),
+    0 2px 6px rgba(32, 25, 18, 0.1),
+    0 30px 70px -22px rgba(32, 25, 18, 0.55);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  text-align: left;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* head: the wordmark and the master switch, on */
+.dc-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 0;
+}
+.dc-popup-brand {
+  color: var(--pop-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.dc-popup-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.dc-popup-switch > span {
+  color: var(--pop-muted);
+  font-size: 13px;
+}
+/* `.switch-track`, checked: 38×22, the knob 16 and centred with a translate rather
+   than a `top`, landing 3px from the far edge. */
+.dc-popup-switch i {
+  position: relative;
+  box-sizing: border-box;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 1px solid var(--pop-accent);
+  border-radius: 999px;
+  background: var(--pop-accent);
+}
+.dc-popup-switch i::after {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fffdfa;
+  box-shadow: var(--pop-shadow);
+  content: "";
+  transform: translate(16px, -50%);
+}
+
+/* cards */
+.dc-popup-card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 9px;
+  padding: 13px 14px;
+  border: 1px solid var(--pop-line);
+  border-radius: 14px;
+  background: var(--pop-card);
+}
+.dc-popup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dc-popup-h2 {
+  font-size: 17px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.dc-popup-badge {
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--pop-accent);
+  color: var(--pop-accent-text);
+  font-size: 12px;
+  font-weight: 560;
+  white-space: nowrap;
+}
+.dc-popup-detail {
+  margin: 0;
+  color: var(--pop-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* the receipt: an eyebrow and two columns of short lines, a number or a tick and
+   then the thing. The lines the page can point at are buttons over there; here the
+   pointed-at one carries `data-hover`, which is the extension's own hover paint. */
+.dc-popup-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 9px;
+  border-top: 1px solid var(--pop-line);
+}
+.dc-popup-eyebrow {
+  margin: 0;
+  color: var(--pop-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Shrunk to its words, so the label anchored to it measures the words rather than a
+   block the full width of the card. Looks identical. */
+.dc-popup-receipt > .dc-popup-eyebrow {
+  align-self: flex-start;
+}
+.dc-popup-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dc-popup-line {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--pop-muted);
+  font-size: 13px;
+  line-height: 1.35;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+.dc-popup-line b {
+  min-width: 1.5em;
+  flex-shrink: 0;
+  color: var(--pop-accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 620;
+  text-align: right;
+}
+.dc-popup-line[data-hover="true"] {
+  border-color: var(--pop-line);
+  background: var(--pop-hover);
+  color: var(--pop-text);
+}
+
+/* the site's own controls: snooze, and off */
+.dc-popup-off {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 9px;
+  border-top: 1px solid var(--pop-line);
+}
+.dc-popup-segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--pop-hover);
+}
+.dc-popup-segmented > span {
+  padding: 6px 2px;
+  border-radius: 7px;
+  color: var(--pop-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+}
+.dc-popup-segmented > span[data-checked="true"] {
+  background: var(--pop-card);
+  box-shadow: var(--pop-shadow);
+  color: var(--pop-text);
+  font-weight: 600;
+}
+/* `.button.quiet`, which is what every button in this window is bar the Lock. */
+.dc-popup-button {
+  display: block;
+  box-sizing: border-box;
+  padding: 7px 12px;
+  border: 1px solid var(--pop-line);
+  border-radius: 10px;
+  color: var(--pop-text);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+}
+.dc-popup-button--primary {
+  padding: 9px 14px;
+  border-color: transparent;
+  background: var(--pop-accent);
+  color: var(--pop-accent-text);
+  font-size: 14px;
+  font-weight: 560;
+}
+.dc-popup-button--wide {
+  width: 100%;
+}
+
+/* the meter: seven days, passes in the coffee and minutes beside them in the
+   track's grey, each series to its own busiest day. No streak, no goal, no line. */
+.dc-popup-meter {
+  gap: 6px;
+  padding: 11px 14px 10px;
+}
+.dc-popup-caption,
+.dc-popup-sites {
+  margin: 0;
+  color: var(--pop-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.dc-popup-sites {
+  font-size: 12px;
+}
+.dc-popup-chart {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 2px;
+}
+.dc-popup-day {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+.dc-popup-bars {
+  display: flex;
+  height: 36px;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding-bottom: 1px;
+  border-bottom: 1px solid var(--pop-line);
+}
+.dc-popup-bar {
+  display: block;
+  width: 9px;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  /* The bars stand up as the popup opens, one day after the next. The extension
+     paints them in place; this is the one liberty the film takes with the window,
+     because a chart appearing whole is a chart nobody looked at. */
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 460ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dc-popup[data-open="true"] .dc-popup-bar {
+  transform: scaleY(1);
+}
+.dc-popup-day:nth-child(2) .dc-popup-bar { transition-delay: 60ms; }
+.dc-popup-day:nth-child(3) .dc-popup-bar { transition-delay: 120ms; }
+.dc-popup-day:nth-child(4) .dc-popup-bar { transition-delay: 180ms; }
+.dc-popup-day:nth-child(5) .dc-popup-bar { transition-delay: 240ms; }
+.dc-popup-day:nth-child(6) .dc-popup-bar { transition-delay: 300ms; }
+.dc-popup-day:nth-child(7) .dc-popup-bar { transition-delay: 360ms; }
+.dc-popup-bar--passes {
+  background: var(--pop-accent);
+}
+.dc-popup-bar--minutes {
+  background: var(--pop-track-off);
+}
+.dc-popup-bar[data-empty="true"] {
+  opacity: 0.4;
+}
+.dc-popup-day small {
+  color: var(--pop-muted);
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+}
+.dc-popup-day[data-today="true"] small {
+  color: var(--pop-text);
+  font-weight: 650;
+}
+.dc-popup-legend {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  color: var(--pop-muted);
+  font-size: 11px;
+}
+.dc-popup-legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: 0;
+}
+
+/* --- what the extension pins to the page while a pass runs ----------------
+   `.decaf-counter` in `content.css`, at the page's four fifths: a pill fixed to the
+   window's bottom-left corner with the clock and the way to hand the pass back, and
+   `.decaf-chip`, the dark pill it shows at the bottom centre for four seconds as the
+   feed opens. Positioned against the stage, which is the browser's box. */
+.dc-counter {
+  position: absolute;
+  z-index: 8;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #e2dbd0;
+  border-radius: 999px;
+  background: #fffefc;
+  box-shadow: 0 5px 16px rgba(28, 26, 24, 0.16);
+  color: #2f2a25;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 10.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  animation: dc-notice-in 300ms ease-out;
+}
+.dc-counter b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.dc-counter span {
+  padding: 3px 8px;
+  border: 1px solid #d8cfc2;
+  border-radius: 999px;
+  background: #f6f2ec;
+  font-size: 9.5px;
+  font-weight: 500;
+}
+.dc-chip {
+  position: absolute;
+  z-index: 8;
+  bottom: 19px;
+  left: 50%;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: rgba(31, 26, 22, 0.92);
+  color: #fdfbf8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  animation: dc-chip-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+@keyframes dc-chip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 /* --- the rail that goes entirely ----------------------------------------- */
@@ -1091,6 +1642,42 @@
   }
   .dc-feed {
     height: 232px;
+  }
+  /* The chip and the counter share the bottom edge, and at this width there is not
+     room for both; the counter is the one with the clock in it. */
+  .dc-chip {
+    display: none;
+  }
+  /* The counter belongs to the browser's corner, not the stage's: below 760px the
+     label chips are in the flow under the window, and a counter measured from the
+     stage's bottom landed on top of them. */
+  .dc-browser {
+    position: relative;
+  }
+
+  /* --- the popup, on a phone --------------------------------------------------
+     A 328px window hung off the toolbar covers the whole mock and the chips under it
+     at this width, which is also what an extension's popup is on a phone: a sheet
+     over the page. So while it is open it takes the browser's place in the flow —
+     the mock steps out, the popup steps in at the same width, the chips stay
+     underneath — and it closes as the pointer sets off for the card. See `useNarrow`
+     in the demo, which also fits its width to the stage. */
+  .dc[data-popup="true"] .dc-browser {
+    display: none;
+  }
+  .dc-popup {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 328px;
+    max-width: 100%;
+    margin: 0 auto;
+    translate: none;
+    clip-path: none;
+    transition: none;
+  }
+  .dc-popup[data-open="false"] {
+    display: none;
   }
 }
 

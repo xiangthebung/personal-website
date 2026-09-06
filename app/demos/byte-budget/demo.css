@@ -1,25 +1,22 @@
 /*
- * Byte Budget — "the figure, and how much of it was measured"
+ * Byte Budget — "which host, how much of it was measured, and what was refused"
  *
  * Two prefixes, and the split is not cosmetic. Everything under `bbx-` is what the
- * product looks like and is taken from the extension's own `app.css` and `popup.css`;
- * everything under `bb-` exists only to stage it — the browser, the page, the track
- * under the window, the notification. When the popup changes, one of those two halves
- * needs editing and the other does not.
+ * product looks like and is taken from the extension's own `app.css` and `popup.css` —
+ * the tokens, the 420px panel, the plan meter, the projection card in the estimate
+ * colour, the `Right now` rows, the limit card. Everything under `bb-` exists only to
+ * stage it: the browser, the page, the banner, the refused segment, the notification.
+ * When the popup changes, one of those two halves needs editing and the other does not.
  *
- * Three colours carry the whole argument and none of them is decoration:
+ * Four colours carry the argument and none of them is decoration:
  *
- *   teal   `#0f6a62`  the accent, and here the part of a figure that was measured
+ *   teal   `#0f6a62`  the accent, and the badge while the plan has room
  *   amber  `#9c5406`  `--estimate`: a figure the size model supplied rather than one
- *                     anything observed. This is the colour this section of the page
- *                     is named after.
- *   green  `#17784b`  `--saved`: bytes something prevented from being spent.
- *
- * Every text-on-background pair below is held to the same bar the extension holds
- * itself to. `--estimate` was moved from `#a95d10` to `#9c5406` in the extension for
- * exactly that reason: at 11px on `--estimate-soft` the old value measured 4.40:1, and
- * every figure that colour carries is one the product is admitting is modelled — which
- * makes it the last thing that should be hard to read.
+ *                     anything observed. It is also the badge's colour past 75% and
+ *                     the projection card's, because a projection is modelled. This is
+ *                     the colour this section of the page is named after.
+ *   red    `#b6382f`  `--danger`: past 90%, and past the plan
+ *   green  `#17784b`  `--saved`: bytes something prevented from being spent
  */
 
 .bb {
@@ -41,11 +38,18 @@
   --estimate: #9c5406;
   --estimate-soft: #fdf0e2;
   --danger: #b6382f;
+  --danger-soft: #fdeeec;
   --bar-track: #e3eded;
   --shadow-card: 0 1px 2px rgba(18, 44, 48, 0.05), 0 6px 20px rgba(18, 44, 48, 0.05);
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 9px;
+
+  /* The badge's ladder, from `background.ts`. */
+  --badge-fine: #0f6a62;
+  --badge-warn: #9c5406;
+  --badge-urgent: #b6382f;
+  --badge-over: #7a1f18;
 
   /* The scene's own. */
   --bb-font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -53,29 +57,23 @@
   --bb-chrome-line: rgba(16, 40, 44, 0.13);
   --bb-page: #fbfcfc;
 
-  /* The two ends of the current move, written by the scene each beat and interpolated
-     below with `--beat-t`. Declared here so the rules that read them have a value on
-     the server render, before the storyboard has written anything. */
-  --used-from: 0;
-  --used-to: 0;
-  --seam-from: 0;
-  --seam-to: 0;
-  --ghost-from: 0;
-  --ghost-to: 0;
+  /* The two ends of the plan meter's current move, written by the scene each beat and
+     interpolated below with `--beat-t`, so the meter is a continuous function of scene
+     time rather than a value at ten instants. Declared here so the rules that read them
+     have a value on the server render. */
+  --share-from: 0;
+  --share-to: 0;
+  --t: var(--beat-t, 0);
+  --share: calc(var(--share-from) + (var(--share-to) - var(--share-from)) * var(--t));
 
   position: relative;
   width: 100%;
-  /* Close to the 900px this was composed at. Wider and the browser's page grows into a
-     thousand-pixel video player with the extension reduced to one badge in the corner,
-     which reads as a section about a streaming site. */
+  /* Close to the 900px this was composed at. Wider and the page grows into a
+     thousand-pixel video player with the extension reduced to one badge in the corner. */
   max-width: 940px;
-  /* The track is absolutely positioned against the bottom of this box, so the room it
-     needs belongs here rather than being a side effect of a margin somewhere else. The
-     figure is not only the track's own height: the two label plates that read upward out
-     of it need a clear band above the ticks, and that band has to sit below the popup,
-     which overhangs the window. Three things share this space and it is the last of them
-     that sets the number. */
-  padding-bottom: 260px;
+  /* The popup hangs off the toolbar and past the bottom of the window it hangs off, and
+     the room it needs belongs here rather than being a side effect of anything else. */
+  padding-bottom: 300px;
   color: var(--text);
   font-family: var(--bb-font);
   font-size: 13px;
@@ -86,7 +84,6 @@
 
 .bb-browser {
   position: relative;
-  /* Above the track, which passes behind the window rather than in front of it. */
   z-index: 2;
   border: 1px solid var(--bb-chrome-line);
   border-radius: 14px;
@@ -180,7 +177,7 @@
   white-space: nowrap;
 }
 
-/* The extension's own button: the only thing clicked in this scene, so the only thing
+/* The extension's own button: the first thing clicked in this scene, so the only thing
    in the chrome at full contrast. */
 .bb-action {
   position: relative;
@@ -199,52 +196,33 @@
   background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
-/* A ring while the badge is the only thing on screen doing anything. It stops once the
-   popup is open, where it would be pointing at old news. */
-.bb-action[data-live="true"]::before {
-  position: absolute;
-  border: 1.5px solid var(--accent);
-  border-radius: 10px;
-  content: "";
-  inset: -3px;
-  opacity: 0;
-  animation: bb-ping 2600ms ease-out infinite;
-}
-
-@keyframes bb-ping {
-  0% {
-    opacity: 0.5;
-    transform: scale(0.94);
-  }
-  55%,
-  100% {
-    opacity: 0;
-    transform: scale(1.18);
-  }
-}
-
 .bb-mark {
-  display: block;
-  width: 19px;
-  height: 19px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 5px;
+  background: var(--accent);
+  color: #fff;
 }
 
 .bb-mark svg {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 15px;
+  height: 15px;
 }
 
-/* `#0f6a62` on white, from `background.ts`. Four characters at the outside, because
-   Chrome truncates a longer badge to something unreadable rather than shrinking it. */
+/* The share of the plan left, white on the ladder's colour, from `updateBadge`. Four
+   characters at the outside, because Chrome truncates a longer badge rather than
+   shrinking it. Keyed on its text, so each new figure lands rather than swaps. */
 .bb-badge {
   position: absolute;
-  right: -7px;
-  bottom: -4px;
-  min-width: 26px;
+  right: -9px;
+  bottom: -5px;
+  min-width: 28px;
   padding: 1px 3px;
   border-radius: 4px;
-  background: var(--accent);
+  background: var(--badge-fine);
   color: #fff;
   font-size: 9.5px;
   font-weight: 700;
@@ -252,6 +230,19 @@
   letter-spacing: 0.01em;
   text-align: center;
   animation: bb-badge-in 320ms ease-out;
+  transition: background 0.5s ease;
+}
+
+.bb-badge[data-tone="warn"] {
+  background: var(--badge-warn);
+}
+
+.bb-badge[data-tone="urgent"] {
+  background: var(--badge-urgent);
+}
+
+.bb-badge[data-tone="over"] {
+  background: var(--badge-over);
 }
 
 @keyframes bb-badge-in {
@@ -260,12 +251,45 @@
   }
 }
 
+/* A ring off the badge each time it changes colour, so the change is an event. */
+.bb-badge[data-tone="warn"]::after,
+.bb-badge[data-tone="urgent"]::after,
+.bb-badge[data-tone="over"]::after {
+  position: absolute;
+  inset: -3px;
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
+  color: var(--badge-warn);
+  content: "";
+  opacity: 0;
+  animation: bb-badge-ring 900ms ease-out;
+}
+
+.bb-badge[data-tone="urgent"]::after {
+  color: var(--badge-urgent);
+}
+
+.bb-badge[data-tone="over"]::after {
+  color: var(--badge-over);
+}
+
+@keyframes bb-badge-ring {
+  0% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
 /* --- the page the bytes are being spent on -------------------------------- */
 
 .bb-page {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 232px;
+  grid-template-columns: minmax(0, 1fr) 236px;
   gap: 18px;
   padding: 16px 18px 20px;
   border-radius: 0 0 13px 13px;
@@ -280,37 +304,92 @@
 
 .bb-player {
   position: relative;
-  height: 268px;
+  aspect-ratio: 16 / 9;
+  max-height: 372px;
   border-radius: 10px;
   background:
     radial-gradient(120% 90% at 26% 18%, #34505c, #12222a 62%),
     #12222a;
+  overflow: hidden;
   transition: background 0.6s ease;
 }
 
 /* The limit is biting, so the segments stopped arriving. Not a picture of an error —
    the player simply has nothing more to play, which is what a refused range request
-   looks like from the page's side, and the banner beside it is why it says so. */
+   looks like from the page's side. */
 .bb-player[data-stopped="true"] {
   background: #1b2a30;
 }
 
+/* Rolling stock, in stripes: something on screen has to be moving for the bytes to be
+   being spent on anything. It stands still when the segments stop. */
 .bb-player-art {
   position: absolute;
   inset: 0;
-  border-radius: 10px;
   background:
     linear-gradient(transparent 52%, rgba(6, 16, 20, 0.55)),
     repeating-linear-gradient(
       104deg,
-      rgba(255, 255, 255, 0.05) 0 22px,
+      rgba(255, 255, 255, 0.055) 0 22px,
       rgba(255, 255, 255, 0) 22px 58px
     );
+  background-size: 100% 100%, 116px 100%;
+  animation: bb-scenery 2600ms linear infinite;
   transition: opacity 0.6s ease;
+}
+
+@keyframes bb-scenery {
+  to {
+    background-position: 0 0, -116px 0;
+  }
 }
 
 .bb-player[data-stopped="true"] .bb-player-art {
   opacity: 0.25;
+  animation-play-state: paused;
+}
+
+/* The player's own quality flag, top left, and its buffering dot beside it. */
+.bb-player-hud {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.bb-player-hud b {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.bb-player-hud i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #e0a057;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.bb-player[data-stopped="true"] .bb-player-hud i {
+  opacity: 1;
+  animation: bb-buffer 900ms ease-in-out infinite alternate;
+}
+
+@keyframes bb-buffer {
+  from {
+    opacity: 0.3;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .bb-player-play {
@@ -326,6 +405,7 @@
   background: rgba(255, 255, 255, 0.9);
   transform: translate(-50%, -50%);
   transition: opacity 0.5s ease;
+  opacity: 0;
 }
 
 .bb-player-play svg {
@@ -334,8 +414,9 @@
   margin-left: 2px;
 }
 
+/* Playing has no play button; a stalled player shows one. */
 .bb-player[data-stopped="true"] .bb-player-play {
-  opacity: 0.3;
+  opacity: 0.85;
 }
 
 .bb-player-scrub {
@@ -348,19 +429,37 @@
   background: rgba(255, 255, 255, 0.24);
 }
 
+/* Advances through the film, held at the position it stopped. `--beat-t` moves it
+   inside a beat and the beat index between beats. */
 .bb-player-scrub i {
   display: block;
-  width: 34%;
+  width: 22%;
   height: 100%;
   border-radius: 2px;
   background: var(--danger);
-  transition: width 0.8s ease;
+  transition: width 1.4s linear;
 }
 
-/* It stops where it stopped. A scrub that keeps advancing under a player with nothing
-   to play would be the one thing in this frame arguing against the frame. */
-.bb-player[data-stopped="true"] .bb-player-scrub i {
-  width: 41%;
+.bb[data-beat="reach"] .bb-player-scrub i {
+  width: 26%;
+}
+.bb[data-beat="open"] .bb-player-scrub i {
+  width: 28%;
+}
+.bb[data-beat="live"] .bb-player-scrub i {
+  width: 33%;
+}
+.bb[data-beat="climb"] .bb-player-scrub i {
+  width: 39%;
+}
+.bb[data-beat="surge"] .bb-player-scrub i {
+  width: 45%;
+}
+.bb[data-beat="refuse"] .bb-player-scrub i,
+.bb[data-beat="aim"] .bb-player-scrub i,
+.bb[data-beat="hold"] .bb-player-scrub i,
+.bb[data-beat="split"] .bb-player-scrub i {
+  width: 47%;
   background: rgba(255, 255, 255, 0.45);
 }
 
@@ -380,6 +479,41 @@
   margin: 0;
   color: var(--text-muted);
   font-size: 11.5px;
+}
+
+.bb-page-about {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.bb-page-avatar {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 999px;
+  background: linear-gradient(140deg, #4b6b78, #1d3038);
+}
+
+.bb-page-channel {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.bb-page-channel b {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.bb-page-channel small {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bb-next {
@@ -408,7 +542,7 @@
   display: grid;
   min-width: 0;
   align-content: start;
-  gap: 5px;
+  gap: 4px;
   padding-top: 1px;
 }
 
@@ -421,15 +555,9 @@
   white-space: nowrap;
 }
 
-/* A second line of a title nobody has to be able to read. Type set at 11px and then
-   filled with words would be a second thing competing with the figures this scene is
-   about; a rule is the honest amount of detail for scenery. */
-.bb-next-copy i {
-  display: block;
-  width: 62%;
-  height: 5px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--text) 12%, transparent);
+.bb-next-copy small {
+  color: var(--text-muted);
+  font-size: 10px;
 }
 
 /* --- the extension's banner, inside the page ------------------------------ */
@@ -439,12 +567,13 @@
  * a page's own stylesheet cannot restyle it. Here it is at the top left, because the
  * right is where the popup is and a card drawn under another card is a card nobody
  * reads. Everything else is the banner's own: `#12262b`, the amber dot, 320px, 12px
- * radius, and the two buttons it offers.
+ * radius, and the two buttons it offers. It waits for the refused segment to have left
+ * the frame, which is what it is explaining.
  */
 .bb-notice {
   position: absolute;
   top: 28px;
-  left: 30px;
+  left: 32px;
   z-index: 4;
   max-width: 320px;
   padding: 12px 14px;
@@ -456,7 +585,13 @@
   font-size: 13px;
   font-weight: 500;
   line-height: 1.45;
-  animation: bb-rise 180ms ease-out both;
+  animation: bb-rise 240ms ease-out 1300ms both;
+}
+
+.bb[data-beat="aim"] .bb-notice,
+.bb[data-beat="hold"] .bb-notice,
+.bb[data-beat="split"] .bb-notice {
+  animation-delay: 0ms;
 }
 
 @keyframes bb-rise {
@@ -521,14 +656,11 @@
 .bb-popup {
   position: absolute;
   z-index: 5;
-  /* Clear of the chrome, not over it: the badge is what the first half of this scene is
-     about, and a popup pulled up across the toolbar hides the button it came out of. */
+  /* Clear of the chrome, not over it: a popup pulled up across the toolbar hides the
+     button it came out of, and the badge is half of what this film is about. */
   top: 44px;
-  /* Inside the window, not hanging off it. This was `-34px`, which put the popup's right
-     edge at 103.3% of a browser that ends at 100% — measured with `spec-anchors.mjs`,
-     which is also how the same fault was found in GRT's popup on the same day. Chrome
-     anchors a popup under its toolbar button and shifts it left to stay inside the
-     window; it never overhangs. 10px in from the edge is where the button sits. */
+  /* Inside the window's edge, where the button is. Chrome anchors a popup under its
+     toolbar button and shifts it left to stay inside the window. */
   right: 10px;
   width: 420px;
   border-radius: 14px;
@@ -556,7 +688,7 @@
 }
 
 .bbx-app {
-  padding: 0 13px 12px;
+  padding: 0 14px 14px;
   border-radius: 14px;
   color: var(--text);
   background:
@@ -568,33 +700,22 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0 8px;
+  gap: 10px;
+  padding: 14px 0 8px;
 }
 
 .bbx-headline {
   min-width: 0;
+  flex: 1 1 auto;
 }
 
-/*
- * One line's worth of height whether or not there is a verdict to put in it. The real
- * popup reserves it for the same reason: the line comes and goes as the period changes,
- * and everything below it stepped up and down by a row each time.
- */
+/* One line's worth of height whether or not there is a verdict to put in it. */
 .bbx-pace {
   margin: 0;
   min-height: 1lh;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
-}
-
-.bbx-pace[data-tone="up"] {
-  color: var(--danger);
-}
-
-.bbx-pace[data-tone="down"] {
-  color: var(--saved);
 }
 
 .bbx-total {
@@ -622,15 +743,205 @@
   display: flex;
   flex: 0 0 auto;
   gap: 6px;
-  padding-top: 6px;
+  padding-top: 4px;
 }
 
 .bbx-actions i {
-  width: 26px;
-  height: 26px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  color: var(--text-soft);
+}
+
+.bbx-actions svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* --- the plan ------------------------------------------------------------- */
+
+.bbx-plan {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.bbx-plan-meter {
+  position: relative;
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bar-track);
+}
+
+/* The fill is the plan share, interpolated between the two ends of the current move
+   so it drives for the whole beat rather than jumping at the start of it. */
+.bbx-plan-meter-fill {
+  display: block;
+  width: calc(min(100, max(1, var(--share) * 100)) * 1%);
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: background 0.4s ease;
+}
+
+.bbx-plan-meter-fill[data-over="true"] {
+  background: var(--danger);
+}
+
+/* Where an evenly spent plan would be right now. */
+.bbx-plan-meter-pace {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text-soft);
+  opacity: 0.5;
+}
+
+.bbx-plan-line,
+.bbx-plan-track,
+.bbx-plan-since {
+  margin: 0;
+}
+
+.bbx-plan-line {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Today against an even spread of what is left. Accent while there is room, the danger
+   colour once today's share — or the whole plan — is spent. Measured arithmetic, so it
+   carries no tilde and no estimate colour. */
+.bbx-plan-track {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.4s ease;
+}
+
+.bbx-plan-track[data-tone="over"] {
+  color: var(--danger);
+}
+
+.bbx-plan-since {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* --- the projection ------------------------------------------------------- */
+
+/* The only modelled figure on the surface, and the only block whose basis is required
+   to be on screen with it — in the colour the product marks a modelled figure with. */
+.bbx-projection {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--estimate);
+  border-radius: var(--radius-md);
+  background: var(--estimate-soft);
+}
+
+.bbx-projection-heading {
+  margin: 0;
+  color: var(--estimate);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.bbx-projection-figure {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.bbx-projection-over {
+  color: var(--danger);
+  font-weight: 650;
+}
+
+.bbx-projection-spare {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.bbx-projection-basis {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.bbx-link {
+  justify-self: start;
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* --- the period group and the meta line ----------------------------------- */
+
+.bbx-tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.bbx-tabs span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bbx-tabs span[data-checked="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-card);
+}
+
+.bbx-tabs span[data-locked="true"] {
+  opacity: 0.62;
+}
+
+.bbx-lock {
+  display: inline-flex;
+  width: 0.92em;
+  height: 0.92em;
+  margin-left: 5px;
+}
+
+.bbx-lock svg {
+  width: 100%;
+  height: 100%;
 }
 
 .bbx-meta {
@@ -639,202 +950,145 @@
   align-items: baseline;
   gap: 4px 10px;
   margin: 0;
-  padding: 4px 2px 8px;
+  padding: 8px 2px 0;
   color: var(--text-muted);
   font-size: 11px;
 }
 
-/* The one caveat in the panel, and the only thing in it wearing the estimate colour. */
-.bbx-flag {
+.bbx-meta-figure {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The floor under an estimated total: the part that was actually measured. Set in the
+   text colour, not the estimate colour, because it is the one figure on the line that is
+   not a model's. */
+.bbx-meta-floor {
+  color: var(--text);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The one caveat on the line, and the only thing on it wearing the estimate colour. */
+.bbx-meta-flag {
   color: var(--estimate);
   font-weight: 600;
 }
 
-/* --- the limit card ------------------------------------------------------- */
+/* --- Right now ------------------------------------------------------------ */
 
+.bbx-live,
 .bbx-limit {
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
+  margin-top: 10px;
+  padding: 11px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: var(--shadow-card);
+  transition:
+    border-color 0.4s ease,
+    background 0.4s ease;
 }
 
-.bbx-limit[data-state="over"] {
-  border-color: color-mix(in srgb, var(--danger) 42%, var(--border));
-}
-
+.bbx-live-head,
 .bbx-limit-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  margin-bottom: 7px;
 }
 
+.bbx-live-heading,
 .bbx-limit-heading {
   margin: 0;
-  font-size: 12px;
-  font-weight: 650;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-.bbx-limit-status {
+.bbx-live-note {
   color: var(--text-soft);
   font-size: 11px;
-  font-weight: 650;
-}
-
-.bbx-limit[data-state="over"] .bbx-limit-status {
-  color: var(--danger);
-}
-
-.bbx-limit-scope,
-.bbx-limit-line,
-.bbx-limit-consequence,
-.bbx-limit-prevented {
-  margin: 0;
-}
-
-.bbx-limit-scope {
-  color: var(--text-muted);
-  font-size: 10.5px;
-}
-
-.bbx-limit-line {
-  color: var(--text);
-  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
 }
 
-.bbx-limit-consequence {
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-/* Green, because these are bytes something prevented — and with a tilde, because a
-   refused request was never dispatched and so has no size anything measured. */
-.bbx-limit-prevented {
-  color: var(--saved);
-  font-size: 11.5px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-/* --- the site list -------------------------------------------------------- */
-
-.bbx-sites {
-  margin-top: 8px;
-  padding: 10px 12px 7px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-}
-
-.bbx-sites-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.bbx-sites-title {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.bbx-sites-note {
-  color: var(--text-muted);
-  font-size: 10.5px;
-}
-
-.bbx-sites-expand {
-  margin: 5px 0 0;
-  color: var(--accent);
-  font-size: 10.5px;
-  font-weight: 600;
-}
-
-.bbx-site-list {
+.bbx-live-list {
   display: grid;
-  gap: 1px;
-  margin: 5px 0 0;
+  gap: 5px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.bbx-site {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 3px 4px;
-  border-radius: var(--radius-sm);
-}
-
-.bbx-site-icon {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
-  border-radius: 5px;
-  background: var(--surface-3);
-}
-
-/* Requests that belonged to no tab have no favicon to show, and inventing one would be
-   claiming they came from a website. */
-.bbx-site-icon[data-reserved="true"] {
-  background: repeating-linear-gradient(
-    45deg,
-    var(--surface-3) 0 3px,
-    var(--surface-2) 3px 6px
-  );
-}
-
-.bbx-site-main {
+.bbx-live-row {
   display: grid;
-  min-width: 0;
-  flex: 1 1 auto;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  align-items: baseline;
+  animation: bb-row-in 360ms ease-out both;
 }
 
-.bbx-site-heading {
+@keyframes bb-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+.bbx-live-host {
   display: flex;
   min-width: 0;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.bbx-site-name {
+.bbx-live-host-name {
   min-width: 0;
   overflow: hidden;
-  font-size: 11.5px;
-  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.bbx-site-tag {
+/* The page the bytes were charged to, when it is not the host itself. */
+.bbx-live-site {
   flex: 0 0 auto;
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
 }
 
-.bbx-site-bar {
+.bbx-live-figures {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bbx-live-bytes {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.bbx-live-bar {
   display: block;
+  grid-column: 1 / -1;
   height: 4px;
+  overflow: hidden;
   border-radius: 999px;
   background: var(--bar-track);
 }
 
-.bbx-site-bar i {
+.bbx-live-bar-fill {
   display: block;
   height: 100%;
   border-radius: 999px;
@@ -842,309 +1096,277 @@
   transition: width 0.7s ease;
 }
 
-.bbx-site-figures {
-  display: grid;
-  flex: 0 0 auto;
-  gap: 1px;
-  text-align: right;
+/* The heaviest host, while the stream is the story: its bar breathes so the panel
+   reads as live rather than as a table. */
+.bbx-live-row[data-media="true"] .bbx-live-bar-fill {
+  animation: bb-live-pulse 1400ms ease-in-out infinite;
 }
 
-.bbx-site-bytes {
-  font-size: 11.5px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
+@keyframes bb-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.62;
+  }
 }
 
-.bbx-site-share {
-  color: var(--text-muted);
-  font-size: 10px;
+/* A hold is a decision the person made, so it reads in the text colour, not as a
+   caveat. */
+.bbx-live-hold {
+  margin: 7px 0 0;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+  /* Laid out a beat before it is said, so the button under the pointer stays put. */
+  visibility: hidden;
 }
 
-/* --- the allowance, drawn ------------------------------------------------- */
+.bbx-live-hold[data-shown="true"] {
+  visibility: visible;
+  animation: bb-row-in 360ms ease-out both;
+}
 
-/*
- * This is the scene's own instrument, not a screen the extension has. It exists because
- * the popup states the split in a sentence and a sentence is the one thing that cannot
- * show a proportion — the panel says "31% of this is estimated" and this says which 31%,
- * at the size it actually is, against the cap it is being spent towards.
- *
- * Everything on it is the same arithmetic the panel prints. The fill is the day, the
- * seam is `measuredShare`, the ticks are `ALERT_THRESHOLDS`, and the dashed run past the
- * cap is `saved` — so the two can disagree only if the arithmetic does.
- */
-.bb-track {
-  /* The interpolation, declared here rather than on the fill, because the two figures
-     under the rail have to stand under the runs they name — so the legend reads `--seam`
-     as well. `--beat-t` is written onto the stage every frame without a React render, so
-     the bar is a continuous function of scene time rather than a value at seven instants
-     with a transition guessing between them. A single figure per beat and a 1.5s
-     transition gives a bar that drives for a second and then stands still for two, which
-     reads as stalling rather than as filling. */
-  --t: var(--beat-t, 0);
-  --used: calc(var(--used-from) + (var(--used-to) - var(--used-from)) * var(--t));
-  --seam: calc(var(--seam-from) + (var(--seam-to) - var(--seam-from)) * var(--t));
-  --ghost: calc(var(--ghost-from) + (var(--ghost-to) - var(--ghost-from)) * var(--t));
+.bbx-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
 
-  position: absolute;
-  z-index: 1;
-  right: 0;
-  bottom: 44px;
-  left: 0;
-  display: grid;
-  gap: 10px;
-  padding: 12px 16px 14px;
+.bbx-ghost {
+  padding: 5px 9px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  /*
-   * The instrument gets a face, and that is a contrast repair rather than a flourish.
-   *
-   * Everything printed on this band is set in the extension's own tokens, and those are
-   * verified against the extension's own grounds — `#f2f6f6` and white. Laid straight onto
-   * the section, they were sitting on its amber wash instead, which is a mid-tone: measured
-   * off the render, `79.2 MB estimated` came out at 3.05:1 and not one figure on the track
-   * cleared 4.5. Every one of them is a number the section exists to make an argument with,
-   * and the amber ones are the argument.
-   *
-   * Darkening the type would have fixed the ratio and broken the point — `#9c5406` is not a
-   * decorative choice, it is the colour this product marks an inferred figure with, and a
-   * scene that prints it in some other brown is a scene claiming a look it does not have.
-   * So the ground moves instead of the ink, back to the one the ink was designed against.
-   * Worst pair afterwards: 5.2:1.
-   */
-  background: var(--bg);
-  box-shadow: var(--shadow-card);
-}
-
-/* Left, not right. The tick captions sit in this same band and the right-hand one is the
-   cap's, so a right-aligned line here landed on top of `100%` — which is one of the three
-   numbers the label beside it is pointing at. */
-.bb-track-head {
-  margin: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
   color: var(--text-soft);
-  font-size: 10.5px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-}
-
-.bb-rail {
-  position: relative;
-  height: 26px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--text) 6%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent) inset;
-}
-
-.bb-fill {
-  position: absolute;
-  inset: 0;
-}
-
-.bb-measured,
-.bb-inferred {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: 5px;
-}
-
-.bb-measured {
-  left: 0;
-  width: calc(var(--seam) * 1%);
-  background: var(--accent);
-}
-
-/*
- * The part nothing observed, in the colour the product marks that with everywhere else.
- * It sits at the leading edge rather than at the start, which is the same order the
- * miniature in the page's index draws it in and the right one: the certain part is what
- * the figure rests on, and the uncertainty is what it is carrying.
- */
-.bb-inferred {
-  left: calc(var(--seam) * 1%);
-  width: calc((var(--used) - var(--seam)) * 1%);
-  background: var(--estimate);
-}
-
-/* The beat the argument is on: the two runs part company, and each gets its own end
-   caps so they read as two quantities rather than as one bar with a stripe. */
-.bb[data-beat="split"] .bb-inferred {
-  transform: translateX(9px);
-  transition: transform 640ms cubic-bezier(0.2, 0.86, 0.24, 1);
-}
-
-/*
- * Where the traffic would have gone. Drawn from the fill's own leading edge, so what the
- * eye compares is a dashed run that grew against a solid one that did not move an inch.
- */
-.bb-refused {
-  position: absolute;
-  top: -1px;
-  bottom: -1px;
-  left: calc(var(--used) * 1%);
-  width: calc((var(--ghost) - var(--used)) * 1%);
-  border: 1.5px dashed var(--saved);
-  border-radius: 5px;
-  background: repeating-linear-gradient(
-    -45deg,
-    color-mix(in srgb, var(--saved) 15%, transparent) 0 5px,
-    transparent 5px 11px
-  );
-  opacity: 0;
-  transition: opacity 0.45s ease;
-}
-
-.bb[data-refusing="true"] .bb-refused {
-  opacity: 1;
-}
-
-/* Knocked out of the hatch rather than laid over it. Measured on the render, `0 B` on the
-   striped field came to 4.32:1 — the one figure in this scene that is a whole claim on its
-   own, sitting under AA because of a texture behind it. On its own patch of the card it is
-   5.04:1, and the hatch still reads either side of it. */
-.bb-refused b {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: var(--bg);
-  color: var(--saved);
-  font-size: 10.5px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
-  transform: translate(-50%, -50%);
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 
-.bb-ticks {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-}
-
-/*
- * Two pixels wide, and that is load-bearing rather than a detail. `SpecTags` measures the
- * element a label names and skips any box with a zero width or height — so a tick drawn as
- * a zero-width element with a child line is invisible to the measurement, and the label
- * about the thresholds silently fell back to its hand-typed coordinate. Nothing errors
- * when that happens; the plate simply sits near the right place at one window width and
- * near the wrong one at every other.
- */
-.bb-tick {
-  position: absolute;
-  top: -17px;
-  bottom: 0;
-  width: 2px;
-  margin-left: -1px;
-}
-
-/* Pale with a dark hairline round it, because this line has to be legible against three
-   different grounds: the empty track, the teal run and the amber one. A single dark line
-   disappeared under the fill, which is exactly where the two lit thresholds are. */
-.bb-tick i {
-  position: absolute;
-  top: 17px;
-  bottom: 0;
-  left: 0;
-  width: 2px;
-  border-radius: 1px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 0 0 1px rgba(12, 32, 38, 0.22);
-  transition: background 0.4s ease;
-}
-
-.bb-tick b {
-  position: absolute;
-  top: 0;
-  left: 0;
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  transform: translateX(-50%);
-  transition: color 0.4s ease;
-}
-
-/* A threshold the day has passed. The ladder lighting in order is the whole of what the
-   label beside it is claiming, so it has to be legible in a still — which is why the
-   change is carried by the caption, on the pale ground where there is contrast to spend,
-   and not by the line, which is over the fill where there is not. */
-.bb-tick[data-lit="true"] b {
-  color: var(--estimate);
-}
-
-.bb-tick[data-lit="true"] b::before {
-  content: "";
-  position: absolute;
-  top: 4px;
-  left: -9px;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--estimate);
-}
-
-/* The cap is not a warning, it is the end of the allowance. */
-.bb-tick[data-cap="true"] b {
-  color: var(--text-soft);
-}
-
-.bb-tick[data-cap="true"][data-lit="true"] b {
+.bbx-ghost[data-danger="true"] {
+  border-color: var(--danger);
   color: var(--danger);
 }
 
-.bb-tick[data-cap="true"][data-lit="true"] b::before {
+/* The one the pointer is heading for, lit as it arrives. */
+.bb[data-beat="aim"] .bbx-ghost[data-target="hold-trim"],
+.bb[data-beat="hold"] .bbx-ghost[data-target="hold-trim"] {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+/* --- the limit card ------------------------------------------------------- */
+
+/* Colour follows the user's status, not the mechanism: danger is reserved for past
+   the limit, which is the only state that is a problem rather than a setting working. */
+.bbx-limit[data-state="over"] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.bbx-limit[data-state="near"] {
+  border-color: var(--border-strong);
+}
+
+/* Which limit is talking: a limit over everything looks exactly like a limit on the
+   site in front of you unless the card says otherwise. */
+.bbx-limit-scope {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bbx-limit-status,
+.bbx-limit-line,
+.bbx-limit-consequence,
+.bbx-limit-prevented {
+  margin: 0;
+}
+
+.bbx-limit-status {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.bbx-limit-status[data-tone="over"] {
+  color: var(--danger);
+}
+
+.bbx-limit-line {
+  margin-top: 2px;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bbx-limit-bar {
+  display: block;
+  height: 6px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bar-track);
+}
+
+.bbx-limit-bar-fill {
+  display: block;
+  width: calc(min(100, max(1, var(--share) * 100)) * 1%);
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: background 0.4s ease;
+}
+
+.bbx-limit-bar-fill[data-over="true"] {
   background: var(--danger);
 }
 
-/*
- * Each figure stands under the run it names, rather than at the two ends of a flex row.
- * Space-between put "79.2 MB estimated" hard against the right edge of the track, past
- * the cap and past the end of the very run it was naming — so the eye paired it with the
- * empty stretch of allowance instead of with the amber. It is placed from `--seam` now,
- * which is the same number that draws the boundary, so the two cannot drift apart.
- */
-.bb-legend {
-  position: relative;
-  height: 34px;
-}
-
-.bb-figure {
-  position: absolute;
-  top: 0;
-  display: grid;
-  gap: 1px;
-  margin: 0;
-  min-width: 0;
-}
-
-.bb-figure--measured {
-  left: 0;
-}
-
-.bb-figure--inferred {
-  left: calc(var(--seam) * 1%);
-  padding-left: 10px;
-}
-
-.bb-figure b {
-  font-size: 12.5px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.bb-figure span {
+.bbx-limit-consequence {
+  margin-top: 7px;
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
-.bb-figure--measured b {
-  color: var(--accent);
-}
-
-.bb-figure--inferred b {
+/* Modelled: a refused request is never sent, so its size is the estimator's. Amber,
+   with a tilde, and it waits for the segment it prices to have bounced. */
+.bbx-limit-prevented {
+  margin-top: 5px;
   color: var(--estimate);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  animation: bb-row-in 360ms ease-out 1150ms both;
+}
+
+.bb[data-beat="aim"] .bbx-limit-prevented,
+.bb[data-beat="hold"] .bbx-limit-prevented,
+.bb[data-beat="split"] .bbx-limit-prevented {
+  animation-delay: 0ms;
+}
+
+/* --- the refused segment -------------------------------------------------- */
+
+/*
+ * One request, leaving the player for the edge it was going to fetch from, met at the
+ * end of the plan meter and thrown back out of the frame. Positioned from the stage's
+ * right edge, because that is what the meter's end is a fixed distance from: the popup
+ * is 420px wide and 10px in, the app pads 14px, so the meter ends 24px from the edge.
+ * The start is inside the player, which reaches at least 540px left of that edge at
+ * every width the layer is drawn at.
+ */
+.bb-refusal {
+  position: absolute;
+  z-index: 6;
+  top: 98px;
+  right: 24px;
+  display: none;
+  pointer-events: none;
+}
+
+.bb[data-beat="refuse"] .bb-refusal {
+  display: block;
+  animation: bb-refusal 1500ms cubic-bezier(0.3, 0.1, 0.4, 1) 120ms both;
+}
+
+.bb-refusal-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1px 8px;
+  align-items: center;
+  padding: 7px 11px 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  background: #12262b;
+  box-shadow: 0 12px 30px -12px rgba(6, 20, 24, 0.7);
+  color: #e9f1f2;
+  white-space: nowrap;
+}
+
+.bb-refusal-glyph {
+  grid-row: 1 / 3;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: hsl(352 58% 43%);
+  box-shadow: 0 0 0 3px hsl(352 58% 43% / 0.22);
+}
+
+.bb-refusal-card b {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.bb-refusal-card small {
+  color: #b6c7cb;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes bb-refusal {
+  0% {
+    opacity: 0;
+    transform: translate(-560px, 210px) scale(0.7);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-540px, 200px) scale(1);
+  }
+  /* Arrives at the end of the plan meter. */
+  46% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  /* And is refused: a squash against the cap. */
+  50% {
+    transform: translate(-6px, 0) scale(0.86, 1.1);
+  }
+  /* Thrown back up and out over the window's edge. */
+  78% {
+    opacity: 1;
+    transform: translate(64px, -150px) rotate(9deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(120px, -280px) rotate(16deg) scale(0.96);
+  }
+}
+
+/* The meter's end takes the hit. */
+.bb[data-beat="refuse"] .bbx-plan-meter::after {
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  bottom: -3px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--danger);
+  content: "";
+  animation: bb-cap-hit 700ms ease-out 780ms both;
+}
+
+@keyframes bb-cap-hit {
+  0% {
+    opacity: 0;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 55%, transparent);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--danger) 0%, transparent);
+  }
 }
 
 /* --- the alert, on the visitor's own screen ------------------------------- */
@@ -1164,8 +1386,8 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.8) inset,
     0 26px 60px -24px rgba(6, 20, 24, 0.5);
-  color: var(--text);
-  font-family: var(--bb-font);
+  color: #16262c;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   animation: bb-alert-in 300ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
@@ -1183,8 +1405,8 @@
   flex: 0 0 30px;
   place-items: center;
   border-radius: 8px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: #0f6a62;
+  color: #fff;
 }
 
 .bb-alert-icon svg {
@@ -1202,7 +1424,7 @@
   align-items: baseline;
   gap: 7px;
   margin: 0;
-  color: var(--text-muted);
+  color: #556a71;
   font-size: 10.5px;
   font-weight: 650;
 }
@@ -1221,7 +1443,7 @@
 
 .bb-alert-body {
   margin: 2px 0 0;
-  color: var(--text-soft);
+  color: #486067;
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   line-height: 1.45;
@@ -1229,7 +1451,7 @@
 
 .bb-alert-close {
   flex: 0 0 auto;
-  color: var(--text-muted);
+  color: #556a71;
 }
 
 .bb-alert-close svg {
@@ -1260,31 +1482,36 @@
   --spec-weight: 650;
   --spec-tracking: 0.005em;
   --spec-case: none;
-  --spec-lead: 20px;
+  --spec-lead: 22px;
 }
 
 /* --- narrow ---------------------------------------------------------------
-   Below 760px the label layer stops being a layer and falls into the column as a wrapped
-   row of chips, which is `globals.css`'s doing. What has to happen here is make room for
-   it, and that is a bigger change than it sounds: the track is positioned against the
-   bottom of the stage, so a static layer arriving after the browser lands on top of it,
-   and the popup — which is wider than the window at this size — reaches all the way down
-   over both. Photographed at 700px, the frame was a popup and nothing else: no bar, no
-   ticks, no chips. The scene's whole argument is the bar.
-
-   So at this width the pod stops overlaying and starts stacking. The track joins the flow
-   under the browser and the chips follow it, which is the same trade the label layer is
-   making one level up — the pointing is lost, the reading is not. */
+   Below 760px the label layer falls into the column as a row of chips, which is
+   `globals.css`'s doing, and the popup — wider than the window at this size — cannot
+   hang off a toolbar over a page it would cover entirely. So the pod stops overlaying
+   and starts stacking: the browser, then the popup as a card under it, then the chips.
+   The pointing is lost; the reading is not. */
 @media (max-width: 760px) {
   .bb {
     display: grid;
+    /* Pinned to the stage's width. An `auto` track takes the widest item's minimum,
+       and the tab strip's was wider than a phone. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
     padding-bottom: 0;
     font-size: 12px;
   }
 
-  /* Both columns of the page go, and the popup covers what is left of it anyway. A 232px
-     sidebar out of 606px of window is a third of the frame spent on scenery. */
+  /* One tab: the strip has no room for a second, and the film is about this one. */
+  .bb-tab:not(.is-active) {
+    display: none;
+  }
+
+  .bb-tab {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
   .bb-page {
     grid-template-columns: minmax(0, 1fr);
     padding: 12px 12px 16px;
@@ -1295,43 +1522,34 @@
   }
 
   .bb-player {
-    height: 148px;
+    max-height: 190px;
   }
 
   .bb-popup {
-    top: 38px;
-    right: -8px;
-    left: -8px;
+    position: relative;
+    top: auto;
+    right: auto;
     width: auto;
+    max-width: 420px;
+    margin: 0 auto;
+    transform-origin: 50% 0;
   }
 
-  /* The panel has to end inside the window it hangs off, or it covers the bar below.
-     The list is the tallest block in it and the only one carrying no claim the labels
-     do not also carry. */
-  .bbx-sites {
+  /* In the flow, a closed popup is a screen of nothing under the window. It arrives
+     with the press instead, which on a phone is how a popup arrives anyway. */
+  .bb-popup:not([data-open="true"]) {
     display: none;
   }
 
   .bb-notice {
-    top: 16px;
+    top: 14px;
     right: 12px;
     left: 12px;
     max-width: none;
   }
 
-  .bb-track {
-    position: static;
-  }
-
-  .bb-legend {
-    height: 38px;
-  }
-
-  .bb-figure b {
-    font-size: 12px;
-  }
-
-  .bb-figure span {
-    font-size: 10px;
+  /* No cap to bounce off at this width: the meter is in the flow under the window. */
+  .bb[data-beat="refuse"] .bb-refusal {
+    display: none;
   }
 }

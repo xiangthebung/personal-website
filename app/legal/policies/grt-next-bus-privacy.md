@@ -14,6 +14,7 @@ Location is **off until you turn it on.** The extension keeps its own consent fl
 
 - ordering your saved stops so the one you are standing at is first
 - finding stops near you when you are adding one
+- estimating the walk to each saved stop, so a row can say when to leave for the bus and, in the Pro build, an arrival alert can fire that far ahead
 
 What happens to a position once read:
 
@@ -33,7 +34,7 @@ This is the complete list. Each entry names the key the extension writes under, 
 `chrome.storage.sync` — synchronised through your Google account if Chrome Sync is on:
 
 - `savedStops` — your saved stops: stop id, stop code, stop name, route and inferred/selected destination, alert preferences, display order
-- `settings` — how many departures to show per stop, theme, and whether the closest stop is listed first
+- `settings` — how many departures to show per stop, theme, whether the closest stop is listed first, and whether the countdown counts to the bus or to the time to leave for it
 - ExtensionPay also keeps its own record of your subscription here, in the Pro build only. See "Payments" below.
 
 Because this uses `chrome.storage.sync`, a list of the stops you travel from is part of your Chrome sync data, like a bookmark would be. If you would rather it were not, turn off extension syncing in Chrome's settings; the extension keeps working.

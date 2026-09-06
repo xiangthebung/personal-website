@@ -38,7 +38,20 @@ export async function focusSection(page, id) {
     if (active) {
       // Let the 260ms opacity transition and the entry transform finish.
       await page.waitForTimeout(500);
-      return true;
+      /* And check it is still here. A neighbour's lazy chunk can mount during that wait
+         and grow by more than a viewport, which pushes this section a screen away and
+         takes `is-active` with it — Night Neutralizer sits under Byte Budget and was
+         found 1,600px below the fold, its scene stopped on its first beat, on a run every
+         tool here had reported as focused. If the page no longer agrees, go round again. */
+      const settled = await section.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        /* Still active, and still about where `block: "center"` put it — a section
+           taller than the window sits with its middle near the window's middle, and a
+           shift of a quarter of the window is a neighbour having grown, not a settle. */
+        const drift = Math.abs((box.top + box.bottom) / 2 - window.innerHeight / 2);
+        return node.classList.contains("is-active") && drift < window.innerHeight / 4;
+      });
+      if (settled) return true;
     }
   }
   return false;

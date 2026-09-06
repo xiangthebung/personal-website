@@ -1,42 +1,45 @@
 "use client";
 
 /**
- * PagePack, as an eighteen-second film.
+ * PagePack, as a twenty-one-second film.
  *
  * The pitch is one sentence — "your reading list is just a list of links once the
  * signal drops" — and a sentence is not something you can prove with a screenshot
  * of a popup. So the vignette proves it by staging the failure:
  *
- *   a page is open, the cursor reaches for the toolbar, Save is pressed, and the
- *   page tears itself off into cards that fly out of the button into a stack;
- *   then the connection dies, Chrome's own error screen starts to come up — and
- *   never arrives, because PagePack takes the tab and opens the saved copy in it.
+ *   a page is open, the cursor reaches for the toolbar, Save is pressed — and before
+ *   anything is saved the extension comes back with a sheet: eight pages found, what
+ *   they weigh, what the save will leave of the month's allowance. That is pressed
+ *   too, the pages tear themselves off into cards that fly out of the window while
+ *   the meter under the bar counts them; then the connection dies, Chrome's own error
+ *   screen starts to come up — and never arrives, because PagePack takes the tab and
+ *   opens the saved copy in it, with every page of the save one click away in a
+ *   sidebar.
  *
- * That last move is the product, and the scene used to get it backwards. It staged
- * `ERR_INTERNET_DISCONNECTED` as a screen PagePack shows you and then offered a
- * library beside it, which reads as "here is a crash, and separately here is a
- * consolation". What the extension actually does is listen on
- * `webNavigation.onErrorOccurred`, recognise a saved URL that has just failed to
- * load, and redirect the tab to the saved copy — so the dead end is the one thing
- * you do not reach. See `maybeRedirectOffline` in `background.js`.
+ * That last move is the product, and the sheet is the product as it is now. The
+ * extension used to start a link-following save blind: press Save and find out
+ * afterwards how many pages it took and how much of the month it cost. It now runs
+ * `DISCOVER_LINKS` first and shows the plan — `openPreflightSheet` in `popup.js` — so
+ * the count is on screen before the press that spends it, and the progress card
+ * carries an honest `#progress-meter` counting pages landed rather than a guess.
  *
- * The order matters. Showing the library first and the outage second would be a
- * feature tour. Showing the outage first and the save catching it is an argument,
- * and the visitor gets to feel the moment where everything else on their screen
- * would have stopped working.
+ * What is real here and what is staged. Every string the popup, the sheet, the
+ * progress card, the library and the reader print is one the extension prints:
+ * the sheet's kicker, title, summary, note and button from `openPreflightSheet` and
+ * `allowanceNote`; the progress vocabulary from `captureProgressMessage`, copied out
+ * of the service worker into `./progress`; the meter from `renderProgressCard`; the
+ * plan line, the hint under the button, the saved notice and the status from
+ * `renderSaveView`; the library row's `packMeta`; the reader's bar, its "In this save"
+ * sidebar and the "✓ Saved" pill it puts on in-pack links. Everything else — the
+ * browser frame, the article, the flying cards, the outage — is theatre, and the
+ * section says so rather than claiming this is the extension running in the page.
  *
- * What is real here and what is staged. The progress vocabulary is real: every
- * label under the bar comes from `captureProgressMessage`, copied out of the
- * extension's service worker, including the rule that a link-following save cannot
- * show a percentage. So is the toolbar badge — text and colour both, through
- * `captureBadgeText` and `paintActionBadge` — the library row's `pages · size · date`
- * from `packMeta`, and the two lines the reader paints while a save opens. The chunk
- * sizes and the file counts are the extension's own units. Everything else — the
- * browser frame, the flying cards, the outage — is theatre, and the section says so
- * rather than claiming this is the extension running in the page.
+ * The article is invented. `ridgestation.example` is a reserved domain, the
+ * publication does not exist, and nothing in it names a real product; a
+ * reconstruction may show real-looking pages but may not borrow a real site's name.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { PhantomCursor, SETTLE_MS } from "../scene/cursor";
 import { usePressGate } from "../scene/press-gate";
 import { useSectionBeat } from "../scene/section-beat";
@@ -49,6 +52,7 @@ import {
   captureProgressMessage,
   formatBytes,
   optionsSummary,
+  progressTitle,
   type CapturePhase,
 } from "./progress";
 import "./demo.css";
@@ -59,6 +63,9 @@ type BeatName =
   | "open"
   | "aim"
   | "press"
+  | "sheet"
+  | "aim-sheet"
+  | "confirm"
   | "read"
   | "collect"
   | "finish"
@@ -75,122 +82,76 @@ type BeatName =
 /**
  * The storyboard.
  *
- * Kept as one visible list because the pacing is the design. `press` is short
- * because a click is short; `dead` is long because the silence after the
- * connection drops is the beat doing the work, and cutting it short would waste
- * the only moment in the scene that is supposed to feel bad.
+ * Kept as one visible list because the pacing is the design. `press` and `confirm` are
+ * short because a click is short; `dead` is long because the silence after the
+ * connection drops is the beat doing the work; `sheet` is the longest look in the film
+ * because it is the new thing, and a first-time visitor has to read a count, a size and
+ * an allowance off it before the pointer moves.
  *
- * It ran 11.9s and was the fastest thing on the page, which is the one thing this
- * film could not afford to be: it has five acts and a reversal in it, and someone
- * meeting it for the first time was being asked to read a new caption, find a new
- * thing on screen and understand a cause every three quarters of a second. So every
- * beat that introduces something now gets between 1.4 and 2.4 seconds — long enough
- * to read the caption *and then* look at the frame, which is the order a first-time
- * visitor actually does it in — and the beats that are only a move or a click stay
- * where they were. 16.7s now.
+ * Three beats were added for the pre-flight — `sheet`, `aim-sheet`, `confirm` — and they
+ * follow the pattern every other press here uses: the thing appears, the pointer is
+ * given a beat to reach the control, and the press gets a beat of its own, so the
+ * consequence of a click can never precede the click.
  *
- * The four save beats are also load-bearing arithmetic: `press + read + collect +
- * finish` is the window the cards fly in, and `FLYER_STAGGER` below derives the stagger
- * from it, so moving any of them keeps the cards landing on `finish` rather than
- * stranding them mid-air or parking them early.
- *
- * 20.1s now, and the extra second went to the reversal rather than to the film. `dead`
- * lost 700ms and `caught` was added: the browser's error screen is no longer a
- * destination the scene rests on, it is a thing that starts to happen and is taken
- * away. See the notes on those two beats.
+ * The four save beats are load-bearing arithmetic: `confirm + read + collect + finish` is
+ * the window the cards fly in, and `FLYER_STAGGER` derives the stagger from it, so moving
+ * any of them keeps the cards landing on `finish` rather than stranding them mid-air.
  */
 const BEATS: readonly Beat<BeatName>[] = [
-  // The establishing shot: a browser, a page, a toolbar nobody has looked at yet.
-  // 900ms was not enough time to find the PagePack button before the cursor did.
-  { name: "settle", ms: 1500 },
-  { name: "reach", ms: 900 },
-  // The popup is a new object with a name, a target page and a button on it. It was
-  // on screen for 600ms, less time than it takes to read its own heading.
-  { name: "open", ms: 1400 },
-  { name: "aim", ms: 700 },
-  // A press is a press.
+  // The establishing shot: a browser, an article, a toolbar nobody has looked at yet.
+  { name: "settle", ms: 1400 },
+  { name: "reach", ms: 800 },
+  // The popup is a new object with a plan line, a target page and a button on it.
+  { name: "open", ms: 1500 },
+  { name: "aim", ms: 600 },
+  // A press is a press. The button reads "Finding linked pages…" until the sheet lands.
   { name: "press", ms: 320 },
-  // "Reading this page…" — the first of three progress states, and the one that
-  // establishes that a save has phases at all.
-  { name: "read", ms: 1400 },
-  // The cards leaving the window. The longest beat of the save, because it is the
-  // one carrying the idea that a save takes the linked pages with it.
-  { name: "collect", ms: 2000 },
-  /* The count landing on the toolbar badge: small, and the proof the save worked.
-     1000ms could not carry its own caption, and this is the beat whose length was
-     previously untouchable because a hand-computed stagger depended on it. It is not
-     untouchable now — `FLYER_STAGGER` re-derives itself from these four beats. */
-  { name: "finish", ms: 1400 },
-  // A cut. Long enough for the signal arcs to drop outside-in and the slash to draw
-  // across them — 640ms of transition in the stylesheet — and no longer.
+  /* The pre-flight. Eight pages found, ~45 KB, seventeen free pages left afterwards, a
+     ticked list. The centrepiece of the film, and the beat that carries the claim the
+     product could not make before this pass: the count is known before anything is
+     saved. */
+  { name: "sheet", ms: 2000 },
+  { name: "aim-sheet", ms: 600 },
+  // "Save 8 pages". The sheet closes on the click and the cards leave on the same tick.
+  { name: "confirm", ms: 320 },
+  // "Reading this page…" — the first of three progress states.
+  { name: "read", ms: 900 },
+  // The cards leaving the window while the meter counts them in.
+  { name: "collect", ms: 1900 },
+  // "Finishing up…" and the count landing on the toolbar badge.
+  { name: "finish", ms: 1300 },
+  // A cut. Long enough for the signal arcs to drop outside-in and the slash to draw.
   { name: "cut", ms: 800 },
-  /**
-   * Chrome's dead end, and it is deliberately the shortest look in the film.
-   *
-   * This was 1900ms of the browser's error screen sitting there, which staged
-   * `ERR_INTERNET_DISCONNECTED` as something PagePack shows you. It is not: the screen
-   * is Chrome's own, and `webNavigation.onErrorOccurred` in `background.js` catches a
-   * saved URL failing to load and sends the tab to the saved copy instead. The product
-   * is not "here is a crash screen and also a library". It is that you do not arrive at
-   * the crash screen.
-   *
-   * So the error gets long enough to be recognised and not long enough to settle — the
-   * stylesheet's 420ms fade means roughly three quarters of a second at full strength —
-   * and then `caught` takes it away.
-   */
-  { name: "dead", ms: 1200 },
-  /**
-   * The redirect landing: the error is wiped and PagePack's reader has the tab.
-   *
-   * `maybeRedirectOffline` calls `chrome.tabs.update(tabId, { url: offlineReaderUrl(match) })`,
-   * so what replaces the error is `viewer.html`, in the same tab, at a
-   * `chrome-extension://` address — which is why the omnibox changes here as well as
-   * the page. The two lines it paints first are the reader's own:
-   * "Opening your save…" over "Reading it from this device."
-   */
-  { name: "caught", ms: 1600 },
-  /**
-   * The two beats that used to be one, and the reason is a reported one.
-   *
-   * `reveal` was 1500ms and did everything at once: the pointer flew in from off frame,
-   * the Library tab lit up, the pack and the file list appeared, and the click landed
-   * about 580ms in. Measured, the press was correctly after the arrival — but the
-   * *effect* was not. The library opened on the beat's first frame, which is 580ms
-   * before the click that is supposed to cause it, so what a visitor sees is a panel
-   * changing on its own and a pointer turning up afterwards to take the credit.
-   *
-   * A state change is tied to a beat boundary and a click is 90ms into a beat; the two
-   * can only agree if the pointer is already standing on the thing when the beat starts.
-   * So the flight gets its own beat, exactly as `aim` does before `press` in the save.
-   */
-  { name: "aim-library", ms: 800 },
-  /* Three new things in one frame — the Library tab, a pack, and a file list. */
+  /* Chrome's dead end, and deliberately the shortest look in the film: the screen is
+     Chrome's own, and `webNavigation.onErrorOccurred` in `background.js` catches a saved
+     URL failing to load and sends the tab to the saved copy instead. The product is not
+     "here is a crash screen and also a library". It is that you do not arrive at it. */
+  { name: "dead", ms: 1100 },
+  /* The redirect landing: `chrome.tabs.update(tabId, { url: offlineReaderUrl(match) })`,
+     so what replaces the error is `viewer.html`, in the same tab, at a
+     `chrome-extension://` address — which is why the omnibox changes here as well as the
+     page, and why the tab's title becomes the page's own: `renderBar` sets
+     `document.title` to it. */
+  { name: "caught", ms: 1500 },
+  // The pointer flies to the Library tab a beat before it presses it.
+  { name: "aim-library", ms: 700 },
+  // The library: the pack, its `packMeta`, and the allowance line it left.
   { name: "reveal", ms: 900 },
-  /**
-   * And the saved page gets opened rather than opening itself.
-   *
-   * Also reported: "the page just appears after clicking on library, rather than the
-   * actual page in the library". It did. `reading` was keyed off `read-offline`, so the
-   * reader unfolded across the section with nothing having been pressed — which quietly
-   * undid the point of the shot, because the claim is that a *saved copy* opens, and a
-   * copy has to be picked out of a list to be a copy of something.
-   */
-  { name: "aim-page", ms: 700 },
-  { name: "open-page", ms: 700 },
-  // The payoff, and the only frame with real prose in it.
+  { name: "aim-page", ms: 600 },
+  { name: "open-page", ms: 600 },
+  // The payoff: the reader at reading size, the sidebar listing every page of the save.
   { name: "read-offline", ms: 2400 },
-  { name: "hold", ms: 1400 },
+  { name: "hold", ms: 1200 },
 ];
 
 /**
- * The window the cards fly in: press, read, collect, finish.
+ * The window the cards fly in: confirm, read, collect, finish.
  *
  * Named and summed rather than written down, because it is the input to
- * `FLYER_STAGGER` below and the previous version of that constant was a hand-computed
- * `2` with a comment warning that changing any of these four beats would silently
- * strand the animation. That warning came true the first time one of them moved.
+ * `FLYER_STAGGER` below and a hand-computed stagger silently strands the animation the
+ * first time one of these beats moves.
  */
-const SAVE_BEATS = ["press", "read", "collect", "finish"] as const;
+const SAVE_BEATS = ["confirm", "read", "collect", "finish"] as const;
 const SAVE_MS = BEATS.filter((beat) =>
   (SAVE_BEATS as readonly string[]).includes(beat.name),
 ).reduce((total, beat) => total + beat.ms, 0);
@@ -198,27 +159,20 @@ const SAVE_MS = BEATS.filter((beat) =>
 /**
  * Where the cursor is on each beat. `null` means it has left the frame.
  *
- * Two clicks at the end rather than none and a half: the Library tab, and then the saved
- * page inside it. Each is aimed a beat before it is pressed, which is the pattern `aim`
- * and `press` already established for the Save button and the only arrangement in which
- * the thing a click causes cannot happen before the click.
- *
- * It leaves on `read-offline`, and used to stay on the Library tab through it. That was
- * measurably wrong: the stylesheet recedes the whole browser on that beat —
- * `translateY(-1.5rem) scale(0.88)` over 760ms, see `#pagepack .pp[data-beat="read-offline"]
- * .pp-browser` — so the tab the pointer was sitting on moves 24px up and shrinks, and the
- * pointer was left 48px outside it, hanging over a window at a quarter opacity. The
- * component re-measures once when it lands, which catches a target that is still arriving;
- * it does not chase one that moves for the whole beat, and it should not have to. The
- * pointer's work is finished when the page opens.
+ * Four clicks, each aimed a beat before it is pressed. Through `sheet` the pointer stays
+ * on the Save button it just pressed — the sheet slides up over it, so what a visitor
+ * sees is a hand resting where it clicked while the extension answers — and then moves
+ * to the sheet's own button. It leaves on `read`: the pointer's work is finished when
+ * the save starts, and a hand parked on a progress bar reads as waiting to click it.
  */
 const CURSOR: Partial<Record<BeatName, string>> = {
   reach: "toolbar",
   open: "toolbar",
   aim: "save",
   press: "save",
-  read: "save",
-  collect: "save",
+  sheet: "save",
+  "aim-sheet": "save-pages",
+  confirm: "save-pages",
   "aim-library": "library-tab",
   reveal: "library-tab",
   "aim-page": "shelf-page",
@@ -229,70 +183,134 @@ const CURSOR: Partial<Record<BeatName, string>> = {
  * The beats whose visible change is caused by a click, and which therefore wait for it.
  * See `usePressGate`.
  *
- * Two of the three presses, and the choreography above already does most of the work for
- * both — each is aimed a beat early, so the pointer is standing on the control when the
- * beat begins and the wait is 90ms rather than a flight. What the beats could not fix is
- * that last 90ms, which is five frames and is the whole width of what a click looks like:
- * the Save button dipped and seven pages left it, and the library opened, each of them
- * before the ring off the pointer said anything had been pressed.
- *
- * `open-page` is the third press and is deliberately absent. The reader unfolds on
- * `read-offline`, the beat after it, so there is nothing on `open-page` to hold back —
- * gating it would render that beat as `aim-page` and take the shelf row's opened state off
- * the screen until the click, which is a new fault rather than a fix.
- *
- * `press` reaches the stylesheet too. `data-did` on the root carries the button's pressed
- * look; `data-beat` keeps the toolbar's approach highlight and the compositor hint, which
- * are cues that belong *before* the click.
+ * `press` carries the button's pressed look and its "Finding linked pages…" label.
+ * `confirm` is the one that matters most: the sheet closes, the progress card appears
+ * and eight cards leave the window, all on the tick the ring comes off the pointer.
+ * `reveal` opens the library. `open-page` is absent on purpose — the reader unfolds on
+ * the beat after it, so there is nothing on that beat to hold back.
  */
-const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>(["press", "reveal"]);
+const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>(["press", "confirm", "reveal"]);
 
 /**
- * The pages torn off the site, in the order they fly out of the button.
+ * The site, and the page the browser has open.
+ *
+ * `.example` is reserved by RFC 2606, so this can never be anybody's. The publication
+ * is invented for the same reason the extension's own screenshots are shot against an
+ * invented one: a real site's name is a brand, and a reconstruction has no business
+ * putting a brand's pages in a browser it is pretending to be.
+ */
+const SITE = "ridgestation.example";
+const KICKER = "Ridge Station Notes";
+
+/** The page in the tab: the one the save is *of*, and the one the sheet always keeps. */
+const ROOT = { title: "A weather mast for the north ridge", bytes: 5_212, files: 6 };
+
+/**
+ * The same-site pages the crawl finds, in the order the sheet lists them and the cards
+ * leave the button.
  *
  * `files` is each page's own asset count — the stylesheets, images and fonts the save has
  * to fetch before that page can be read offline. It is authored, like `bytes` and `title`,
  * and it is here rather than in the progress label because the label is arithmetic over
- * these pages and nothing else. See `labelFor` for the reported fault that put it here.
+ * these pages and nothing else; `tests/rendered-html.test.mjs` reads this list back out
+ * of the source and checks the label is derived from it.
  *
- * Roughly but not slavishly proportional to `bytes`: a page of plates is mostly a few large
- * images, an appendix is mostly text, and the two do not scale together.
+ * The root page is deliberately not in this list. `openPreflightSheet` counts
+ * `1 + result.pages.length`, so "8 pages found" is this list plus the page in the tab,
+ * exactly as the extension adds it up — and the test holds this list to seven entries of
+ * exactly this shape, which is why each page's path lives in `LINKED_PATHS` beside it
+ * rather than as a fourth field.
  */
 const CAPTURED = [
-  { title: "The Byzantine Generals Problem", bytes: 402_411, files: 34 },
-  { title: "Reaching agreement in the presence of faults", bytes: 221_004, files: 19 },
-  { title: "Practical Byzantine fault tolerance", bytes: 318_770, files: 26 },
-  { title: "Notes on quorum intersection", bytes: 96_233, files: 11 },
-  { title: "Appendix A — proofs", bytes: 64_120, files: 7 },
-  { title: "Figures and plates", bytes: 512_882, files: 38 },
-  { title: "References", bytes: 41_006, files: 5 },
+  { title: "Choosing a barometer", bytes: 3_804, files: 4 },
+  { title: "Calibrating the rain gauge", bytes: 3_390, files: 3 },
+  { title: "Solar power for the mast", bytes: 2_961, files: 3 },
+  { title: "Logging to a card", bytes: 4_118, files: 5 },
+  { title: "Reading the data over radio", bytes: 3_577, files: 4 },
+  { title: "Weatherproofing the enclosure", bytes: 2_845, files: 2 },
+  { title: "A year of readings", bytes: 4_420, files: 5 },
 ];
 
-const TOTAL_BYTES = CAPTURED.reduce((sum, page) => sum + page.bytes, 0);
+/** Each linked page's path, in `CAPTURED` order. See the note above on why it is apart. */
+const LINKED_PATHS = [
+  "/barometer",
+  "/rain-gauge",
+  "/solar",
+  "/logging",
+  "/radio",
+  "/enclosure",
+  "/readings",
+] as const;
+
+/** Every page of the save, root first — the order the pack keeps and the sidebar lists. */
+const PAGES = [ROOT, ...CAPTURED];
 
 /**
- * The day the pack was saved, as the Library prints it.
+ * The first line of each page, root first, in `PAGES` order.
  *
- * `packMeta` in `popup.js` joins `plural(pages, "page")`, `formatBytes(stats.bytes)` and
- * `formatDate(pack.savedAt)` with ` · `, so a row reads `7 pages · 1.6 MB · 29 Aug`. Only
- * the date is authored: the other two are computed from `CAPTURED` above.
- *
- * A literal rather than a real `Intl.DateTimeFormat` call, and that is not laziness.
- * `formatDate` passes `undefined` as its locale, so the string it produces depends on
- * whoever is asking — which on this page means the server render and the client render can
- * disagree, and a hydration mismatch is a worse bug than a fixed date in a staged film.
+ * Printed on the cards that fly out of the window, which used to carry four grey bars
+ * where a page would have text. A page torn out of a site should look like a page: a
+ * title and the opening of an article, however small. Invented, like the titles, and
+ * kept beside `LINKED_PATHS` rather than in `CAPTURED` for the same reason — the test
+ * holds that list to three fields.
  */
-const SAVED_ON = "29 Aug";
+const LEDES = [
+  "Four instruments on a six-metre pole, a solar panel the size of a paperback, and a radio link to the house.",
+  "Absolute pressure, not sea-level: the ridge is 640 m up and the correction is most of the reading.",
+  "A tipping bucket counts tips, not millimetres. How 0.2 mm a tip was checked with a measuring jug.",
+  "Twelve watts of panel, a 7 Ah battery, and the arithmetic for three overcast days in a row.",
+  "Every reading is written to the card first. The radio is the second copy, never the only one.",
+  "A 433 MHz link at 1200 baud reaches the house on clear days and drops when the cloud comes down.",
+  "An IP66 box, a breathing vent, and the one cable gland that leaked for the whole of February.",
+  "Twelve months of pressure, rain, wind and temperature, and the three days the mast stopped.",
+] as const;
 
 /**
- * The saved page's address as the reader prints it, from `shortReaderUrl` in `viewer.js`:
- * hostname with any `www.` removed, then the path with a trailing slash stripped.
- *
- * The same string the omnibox shows before the connection drops, which is the point of
- * having it in both places — the tab is at `viewer.html` afterwards, and this is how the
- * reader says which page it is a copy of.
+ * Each page's address as the extension prints it: `shortUrl` in `popup.js` and
+ * `shortReaderUrl` in `viewer.js` are the same function — hostname with any `www.`
+ * removed, then the path with a trailing slash stripped — so the root page is bare.
  */
-const READER_URL = "lamport.azurewebsites.net/pubs/byz.html";
+const PAGE_URLS = ["", ...LINKED_PATHS].map((path) => `${SITE}${path}`);
+
+const TOTAL_BYTES = PAGES.reduce((sum, page) => sum + page.bytes, 0);
+
+/**
+ * The sheet's estimate, which is not the sum above and should not be.
+ *
+ * `DISCOVER_LINKS` sizes pages before they are fetched, from content-length and a
+ * heuristic for what they will pull in, and the extension prints it with a tilde for
+ * that reason: "~45 KB estimated" against a pack that lands at 30 KB is exactly the
+ * relationship its own screenshots show. `formatBytes` rounds this to "45 KB".
+ */
+const ESTIMATED_BYTES = 46_080;
+
+/**
+ * The free allowance, and the arithmetic the popup does on it.
+ *
+ * Twenty-five is `FREE_LIMIT` — the plan line reads "25 pages left this month" from
+ * `renderPlanSummary`, and the sheet's note "Leaves 17 free pages this month." is
+ * `allowanceNote(8)` with `savesLeft()` at 25. This is the copy the audit found wrong:
+ * it used to say "saves", and a four-page save then left "21 saves". Pages now, and the
+ * scene prints both figures from one constant so the plan line after the save agrees
+ * with the note before it.
+ */
+const FREE_PAGES = 25;
+
+/**
+ * The time the pack was saved, as the Library prints it.
+ *
+ * `packMeta` joins `plural(pages, "page")`, `formatBytes(stats.bytes)` and
+ * `formatDate(savedAt)` with ` · `; `formatDate` prints a time for a save made today,
+ * which this one was. A literal rather than a real `Intl.DateTimeFormat` call, because
+ * `formatDate` passes `undefined` as its locale and the server render and the client
+ * render can then disagree — a hydration mismatch is a worse bug than a fixed time in a
+ * staged film.
+ */
+const SAVED_AT = "7:03 PM";
+
+/** `plural` as `popup.js` has it: "8 pages", "1 page". */
+const plural = (count: number, singular: string) =>
+  `${count} ${count === 1 ? singular : `${singular}s`}`;
 
 /**
  * The toolbar badge during a save, from `captureBadgeText` in `background.js`.
@@ -302,15 +320,10 @@ const READER_URL = "lamport.azurewebsites.net/pubs/byz.html";
  * return Number(pages) > 99 ? "99+" : String(Number(pages));
  * ```
  *
- * This scene stages a save at one level of links — the popup's own Options line says so —
- * which is `following`, so the badge counts. The dot is not a different mode: it is what a
- * counting badge shows before its first page has landed, which is why `read` still has one
- * and `collect` does not.
- *
- * The colour belongs to the same function's caller and is the correction that brought this
- * comment into being. `paintActionBadge` sets `#0a84ff` for a capture and `#b85c5c` for a
- * "save as I browse" collection; there is no state in which it is green, and this badge was
- * painted `--good`. See `--pp-badge-save` in the stylesheet.
+ * A planned save is `following`, so the badge counts. The dot is what a counting badge
+ * shows before its first page has landed. The colour belongs to the same function's
+ * caller: `paintActionBadge` sets `#0a84ff` for a capture and `#b85c5c` for a "save as I
+ * browse" collection, and there is no state in which it is green.
  */
 const CAPTURE_WORKING_BADGE = "•";
 
@@ -321,269 +334,251 @@ function captureBadgeText(pages: number): string {
 
 /** Files discovered across the first `pages` pages of the pack. */
 const filesThrough = (pages: number) =>
-  CAPTURED.slice(0, pages).reduce((sum, page) => sum + page.files, 0);
+  PAGES.slice(0, pages).reduce((sum, page) => sum + page.files, 0);
+
+/** Bytes on disk after the first `pages` pages have landed — what the meter prints. */
+const bytesThrough = (pages: number) =>
+  PAGES.slice(0, pages).reduce((sum, page) => sum + page.bytes, 0);
 
 /**
  * How far apart the cards leave the button, as a multiple of the stylesheet's own
  * 235ms step.
  *
  * `.pp-flyer[data-flying="true"]` runs a 1900ms flight with
- * `animation-delay: calc(var(--order) * 235ms)`, so the last of seven cards lands at
- * `1900 + 6 × 235 × stagger`. That has to equal the save window exactly: the cards
+ * `animation-delay: calc(var(--order) * 235ms)`, so the last of eight cards lands at
+ * `1900 + 7 × 235 × stagger`. That has to equal the save window exactly: the cards
  * should settle as `finish` ends, so the last one arrives the instant before the
  * connection dies.
  *
- * This used to be a hand-computed `2`, correct against a 4,720ms save, under a comment
- * warning that changing any of the four save beats would silently strand the animation.
- * The warning was accurate and the arrangement still failed, because raising `finish`
- * to clear the caption floor is exactly the kind of edit that has no visible connection
- * to a constant seventy lines away. Deriving it means the coupling cannot rot: move any
- * of those beats and the stagger follows.
- *
- * `SETTLE_MS` comes off the front of the window because the cards no longer leave on the
- * beat boundary — they leave when the pointer actually presses the button, which is 90ms
- * after the pointer has landed on it. See `usePressGate` and `CLICKS`. Without this the
- * whole burst would shift by that much and the last card would settle after `finish` had
- * ended, which is the one thing this arithmetic exists to prevent.
+ * `SETTLE_MS` comes off the front of the window because the cards leave when the pointer
+ * actually presses "Save 8 pages", which is 90ms after it has landed on it. See
+ * `usePressGate` and `CLICKS`.
  */
 const FLYER_FLIGHT_MS = 1900;
 const FLYER_STEP_MS = 235;
 const FLYER_STAGGER =
-  (SAVE_MS - SETTLE_MS - FLYER_FLIGHT_MS) / (FLYER_STEP_MS * (CAPTURED.length - 1));
+  (SAVE_MS - SETTLE_MS - FLYER_FLIGHT_MS) / (FLYER_STEP_MS * (PAGES.length - 1));
 
 /**
- * Where each card comes to rest, in viewport units, measured from the Save button
- * it left.
+ * Where each card comes to rest: the centre of the card, in the stage's own pixels,
+ * measured from the stage's top-left corner.
  *
- * Authored rather than randomised. The landings stay inside the demo/stage band:
- * they still clear the browser and reach both outer edges, but none can travel up
- * into the title, facts or links. Viewport units keep that safe spread proportional
- * across a 1600px section and a 380px phone.
+ * Authored rather than randomised, and in stage pixels rather than viewport units,
+ * because everything a card has to keep clear of is a fixed size and sits at a fixed
+ * place in the stage: the browser is the stage, the popup hangs 400px wide off its
+ * right end, the reader that replaces the error fills it from the beat after the cut,
+ * and the labels hang off its left edge. A viewport unit is proportional to the wrong
+ * thing — it undershot the window's edge at 1440 and threw cards off the page at 2560.
+ * `100cqw` is the stage's width, so the column to the right of the window is placed
+ * off its right edge whatever that width is; the stylesheet turns these into a
+ * translation from the button the cards leave.
  *
- * The last one used to land at `8vw, -7vh`, which put it flat on top of the popup.
- * Photographing the beats caught it: through `dead`, `reveal` and `hold` — the three
- * frames where the popup is the only lit thing in a dead section — a saved card was
- * covering the Library tab, the pack's size and two of its four rows. A card resting
- * over the dead browser is the shot; a card resting over the one surviving window is
- * the shot with its subject hidden. Moved down and left, into the frame's empty lower
- * quarter, where it still reads as a page that got out.
+ * The button is low in the popup, so the cards fan up and out from the bottom right.
+ * Two columns stand to the left of the window and one to its right, between the
+ * window's edge and the dock; one card lands on the window's top-left corner, over the
+ * traffic lights and the dead tab strip — short of the tab's own favicon, and low enough
+ * to clear the heading's rule above the window, which is the one strip of the frame
+ * where a card can lie without touching something a visitor is reading. None lands on
+ * the popup, the reader's bar, the sidebar or the loading lines, none on the two labels
+ * that hang off the window's left edge, and none on the cable's coupler on the floor to
+ * the left — that is the prop the outage depends on.
+ *
+ * These are the landing spots for a section with floor on both sides of the window. The
+ * pod measures that floor — see the effect below — and publishes `data-scatter` on the
+ * stage; where there is no room to the right of the window, or none to its left, the
+ * stylesheet piles the cards instead. See `demo.css`.
  */
-/**
- * The width the scatter was composed at, and the floor its spread stops shrinking below.
- *
- * Viewport units keep the spread proportional, which is what a scatter across a whole
- * section wants — and proportional to the *window* is the wrong thing to be, because two
- * of the things the cards have to keep clear of are not. The popup is 232px whatever the
- * window is, and the labels hanging off its left edge are a fixed plate of type. So as the
- * window narrows the cards walk inward onto them: measured, the first card's title was 31%
- * covered at 1024px, 42% at 900 and 87% at 780, while at 1180 and above nothing touched.
- * `scripts/spec-anchors.mjs` reports it as `COVERS TYPE`.
- *
- * `min(-31vw, -366px)` is the authored reach or the reach it had at 1180px, whichever is
- * further out — `min` because these are negative and it is the *magnitude* that must not
- * collapse. Above 1180 nothing changes.
- */
-const SCATTER_FLOOR_PX = 1180;
-const reach = (vw: number) => `min(${vw}vw, ${Math.round((vw / 100) * SCATTER_FLOOR_PX)}px)`;
-
 const SCATTER = [
-  { x: reach(-31), y: "-4vh", rot: "-11deg" },
-  { x: reach(30), y: "-5vh", rot: "9deg" },
-  { x: reach(-25), y: "8vh", rot: "7deg" },
-  { x: reach(26), y: "7vh", rot: "-6deg" },
-  { x: reach(-39), y: "2vh", rot: "13deg" },
-  { x: reach(38), y: "3vh", rot: "-9deg" },
-  { x: reach(-9), y: "13vh", rot: "4deg" },
+  { x: "calc(100cqw + 62px)", y: "200px", rot: "9deg" },
+  { x: "-215px", y: "235px", rot: "-11deg" },
+  { x: "-93px", y: "260px", rot: "7deg" },
+  { x: "calc(100cqw + 62px)", y: "340px", rot: "-6deg" },
+  { x: "14px", y: "-12px", rot: "8deg" },
+  { x: "-93px", y: "495px", rot: "-9deg" },
+  { x: "-215px", y: "490px", rot: "4deg" },
+  { x: "calc(100cqw + 62px)", y: "500px", rot: "-5deg" },
 ] as const;
 
 /**
- * What is happening in each frame, in the present tense.
+ * How much floor the full scatter needs, in CSS pixels.
  *
- * There were two captions before — one for the save half, one for the outage half —
- * so eleven of the thirteen beats were described by a sentence written about a
- * different beat. Watching it, the caption under `open` was still talking about a
- * press that had not happened, and the caption under `read-offline` was explaining a
- * browser that had by then faded off the top of the frame. A visitor reading the line
- * and then looking up at the picture found the two disagreeing, which is worse than
- * no caption: it teaches them to stop reading it.
- *
- * Each entry is a lead clause and the rest of the sentence, so the markup can keep
- * the emphasis it had. Kept to one line at the pod's width — the stylesheet reserves
- * `min-height: 2.6em`, which is two lines, and a caption that reflows between beats
- * moves the frame above it.
+ * To the left: two columns of 96px cards standing clear of the window and of the page's
+ * edge. To the right: one column, standing between the window and the hero index that
+ * hangs down the right edge of the viewport — a card has to fit in that gap without
+ * lying on either. Measured, like the cable's floor, rather than guessed from a
+ * breakpoint: the window is a max-width box in a grid, so the floor beside it is not a
+ * function of the viewport width that a media query could name. At 1440px there is room
+ * for both; at 1366 the right column would be on the index; below about 1200 the
+ * columns on the left would be off the page.
  */
-/**
- * There is no caption under this scene.
- *
- * There were thirteen lines here, one per beat, and they were cut to nine, and then to
- * six, and the six were still wrong. "Text, styles, images and fonts — not a list of
- * links" against a reading column four inches away that says "Saves the page exactly as
- * you saw it, pictures and all". "It takes the pages this one links to, as well" against
- * "Follow the links and it takes the whole section with it". The caption was not too
- * verbose; it was a fifth layer of prose paraphrasing the fourth while the scene
- * demonstrated the same thing a third time.
- *
- * The popup narrates its own save — "Reading this page…", the page count, the badge —
- * and the invitation above the frame says "One save, then the connection dies". Between
- * them there is nothing left for a caption to add.
- */
+const SCATTER_LEFT_PX = 250;
+const SCATTER_RIGHT_PX = 150;
 
 /**
- * The four things this scene does that it cannot show, two to a half.
+ * Which landing the floor allows. Published on the stage as `data-scatter` and read by
+ * the stylesheet; `corner` also re-pins two of the labels, see `CORNER_SPECS`.
+ */
+type Scatter = "wide" | "floor" | "corner";
+
+/**
+ * The five claims the frame cannot make for itself, each pinned to its evidence.
  *
- * This scene is unusually good at narrating itself — the popup prints "Reading this page…"
- * and a page count, the badge counts up to seven in the blue a save is painted in, the
- * library row says "7 pages · 1.6 MB · 29 Aug", and the reader paints "Opening your save…"
- * over "Reading it from this device." Every one of those is a string or a colour the
- * extension actually produces, which is the only reason the frame is allowed to print
- * them, so nothing here restates one.
+ * The popup narrates the save in the extension's own strings — the sheet's count, the
+ * meter's pages, the status line, the library row — so nothing here restates one. What a
+ * label adds is the *point* of a string: that a count on a sheet means the price is known
+ * before it is paid; that a meter reading "4 of 8 pages" is counting rather than
+ * estimating; that the reader arriving in the tab is what happens *instead of* the error;
+ * that a sidebar of eight pages is the whole save, one click each; and that reading it
+ * costs nothing on the wire, which is invisible by definition and is on the page because
+ * it is measured — `tests/offline-network.test.mjs` in the extension renders a real pack
+ * under the policy read out of `manifest.json` and counts the requests, and gets none.
  *
- * The save half: *what* got saved, and that the save followed the links. A progress bar
- * does not say "text, styles, images and fonts", and seven cards flying out of a button
- * does not say they are the pages this one links to rather than seven copies of it. Both
- * leave at the cut — the browser they are pinned to fades to a quarter opacity later, see
- * `#pagepack .pp[data-beat="read-offline"] .pp-browser`, and a label hanging over a ghost
- * is a label about nothing.
- *
- * The outage half: what just happened to the error screen, and what it costs to read what
- * replaced it. Neither is visible, and the second one is invisible by definition — a
- * request that is never made leaves nothing on screen to point at. It is on the page at
- * all because it is now measured rather than asserted: `tests/offline-network.test.mjs`
- * renders a real pack in a real Chromium under the policy read out of `manifest.json` and
- * counts the requests, from both capture paths, and gets none. Until this week that was a
- * claim the extension could not have passed for a followed page.
- *
- * The last one arrives on `read-offline`, which is the still. That is deliberate: the hold
- * control cuts every scene to the frame carrying its argument, and this one used to cut to
- * a frame with no label on it at all, because both of the labels it had left at the cut.
+ * Every one names the element it is about and is measured against it. The first two
+ * leave with their evidence: the sheet closes on `confirm`, and the progress card is
+ * replaced by the status line on `cut`. The third is pinned to the reader's bar, which
+ * is in the tab from `caught` and on the reading plane from `read-offline` — the anchor
+ * moves with it, so the label follows the reader out of the window rather than being
+ * left over a ghost. The last two arrive with the still.
  */
 const SPECS: readonly SpecTag<BeatName>[] = [
-  /* "Text, styles, images, fonts" was a list of the four things the code captures, which is
-     an answer to a question nobody asked. The question a visitor has is whether this is a
-     bookmark or a copy. */
-  /* Both hang off the popup's measured left edge at their own chosen heights — the panel
-     is 208px of dense type with no gap in it big enough to sit on, so a label inside it
-     covers what it is about. `axis: "x"` because the two heights are a composition: one
-     level with the page title the save is of, one down in the empty lower quarter of the
-     window where the cards have room to fly past it.
-
-     This pod is width-capped, so the edge does not currently move — which is exactly why
-     it is measured rather than trusted. A hand-tuned 70 was right until something in a
-     three-column browser mock changed width, and nothing about the constant said what it
-     had been measured against. */
+  /* Off the sheet's summary line — "8 pages found · ~45 KB estimated" — reading left
+     over the article. The sheet is a solid block of type with nowhere to sit inside it.
+     Dropped ten pixels off the line's own centre: the plate is level with the article's
+     headline otherwise, and lies along its baseline; this puts it in the leading under
+     the headline's first line, where there is nothing to cover. */
+  {
+    at: "sheet",
+    text: "The count is known before saving",
+    x: 66,
+    y: 35,
+    anchor: "sheet-summary",
+    grip: "left",
+    nudge: { y: 10 },
+    side: "left",
+    until: "read",
+  },
+  /* Off the meter itself — "0 of 8 pages · 0 B" as the first page is read, "4 of 8
+     pages · 15 KB" a beat later — which is `renderProgressCard`'s honest line for a save
+     with a known page count. The label says why it is honest, and arrives with the
+     meter rather than a beat after it: the plate takes most of a second to fly out of
+     the button, and a label that leaves on `collect` is still in the air over the popup
+     when the next frame is read, which `spec-anchors.mjs` reports as a plate lying on
+     the meter it is about. */
   {
     at: "read",
-    text: "The whole page, images and all",
-    x: 70,
-    y: 35,
-    anchor: "popup",
+    text: "The meter counts pages, not guesses",
+    x: 66,
+    y: 60,
+    anchor: "meter",
     grip: "left",
-    axis: "x",
     side: "left",
     until: "cut",
   },
-  /* "And every page it links to" until this was checked against `background.js`, where it
-     is not every page and never was. `isLinkInScope` compares `siteKey(target.hostname)`
-     against `siteKey(source.hostname)`, so the crawl never leaves the site; it stops at the
-     depth chosen in the popup, capped at `MAX_CAPTURE_DEPTH = 3`; and it takes at most
-     `MAX_LINKS_PER_PAGE = 100` links from any one page, telling you when it hit that.
-     The extension's own store listing is exact about this — "Optional same-site link
-     following, up to three levels deep." — so the scene was the loosest description of
-     this feature anywhere in the project, which is the wrong way round.
-     Seven words, which is the cap. The depth is not in the label because it is already on
-     screen four lines below it: `optionsSummary` prints "One level of links" in the panel
-     this label points at. */
-  {
-    at: "collect",
-    text: "And every same-site page it links to",
-    x: 70,
-    y: 74,
-    anchor: "popup",
-    grip: "left",
-    axis: "x",
-    side: "left",
-    until: "cut",
-  },
-  /* On the thing that replaced the error, reading out of the window's left edge into the
-     dark half of the section. Inside the tab it would be a white pill on a white page; out
-     here the frame is drained to near black and a frosted plate is the most legible thing
-     in it, which is the same reasoning the flying cards' outline follows.
-
-     It leaves on `read-offline`, with the browser it is pinned to. */
+  /* On the reader's bar, out of the window's left edge into the dark half of the section.
+     Inside the tab it would be a white pill on a white page; out here the frame is
+     drained to near black and a frosted plate is the most legible thing in it. */
   {
     at: "caught",
-    text: "The saved copy opens instead",
-    x: 26,
-    y: 62,
-    anchor: "restored",
+    text: "Saved copy opens when the load fails",
+    x: 24,
+    y: 30,
+    anchor: "reader-bar",
     grip: "left",
     side: "left",
-    until: "read-offline",
   },
-  /* And the one the still is held on. Pinned to the reading plane's left edge rather than
-     to a coordinate: that panel is 900px wide at this width and a third of that on a phone,
-     so the only stable thing about its edge is that it is measurable. */
+  /* Two on the sidebar, at two heights: the list is 280px of pages in the real reader and
+     the one element on the plane that is *about* the save rather than about the page. */
   {
     at: "read-offline",
-    text: "Reading a save makes zero network requests",
-    x: 26,
-    y: 54,
-    anchor: "reader",
-    grip: "left",
+    text: "Every saved page, one click away",
+    x: 20,
+    y: 62,
+    anchor: "sidebar",
+    grip: "top left",
+    nudge: { y: 36 },
     side: "left",
+  },
+  /* Hung under the reading plane, centred beneath the page, on the dark floor. Nothing on
+     the plane is evidence of a request that was never made, so this one is pinned to the
+     plane as a whole rather than to a part of it. */
+  {
+    at: "read-offline",
+    text: "Reading a save uses no network",
+    x: 28,
+    y: 96,
+    anchor: "reader",
+    grip: "bottom",
+    /* Under the sidebar column, not the article: the article's last paragraph runs on
+       below the plane's clipped edge, and a plate hung beneath it sat on lines of type
+       nobody can see but the anchor check can. The sidebar ends with its eighth row. */
+    nudge: { x: -300 },
+    side: "below",
   },
 ];
 
+/**
+ * The same five claims when the window fills the section.
+ *
+ * Two of them read left off the reader's left edge, and a plate reading left needs about
+ * 250px of floor to lie on. Below that — tablets, small laptops, anything up to about
+ * 1200px wide — the window starts within a hundred pixels of the page's edge, and the
+ * plate was cut off by it: "ad fails" was all that survived at 1024. So on that floor
+ * they hang off the reader's other edges instead. The first goes above the bar, pinned
+ * to its top edge over the sidebar toggle, where what is behind it is the dead chrome
+ * of the tab and then the ghost of the receded window. The second hangs under the
+ * sidebar, below the reading plane, beside the one that was already there — and the
+ * piled cards, which would be under it, are put away once the plane is up (they are
+ * under the plane by then anyway; see `demo.css`).
+ *
+ * Derived from `SPECS` rather than written out, so the text, the beats and the anchors
+ * cannot drift between the two sets: only the pins differ.
+ */
+const CORNER_SPECS: readonly SpecTag<BeatName>[] = SPECS.map((tag) => {
+  if (tag.anchor === "reader-bar") {
+    return { ...tag, grip: "top left", side: "above", nudge: { x: 150 } };
+  }
+  if (tag.anchor === "sidebar") {
+    return { ...tag, grip: "bottom", side: "below", nudge: { x: 0 } };
+  }
+  return tag;
+});
+
 /** The Save button they come out of, in the pod's own percentages. */
-const SPEC_ORIGIN = { x: 82, y: 38 };
+const SPEC_ORIGIN = { x: 82, y: 50 };
 
 /**
  * How far into the pack the one frame that prints a page number is.
  *
- * Three done, so the label reads "Page 4 of 7". `collect` is the beat where the middle of
- * the burst is in the air, so the middle of the pack is what is actually on screen.
+ * Four landed, so the label reads "Page 5 of 8" and the meter "4 of 8 pages · 15 KB".
+ * `collect` is the beat where the middle of the burst is in the air, so the middle of the
+ * pack is what is actually on screen.
  */
-const COLLECT_PAGES_DONE = 3;
+const COLLECT_PAGES_DONE = 4;
 
 /**
  * How many pages of the pack have landed by a given beat.
  *
- * One source for two readouts that have to agree: the progress line under the bar and the
- * count on the toolbar badge. They are published by different parts of the extension —
- * `publishProgress` four times a second, `setCaptureBadgePages` once per page — but they
- * are counting the same pages, so a frame where the label says "Page 4 of 7" and the badge
- * says something else is a frame the extension cannot produce.
+ * One source for three readouts that have to agree: the progress line under the bar, the
+ * meter under it and the count on the toolbar badge. They are published by different
+ * parts of the extension — `publishProgress` four times a second, `setCaptureBadgePages`
+ * once per page — but they are counting the same pages.
  */
 function pagesSavedBy(beat: BeatName): number {
   if (beat === "collect") return COLLECT_PAGES_DONE;
-  return beat === "finish" ? CAPTURED.length : 0;
+  return beat === "finish" ? PAGES.length : 0;
 }
 
 /**
- * The real label for a beat, through the extension's own formatter.
+ * The detail line for a beat, through the extension's own formatter.
  *
- * The two file figures are derived from `CAPTURED`, and that is a fix rather than tidying.
- * They were the literals `34` and `61`, which was reported as not making sense — "it says
- * page 4 of 7, but there are 61 files?" — and it does not, in two ways.
- *
- * The first is that they were unattached. Every other number this scene shows comes from
- * `CAPTURED`: the badge that lands on seven, the library head's "7 pages · 1.6 MB", the
- * reader's pack index, the seven cards. Two invented figures in the middle of that are the
- * one thing on screen a reader cannot reconcile with anything else on screen.
- *
- * The second is that they contradicted the extension. In `runCapture`, `assetsDone` and
- * `assetsTotal` are running totals over *only the pages opened so far* — each page captures
- * `assetsBefore`/`assetTotalBefore` and adds its own counts on top — so a finished page
- * contributes the same amount to both, and `assetsTotal - assetsDone` is always the
- * outstanding files of the page being hydrated *right now*. `61 - 34` claims 27 files
- * outstanding on page 4 alone while the three pages already finished managed 34 between
- * them, which is not a state the extension can reach.
- *
- * So both come from the pages: everything through the last finished page is done, and the
- * page now being read has just added its own files to the total. That is exactly the frame
- * the extension publishes on entering a page, and it explains the bar beside it — the
- * denominator grows as links are discovered, which is why a link-following save cannot show
- * a percentage. See `isDeterminate` in `./progress`.
+ * Both file figures are derived from the pages. In `runCapture`, `assetsDone` and
+ * `assetsTotal` are running totals over *only the pages opened so far* — each page
+ * captures `assetsBefore`/`assetTotalBefore` and adds its own counts on top — so a
+ * finished page contributes the same amount to both, and `assetsTotal - assetsDone` is
+ * always the outstanding files of the page being hydrated right now. So everything
+ * through the last finished page is done, and the page now being read has just added its
+ * own files to the total. That is exactly the frame the extension publishes on entering a
+ * page.
  */
 function labelFor(beat: BeatName): string {
   const phase: CapturePhase =
@@ -592,10 +587,25 @@ function labelFor(beat: BeatName): string {
   return captureProgressMessage({
     phase,
     pagesDone,
-    pagesTotal: CAPTURED.length,
+    pagesTotal: PAGES.length,
     assetsDone: filesThrough(pagesDone),
-    assetsTotal: filesThrough(Math.min(pagesDone + 1, CAPTURED.length)),
+    assetsTotal: filesThrough(Math.min(pagesDone + 1, PAGES.length)),
   });
+}
+
+/**
+ * The meter, from `renderProgressCard`:
+ *
+ * ```
+ * meter.textContent = `${done} of ${pagesTotal} ${unit} · ${formatBytes(capture.bytesDone)}`;
+ * ```
+ *
+ * Shown for any save with more than one page. `bytesDone` is what has actually been
+ * written, which is why it reads "15 KB" against a sheet that estimated 45.
+ */
+function meterFor(beat: BeatName): string {
+  const done = pagesSavedBy(beat);
+  return `${done} of ${PAGES.length} pages · ${formatBytes(bytesThrough(done))}`;
 }
 
 /**
@@ -607,6 +617,136 @@ function labelFor(beat: BeatName): string {
  */
 const CABLE_FLOOR_PX = 210;
 
+/* ------------------------------------------------------------------ the article
+   The page the save is of, drawn three times: live in the tab, small in the reader
+   that replaces the error, and at reading size on the plane. One component, so the
+   copy cannot drift between them — a saved page that differs from the page it was
+   saved from is the one thing this scene must never show.
+
+   `saved` adds the pill the reader puts on every link that is in the pack:
+   `annotateSavedLinks` in `pack-render.js` marks them `data-pagepack-saved-link` and
+   `savedLinkStyle` draws "✓ Saved" after each, in the accent, at 0.62em. */
+function Article({ saved, long }: { saved: boolean; long: boolean }) {
+  return (
+    <>
+      <p className="pp-kicker">{KICKER}</p>
+      <h1 className="pp-headline">{ROOT.title}</h1>
+      <p className="pp-standfirst">
+        Four instruments on a six-metre pole, a solar panel the size of a paperback, and
+        a radio link that reaches the house on the days the cloud comes down. This is
+        the build, in the order it actually happened.
+      </p>
+      <p className="pp-links">
+        {CAPTURED.map((page) => (
+          <span className="pp-link" key={page.title} data-saved={saved}>
+            {page.title}
+          </span>
+        ))}
+      </p>
+      <h2 className="pp-subhead">What the mast carries</h2>
+      <p className="pp-body">
+        A barometer, a rain gauge, an anemometer and a thermometer, each on its own page,
+        because each one turned into its own small argument with the weather. The mast
+        was the easy part.
+      </p>
+      {long && (
+        <>
+          <figure className="pp-figure" aria-hidden="true">
+            <svg viewBox="0 0 640 200" preserveAspectRatio="none">
+              <path className="pp-ridge pp-ridge--far" d="M0 150 C90 120 150 96 230 104 S380 60 470 84 S580 122 640 108 V200 H0z" />
+              <path className="pp-ridge pp-ridge--mid" d="M0 172 C70 150 130 132 210 146 S350 108 430 128 S560 168 640 150 V200 H0z" />
+              <path className="pp-ridge pp-ridge--near" d="M0 200 C120 178 220 168 330 182 S520 166 640 186 V200z" />
+              <circle className="pp-sun" cx="118" cy="52" r="18" />
+              <path className="pp-mast" d="M416 128 V52 M404 64 h24 M408 80 h16" />
+            </svg>
+          </figure>
+          <h2 className="pp-subhead">Why it logs to a card first</h2>
+          <p className="pp-body">
+            The radio link drops whenever the ridge is in cloud, which is most of March.
+            The card never does. Everything is written locally, and the house catches up
+            when it can.
+          </p>
+        </>
+      )}
+    </>
+  );
+}
+
+/**
+ * The reader's bar, from `#reader-bar` in `viewer.html`: back to the Library, the
+ * sidebar toggle, the title over `shortReaderUrl(page.url)`, the page position between
+ * its arrows, "Enable scripts" for a pack that saved them, and the live page.
+ *
+ * `anchor` is which of the two copies a label may be measured against — see `SPECS`.
+ */
+function ReaderBar({ anchor }: { anchor: boolean }) {
+  return (
+    <div className="pp-rbar" data-spec-anchor={anchor ? "reader-bar" : undefined}>
+      <span className="pp-rbtn pp-rbtn--quiet">
+        <svg viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6" /></svg>
+        Library
+      </span>
+      <span className="pp-ricon">
+        <svg viewBox="0 0 24 24"><path d="M4.5 5.5h15v13h-15zM9.5 5.5v13M6.5 9h1M6.5 12h1M6.5 15h1" /></svg>
+      </span>
+      <span className="pp-ridentity">
+        <strong>{ROOT.title}</strong>
+        <span>{PAGE_URLS[0]}</span>
+      </span>
+      <span className="pp-rnav">
+        <i className="pp-ricon" data-disabled="true">
+          <svg viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6" /></svg>
+        </i>
+        <b>{`1 of ${PAGES.length}`}</b>
+        <i className="pp-ricon">
+          <svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6" /></svg>
+        </i>
+      </span>
+      <span className="pp-rbtn pp-rbtn--quiet">Enable scripts</span>
+      <span className="pp-rbtn">Open online</span>
+    </div>
+  );
+}
+
+/**
+ * "In this save", from `renderSidebar`: the count, then every page of the pack as a
+ * numbered row of title over short URL, the current one in the accent.
+ */
+function PackSidebar({ anchor }: { anchor: boolean }) {
+  return (
+    <aside className="pp-rside" data-spec-anchor={anchor ? "sidebar" : undefined}>
+      <p className="pp-rside-head">
+        <strong>In this save</strong>
+        <span>{plural(PAGES.length, "page")}</span>
+      </p>
+      <ol className="pp-rside-list">
+        {PAGES.map((page, order) => (
+          <li key={page.title} data-current={order === 0}>
+            <i>{order + 1}</i>
+            <span>
+              <strong>{page.title}</strong>
+              <small>{PAGE_URLS[order]}</small>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </aside>
+  );
+}
+
+/** The extension's mark, as `popup.html` draws it. */
+function BrandMark({ className }: { className: string }) {
+  return (
+    <span className={className} aria-hidden="true">
+      <svg viewBox="0 0 32 32">
+        <path d="M9.5 7.5h11a3 3 0 0 1 3 3v13h-11a3 3 0 0 1-3-3v-13Z" />
+        <path d="M9.5 11.5h-1a3 3 0 0 0-3 3v10h11a3 3 0 0 0 3-3" />
+        <path d="M16.5 11v7m0 0-2.5-2.5m2.5 2.5 2.5-2.5" />
+      </svg>
+    </span>
+  );
+}
+
 export function PagePackDemo() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const browserRef = useRef<HTMLDivElement | null>(null);
@@ -617,11 +757,11 @@ export function PagePackDemo() {
   const state = useStoryboard(BEATS, {
     running,
     stage: stageRef,
-    // The still that carries the argument: a dead browser and a live library.
+    // The still that carries the argument: a dead browser and a live reader.
     stillBeat: "read-offline",
   });
   const { beat, index, run, still } = state;
-  /* What the three presses did, held until they happened. `beat` still decides where the
+  /* What the presses did, held until they happened. `beat` still decides where the
      pointer goes and what the section's outage is doing; `did`/`reached` decide what a
      press is allowed to have changed. */
   const { did, reached, onPress } = usePressGate(BEATS, state, CLICKS);
@@ -629,70 +769,57 @@ export function PagePackDemo() {
   // The cable, section outage and reading field follow the save film beat for beat.
   useSectionBeat(stageRef, beat, BEATS);
 
+  /* Where the escaped cards may land, from the measurement below. Undefined until it has
+     been made, which the server render and the first frame are: the stylesheet's default
+     is the full scatter, and no card is on screen for the first five seconds. */
+  const [scatter, setScatter] = useState<Scatter>();
+
   /**
    * Tells the section's cable where this browser window actually is.
    *
-   * The cable is drawn in `.bd--pagepack-front` as an SVG with `viewBox="0 0 1600 720"`
-   * stretched to the full width with `preserveAspectRatio="none"`, so every x in its path
-   * is a percentage of the viewport. The window it is supposed to run behind is a
-   * max-width box inside a two-column grid, so its left edge is not a percentage of
-   * anything. Those two facts cannot be reconciled by choosing a better number, which is
-   * what the previous version tried: the path stopped at x=440 of 1600 — 27.5% — from a
-   * measurement taken at one width.
+   * The cable is drawn in `.bd--pagepack-front` as an SVG stretched to the full width, so
+   * every x in its path is a percentage of the viewport; the window it runs behind is a
+   * max-width box inside a grid, so its left edge is not a percentage of anything. The
+   * pod publishes the measurement — `--pack-window-left`, `--pack-window-bottom` — and the
+   * stylesheet clips the cable there and hangs the coupler a fixed distance short of it.
+   * `data-pack-room` says whether there is any floor to lay a cable on at all; below
+   * `CABLE_FLOOR_PX` the run moves to the bottom edge.
    *
-   * Measured across the range, that single number was wrong nearly everywhere.
+   * The same measurement decides where the escaped cards may land, rendered on the
+   * stage itself as `data-scatter` so the rule that reads it is the scene's own: `wide`
+   * when there is floor on both sides of the window for the full `SCATTER`, `floor` when
+   * only the left has room and the cards pile up on it, `corner` when the window fills
+   * the section and the piles go on its own bottom-left corner instead — and the two
+   * labels that read left off the reader move, see `CORNER_SPECS`.
    *
-   *     width   window left   cable ended   error
-   *     820     53            226           176px *across the article*
-   *     1024    72            282           210px across the article
-   *     1180    191           325           134px across the article
-   *     1440    392           396           4px — the width it was measured at
-   *     1600    472           440           32px short, ending in mid-air
-   *     2560    952           704           248px short
-   *
-   * So at 1440 it looked deliberate and at every other width it was either a cord thrown
-   * over the page — the thing that was reported in the first place — or a wire stopping
-   * in space. The coupler was worse: below about 1200px the window's left edge is inside
-   * it, so the one part of this that has to be *seen* coming apart was underneath the
-   * article.
-   *
-   * Publishing the measurement fixes both. `--pack-window-left` is where the window
-   * starts, in pixels from the section's left edge; the stylesheet clips the cable there
-   * and hangs the coupler a fixed distance short of it.
-   *
-   * `data-pack-room` is the honest admission that below a certain width there is no floor
-   * to lay a cable on at all — at 820px the window begins 53px in. Rather than pick a
-   * breakpoint and hope, the flag is set from the space actually available, and the
-   * stylesheet moves the run to the bottom edge when there is not enough.
-   *
-   * Resize and layout only. Nothing here needs to run while the scene plays, so it is not
-   * in the storyboard's frame loop; `ResizeObserver` on the section covers a window
-   * resize, a font swap and the section's own height changing as scenes mount.
+   * Resize and layout only, so it is not in the storyboard's frame loop.
    */
   useEffect(() => {
     const stage = stageRef.current;
     const section = stage?.closest<HTMLElement>("[data-project-section]");
     if (!stage || !section) return;
 
-    let last = { left: -1, bottom: -1 };
+    let last = { left: -1, right: -1, bottom: -1 };
     const publish = () => {
       const browser = browserRef.current;
       if (!browser) return;
-      const left = Math.round(
-        browser.getBoundingClientRect().left - section.getBoundingClientRect().left,
-      );
       const box = browser.getBoundingClientRect();
+      /* On a narrow screen the stylesheet takes the dead window out of the flow for the
+         reader's beats. A window with no box has no edge to measure; the cable keeps
+         the last one, which is where the reader now stands. */
+      if (box.width === 0 || box.height === 0) return;
       const sectionBox = section.getBoundingClientRect();
+      const left = Math.round(box.left - sectionBox.left);
+      const right = Math.round(sectionBox.right - box.right);
       const bottom = Math.round(box.bottom - sectionBox.top);
-      if (left === last.left && bottom === last.bottom) return;
-      last = { left, bottom };
+      if (left === last.left && right === last.right && bottom === last.bottom) return;
+      last = { left, right, bottom };
       section.style.setProperty("--pack-window-left", `${left}px`);
-      /* Where the window's lower edge is, so the `tight` layout can hang the run under it
-         rather than at a percentage. 86% of the section put the coupler *inside* the
-         window at 1024 and 1180 — the section's height and the window's height do not
-         scale together, so no single percentage clears it. */
       section.style.setProperty("--pack-window-bottom", `${bottom}px`);
       section.dataset.packRoom = left >= CABLE_FLOOR_PX ? "roomy" : "tight";
+      setScatter(
+        left < SCATTER_LEFT_PX ? "corner" : right < SCATTER_RIGHT_PX ? "floor" : "wide",
+      );
     };
 
     publish();
@@ -711,40 +838,43 @@ export function PagePackDemo() {
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
 
   const popupOpen = index >= at("open");
-  const saving = index >= at("read") && index < at("cut");
+  /* `setBusy(saveButton, true)` and "Finding linked pages…" for as long as the discovery
+     runs — from the click until the sheet answers it on the next beat. */
+  const finding = did === "press";
+  /* Open from the beat after the press until "Save 8 pages" is actually pressed. */
+  const sheetOpen = index >= at("sheet") && reached < at("confirm");
+  /* `#save-progress` shown and `#save-action` hidden, exactly as `renderSaveView` does
+     for the whole of a capture. */
+  const saving = reached >= at("confirm") && index < at("cut");
   /**
-   * Stays true for the rest of the scene, and that matters.
-   *
-   * It was `index >= at("press") && index < at("cut")` at first, which read
-   * sensibly — the cards fly during the save — and was wrong. The scatter is held
-   * by the animation's `forwards` fill, so dropping the flag at the cut removed
-   * the animation and every card snapped back to `opacity: 0`. The outage then
-   * played over an empty section, deleting the one image the whole vignette is
-   * built to produce: a dead browser surrounded by pages that outlived it.
+   * Stays true for the rest of the scene, and that matters. The scatter is held by the
+   * animation's `forwards` fill; dropping the flag at the cut would remove the animation
+   * and snap every card back to `opacity: 0`, and the outage would play over an empty
+   * section — deleting the one image the vignette is built to produce.
    */
-  const flying = reached >= at("press");
+  const flying = reached >= at("confirm");
   const offline = index >= at("cut");
+  /* The capture's `finally`: the pack is written, the badge cleared, the plan line
+     re-read, `setStatus("Saved to your library.")`, and `findSavedUrl` now matches the
+     tab, so the saved notice shows. */
+  const saved = index >= at("cut");
   const dead = index >= at("dead");
-  /* The redirect. From here the tab is not a failed page, it is `viewer.html` — which is
-     why the omnibox changes with the viewport rather than after it. */
+  /* The redirect. From here the tab is not a failed page, it is `viewer.html`. */
   const restored = index >= at("caught");
-  /* The reader's own first frame, and only its first frame: the two lines in
-     `#reader-loading` are painted while the pack is read off the device and are gone by the
-     next beat, exactly as they are in the extension. */
+  /* The reader's own first frame, and only its first frame: `#reader-loading` is painted
+     while the pack is read off the device and gone by the next beat. */
   const opening = beat === "caught";
-  /* Both of these open one beat after the pointer has arrived on the control that opens
-     them, which is the fix for "the library tab gets clicked before the mouse actually
-     gets there" and for the reader unfolding with nothing having been pressed. See the
-     notes on `aim-library` and `aim-page` in `BEATS`. `reached` closes the last 90ms of
-     the same fault — see `CLICKS`. */
   const libraryOpen = reached >= at("reveal");
-  /* Not gated, and it does not need to be: `open-page` is the press and the reader unfolds
-     on the beat after it, so the ordering the note above is about is already carried by the
-     beats. Holding this back would only take the shelf row's opened state off the screen
-     until the click. */
   const reading = index >= at("read-offline");
   /* The row the pointer is about to press, lit the way a row under a pointer is. */
   const aimingPage = beat === "aim-page" || beat === "open-page";
+
+  const pagesLeft = saved ? FREE_PAGES - PAGES.length : FREE_PAGES;
+  const found = 1 + CAPTURED.length;
+
+  /* Chrome's tab title: the page's own, then the host while the error page has the tab,
+     then the page's own again because `renderBar` sets `document.title` to it. */
+  const tabTitle = offline && !restored ? SITE : ROOT.title;
 
   return (
     <div
@@ -752,110 +882,120 @@ export function PagePackDemo() {
       ref={stageRef}
       data-beat={beat}
       /* The same clock a beat behind, for the beats that wait for a click. The stylesheet
-         uses it for the Save button's pressed look. See `CLICKS`. */
+         uses it for the buttons' pressed looks. See `CLICKS`. */
       data-did={did}
       data-lap={run}
       data-offline={offline}
       data-dead={dead}
       data-restored={restored}
+      data-reading={reading}
+      data-scatter={scatter}
       role="img"
       aria-label={
-        "A browser with a page open. PagePack saves the page and six pages linked " +
-        "from it. The connection then drops, the browser's own no-internet screen " +
-        "begins to appear and is replaced by the saved copy of the same page, and the " +
-        "rest of the pack is still readable from the extension's library."
+        "A browser with a technical article open. PagePack's popup offers to save it with " +
+        "its linked pages, and first shows a sheet listing the eight pages it found — " +
+        "this one and seven it links to — their estimated size and how many free pages " +
+        "the month will have left. " +
+        "The save runs with a meter counting pages landed while the pages fly out of the " +
+        "window. The connection then drops, the browser's own no-internet screen begins " +
+        "to appear and is replaced by the saved copy in PagePack's reader, whose sidebar " +
+        "lists every page of the save; the library shows the pack and the pages left."
       }
     >
       {/* ---------------------------------------------------------------- browser */}
       {/* Measured, so the section's cable knows where to stop. See the effect above. */}
       <div className="pp-browser" ref={browserRef}>
-        {/* The outage, as a wash rather than a filter on this element. See the
-            stylesheet: a filter here would drain the popup with everything else,
-            and the popup surviving is the shot. */}
+        {/* Everything inside the window is drawn at the extension's own pixel sizes — a
+            400×600 popup, a 52px reader bar, a 280px sidebar, 13px type — and this wrapper
+            scales the whole screen to fit the well. See `--pp-zoom` in the stylesheet. */}
+        <div className="pp-screen">
+        {/* The outage, as a wash rather than a filter on this element: a filter here would
+            drain the popup with everything else, and the popup surviving is the shot. */}
         <div className="pp-drain" aria-hidden="true" />
         <div className="pp-chrome">
-          <span className="pp-dots" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-
-          {/* The tab's address, and it changes twice.
-              The redirect is a navigation — `chrome.tabs.update(tabId, { url: … })` — so
-              once PagePack has caught the failure the tab is at the extension's own
-              `viewer.html`, and the omnibox is where a visitor can see that it was the
-              extension rather than the site that answered. The id is elided because a
-              32-character extension id at 11px is noise; the scheme and the file are the
-              part that carries the fact. */}
-          <span className="pp-omnibox">
-            <span className="pp-lock" aria-hidden="true">
-              {restored ? (
-                <svg viewBox="0 0 24 24">
-                  <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
-                    <path d="M5 4.5h9l5 5v10H5z" />
-                    <path d="M14 4.5v5h5" />
-                  </g>
-                </svg>
-              ) : offline ? (
-                "⚠"
-              ) : (
-                "🔒"
-              )}
+          {/* The tab strip exists for one detail: the title. Chrome's, until the reader
+              has the tab and sets `document.title` to the saved page's own. */}
+          <div className="pp-tabstrip">
+            <span className="pp-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
             </span>
-            <span className="pp-url">
-              {restored
-                ? "chrome-extension://…/viewer.html"
-                : READER_URL}
+            <span className="pp-tab" data-spec-anchor="tab">
+              <i className="pp-favicon" data-dead={offline && !restored} />
+              <span className="pp-tab-title">{tabTitle}</span>
             </span>
-          </span>
+            <span className="pp-tab-new" aria-hidden="true">
+              +
+            </span>
+          </div>
 
-          {/* The signal. Its own element so the cut can be a single class flip. */}
-          <span className="pp-wifi" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M2.5 8.5a15 15 0 0 1 19 0" className="pp-wifi-arc pp-wifi-arc--3" />
-                <path d="M5.8 12.2a10 10 0 0 1 12.4 0" className="pp-wifi-arc pp-wifi-arc--2" />
-                <path d="M9 15.8a5 5 0 0 1 6 0" className="pp-wifi-arc pp-wifi-arc--1" />
-              </g>
-              <circle cx="12" cy="19.2" r="1.5" fill="currentColor" className="pp-wifi-dot" />
-              <path d="M3 3l18 18" className="pp-wifi-slash" />
-            </svg>
-          </span>
+          <div className="pp-toolbar-row">
+            <span className="pp-navs" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
 
-          <span className="pp-toolbar" data-target="toolbar">
-            <span className="pp-mark" aria-hidden="true">
+            {/* The tab's address, and it changes twice: the redirect is a navigation, so
+                once PagePack has caught the failure the tab is at the extension's own
+                `viewer.html`. The id is elided because a 32-character extension id at
+                11px is noise; the scheme and the file carry the fact. */}
+            <span className="pp-omnibox">
+              <span className="pp-lock" aria-hidden="true">
+                {restored ? (
+                  <svg viewBox="0 0 24 24">
+                    <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                      <path d="M5 4.5h9l5 5v10H5z" />
+                      <path d="M14 4.5v5h5" />
+                    </g>
+                  </svg>
+                ) : offline ? (
+                  "⚠"
+                ) : (
+                  "🔒"
+                )}
+              </span>
+              <span className="pp-url">
+                {restored ? "chrome-extension://…/viewer.html" : SITE}
+              </span>
+            </span>
+
+            {/* The signal. Its own element so the cut can be a single class flip. */}
+            <span className="pp-wifi" aria-hidden="true">
               <svg viewBox="0 0 24 24">
-                <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round">
-                  <path d="M5 4.5h9l5 5v10H5z" />
-                  <path d="M14 4.5v5h5" />
+                <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M2.5 8.5a15 15 0 0 1 19 0" className="pp-wifi-arc pp-wifi-arc--3" />
+                  <path d="M5.8 12.2a10 10 0 0 1 12.4 0" className="pp-wifi-arc pp-wifi-arc--2" />
+                  <path d="M9 15.8a5 5 0 0 1 6 0" className="pp-wifi-arc pp-wifi-arc--1" />
                 </g>
+                <circle cx="12" cy="19.2" r="1.5" fill="currentColor" className="pp-wifi-dot" />
+                <path d="M3 3l18 18" className="pp-wifi-slash" />
               </svg>
             </span>
-            {/* Up for exactly as long as the save is: `setCaptureBadge(true, …)` runs when
-                the capture starts and the `finally` clears it when the pack is written, so
-                the badge is gone by the time the connection drops. Keyed by its own text
-                so each change pops rather than silently swapping a digit — the count
-                moving is the liveness signal the dot could not give. */}
-            {reached >= at("press") && !offline && (
-              <span className="pp-badge" key={captureBadgeText(pagesSavedBy(beat))} aria-hidden="true">
-                {captureBadgeText(pagesSavedBy(beat))}
-              </span>
-            )}
-          </span>
+
+            <span className="pp-toolbar" data-target="toolbar">
+              <BrandMark className="pp-mark" />
+              {/* Up for exactly as long as the save is: `setCaptureBadge(true, …)` runs
+                  when the capture starts and the `finally` clears it when the pack is
+                  written. Keyed by its own text so each change pops. */}
+              {saving && (
+                <span
+                  className="pp-badge"
+                  key={captureBadgeText(pagesSavedBy(beat))}
+                  aria-hidden="true"
+                >
+                  {captureBadgeText(pagesSavedBy(beat))}
+                </span>
+              )}
+            </span>
+          </div>
         </div>
 
         {/* --------------------------------------------------------------- content */}
         <div className="pp-viewport">
-          <article className="pp-page" aria-hidden="true">
-            <h4>The Byzantine Generals Problem</h4>
-            <p className="pp-byline">LESLIE LAMPORT, ROBERT SHOSTAK, MARSHALL PEASE</p>
-            {[92, 100, 84, 96, 71, 100, 88, 62].map((width, line) => (
-              <span className="pp-line" key={line} style={{ width: `${width}%` }} />
-            ))}
-            <span className="pp-figure" />
-            {[100, 78].map((width, line) => (
-              <span className="pp-line" key={`tail-${line}`} style={{ width: `${width}%` }} />
-            ))}
+          <article className="pp-page pp-article pp-article--live" aria-hidden="true" data-spec-anchor="page">
+            <Article saved={false} long={false} />
           </article>
 
           {/* The browser's own failure, which is the whole reason the product exists — and
@@ -878,174 +1018,325 @@ export function PagePackDemo() {
           {/* ---------------------------------------------------------- the catch
               What `onErrorOccurred` puts in the tab instead: `viewer.html`, at the page
               that just failed to load. It is the same tab, which is the part that makes
-              this the product rather than a consolation prize — nothing was opened, nothing
-              was chosen, the dead end simply did not arrive.
+              this the product rather than a consolation prize.
 
               Two frames of it. The reader paints `#reader-loading` first, and those two
-              lines are the extension's own; the bar and the page follow on the next beat.
-              The bar is the real one: back to the Library, the title over the page's own
-              short URL, `1 of 7`, and the live page one click away. */}
+              lines are the extension's own; the bar, the sidebar and the page follow on
+              the next beat. */}
           <div className="pp-restored" data-spec-anchor="restored" aria-hidden="true">
-            <div className="pp-restored-bar">
-              <span className="pp-restored-back">‹ Library</span>
-              <span className="pp-restored-identity">
-                <strong>{CAPTURED[0].title}</strong>
-                <span>{READER_URL}</span>
-              </span>
-              <span className="pp-restored-count">{`1 of ${CAPTURED.length}`}</span>
-              <span className="pp-restored-online">Open online</span>
-            </div>
-
+            <ReaderBar anchor={!reading} />
             {opening ? (
               <p className="pp-restored-loading">
+                {/* `.loader` in `viewer.css`: the mark on a 62px accent tile. */}
+                <BrandMark className="pp-loader" />
                 <strong>Opening your save…</strong>
                 <span>Reading it from this device.</span>
               </p>
             ) : (
-              <div className="pp-restored-page">
-                {[96, 88, 100, 74, 92, 81].map((width, line) => (
-                  <span className="pp-line" key={line} style={{ width: `${width}%` }} />
-                ))}
+              <div className="pp-rmain">
+                <PackSidebar anchor={false} />
+                <div className="pp-article pp-article--tab">
+                  <Article saved long={false} />
+                </div>
               </div>
             )}
           </div>
 
-          {/* ------------------------------------------------------------- popup */}
+          {/* ------------------------------------------------------------- popup
+              400x600 in the extension, at the scale this window gives it: the same
+              header, segmented control, cards, separators and radii, on the same
+              `#f2f2f6`. */}
           <div className="pp-popup" data-spec-anchor="popup" data-open={popupOpen}>
-            <div className="pp-popup-head">
-              <span className="pp-popup-mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <g fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round">
-                    <path d="M5 4.5h9l5 5v10H5z" />
-                    <path d="M14 4.5v5h5" />
-                  </g>
-                </svg>
+            <header className="pp-popup-head">
+              <BrandMark className="pp-popup-mark" />
+              <span className="pp-brand">
+                <strong>PagePack</strong>
+                {/* `renderPlanSummary`: `${plural(savesLeft(), "page")} left this month`. */}
+                <span className="pp-plan">{`${plural(pagesLeft, "page")} left this month`}</span>
               </span>
-              <strong>PagePack</strong>
-              <span className="pp-tabs" aria-hidden="true">
-                <span data-on={!libraryOpen}>Save</span>
-                <span data-on={libraryOpen} data-target="library-tab">
-                  Library
-                </span>
+              <span className="pp-chip">Free</span>
+            </header>
+
+            <nav className="pp-tabs" aria-hidden="true">
+              <span data-on={!libraryOpen}>
+                <svg viewBox="0 0 24 24"><path d="M5 19.5h14M12 3.5v11m0 0-4-4m4 4 4-4" /></svg>
+                Save
               </span>
-            </div>
+              <span data-on={libraryOpen} data-target="library-tab">
+                <svg viewBox="0 0 24 24"><path d="M4.5 7.5h15v12h-15zM7.5 4.5h9M8.5 11.5h7" /></svg>
+                Library
+              </span>
+            </nav>
 
             {libraryOpen ? (
               <div className="pp-library">
-                {/* `packMeta` joins the page count, the size and the save date with ` · `,
-                    and drops the count when a pack holds one page. Seven, so it stays. */}
-                {/* A pack row: `title` over `packMeta`, which is what `makeRow` is given
-                    for every pack in the list. It read "1 pack", and that is `#library-count`
-                    — an element `popup.js` explicitly hides in the root library view
-                    (`count.hidden = true`), showing it only for a search or inside a folder.
-                    So the scene was printing a number the extension takes care not to. The
-                    pack's own title is what stands there, and it is the page just saved. */}
-                <p className="pp-library-head">
-                  <strong>{CAPTURED[0].title}</strong>
-                  <span>
-                    {`${CAPTURED.length} pages · ${formatBytes(TOTAL_BYTES)} · ${SAVED_ON}`}
-                  </span>
+                <p className="pp-library-title">
+                  <strong>Library</strong>
+                  <i className="pp-icon-btn" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M3.5 7.5h7l2-2h8v14h-17zM12 11v5m-2.5-2.5h5" /></svg>
+                  </i>
+                </p>
+                <p className="pp-library-sub">Private, on this device, ready offline.</p>
+                {/* `renderStorageLine`: the packs' bytes against the browser's own quota
+                    estimate, which is machine-specific; the tilde is the extension's. */}
+                <p className="pp-storage">
+                  <span>{`Library: ${formatBytes(TOTAL_BYTES)} of ~77 GB available`}</span>
+                  <i />
+                </p>
+                <p className="pp-search">
+                  <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" /><path d="m15 15 4.5 4.5" /></svg>
+                  Search titles, sites, and text
+                </p>
+                {/* `#library-sort` and `#library-filter`, at their defaults. */}
+                <p className="pp-tools" aria-hidden="true">
+                  <span>Your order</span>
+                  <span>All saves</span>
                 </p>
                 <ul className="pp-shelf">
-                  {CAPTURED.slice(0, 4).map((page, order) => (
-                    <li
-                      key={page.title}
-                      /* The first row is what the reader is a copy of, so it is what the
-                         pointer presses. Named as a target for that reason. */
-                      data-target={order === 0 ? "shelf-page" : undefined}
-                      data-open={reading && order === 0}
-                      data-aimed={aimingPage && order === 0}
-                      style={{ "--order": order } as React.CSSProperties}
-                    >
-                      <span className="pp-shelf-title">{page.title}</span>
-                      <span className="pp-shelf-meta">{formatBytes(page.bytes)}</span>
-                    </li>
-                  ))}
+                  {/* One pack, because one save has been made. `packMeta` joins the page
+                      count, the size and the time with ` · `; the unread dot is the
+                      library page's own 7px `#007aff`. The row is what the pointer
+                      presses, and the reader below is a copy of its first page. */}
+                  <li
+                    data-target="shelf-page"
+                    data-open={reading}
+                    data-aimed={aimingPage}
+                  >
+                    <i className="pp-grip" />
+                    {/* `.entry-icon` with `icon("page")`: the popup shows the glyph, and
+                        keeps the 124×78 thumbnail for the full library page. */}
+                    <span className="pp-thumb" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
+                        <path d="M8.5 8h7M8.5 11.5h7M8.5 15h4" />
+                      </svg>
+                    </span>
+                    <span className="pp-shelf-copy">
+                      <strong>
+                        <i className="pp-unread" />
+                        {ROOT.title}
+                      </strong>
+                      <span>{`${plural(PAGES.length, "page")} · ${formatBytes(TOTAL_BYTES)} · ${SAVED_AT}`}</span>
+                    </span>
+                    <i className="pp-more">···</i>
+                  </li>
                 </ul>
-                {/* There was a green foot here reading "Opens with no connection". The
-                    popup does not say that anywhere, and the claim it was making is the
-                    label pinned to the reading plane below — so it was an invented string
-                    in the extension's voice restating something the scene already proves.
-                    Same fault as the reader's stamp, one panel over. */}
               </div>
             ) : (
               <div className="pp-save">
-                <p className="pp-target">
-                  <span className="pp-target-title">The Byzantine Generals Problem</span>
-                  <span className="pp-target-host">lamport.azurewebsites.net</span>
+                <p className="pp-target" data-spec-anchor="target">
+                  <span className="pp-target-mark">{SITE[0].toUpperCase()}</span>
+                  <span className="pp-target-copy">
+                    <strong>{ROOT.title}</strong>
+                    <span>{SITE}</span>
+                  </span>
                 </p>
 
-                {/* One label, because the extension only has one. This cycled through
-                    "Saving…" and "Saved", and `popup.js` writes neither onto this button:
-                    `saveButton.textContent` is "Save page", "You’re offline" or "No free
-                    saves left", and during a capture the button is not on screen at all
-                    (`$("#save-action").hidden = Boolean(capture || journey)`).
-
-                    The problem those two invented labels were solving is real — a visitor
-                    who has not reached the Library needs to be told the save worked — and
-                    the extension solves it itself, with `setStatus("Saved to your library.")`
-                    under the panel. That is the string used now.
-
-                    What is staged rather than copied: the button stays mounted while the
-                    capture runs, disabled, where the extension hides it. It is the cursor's
-                    anchor through `read` and `collect` (see `CURSOR`), and a target that
-                    unmounts mid-gesture leaves the pointer pointing at nothing. Disabled is
-                    the extension's own state for it here; only the visibility differs. */}
-                <button
-                  className="pp-primary"
-                  type="button"
-                  data-target="save"
-                  tabIndex={-1}
-                  disabled={saving}
-                >
-                  Save page
-                </button>
-
-                {/* From `optionsSummary`, which is the extension's own rule, rather than a
-                    literal beside it. It read "One level of links · scripts on", and the
-                    extension has no such string: `popup.js` appends exactly one suffix to
-                    the depth label, "no scripts", and only when the box is unchecked. The
-                    box is `checked` in `popup.html`, so the scripts-on case — which is what
-                    this scene stages — prints the depth label bare. A scene that hardcodes
-                    what a vendored helper computes is a scene with two answers to one
-                    question, and this one had them disagreeing. */}
-                <p className="pp-options">{optionsSummary(1, true)}</p>
-
-                {saving && (
-                  <p className="pp-progress" key={run}>
-                    {/* Indeterminate on purpose: a save that follows links discovers
-                        pages as it goes, so a percentage here would be invented. */}
-                    <span className="pp-bar" data-indeterminate={beat !== "finish"}>
-                      <i />
-                    </span>
-                    <span className="pp-progress-label">{labelFor(beat)}</span>
+                {/* `renderSavedNotice`: shown once `findSavedUrl` matches the tab, which it
+                    does the moment the pack is written. */}
+                {saved && (
+                  <p className="pp-saved-notice">
+                    Saved just now · <b>Open</b> / <b>Save again</b>
                   </p>
                 )}
 
-                {/* The extension's own success signal, and the reason the button no longer
-                    invents one: `setStatus("Saved to your library.")` is what `popup.js`
-                    prints when a capture completes. It arrives on the cut, which is the beat
-                    the connection dies on — so the frames where the page fails to load have
-                    a popup that has already said the save worked. */}
-                {index >= at("cut") && <p className="pp-status">Saved to your library.</p>}
+                {saving ? (
+                  /* `#save-progress`, from `renderProgressCard`: the title, the worker's
+                     message, the bar, the meter, the hint and the cancel. The bar fills,
+                     because a planned save is `determinate` — `background.js` sets it as
+                     `Number(depth) === 0 || Boolean(planned)` — and the ratio is
+                     `captureProgressRatio`'s: pages landed plus the fraction of the page
+                     in hand, over the total. The fraction rides `--beat-t` through `read`
+                     and `collect` — the two beats with a page in hand — so the bar moves
+                     between the frames React draws. */
+                  <div
+                    className="pp-progress"
+                    key={run}
+                    data-spec-anchor="progress"
+                    style={
+                      {
+                        "--pp-done": pagesSavedBy(beat),
+                        "--pp-live": beat === "read" || beat === "collect" ? 1 : 0,
+                        "--pp-total": PAGES.length,
+                      } as CSSProperties
+                    }
+                  >
+                    <p className="pp-progress-head">
+                      <strong>{progressTitle(PAGES.length, false)}</strong>
+                      <span>{labelFor(beat)}</span>
+                    </p>
+                    <span className="pp-bar">
+                      <i />
+                    </span>
+                    <p className="pp-meter" data-spec-anchor="meter">
+                      {meterFor(beat)}
+                    </p>
+                    <p className="pp-progress-hint">
+                      You can close this window — saving continues in the background.
+                    </p>
+                    <span className="pp-cancel">Cancel save</span>
+                  </div>
+                ) : (
+                  <div className="pp-save-action">
+                    {/* `saveButton.textContent` at depth ≥ 1: "Save with linked pages…",
+                        and "Finding linked pages…" while the discovery runs. The
+                        button is disabled and busy for exactly that window. */}
+                    <button
+                      className="pp-primary"
+                      type="button"
+                      data-target="save"
+                      data-busy={finding}
+                      tabIndex={-1}
+                      disabled={finding}
+                    >
+                      {finding ? "Finding linked pages…" : "Save with linked pages…"}
+                    </button>
+                    {/* `saveHint` at depth ≥ 1, verbatim. */}
+                    <p className="pp-hint">
+                      Finds the same-site links first, so you see the page count before
+                      anything is saved
+                    </p>
+                  </div>
+                )}
+
+                {/* `setStatus("Saved to your library.")`, which is how the extension says
+                    a capture finished. It arrives on the cut, so the frames where the
+                    page fails to load have a popup that has already said the save
+                    worked. `#save-status` sits under the progress card and above the
+                    option rows, which is where this is. */}
+                {saved && <p className="pp-status">Saved to your library.</p>}
+
+                {/* `#collect-start-button` and `#tabs-start-button`, hidden for the
+                    whole of a capture exactly as `renderSaveView` hides them. */}
+                {!saving && (
+                  <>
+                    <p className="pp-row">
+                      <span className="pp-row-icon">
+                        <svg viewBox="0 0 24 24"><circle cx="6" cy="17.5" r="2" /><circle cx="12" cy="11.5" r="2" /><circle cx="18" cy="5.5" r="2" /><path d="m7.5 16 3-3m3-3 3-3" /></svg>
+                      </span>
+                      <span className="pp-row-copy">
+                        <strong>Save as I browse</strong>
+                        <small>Collect the pages you visit into one save</small>
+                      </span>
+                      <i className="pp-row-chevron" />
+                    </p>
+                    <p className="pp-row">
+                      <span className="pp-row-icon">
+                        <svg viewBox="0 0 24 24"><path d="M4.5 8.5h11v11h-11zM8.5 4.5h11v11" /></svg>
+                      </span>
+                      <span className="pp-row-copy">
+                        <strong>Save all tabs in this window</strong>
+                        <small>Each open tab becomes its own save</small>
+                      </span>
+                      <i className="pp-row-chevron" />
+                    </p>
+                  </>
+                )}
+
+                {/* `.destination-row`: the folder picker at its default. */}
+                <p className="pp-row">
+                  <span className="pp-row-icon">
+                    <svg viewBox="0 0 24 24"><path d="M3.5 7.5h7l2-2h8v14h-17z" /></svg>
+                  </span>
+                  <span className="pp-row-copy">
+                    <strong>Save to</strong>
+                    <small>Where new saves are filed</small>
+                  </span>
+                  <span className="pp-row-pick">
+                    Library
+                    <svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" /></svg>
+                  </span>
+                </p>
+
+                {/* The Options disclosure, its value from `optionsSummary` — the
+                    extension's own rule, rather than a literal beside it. */}
+                <p className="pp-option-row">
+                  <span>Options</span>
+                  <span className="pp-option-value">
+                    {optionsSummary(1, true)}
+                    <svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" /></svg>
+                  </span>
+                </p>
+
+                {/* `.local-note`, verbatim, keys and all. */}
+                <p className="pp-local-note">
+                  <svg viewBox="0 0 16 16"><path d="M4.5 7V5.5a3.5 3.5 0 0 1 7 0V7M3 7h10v7H3z" /></svg>
+                  <span>
+                    Everything you save stays on this device.{" "}
+                    <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves the current page.
+                  </span>
+                </p>
               </div>
             )}
-          </div>
 
+            {/* ----------------------------------------------------------- the sheet
+                `#review-overlay`, in its pre-flight mode: a scrim over the popup and a
+                raised sheet — kicker, title, summary, the allowance note, one row per
+                page with the root locked, and the button that starts the save. Every
+                string is `openPreflightSheet`'s. */}
+            <div className="pp-overlay" data-open={sheetOpen} aria-hidden="true">
+              <span className="pp-scrim" />
+              <section className="pp-sheet">
+                <p className="pp-sheet-head">
+                  <span>
+                    <small>LINKED PAGES</small>
+                    <strong>Pack this site</strong>
+                  </span>
+                  <i className="pp-icon-btn">
+                    <svg viewBox="0 0 20 20"><path d="m6 6 8 8m0-8-8 8" /></svg>
+                  </i>
+                </p>
+                <p className="pp-sheet-summary" data-spec-anchor="sheet-summary">
+                  {`${plural(found, "page")} found · ~${formatBytes(ESTIMATED_BYTES)} estimated. `}
+                  Uncheck anything you don’t need — this page always stays.
+                </p>
+                {/* `allowanceNote(8)` at 25 free pages. */}
+                <p className="pp-sheet-note">
+                  {`Leaves ${plural(FREE_PAGES - PAGES.length, "free page")} this month.`}
+                </p>
+                <div className="pp-review">
+                  <span className="pp-review-row" data-locked="true">
+                    <i className="pp-check" />
+                    <span>
+                      <strong>{ROOT.title}</strong>
+                      <small>This page · always kept</small>
+                    </span>
+                  </span>
+                  {CAPTURED.map((page, order) => (
+                    <span className="pp-review-row" key={page.title}>
+                      <i className="pp-check" />
+                      <span>
+                        <strong>{page.title}</strong>
+                        <small>{PAGE_URLS[order + 1]}</small>
+                      </span>
+                    </span>
+                  ))}
+                </div>
+                <div className="pp-sheet-actions">
+                  {/* `confirmLabel(count)`: `Save ${plural(count, "page")}`. */}
+                  <button className="pp-primary" type="button" data-target="save-pages" tabIndex={-1}>
+                    {`Save ${plural(found, "page")}`}
+                  </button>
+                  <span className="pp-link-btn">Cancel</span>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
 
       {/* ------------------------------------------------------------------ spill
           Outside `.pp-browser`, because the browser clips its own contents and
           everything in here has to leave it. Laid over the same box, so a card can
-          start at the Save button and finish a third of a viewport away, across
-          the section, over the heading, past the gutters.
+          start at the sheet's button and finish a third of a viewport away, across
+          the section, past the gutters.
 
-          This is the part that stops the pod being a screen recording. Pages that
-          fly out of the window and stay out are the difference between watching
-          software work and watching it take your reading with it. */}
+          This is the part that stops the pod being a screen recording. Pages that fly
+          out of the window and stay out are the difference between watching software
+          work and watching it take your reading with it. */}
       <div className="pp-spill" aria-hidden="true">
-        {CAPTURED.map((page, order) => (
+        {PAGES.map((page, order) => (
           <span
             className="pp-flyer"
             key={`${run}-${page.title}`}
@@ -1053,78 +1344,31 @@ export function PagePackDemo() {
             data-kept={offline}
             style={
               {
-                // Scaled, not the raw index. See `FLYER_STAGGER`: the stylesheet
-                // multiplies this by 235ms to get the card's launch delay, and the
-                // save it was timed against is 1410ms longer than it used to be.
                 "--order": order * FLYER_STAGGER,
                 "--to-x": SCATTER[order].x,
                 "--to-y": SCATTER[order].y,
                 "--rot": SCATTER[order].rot,
-              } as React.CSSProperties
+              } as CSSProperties
             }
           >
             <span className="pp-flyer-head">
               <i />
               <span>{page.title}</span>
             </span>
-            <span className="pp-flyer-bar" />
-            <span className="pp-flyer-bar" />
-            <span className="pp-flyer-bar" />
-            <span className="pp-flyer-bar" />
+            <span className="pp-flyer-text">{LEDES[order]}</span>
           </span>
         ))}
 
-        {/* One of them comes back and opens — out here, not in the frame. The
-            browser is dead; the reading is not. */}
-        {/* The reader's own bar, at reading size.
-            It used to be stamped "saved copy · no network request" over an "offline" pill,
-            and neither string exists anywhere in the extension — they were the scene
-            asserting the product's claim in the product's voice, which is the one voice a
-            reconstruction may not borrow. What the real bar carries is a way back to the
-            Library, the page title over `shortReaderUrl(page.url)`, and `1 of 7` from
-            `#reader-page-label`. The claim it was making is now a label, pinned to this
-            panel, where a claim on this page belongs. */}
+        {/* The reader at reading size — out here, not in the frame. The browser is dead;
+            the reading is not. The bar, the sidebar and the page are the reader's own,
+            and the claims about them are labels pinned to this panel. */}
         <div className="pp-reader" data-spec-anchor="reader" data-open={reading}>
-          <header className="pp-reader-head">
-            <span>
-              <small>{READER_URL}</small>
-              {CAPTURED[0].title}
-            </span>
-            <b>{`1 of ${CAPTURED.length}`}</b>
-          </header>
-          <div className="pp-reader-layout">
-            <article className="pp-reader-document">
-              <p className="pp-reader-byline">
-                Leslie Lamport · Robert Shostak · Marshall Pease
-              </p>
-              {/* A section head, not another paper's title. It read "Reaching agreement in
-                  the presence of faults", which is page 02 of the pack — printed as the
-                  body of the page the bar and the index both say is page 01.
-
-                  The bordered callout that used to sit below it is gone with the stamp
-                  above, and for the same reason: it was a sentence in the saved document's
-                  voice explaining that saved documents are served from the pack. The claim
-                  is a label now, pinned to this panel. */}
-              <h4>The problem, informally</h4>
-              {[100, 94, 88, 97, 72, 91, 84].map((width, line) => (
-                <span className="pp-line" key={line} style={{ width: `${width}%` }} />
-              ))}
-              {[96, 78, 89].map((width, line) => (
-                <span className="pp-line" key={`tail-${line}`} style={{ width: `${width}%` }} />
-              ))}
-            </article>
-            {/* `Pages in this save` is the reader's own label for this list — the
-                `aria-label` on `#reader-page-menu`. "Pack contents" was a phrase this
-                scene made up for it. */}
-            <aside className="pp-reader-index">
-              <small>Pages in this save</small>
-              {CAPTURED.slice(0, 5).map((page, order) => (
-                <span key={page.title} data-current={order === 0}>
-                  <i>{String(order + 1).padStart(2, "0")}</i>
-                  {page.title}
-                </span>
-              ))}
-            </aside>
+          <ReaderBar anchor={reading} />
+          <div className="pp-rmain">
+            <PackSidebar anchor />
+            <div className="pp-article pp-article--plane" data-spec-anchor="reader-page">
+              <Article saved long />
+            </div>
           </div>
         </div>
       </div>
@@ -1133,19 +1377,18 @@ export function PagePackDemo() {
         <PhantomCursor
           stage={stageRef}
           target={CURSOR[beat] ?? null}
-          pressing={beat === "press" || beat === "reveal" || beat === "open-page"}
+          pressing={CLICKS.has(beat) || beat === "open-page"}
           onPress={onPress}
           token={`${run}-${beat}`}
         />
       )}
 
-      {/* The two claims the frame cannot make for itself. See `SPECS`: everything else
-          this section used to say in prose is printed by the popup, the badge, the crash
-          screen or the reader. */}
+      {/* The five claims the frame cannot make for itself. See `SPECS`, and
+          `CORNER_SPECS` for the floor with no room beside the reader. */}
       <SpecTags
         beats={BEATS}
         beat={beat}
-        tags={SPECS}
+        tags={scatter === "corner" ? CORNER_SPECS : SPECS}
         origin={SPEC_ORIGIN}
         className="pp-specs"
       />
