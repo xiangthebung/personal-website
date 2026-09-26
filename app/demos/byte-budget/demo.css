@@ -196,20 +196,18 @@
   background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
+/* The mark is `icon.svg` whole, tile and all, so it carries its own background. */
 .bb-mark {
   display: grid;
   width: 20px;
   height: 20px;
   place-items: center;
-  border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
 }
 
 .bb-mark svg {
   display: block;
-  width: 15px;
-  height: 15px;
+  width: 20px;
+  height: 20px;
 }
 
 /* The share of the plan left, white on the ladder's colour, from `updateBadge`. Four
@@ -1405,13 +1403,12 @@
   flex: 0 0 30px;
   place-items: center;
   border-radius: 8px;
-  background: #0f6a62;
-  color: #fff;
 }
 
+/* `iconUrl: icon.png` — the extension's icon, which is its own tile. */
 .bb-alert-icon svg {
-  width: 19px;
-  height: 19px;
+  width: 30px;
+  height: 30px;
 }
 
 .bb-alert-copy {

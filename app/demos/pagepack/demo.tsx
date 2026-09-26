@@ -28,8 +28,9 @@
  * the sheet's kicker, title, summary, note and button from `openPreflightSheet` and
  * `allowanceNote`; the progress vocabulary from `captureProgressMessage`, copied out
  * of the service worker into `./progress`; the meter from `renderProgressCard`; the
- * plan line, the hint under the button, the saved notice and the status from
- * `renderSaveView`; the library row's `packMeta`; the reader's bar, its "In this save"
+ * plan line and the hint under the button from `renderSaveView`, and the status line
+ * the discovery sets; the switch to the Library that the popup makes by itself when
+ * the connection drops (`applyOnlineState`); the library row's `packMeta`; the reader's bar, its "In this save"
  * sidebar and the "✓ Saved" pill it puts on in-pack links. Everything else — the
  * browser frame, the article, the flying cards, the outage — is theatre, and the
  * section says so rather than claiming this is the extension running in the page.
@@ -133,9 +134,10 @@ const BEATS: readonly Beat<BeatName>[] = [
      page, and why the tab's title becomes the page's own: `renderBar` sets
      `document.title` to it. */
   { name: "caught", ms: 1500 },
-  // The pointer flies to the Library tab a beat before it presses it.
+  /* A look at the Library the popup switched to on its own when the connection dropped:
+     the pack, its `packMeta`, and the allowance line it left. */
   { name: "aim-library", ms: 700 },
-  // The library: the pack, its `packMeta`, and the allowance line it left.
+  // The pointer comes back for the pack's row.
   { name: "reveal", ms: 900 },
   { name: "aim-page", ms: 600 },
   { name: "open-page", ms: 600 },
@@ -164,6 +166,10 @@ const SAVE_MS = BEATS.filter((beat) =>
  * sees is a hand resting where it clicked while the extension answers — and then moves
  * to the sheet's own button. It leaves on `read`: the pointer's work is finished when
  * the save starts, and a hand parked on a progress bar reads as waiting to click it.
+ *
+ * It does not go to the Library tab. The popup switches to the Library by itself when
+ * the connection drops — `applyOnlineState` in `popup.js` — so the pointer comes back on
+ * `reveal` for the pack's row, and presses it on `open-page`.
  */
 const CURSOR: Partial<Record<BeatName, string>> = {
   reach: "toolbar",
@@ -173,8 +179,7 @@ const CURSOR: Partial<Record<BeatName, string>> = {
   sheet: "save",
   "aim-sheet": "save-pages",
   confirm: "save-pages",
-  "aim-library": "library-tab",
-  reveal: "library-tab",
+  reveal: "shelf-page",
   "aim-page": "shelf-page",
   "open-page": "shelf-page",
 };
@@ -183,13 +188,15 @@ const CURSOR: Partial<Record<BeatName, string>> = {
  * The beats whose visible change is caused by a click, and which therefore wait for it.
  * See `usePressGate`.
  *
+ * `open` is the press on the toolbar icon, which is what opens an action popup.
  * `press` carries the button's pressed look and its "Finding linked pages…" label.
  * `confirm` is the one that matters most: the sheet closes, the progress card appears
  * and eight cards leave the window, all on the tick the ring comes off the pointer.
- * `reveal` opens the library. `open-page` is absent on purpose — the reader unfolds on
- * the beat after it, so there is nothing on that beat to hold back.
+ * `reveal` is not a click: the popup opened the Library itself when the connection
+ * dropped. `open-page` is absent on purpose — the reader unfolds on the beat after it,
+ * so there is nothing on that beat to hold back.
  */
-const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>(["press", "confirm", "reveal"]);
+const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>(["open", "press", "confirm"]);
 
 /**
  * The site, and the page the browser has open.
@@ -307,6 +314,13 @@ const FREE_PAGES = 25;
  * staged film.
  */
 const SAVED_AT = "7:03 PM";
+
+/** `formatReaderBytes` in `viewer.js`: whole kilobytes, never under 1 KB. */
+function formatReaderBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
 
 /** `plural` as `popup.js` has it: "8 pages", "1 page". */
 const plural = (count: number, singular: string) =>
@@ -837,7 +851,8 @@ export function PagePackDemo() {
 
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
 
-  const popupOpen = index >= at("open");
+  /* Opened by the press on the toolbar icon, not by the pointer arriving over it. */
+  const popupOpen = reached >= at("open");
   /* `setBusy(saveButton, true)` and "Finding linked pages…" for as long as the discovery
      runs — from the click until the sheet answers it on the next beat. */
   const finding = did === "press";
@@ -854,9 +869,8 @@ export function PagePackDemo() {
    */
   const flying = reached >= at("confirm");
   const offline = index >= at("cut");
-  /* The capture's `finally`: the pack is written, the badge cleared, the plan line
-     re-read, `setStatus("Saved to your library.")`, and `findSavedUrl` now matches the
-     tab, so the saved notice shows. */
+  /* The capture's `finally`: the pack is written, the badge cleared and the plan line
+     re-read, which is what the Library's header shows from the cut. */
   const saved = index >= at("cut");
   const dead = index >= at("dead");
   /* The redirect. From here the tab is not a failed page, it is `viewer.html`. */
@@ -864,7 +878,10 @@ export function PagePackDemo() {
   /* The reader's own first frame, and only its first frame: `#reader-loading` is painted
      while the pack is read off the device and gone by the next beat. */
   const opening = beat === "caught";
-  const libraryOpen = reached >= at("reveal");
+  /* `applyOnlineState` in `popup.js`: on the window's `offline` event the popup calls
+     `showView("library")` by itself, so the Library is up from the cut, not from a
+     press on its tab. */
+  const libraryOpen = offline;
   const reading = index >= at("read-offline");
   /* The row the pointer is about to press, lit the way a row under a pointer is. */
   const aimingPage = beat === "aim-page" || beat === "open-page";
@@ -1027,10 +1044,18 @@ export function PagePackDemo() {
             <ReaderBar anchor={!reading} />
             {opening ? (
               <p className="pp-restored-loading">
-                {/* `.loader` in `viewer.css`: the mark on a 62px accent tile. */}
-                <BrandMark className="pp-loader" />
+                {/* `.loader` in `viewer.css`: the mark on a 62px accent tile, drawn with
+                    `viewer.html`'s own 40-unit paths. */}
+                <span className="pp-loader" aria-hidden="true">
+                  <svg viewBox="0 0 40 40">
+                    <path d="M11 9h14a4 4 0 0 1 4 4v17H15a4 4 0 0 1-4-4V9Z" />
+                    <path d="M11 14H9a4 4 0 0 0-4 4v17h14a4 4 0 0 0 4-4M20 14v10m0 0-3.5-3.5M20 24l3.5-3.5" />
+                  </svg>
+                </span>
+                {/* `renderSnapshot`'s copy, which is the one on screen while the bar is
+                    up: `Reading ${formatReaderBytes(pageBytes(page))} from this device.` */}
                 <strong>Opening your save…</strong>
-                <span>Reading it from this device.</span>
+                <span>{`Reading ${formatReaderBytes(ROOT.bytes)} from this device.`}</span>
               </p>
             ) : (
               <div className="pp-rmain">
@@ -1132,14 +1157,6 @@ export function PagePackDemo() {
                   </span>
                 </p>
 
-                {/* `renderSavedNotice`: shown once `findSavedUrl` matches the tab, which it
-                    does the moment the pack is written. */}
-                {saved && (
-                  <p className="pp-saved-notice">
-                    Saved just now · <b>Open</b> / <b>Save again</b>
-                  </p>
-                )}
-
                 {saving ? (
                   /* `#save-progress`, from `renderProgressCard`: the title, the worker's
                      message, the bar, the meter, the hint and the cancel. The bar fills,
@@ -1191,20 +1208,23 @@ export function PagePackDemo() {
                     >
                       {finding ? "Finding linked pages…" : "Save with linked pages…"}
                     </button>
-                    {/* `saveHint` at depth ≥ 1, verbatim. */}
+                    {/* `saveHint` at depth ≥ 1, verbatim — and empty while the discovery
+                        runs, because `saveHint` returns "" when `discovering`. */}
                     <p className="pp-hint">
-                      Finds the same-site links first, so you see the page count before
-                      anything is saved
+                      {finding
+                        ? ""
+                        : "Finds the same-site links first, so you see the page count before anything is saved"}
                     </p>
                   </div>
                 )}
 
-                {/* `setStatus("Saved to your library.")`, which is how the extension says
-                    a capture finished. It arrives on the cut, so the frames where the
-                    page fails to load have a popup that has already said the save
-                    worked. `#save-status` sits under the progress card and above the
-                    option rows, which is where this is. */}
-                {saved && <p className="pp-status">Saved to your library.</p>}
+                {/* `#save-status`, under the progress card and above the option rows.
+                    While the discovery runs it is `discoverLinkedPages`'s
+                    `setStatus("Looking for linked pages on this site…")`. The status a
+                    finished capture sets, "Saved to your library.", is never on screen
+                    here: the connection drops on the next beat and the popup's `offline`
+                    handler switches it to the Library. */}
+                {finding && <p className="pp-status">Looking for linked pages on this site…</p>}
 
                 {/* `#collect-start-button` and `#tabs-start-button`, hidden for the
                     whole of a capture exactly as `renderSaveView` hides them. */}

@@ -3081,6 +3081,15 @@ html.has-project-focus .project.is-seen:not(.is-active) .project-window {
   justify-content: center;
 }
 
+/* The scene, drawn at whatever size fits the window. `--demo-fit` is written by
+   `useFitToViewport` in demo-mount.tsx: 1 wherever the scene already fits, less where it
+   would otherwise run past the bottom of the screen. `zoom` rather than a transform
+   because it changes the layout box too, so the section shrinks with the scene instead
+   of keeping a hole the size of the unzoomed one. */
+.demo-host > * {
+  zoom: var(--demo-fit, 1);
+}
+
 /* --- the spill layer ------------------------------------------------------
    Every vignette gets one, and it is the reason these read as something other
    than a screen recording. It is an unclipped positioning context laid exactly
@@ -4670,21 +4679,6 @@ svg.bd-vehicle {
   background: rgba(23, 63, 54, 0.42);
   /* Four lines at 4px, which puts the stave in the middle rather than filling. */
   top: calc(50% - 6px + var(--step) * 4px);
-}
-
-/* The looped passage: a band across the middle of the stave, in the application's
-   loop ink (`--score-loop-fill` and `--score-loop-handle` in the vendored app), with a
-   handle at each end. Sits under the voice's second and third landings. */
-.imark--choir .imark-band {
-  top: calc(50% - 9px);
-  left: 14px;
-  width: 15px;
-  height: 18px;
-  border-radius: 1px;
-  background: rgba(0, 113, 227, 0.14);
-  box-shadow:
-    inset 2px 0 0 rgba(0, 113, 227, 0.6),
-    inset -2px 0 0 rgba(0, 113, 227, 0.6);
 }
 
 .imark--choir .imark-voice {
@@ -6421,7 +6415,10 @@ svg.bd-vehicle {
 }
 #decaf[data-scene-beat="notice"] .bd--decaf,
 #decaf[data-scene-beat="reach"] .bd--decaf,
-#decaf[data-scene-beat="press"] .bd--decaf {
+#decaf[data-scene-beat="press"] .bd--decaf,
+#decaf[data-scene-beat="aim-enable"] .bd--decaf,
+#decaf[data-scene-beat="enable"] .bd--decaf,
+#decaf[data-scene-beat="aim-page"] .bd--decaf {
   opacity: 0.16;
 }
 
@@ -7412,7 +7409,7 @@ svg.bd-vehicle {
 
 /* The room waits for the score, and wakes when the choir sings.
    The pod publishes its beats onto the section — `score` once a score is engraved,
-   `passage` once the loop is on the ruler, `count-in` and `singing` after the press —
+   `count-in` and `singing` after the press —
    and the manuscript behind the frame follows: faint ruling until there is music on
    the stand, the note stream at half strength until the voices actually come in. Kept
    quiet on purpose; this is a rehearsal room, and the application is the loud thing. */

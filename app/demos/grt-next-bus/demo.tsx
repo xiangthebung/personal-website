@@ -50,8 +50,11 @@
  * The timetable is invented and the interface is not. The real popup's first act is
  * to download the region's GTFS feed and parse a few hundred thousand stop times,
  * which is a fine thing to do once for someone who installed it and an unreasonable
- * thing to do to someone who scrolled past a portfolio. The stops, the route and the
- * order the bus calls at them are the real ones for route 7 toward Conestoga Mall.
+ * thing to do to someone who scrolled past a portfolio. The saved stops, route 7's
+ * stops and the order it calls at them are the extension's own store-screenshot
+ * fixture (`scripts/store-shots.mjs`), which uses real place names with made-up stop
+ * codes and routing — they are not GRT's route 7. Only the picker's search results
+ * come from the live feed; see `STATION`.
  *
  * The clock anchor is a fixed timestamp rather than `Date.now()`. A demo whose
  * wall-clock times differ between the server render and the client render is a
@@ -61,6 +64,7 @@
 
 import { useEffect, useRef, type CSSProperties } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { cssZoom } from "../scene/css-zoom";
 import { usePressGate } from "../scene/press-gate";
 import { SpecPlate, SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
@@ -247,7 +251,8 @@ interface StopCard {
  * a minute behind its timetable, with a vehicle position one stop back. Fairway
  * Station's card carries the other shape of the redraw — a station with a platform
  * label beside its name, an ION chip painted with the line's own colour, and a
- * prediction with no vehicle behind it. Both are the extension's fixture stops.
+ * prediction with no vehicle behind it. Both are the cards in the extension's
+ * store-screenshot fixture (`CARDS` in `scripts/store-shots.mjs`), not live stops.
  *
  * The route numbers are also the badge test. `routeBadgeColor` returns ION blue for
  * the 300-series and nothing at all for everything else, which selects the neutral
@@ -310,8 +315,10 @@ const DEPARTURES_PER_ROUTE = 3;
 
 /**
  * The lead time an alert fires at: `DEFAULT_ALERT_LEAD_MINUTES` in `src/types.ts`,
- * which `getAlertSettings` falls back to when a rider has not chosen one, and the
- * option the row's own control prints as "5 min before".
+ * and the lead this rider has chosen for the 7 — the same `alertLeadMinutes: 5` the
+ * extension's store-screenshot fixture gives that card. Chosen, the row's control
+ * reads "5 min before"; left unchosen it would read "Default (5 min)", or "Walk
+ * time (N min)" once a position is known (`renderDetailActions` in `popup.ts`).
  *
  * It sets the notification's headline — "7 in 5 min" — and the label hanging off it.
  * See `ALERT_SPEC`.
@@ -330,7 +337,9 @@ const COUNTDOWN_MODE: "departure" | "leave" = "leave";
 
 /**
  * Route 7's stops around the rider's, in the order the bus calls at them — the seven
- * the extension's own "Browse routes" pane lists for the route, toward Conestoga Mall.
+ * of route 7 in the extension's store-screenshot fixture (`ROUTES` in
+ * `scripts/store-shots.mjs`), toward Conestoga Mall. Invented routing, as the fixture
+ * says of itself; the live route 7 runs King Street between Fairway and Conestoga.
  *
  * `p` is each stop's distance from the rider's in stops, positive behind. It is the
  * one coordinate both drawings use: the strip inside the row places a dot at
@@ -406,14 +415,17 @@ const YOUR_STOP = 42;
 const STOP_GAP = 12;
 
 /**
- * What the picker lists for "uw station", from the extension against the live feed.
+ * What the picker lists for "uw station": the extension's own `parseGtfsFeed`,
+ * `searchStops`, `groupByStation`, `platformLabel` and `destinationFor` run against
+ * the live GRT feed, in the order they returned it.
  *
  * Five stops share the name University Of Waterloo Station and no parent station
  * in GRT's feed, and `groupByStation` in `src/stations.ts` groups them by name for
  * exactly that reason; `platformLabel` names each by its `platform_code`; and
  * `destinationFor` drops the headsign naming the rider's own station, which is
  * what turns "Toward Conestoga Station / University of Waterloo Station" into a
- * destination. The summary line is `stopsSummary(5, 5)`.
+ * destination. The summary line is `stopsSummary(5, 5)`. Only the first two of the
+ * five platforms are listed — the rest are below the popup's fold.
  */
 const QUERY = "uw station";
 const STATION = {
@@ -422,17 +434,19 @@ const STATION = {
   summary: "5 stops",
   platforms: [
     {
-      platform: "Platform 4",
-      code: "1223",
-      routes: [
-        { route: "201", toward: "Toward Conestoga Station" },
-        { route: "19", toward: "Toward B-Northfield Station / A-St. Jacobs Market" },
-      ],
-    },
-    {
       platform: "Platform 6",
       code: "1078",
       routes: [{ route: "9", toward: "Toward Conestoga Station" }],
+    },
+    {
+      platform: "Platform 4",
+      code: "1223",
+      routes: [
+        { route: "19", toward: "Toward B-Northfield Station / A-St. Jacobs Market" },
+        { route: "31", toward: "Toward Conestoga Station" },
+        { route: "91", toward: "Toward Late Night Loop" },
+        { route: "201", toward: "Toward Conestoga Station" },
+      ],
     },
   ],
 } as const;
@@ -847,16 +861,31 @@ function Bus({ route }: { route: string }) {
   );
 }
 
-/** The extension's own icon, used on the toolbar, in the popup and on the alert. */
+/**
+ * The extension's own icon, used on the toolbar, in the popup and on the alert:
+ * `icon.svg` from the extension, path for path — the toolbar and the popup's
+ * `.brand-mark` load that file, and the notification's `icon.png` is its render.
+ */
+function MarkSvg() {
+  return (
+    <svg viewBox="0 0 128 128">
+      <rect width="128" height="128" rx="30" fill="#28766f" />
+      <path
+        d="M30 27c0-7 6-13 13-13h42c7 0 13 6 13 13v57c0 7-6 13-13 13H43c-7 0-13-6-13-13V27Z"
+        fill="#fff"
+      />
+      <path d="M38 30h52v28H38z" fill="#dceceb" />
+      <circle cx="48" cy="80" r="7" fill="#28766f" />
+      <circle cx="80" cy="80" r="7" fill="#28766f" />
+      <path d="M36 66h56" stroke="#28766f" strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function Mark() {
   return (
     <span className="gx-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24">
-        <rect x="4" y="4" width="16" height="13" rx="3" fill="currentColor" />
-        <rect x="6.5" y="6.5" width="11" height="5" rx="1.6" fill="#fff" opacity="0.9" />
-        <circle cx="8" cy="19" r="1.7" fill="currentColor" />
-        <circle cx="16" cy="19" r="1.7" fill="currentColor" />
-      </svg>
+      <MarkSvg />
     </span>
   );
 }
@@ -997,10 +1026,12 @@ export function GrtNextBusDemo() {
         if (a.width === 0 || b.width === 0) return;
         const ax = a.left + a.width / 2;
         const ay = a.top + a.height / 2;
-        stage.style.setProperty("--hop-x", `${Math.round(ax - box.left)}px`);
-        stage.style.setProperty("--hop-y", `${Math.round(ay - box.top)}px`);
-        stage.style.setProperty("--hop-dx", `${Math.round(b.left + b.width / 2 - ax)}px`);
-        stage.style.setProperty("--hop-dy", `${Math.round(b.top + b.height / 2 - ay)}px`);
+        // Rects are on-screen pixels; the stage lays out in its own, unzoomed ones.
+        const z = cssZoom(stage);
+        stage.style.setProperty("--hop-x", `${Math.round((ax - box.left) / z)}px`);
+        stage.style.setProperty("--hop-y", `${Math.round((ay - box.top) / z)}px`);
+        stage.style.setProperty("--hop-dx", `${Math.round((b.left + b.width / 2 - ax) / z)}px`);
+        stage.style.setProperty("--hop-dy", `${Math.round((b.top + b.height / 2 - ay) / z)}px`);
         stage.style.setProperty("--hop-scale", (b.height / a.height).toFixed(2));
       });
     }, HOP_MEASURE_MS);
@@ -1039,8 +1070,8 @@ export function GrtNextBusDemo() {
         "becomes Leave in 4 min, then Leave now, then 1 min late once the predicted " +
         "time has passed and the bus reaches the pole. Finally the Add a stop bar is " +
         "pressed and typing uw station lists University Of Waterloo Station as five " +
-        "platforms, each named by platform and stop number, with the routes at each " +
-        "heading toward Conestoga Station."
+        "platforms, each named by platform and stop number, with the routes that board " +
+        "at each and where they go."
       }
     >
       <div className="gx-browser">
@@ -1538,13 +1569,9 @@ export function GrtNextBusDemo() {
       <ViewportLayer className="vlayer--alert">
         {alerting && focused && (
           <div className="gx-os-alert">
+            {/* `iconUrl: chrome.runtime.getURL("icon.png")` — the extension's icon. */}
             <span className="gx-alert-icon">
-              <svg viewBox="0 0 24 24">
-                <rect x="4" y="4" width="16" height="13" rx="3" fill="currentColor" />
-                <rect x="6.5" y="6.5" width="11" height="5" rx="1.6" fill="#fff" opacity="0.9" />
-                <circle cx="8" cy="19" r="1.7" fill="currentColor" />
-                <circle cx="16" cy="19" r="1.7" fill="currentColor" />
-              </svg>
+              <MarkSvg />
             </span>
             <div className="gx-alert-copy">
               <p className="gx-alert-source">

@@ -14,7 +14,7 @@ Location is **off until you turn it on.** The extension keeps its own consent fl
 
 - ordering your saved stops so the one you are standing at is first
 - finding stops near you when you are adding one
-- estimating the walk to each saved stop, so a row can say when to leave for the bus and, in the Pro build, an arrival alert can fire that far ahead
+- estimating the walk to each saved stop, so a row can say when to leave for the bus and, in the Pro build, the toolbar countdown can count to that moment and an arrival alert can fire that far ahead
 
 What happens to a position once read:
 
@@ -51,7 +51,7 @@ Because this uses `chrome.storage.sync`, a list of the stops you travel from is 
 
 - `nearestStopChoice` — which saved stop is currently treated as closest
 - `locationAttemptAt` — when a background location attempt was last made, so the cooldown survives a service worker restart
-- `badgeMinutes` — how many minutes the toolbar countdown last showed, so a restarted service worker knows whether a bus is close enough to poll for
+- `badgeMinutes` — how many minutes away the next bus was when the toolbar countdown last updated, so a restarted service worker knows whether a bus is close enough to poll for
 - `paidAccess` — a short-lived copy of the entitlement above, so a worker that restarts every thirty seconds does not re-ask the payment provider every time
 
 `localStorage`:

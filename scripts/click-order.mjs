@@ -48,12 +48,17 @@ const BASE = `http://localhost:${PORT}`;
 const SCENES = [
   {
     id: "decaf",
-    /* 27.8s of beats plus the loop gap, since the popup and its receipt were added
-       between the switch and the hold. */
-    lapMs: 30_000,
+    /* 30.7s of beats plus the loop gap: the switching-on goes through the popup, and
+       the popup and its receipt come back between the paused feed and the hold. */
+    lapMs: 33_000,
     watch: [
-      // The toolbar button pressed in, which is the frame the whole switch is about.
-      { beat: "press", state: '.dc[data-did="press"]' },
+      /* The press on the toolbar icon opens the popup, and that is all it does — the
+         manifest gives the action a `default_popup`. */
+      { beat: "press", state: '.dc-popup[data-open="true"]' },
+      // "Turn on here" pressed, and the popup's switch reading on because of it.
+      { beat: "enable", state: '.dc-popup-switch[data-on="true"]' },
+      // The click back on the page, and the page's changes arriving with it.
+      { beat: "drain", state: '.dc[data-on="true"]' },
       // The popup growing out of the same icon on the second press.
       { beat: "open", state: '.dc-popup[data-open="true"]' },
       // The hold ring beginning to fill.
@@ -69,8 +74,10 @@ const SCENES = [
     id: "pagepack",
     lapMs: 19_000,
     watch: [
+      /* The popup opens on the press on the toolbar icon. The Library is no longer a
+         click: the popup switches to it by itself when the connection drops. */
+      { beat: "open", state: '.pp-popup[data-open="true"]' },
       { beat: "press", state: '.pp[data-did="press"]' },
-      { beat: "reveal", state: ".pp-library" },
     ],
   },
   {

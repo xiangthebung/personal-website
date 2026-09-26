@@ -841,11 +841,11 @@ export function NBackDemo() {
       )}
 
       {/* --------------------------------------------------------------- the home
-          `HomeScreen.tsx` after that session, scrolled to its foot, which is where the
-          game leaves a player who has just finished: the tail of the setup card going
-          out of the top of the frame, the start button and its estimate, the preferences
-          card in the state this round was played in, and the ledger with the round as
-          its one row. The home screen is taller than the play screen — 980px against
+          `HomeScreen.tsx` after that session — reached from the results card's "Change
+          setup" — scrolled to its foot, where the ledger is: the tail of the setup card
+          going out of the top of the frame, the start button and its estimate, the
+          preferences card in the state this round was played in, and the ledger with
+          the round as its one row. The home screen is taller than the play screen — 980px against
           705 — so a frame of it is a crop of it, and the crop the game shows after a
           session is this one. See `LEDGER` and `TOGGLES`. */}
       {screen === "home" && (

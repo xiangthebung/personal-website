@@ -213,20 +213,12 @@
   background: var(--tfa-accent-soft);
 }
 
-/* `popup.css` strokes the card and fills the three dots. Filling both collapses the
-   mark into a solid violet lozenge with nothing legible in it. */
+/* The toolbar shows the manifest's action icon, `icons/icon.svg`: a violet tile with
+   the three digits punched out of a white field. It carries its own colours. */
 .tfa-action-mark svg {
   display: block;
   width: 21px;
   height: 21px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linejoin: round;
-  stroke-width: 1.7;
-}
-.tfa-action-mark circle {
-  fill: currentColor;
-  stroke: none;
 }
 
 .tfa-badge {
@@ -248,16 +240,14 @@
   animation: tfa-tick 0.42s ease-out;
 }
 
-/* `flashBadge` in `background.js`, with its colours: violet while it is looking in
-   Gmail, green once a code is actually in the page, amber while one is held. */
-.tfa-badge[data-glyph="…"] {
-  background: var(--tfa-accent);
-}
+/* `flashBadge` in `background.js`, with its colours: green once a code is actually in
+   the page, `#8a5300` amber while one is held. The shortcut path sets nothing while it
+   reads Gmail — the violet `…` is the automatic watch's, which this scene does not use. */
 .tfa-badge[data-glyph="✓"] {
   background: var(--tfa-badge-ok);
 }
 .tfa-badge[data-glyph="?"] {
-  background: var(--tfa-hold-mark);
+  background: #8a5300;
 }
 .tfa-badge[data-glyph="none"] {
   display: none;
@@ -1164,6 +1154,12 @@
   font-size: 13px;
   font-weight: 640;
 }
+.tfa-alt strong b {
+  font-family: var(--tfa-mono);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
 .tfa-alt small {
   color: var(--tfa-tertiary);
   font-size: 11.5px;

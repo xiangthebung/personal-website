@@ -13,9 +13,10 @@
  * dealt — a violet owl, drawn large with its bloom — and tapped, and its sound rings out
  * of the phone as rings of its own colour while the plate beside the device lights the
  * one point on its grid that sound is. Then the Today list, four ordinary titles, and
- * the eye in its header pressed: the titles dissolve into large glowing symbols with
- * their phrases demoted to a line of small italics, the symbols' ghosts drift out past
- * the device's edge, and a card slides in asking whether you can name these three. Then
+ * the day-one card above them asking whether you can name these three, and the eye in
+ * its header pressed: the titles dissolve into large glowing symbols with their phrases
+ * demoted to a line of small italics, and the symbols' ghosts drift out past the
+ * device's edge. Then
  * a row is tapped and the recall card asks "What is this one?", prices its two answers,
  * and gives the title back when told to.
  *
@@ -88,6 +89,7 @@
 
 import { useEffect, useRef, type CSSProperties } from "react";
 import { useSectionBeat } from "../scene/section-beat";
+import { cssZoom } from "../scene/css-zoom";
 import { SpecTags, type SpecTag } from "../scene/spec";
 import { useStoryboard, type Beat } from "../scene/storyboard";
 import { useSceneRun } from "../scene/use-scene-run";
@@ -162,6 +164,24 @@ interface Task {
  * arbitrary on purpose.
  */
 const TASKS: readonly Task[] = [
+  /* In `sortForToday`'s order: timed tasks by the clock, then the rest by priority and
+     then position. 10 AM rather than 9 because the status bar says 9:41, and a 9 AM
+     task at 9:41 is late — it would sit in an Overdue section of its own. */
+  {
+    id: "standup",
+    title: "Standup notes",
+    due: "10 AM",
+    totem: {
+      colour: "Aqua",
+      hex: "#1FC3F7",
+      object: "Fish",
+      shape: "fish",
+      motion: "flip",
+      pitch: "D5",
+      family: "bubble",
+      phrase: "Flipping aqua fish",
+    },
+  },
   {
     id: "passport",
     title: "Renew passport",
@@ -177,21 +197,6 @@ const TASKS: readonly Task[] = [
       pitch: "C3",
       family: "bell",
       phrase: "Ticking crimson key",
-    },
-  },
-  {
-    id: "standup",
-    title: "Standup notes",
-    due: "9 AM",
-    totem: {
-      colour: "Aqua",
-      hex: "#1FC3F7",
-      object: "Fish",
-      shape: "fish",
-      motion: "flip",
-      pitch: "D5",
-      family: "bubble",
-      phrase: "Flipping aqua fish",
     },
   },
   {
@@ -341,7 +346,8 @@ const BEATS: readonly Beat<BeatName>[] = [
   // page can hear anything: rings of its colour, out of the phone, on its pitch.
   { name: "deal", ms: 2900 },
   // The tour goes and the list is underneath it. Four titles you can read, four
-  // symbols you have no reason to look at yet, and an eye in the header.
+  // symbols you have no reason to look at yet, the day-one nudge over them, and an
+  // eye in the header.
   { name: "today", ms: 2100 },
   // The tap, and the eye. The list does not change yet: the cause is on screen a
   // beat before the effect, which is the one bit of sequencing this scene needs.
@@ -349,8 +355,8 @@ const BEATS: readonly Beat<BeatName>[] = [
   // The titles go. Row by row, blurring out as the phrase underneath fades up and the
   // symbol grows into its bloom; the symbols' ghosts drift out past the phone's edge.
   { name: "dissolve", ms: 1600 },
-  // The whole argument, held: a list you cannot read, made of things you can, and a
-  // card asking whether you can name them.
+  // The whole argument, held: a list you cannot read, made of things you can, under
+  // a card asking whether you can name them.
   { name: "hidden", ms: 3000 },
   // A row is tapped. The recall card comes in from the right, and rings.
   { name: "tap", ms: 1100 },
@@ -734,7 +740,6 @@ export function TotemDemo() {
   const listed = index >= at("today");
   const switchOn = index >= at("eye");
   const hidden = index >= at("dissolve");
-  const nudged = index >= at("hidden");
   const recalling = index >= at("tap");
   const revealed = index >= at("named");
   const screen = !listed ? "tour" : !recalling ? "today" : "recall";
@@ -793,8 +798,10 @@ export function TotemDemo() {
       const phone = root.querySelector<HTMLElement>(".tot-phone")?.getBoundingClientRect();
       const disc = root.querySelector<HTMLElement>(".tot-disc--tour .tot-glyph")?.getBoundingClientRect();
       if (!phone || !disc || disc.width === 0) return;
-      pulse.style.setProperty("--px", `${(disc.left + disc.width / 2 - phone.left).toFixed(1)}px`);
-      pulse.style.setProperty("--py", `${(disc.top + disc.height / 2 - phone.top).toFixed(1)}px`);
+      // Rects are on-screen pixels; the pod lays out in its own, unzoomed ones.
+      const z = cssZoom(root);
+      pulse.style.setProperty("--px", `${((disc.left + disc.width / 2 - phone.left) / z).toFixed(1)}px`);
+      pulse.style.setProperty("--py", `${((disc.top + disc.height / 2 - phone.top) / z).toFixed(1)}px`);
     });
     return () => cancelAnimationFrame(frame);
   }, [pulsing, recalling, run, running]);
@@ -822,6 +829,7 @@ export function TotemDemo() {
       const box = root.getBoundingClientRect();
       const phone = root.querySelector<HTMLElement>(".tot-phone")?.getBoundingClientRect();
       if (!phone || box.width === 0) return;
+      const z = cssZoom(root);
 
       for (const ghost of root.querySelectorAll<HTMLElement>(".tot-drift-glyph")) {
         const source = root.querySelector<HTMLElement>(
@@ -829,11 +837,11 @@ export function TotemDemo() {
         );
         const from = source?.getBoundingClientRect();
         if (!from || from.width === 0) continue;
-        const cx = from.left + from.width / 2 - box.left;
-        const cy = from.top + from.height / 2 - box.top;
+        const cx = (from.left + from.width / 2 - box.left) / z;
+        const cy = (from.top + from.height / 2 - box.top) / z;
         ghost.style.setProperty("--gx", `${cx.toFixed(1)}px`);
         ghost.style.setProperty("--gy", `${cy.toFixed(1)}px`);
-        ghost.style.setProperty("--edge", `${(phone.left - box.left - cx).toFixed(1)}px`);
+        ghost.style.setProperty("--edge", `${((phone.left - box.left) / z - cx).toFixed(1)}px`);
         ghost.dataset.measured = "true";
       }
     });
@@ -862,10 +870,10 @@ export function TotemDemo() {
         "colour while the diagram lights the point where its timbre, " +
         `${DEALT.totem.family}, meets its pitch, ${DEALT.totem.pitch}. ` +
         `Then the Today list: ${TITLE_CLAUSE}, each with a small coloured symbol beside ` +
-        `it: ${TOTEM_CLAUSE}. A finger presses the eye button in the header, hide task ` +
-        "names, and the four titles dissolve into large glowing symbols with their phrases " +
-        "demoted to a line of small italics; the symbols drift out past the edge of the " +
-        "phone, and a card slides in asking, can you name these three. A tap on the " +
+        `it: ${TOTEM_CLAUSE}, under a card asking, can you name these three. A finger ` +
+        "presses the eye button in the header, hide task names, and the four titles " +
+        "dissolve into large glowing symbols with their phrases demoted to a line of " +
+        "small italics; the symbols drift out past the edge of the phone. A tap on the " +
         `${DEALT.totem.object.toLowerCase()}'s row opens the recall card: the symbol drawn ` +
         `large over the question ${RECALL.ask.toLowerCase().replace(/\?$/, "")}, say it ` +
         "before you look, above two answers that print what each will do to the schedule, " +
@@ -959,9 +967,10 @@ export function TotemDemo() {
                 </header>
 
                 {/* The nudge, which the app draws on Today once a third live task
-                    exists. Its slot opens from nothing so the list beneath moves down
-                    rather than jumping. */}
-                <div className="tot-nudge-slot" data-on={nudged}>
+                    exists and nothing has been practised (`shouldNudge`). That has
+                    nothing to do with the eye, so it is on the screen from the moment
+                    Today is: four new tasks already qualify. */}
+                <div className="tot-nudge-slot" data-on="true">
                   <div className="tot-nudge" data-spec-anchor="nudge">
                     <span className="tot-nudge-icon">
                       <Icon name="brain" />

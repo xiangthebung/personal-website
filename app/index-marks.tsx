@@ -34,16 +34,11 @@ function step(index: number): CSSProperties {
 }
 
 /**
- * Choir Practice: a stave, a passage marked on it, and a voice moving over it.
- *
- * The band is the application's loop, in its own loop blue — the newest thing the
- * scene below shows, and the one mark on the stave that is not a line. First in the
- * markup so it paints under the ruling and the voice crosses it.
+ * Choir Practice: a stave and a voice moving over it.
  */
 function ChoirMark() {
   return (
     <span className="imark imark--choir">
-      <span className="imark-band" />
       {[0, 1, 2, 3].map((line) => (
         <span className="imark-stave" key={line} style={step(line)} />
       ))}

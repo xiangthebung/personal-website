@@ -1574,8 +1574,6 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  color: #0f6a62;
-  background: #e2f0ee;
 }
 
 .gx-alert-source {
@@ -2077,18 +2075,15 @@
   margin-top: 8px;
 }
 
-/* `#28766f` is the fill of `icon.svg` in the extension, not a colour picked here.
-   The mark is one asset and it appears three times in this scene — on the toolbar,
-   in the popup's top bar and on the notification — so it cannot take its colour from
-   whatever it happens to be sitting inside. */
+/* The mark is the extension's `icon.svg`, colours and all, and it appears three
+   times in this scene — on the toolbar, in the popup's top bar and on the
+   notification. In the top bar it is `.brand-mark`'s 28px. */
 .gx-mark,
 .gx-mark svg {
   display: block;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
-  border-radius: 11px;
-  color: #28766f;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
 }
 
 .gx-topbar-actions svg,
@@ -2122,9 +2117,10 @@
   height: 17px;
 }
 
+/* The notification's icon is the extension's `icon.png`, whole: its own teal tile. */
 .gx-alert-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
 }
 
 .gx-alert-source small {

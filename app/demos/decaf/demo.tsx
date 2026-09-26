@@ -26,10 +26,32 @@
  * puts a card in it, and the only way to show that is to have the furniture around
  * it visibly stay put while the middle empties.
  *
- * THE SECOND HALF, WHICH IS NEW
+ * HOW IT IS SWITCHED ON
+ *
+ * Through the popup, because that is the only way the extension offers. `manifest.json`
+ * gives the action a `default_popup`, so a click on the toolbar icon opens `popup.html`
+ * and does nothing else, and none of the extension's `commands` is a toggle — the one
+ * bound to the action is `_execute_action`, "Open Decaf". The film used to have the
+ * icon press switch Decaf on by itself, which is a feature the product does not have.
+ *
+ * So the press opens the popup, in the state `render()` in `popup.js` paints for a
+ * listed site while the master switch is off: the switch reading "Off", the site card
+ * badged "Off" over "Decaf is off here. Hubbub behaves normally.", and the "Turn on
+ * here" button, which `render()` shows exactly when the site is off or set aside. The
+ * pointer presses that — `onEnableHere` saves `enabled: true` along with the site, so
+ * the master switch flips to "On" as well — and the popup redraws as `save` redraws
+ * it, before the tab has been asked anything new: badge "On", the paused-feed detail,
+ * the snooze row, "Decaf is on for Hubbub." on the message line, no receipt yet. The
+ * toolbar icon swaps to its "on" picture at the same moment, which is `show()` in
+ * `background.js` answering the storage change. Then the pointer goes back to the
+ * page and clicks it, which is what closes a Chrome popup, and the page's changes are
+ * shown one claim at a time, as before. (On the real page they have already happened
+ * under the popup; the film holds them for the window to get out of the way.)
+ *
+ * THE SECOND HALF
  *
  * The extension grew a popup that accounts for itself, and the film grew with it.
- * After the page has gone quiet the pointer opens the popup off the toolbar icon —
+ * After the page has gone quiet the pointer opens the popup again off the toolbar icon —
  * a 328px window in Decaf's own warm paper that hangs below the browser mock, which
  * is where a Chrome popup goes when the window it came from is short — and the
  * popup's receipt lists what happened on this page, counted off the page rather than
@@ -68,6 +90,7 @@
 import "./demo.css";
 import { useEffect, useRef, useState } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { cssZoom } from "../scene/css-zoom";
 import { usePressGate } from "../scene/press-gate";
 import { useSectionBeat } from "../scene/section-beat";
 import { SpecTags, type SpecTag } from "../scene/spec";
@@ -84,6 +107,9 @@ type BeatName =
   | "notice"
   | "reach"
   | "press"
+  | "aim-enable"
+  | "enable"
+  | "aim-page"
   | "drain"
   | "dashes"
   | "calm"
@@ -98,20 +124,21 @@ type BeatName =
   | "settle";
 
 /**
- * Eighteen beats, 27.8 seconds.
+ * Twenty-one beats, 30.7 seconds.
  *
- * The first ten are the film that was here, unchanged in their timing, and the
- * account of what was wrong with the eleven before them is worth keeping, because it
- * was a first-time visitor's account: *"I come from Choir Practice, I am met with a
- * bunch of likes and notifications, then immediately it is grey. I am confused, what
- * just happened?"* Hence `arrive` — a still feed, in colour, before anything happens
- * to it — hence `notice`, a beat whose entire job is to redirect the eye to the
- * toolbar before anything travels, and hence `drain`, `dashes` and `calm` getting a
- * beat each rather than sharing one grey event.
+ * The account of what was wrong with an earlier cut of the opening is worth keeping,
+ * because it was a first-time visitor's account: *"I come from Choir Practice, I am
+ * met with a bunch of likes and notifications, then immediately it is grey. I am
+ * confused, what just happened?"* Hence `arrive` — a still feed, in colour, before
+ * anything happens to it — hence `notice`, a beat whose entire job is to redirect the
+ * eye to the toolbar before anything travels, and hence `drain`, `dashes` and `calm`
+ * getting a beat each rather than sharing one grey event.
  *
- * The eight after `pause` are the popup and the hold. Each pointer journey has its
- * own beat, so that the beat containing a press begins with the pointer already on
- * the control — the arrangement `usePressGate` exists for.
+ * `aim-enable`, `enable` and `aim-page` are the popup the switching-on actually goes
+ * through — see "How it is switched on" above. The eight after `pause` are the popup
+ * again and the hold. Each pointer journey has its own beat, so that the beat
+ * containing a press begins with the pointer already on the control — the arrangement
+ * `usePressGate` exists for.
  */
 const BEATS: readonly Beat<BeatName>[] = [
   // An ordinary feed, holding still. The baseline everything after this is measured
@@ -126,9 +153,17 @@ const BEATS: readonly Beat<BeatName>[] = [
   /* The travel. Slower than the cursor's default glide — see `pace` below — because a
      pointer that crosses the frame in half a second is a pointer nobody saw move. */
   { name: "reach", ms: 1600 },
-  // The press: the travel is over, then 90ms to settle, 150ms down, and a 460ms ring.
+  /* The press on the icon, which opens the popup and switches nothing: 90ms to settle,
+     150ms down, a 520ms ring, and the popup growing out of the icon, reading "Off". */
   { name: "press", ms: 800 },
-  // One claim per beat from here, each with its own label.
+  // Down the popup to "Turn on here". About 750ms of flight at this scene's pace.
+  { name: "aim-enable", ms: 1000 },
+  // The press: the button goes, the switch and the badge read "On", the icon turns coffee.
+  { name: "enable", ms: 1000 },
+  // Back out of the popup to the page, which is the next thing clicked.
+  { name: "aim-page", ms: 900 },
+  /* The click on the page closes the popup, and the page's changes are shown. One claim
+     per beat from here, each with its own label. */
   { name: "drain", ms: 1700 },
   { name: "dashes", ms: 1500 },
   { name: "calm", ms: 1400 },
@@ -161,16 +196,21 @@ const BEATS: readonly Beat<BeatName>[] = [
  * parked off to the side, and only setting off once the visitor has had a beat to see it
  * there, is what makes the travel itself readable.
  *
- * It leaves on `dashes`, once the labels have burst out of the switch, and comes back
- * on `aim-popup` for the second press on the same icon. It stays parked on the icon
- * through `receipt` — a person who has just opened a popup reads it before moving —
- * and leaves for good on `settle`.
+ * From the icon it goes down the popup to "Turn on here", and then back to the feed
+ * it started on, which it clicks: a Chrome popup closes when anything outside it is
+ * clicked, and the page is where a person goes next. It leaves on `dashes`, once the
+ * labels have burst out, and comes back on `aim-popup` for the second press on the
+ * same icon. It stays parked on the icon through `receipt` — a person who has just
+ * opened a popup reads it before moving — and leaves for good on `settle`.
  */
 const CURSOR: Partial<Record<BeatName, string>> = {
   notice: "feed",
   reach: "toolbar",
   press: "toolbar",
-  drain: "toolbar",
+  "aim-enable": "enable",
+  enable: "enable",
+  "aim-page": "feed",
+  drain: "feed",
   "aim-popup": "toolbar",
   open: "toolbar",
   receipt: "toolbar",
@@ -181,18 +221,25 @@ const CURSOR: Partial<Record<BeatName, string>> = {
 };
 
 /**
- * The three beats that carry a click, and all of them wait for it. See `usePressGate`.
+ * The five beats that carry a click, and all of them wait for it. See `usePressGate`.
  *
  * The pointer is already standing on each control when these beats begin — `reach`,
- * `aim-popup` and `aim-hold` exist for exactly that — so the wait here is only the 90ms
- * between arriving and pressing, not a flight. It is worth taking anyway, because 90ms
- * is five frames and these are the frames a visitor is being asked to read: the toolbar
- * button depressing, the popup growing, a progress ring starting to fill.
+ * `aim-enable`, `aim-page`, `aim-popup` and `aim-hold` exist for exactly that — so the
+ * wait here is only the 90ms between arriving and pressing, not a flight. It is worth
+ * taking anyway, because 90ms is five frames and these are the frames a visitor is being
+ * asked to read: the popup growing out of the icon, the switch flipping, the popup
+ * closing as the page takes the click, a progress ring starting to fill.
  *
  * `spot` is deliberately not here. It is a hover, not a click: the extension outlines
  * on `mouseenter`, and the pointer is on the line when the beat starts.
  */
-const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>(["press", "open", "hold"]);
+const CLICKS: ReadonlySet<BeatName> = new Set<BeatName>([
+  "press",
+  "enable",
+  "drain",
+  "open",
+  "hold",
+]);
 
 /**
  * The stand-in site, and the other one that shares the week with it.
@@ -233,12 +280,16 @@ const POSTS = [
  * crawl and is still gaining speed when it is cut off is what being held by a feed
  * feels like.
  *
- * The duration covers `raw` through `press` — 1900 + 2000 + 1400 + 1600 + 800 — so the
- * switch lands while the reel is at its fastest. It deliberately does not cover
- * `arrive`: the reel is held at its first frame through that beat, so the section opens
- * on a feed sitting still. If a beat in that range changes, this changes with it.
+ * The duration covers every beat from `raw` up to `drain` — the popup's three included —
+ * so the feed is at its fastest when the page's changes arrive, and stops dead as they
+ * do. It deliberately does not cover `arrive`: the reel is held at its first frame
+ * through that beat, so the section opens on a feed sitting still. Summed from `BEATS`
+ * rather than written out, so a beat in that range cannot change without it.
  */
-const REEL_MS = 7700;
+const REEL_MS = BEATS.slice(
+  BEATS.findIndex((entry) => entry.name === "raw"),
+  BEATS.findIndex((entry) => entry.name === "drain"),
+).reduce((total, entry) => total + entry.ms, 0);
 
 /**
  * The post the feed's three labels are measured against.
@@ -508,7 +559,21 @@ const HOLD_STATUS = "Keep holding — 2…";
 const PASS_MINUTES = 5;
 
 /**
- * What the press did, printed on each thing it did it to.
+ * What the popup's site card says, before "Turn on here" and after it.
+ *
+ * `render()` in `popup.js`. With the master switch off the site counts as off —
+ * `siteOff` is `!settings.enabled || !D.siteEnabled(…)` — so the detail is the off
+ * line, the badge says "Off", and `#site-enable` is shown. Once on, on a feed with
+ * feeds paused and no pass running, the detail is the paused line; that string spells
+ * the pass out as "5 minutes" rather than reading it from anywhere.
+ */
+const POPUP_OFF_DETAIL = `Decaf is off here. ${SITE} behaves normally.`;
+const POPUP_ON_DETAIL = `This feed is paused. Hold the button on the page to open it for ${PASS_MINUTES} minutes.`;
+/** `onEnableHere`'s note, which `save` writes to the popup's message line. */
+const POPUP_ENABLED_NOTE = `Decaf is on for ${SITE}.`;
+
+/**
+ * What switching Decaf on did, printed on each thing it did it to.
  *
  * This is the change that made the section legible, and the report that prompted it was
  * blunt: *nobody reads the project description while the animation is running*. Which was
@@ -521,11 +586,12 @@ const PASS_MINUTES = 5;
  * next to the badge that just lost its red and kept its number. There is no gap between
  * the claim and the proof for a visitor to fail to cross.
  *
- * They burst out of the toolbar button, on a stagger, which is the point of the layout
- * as much as of the copy: one press, and five things fly out of it and land on five
- * different parts of the page. That reads as *this switch did all of this* in a way five
- * bullet points four inches away cannot. The six that follow come out of the same
- * button, because the popup did too.
+ * They burst out of the toolbar icon, on a stagger, which is the point of the layout
+ * as much as of the copy: the popup that just switched Decaf on hung from that icon,
+ * and five things fly out of it and land on five different parts of the page. That
+ * reads as *the extension did all of this* in a way five bullet points four inches
+ * away cannot. The six that follow come out of the same icon, because the popup does
+ * again.
  *
  * Every one of them names the element it is about and is measured against it. The
  * coordinates are still here and are still worth getting close, because they are what the
@@ -704,8 +770,9 @@ const SPECS: readonly SpecTag<BeatName>[] = [
 ];
 
 /**
- * The button they all come out of: the toolbar icon, in the pod's own percentages.
- * The popup's four come out of the same point, because the popup did.
+ * The point they all come out of: the toolbar icon, in the pod's own percentages,
+ * which is where the popup that switched Decaf on hung from. The second popup's four
+ * come out of the same point, because that popup does too.
  */
 const SPEC_ORIGIN = { x: 97, y: 5 };
 
@@ -788,7 +855,7 @@ export function DecafDemo() {
     stillBeat: "spot",
   });
   const { beat, index, run, still } = state;
-  /* What the three presses did, held until they happened. `beat` still decides where the
+  /* What the five presses did, held until they happened. `beat` still decides where the
      pointer goes; `did` and `reached` decide what a press is allowed to have changed. */
   const { did, reached, onPress } = usePressGate(BEATS, state, CLICKS);
 
@@ -798,16 +865,30 @@ export function DecafDemo() {
   useSectionBeat(stageRef, beat, BEATS);
 
   const at = (name: BeatName) => BEATS.findIndex((entry) => entry.name === name);
-  const on = index >= at("drain");
-  const grey = index >= at("drain");
+  /* Decaf switched on, which is the press on "Turn on here": the popup's switch, its
+     badge and detail, and the toolbar icon all change on that click. */
+  const switched = reached >= at("enable");
+  /* The page's changes, shown from the click on the page that closes the popup. Gated
+     on `reached`, like the switch, so nothing on the page moves before that click. */
+  const on = reached >= at("drain");
+  const grey = on;
   const dashed = index >= at("dashes");
   const calmed = index >= at("calm");
   const paused = index >= at("pause");
-  /* Open from the press that opens it to the press that closes it. A Chrome popup is
-     dismissed by a click anywhere outside it, and the click that starts the hold is one.
-     On a narrow stage it closes a beat earlier, as the pointer leaves it — see
-     `useNarrow`. */
-  const popupOpen = reached >= at("open") && reached < at(narrow ? "aim-hold" : "hold");
+  /* Open from the press that opens it to the press that closes it, twice. A Chrome popup
+     is dismissed by a click anywhere outside it: the first time that is the click on the
+     page on `drain`, the second the click that starts the hold. On a narrow stage each
+     closes a beat earlier, as the pointer leaves it — see `useNarrow`. */
+  const popupOpen =
+    (reached >= at("press") && reached < at(narrow ? "aim-page" : "drain")) ||
+    (reached >= at("open") && reached < at(narrow ? "aim-hold" : "hold"));
+  /* The popup opened on `open` is a second window; the first was closed on `drain`. It
+     asks the tab what was done as it opens, so it has the receipt. The first is drawn
+     as `save` repaints it the instant "Turn on here" is pressed, from the settings just
+     written and the answer the tab gave while Decaf was off, which has no receipt in it.
+     (The popup then asks the tab again and could fill one in; the film closes the window
+     instead of guessing when.) Switched on `dashes`, with both windows shut. */
+  const reopened = index >= at("dashes");
   /* The hover. Not gated: the extension outlines on `mouseenter`, and the pointer is
      already on the line when this beat begins — `aim-line` is the flight. */
   const spotting = beat === "spot";
@@ -829,13 +910,20 @@ export function DecafDemo() {
   const flooding = index >= at("raw") && !on;
 
   /**
-   * The three beats where the click has to be the only thing moving.
+   * The beats where the clicks have to be the only thing moving: the icon, the popup,
+   * and the way back to the page.
    *
    * `notice` is included, and it is the one that matters: it is the beat that redirects
    * the eye before anything travels, so it is the beat that most needs the flood out of
    * the way.
    */
-  const quiet = beat === "notice" || beat === "reach" || beat === "press";
+  const quiet =
+    beat === "notice" ||
+    beat === "reach" ||
+    beat === "press" ||
+    beat === "aim-enable" ||
+    beat === "enable" ||
+    beat === "aim-page";
 
   /**
    * Pins a reward to the emitter's viewport position when its delayed lift actually starts.
@@ -986,6 +1074,13 @@ export function DecafDemo() {
    * the browser, so the only thing to fit is its width — a 328px window on a 282px
    * stage would be the one horizontal overflow on the page — and the height is
    * Chrome's own 600. See `useNarrow`.
+   *
+   * Measured again when the popup's content changes shape, which is `reopened`: the
+   * first window has no receipt and the second does, so the second is taller. That
+   * change lands while both windows are shut, so the zoom never jumps under the
+   * pointer. The first window does grow once while open — "Turn on here" gives way to
+   * the snooze row — and is deliberately not re-fitted for it: a real popup that grows
+   * does not shrink its type, it runs on past the cut, which is what this one does.
    */
   useEffect(() => {
     const stage = stageRef.current;
@@ -996,20 +1091,22 @@ export function DecafDemo() {
 
     let applied = 1;
     const write = () => {
+      /* The scene itself may be zoomed to fit the window (see `DemoMount`), and every
+         rect below is in on-screen pixels, so each is brought back to the stage's own. */
+      const fit = cssZoom(stage);
       if (narrow) {
-        const zoom = Math.min(1, stage.getBoundingClientRect().width / POPUP_WIDTH_PX);
+        const zoom = Math.min(1, stage.getBoundingClientRect().width / fit / POPUP_WIDTH_PX);
         stage.style.setProperty("--dc-popup-room", "600px");
         stage.style.setProperty("--dc-popup-zoom", zoom.toFixed(3));
         applied = zoom;
         return;
       }
       const room =
-        section.getBoundingClientRect().bottom -
-        stage.getBoundingClientRect().top -
+        (section.getBoundingClientRect().bottom - stage.getBoundingClientRect().top) / fit -
         POPUP_TOP_PX -
         POPUP_MARGIN_PX;
       const needed =
-        (meter.getBoundingClientRect().bottom - popup.getBoundingClientRect().top) / applied +
+        (meter.getBoundingClientRect().bottom - popup.getBoundingClientRect().top) / (applied * fit) +
         POPUP_SHELL_PAD_PX;
       const zoom = Math.min(1, Math.max(POPUP_MIN_ZOOM, room / Math.max(1, needed)));
       stage.style.setProperty("--dc-popup-room", `${Math.max(240, Math.round(room))}px`);
@@ -1026,7 +1123,7 @@ export function DecafDemo() {
       stage.style.removeProperty("--dc-popup-room");
       stage.style.removeProperty("--dc-popup-zoom");
     };
-  }, [narrow]);
+  }, [narrow, reopened]);
 
   /** The reel of posts. Rendered twice: before the pause, and again once the pass opens the feed. */
   const reel = (key: string) => (
@@ -1051,7 +1148,8 @@ export function DecafDemo() {
             className={`dc-media dc-media--${post.tint}`}
             /* Two of the three feed labels are measured against this one post, and it
                is this one because of where the reel stops. `REEL_MS` is the sum of
-               `raw` through `press`, so the pull finishes exactly as `drain` begins and
+               the beats from `raw` up to `drain`, so the pull finishes exactly as
+               `drain` begins and
                the fifth post is sitting flush against the top of the feed at the frame
                the labels arrive. Anything earlier has scrolled out of the window;
                anything later is the runway. */
@@ -1100,6 +1198,7 @@ export function DecafDemo() {
          land with the pointer rather than 90ms ahead of it. See `CLICKS`. */
       data-did={did}
       data-lap={run}
+      data-switched={switched}
       data-on={on}
       data-grey={grey}
       data-paused={paused}
@@ -1108,13 +1207,16 @@ export function DecafDemo() {
       role="img"
       aria-label={
         `A social feed on an invented site called ${SITE}, with colour images, like ` +
-        "counts and two red notification badges. Decaf is switched on from the toolbar: " +
+        "counts and two red notification badges. The Decaf icon in the toolbar is " +
+        "clicked and the extension's popup opens with its switch off, saying " +
+        `"${POPUP_OFF_DETAIL}" Its "Turn on here" button is pressed, the switch ` +
+        "turns on, and a click back on the page closes the popup. Then " +
         "the colour drains out of the media, every reward number becomes a dash, both " +
         "badges keep their counts but lose their red, the suggestions rail disappears, " +
         "and the feed is replaced in place by Decaf's notice card, which reads " +
         `"Decaf paused the ${SITE} feed.", offers a hold-to-open button for a ` +
         "five-minute pass, and says the hold is three seconds now and seven, eleven, " +
-        "then fifteen later today. The extension's popup is then opened from the " +
+        "then fifteen later today. The extension's popup is then opened again from the " +
         `toolbar: under "On this page" it lists ${RECEIPT_SPOKEN}, and pointing at ` +
         "the first line outlines the notice card on the page. Below that, a " +
         "\"Last 7 days\" meter shows passes and " +
@@ -1124,13 +1226,13 @@ export function DecafDemo() {
       }
     >
       <div className="dc-browser">
-        {/* The switch throwing a wash across the page it is switching off.
-            One soft radial glow scaling up out of the toolbar button, clipped by the
+        {/* A wash across the page as its changes arrive.
+            One soft radial glow scaling up out of the toolbar icon, clipped by the
             browser's own overflow so it reads as something crossing the window. It is
-            keyed to `data-on` rather than to the press beat because `press` is 800ms and
-            the wash is 1500 — hung on the beat it would be cut off by its own successor,
-            and hung on both beats it would restart halfway through. `data-on` turns true
-            once, at `drain`, which is also the frame the colour starts leaving. */}
+            keyed to `data-on` rather than to a beat because the wash is 1500ms and would
+            be cut off by the beat after it. `data-on` turns true once, on the click on
+            the page that closes the popup on `drain`, which is also the frame the colour
+            starts leaving. */}
         <span className="dc-wave" aria-hidden="true" />
 
         {/* The tab strip exists for one detail: the (3) a site writes into its own
@@ -1143,16 +1245,23 @@ export function DecafDemo() {
               {SITE}
             </span>
           </span>
-          {/* The extension's icon: a cup in its own coffee on paper, which is what
-              `icons/icon.svg` draws. */}
+          {/* The extension's toolbar icon, with `icons/icon.svg`'s geometry: a paper cup,
+              its handle and a saucer on a rounded tile. Grey on grey while Decaf is off
+              (`icon-off.svg`) and paper on coffee once it is on (`icon.svg`), which is
+              the swap `show()` in `background.js` makes with `chrome.action.setIcon`
+              when the settings change — so on the press on "Turn on here", while the
+              popup is still open. A click on it opens the popup and does nothing else:
+              the manifest gives the action a `default_popup`. */}
           <span className="dc-toolbar" data-target="toolbar">
             <span className="dc-mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <g fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <path d="M5 9h11v4a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5z" />
-                  <path d="M16 10.5h2a2.5 2.5 0 0 1 0 5h-2" />
-                  <path d="M7.5 5.5c0-1 1-1 1-2M11 5.5c0-1 1-1 1-2" />
-                </g>
+              <svg viewBox="0 0 128 128">
+                <rect className="dc-mark-tile" x="7.04" y="7.04" width="113.92" height="113.92" rx="28.16" />
+                <path
+                  className="dc-mark-ink"
+                  d="M25.6 40.96h51.2v21.76a22.4 22.4 0 0 1-22.4 22.4h-6.4a22.4 22.4 0 0 1-22.4-22.4z"
+                />
+                <circle className="dc-mark-handle" cx="87.68" cy="56.32" r="13.25" strokeWidth="8.06" />
+                <rect className="dc-mark-ink" x="19.84" y="92.8" width="88.32" height="8.96" rx="4.48" />
               </svg>
             </span>
           </span>
@@ -1304,10 +1413,12 @@ export function DecafDemo() {
             zoomed popup positioned by its own `top` would drift up the tab strip as it
             shrank. See the effect that writes `--dc-popup-zoom`. */}
         <div className="dc-popup-window" ref={popupRef}>
+        {/* The master switch, `#master` and its `#master-state`: "Off" until "Turn on
+            here" is pressed, because `onEnableHere` saves `enabled: true` with the site. */}
         <div className="dc-popup-head">
           <span className="dc-popup-brand">Decaf</span>
-          <span className="dc-popup-switch">
-            <span>On</span>
+          <span className="dc-popup-switch" data-on={switched}>
+            <span>{switched ? "On" : "Off"}</span>
             <i />
           </span>
         </div>
@@ -1315,12 +1426,13 @@ export function DecafDemo() {
         <section className="dc-popup-card">
           <div className="dc-popup-row">
             <span className="dc-popup-h2">{SITE}</span>
-            <span className="dc-popup-badge">On</span>
+            <span className="dc-popup-badge" data-on={switched}>
+              {switched ? "On" : "Off"}
+            </span>
           </div>
-          <p className="dc-popup-detail">
-            This feed is paused. Hold the button on the page to open it for {PASS_MINUTES}{" "}
-            minutes.
-          </p>
+          <p className="dc-popup-detail">{switched ? POPUP_ON_DETAIL : POPUP_OFF_DETAIL}</p>
+          {/* Only in the second window. See `reopened`. */}
+          {switched && reopened && (
           <div className="dc-popup-receipt">
             <p className="dc-popup-eyebrow" data-spec-anchor="receipt">
               On this page
@@ -1340,14 +1452,28 @@ export function DecafDemo() {
               ))}
             </ul>
           </div>
-          <div className="dc-popup-off">
-            <p className="dc-popup-detail">Need this site to behave normally?</p>
-            <div className="dc-popup-segmented">
-              <span>30 min</span>
-              <span>2 hours</span>
+          )}
+          {/* `#site-enable`, shown while the site is off. The press the first act is
+              about; it goes as soon as it has been pressed, as it does in `render()`. */}
+          {!switched && (
+            <span
+              className="dc-popup-button dc-popup-button--primary dc-popup-enable"
+              data-target="enable"
+            >
+              Turn on here
+            </span>
+          )}
+          {/* `#site-off`, shown once the site is on and no pass or Lock is running. */}
+          {switched && (
+            <div className="dc-popup-off">
+              <p className="dc-popup-detail">Need this site to behave normally?</p>
+              <div className="dc-popup-segmented">
+                <span>30 min</span>
+                <span>2 hours</span>
+              </div>
+              <span className="dc-popup-button">Off until I turn it back on</span>
             </div>
-            <span className="dc-popup-button">Off until I turn it back on</span>
-          </div>
+          )}
         </section>
 
         <section className="dc-popup-card dc-popup-meter" data-spec-anchor="meter" ref={meterRef}>
@@ -1401,6 +1527,9 @@ export function DecafDemo() {
           </div>
           <span className="dc-popup-button dc-popup-button--primary">Lock</span>
         </section>
+        {/* `#message`. Empty in a fresh window; in the first one it carries the note
+            "Turn on here" saved with, riding the bottom edge as `popup.css` makes it. */}
+        <p className="dc-popup-message">{switched && !reopened ? POPUP_ENABLED_NOTE : ""}</p>
         <span className="dc-popup-button dc-popup-button--wide">Settings</span>
         </div>
       </div>
@@ -1429,7 +1558,7 @@ export function DecafDemo() {
             data-running={flooding}
             data-spent={on}
             /* Stands down while the extension is being switched on. The whole point of
-               those two beats is that a visitor sees a pointer press a button, and it
+               those beats is that a visitor sees a pointer press the controls, and it
                cannot compete with dozens of rewards crossing the screen — the flood is the
                problem being described, so it gets out of the way of the moment the
                problem is solved. */
@@ -1509,7 +1638,7 @@ export function DecafDemo() {
         />
       )}
 
-      {/* What the press did, on each thing it did it to. See `SPECS`.
+      {/* What switching Decaf on did, on each thing it did it to. See `SPECS`.
           Still no caption: a caption is a line of prose under a picture, which is the
           arrangement that failed. These are labels on the picture. */}
       <SpecTags

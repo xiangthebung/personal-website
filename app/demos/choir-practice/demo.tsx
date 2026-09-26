@@ -14,8 +14,7 @@
  * between a visitor and the thing they came to see, on a page where nothing else
  * asks to be clicked. So the frame now loads itself when the section approaches and
  * drives the app to a useful state: a real score, open, engraved, with the per-voice
- * mixer showing and a passage marked out on the bar ruler to rehearse. Nothing to
- * press to get there.
+ * mixer showing. Nothing to press to get there.
  *
  * Driving it is possible because the copy is served from this origin, so the frame's
  * document is reachable. That is a privilege worth being careful with, so the
@@ -100,35 +99,17 @@ import "./demo.css";
  * than taken on trust. Nine bars, four parts named Soprano, Alto, Tenor and Bass, and
  * every staff has notes in bar one.
  *
- * The cost is length: nine bars is about twenty seconds. So the pod marks a passage
- * out on the app's bar ruler (see `PASSAGE`), which turns the app's own loop on, and
- * the music keeps going for as long as somebody is watching instead of falling flat
- * mid-visit — and the marked passage is the application's newest capability, shown
- * doing what it is for.
+ * Nine bars is about twenty seconds, played once through the way the app plays any
+ * score. No loop is marked: the app's ruler stays clear until a visitor drags on it.
  */
 const SCORE = "Happy Birthday.musicxml";
 
 /**
- * The passage the pod rehearses, and the score it is a passage of.
- *
- * `bars` is a fact about `Happy Birthday.musicxml`: what the app's own home card
- * prints for it — `data-bars="9"` in the vendored `index.html` — so the ledger on the
- * stand's ledge counts the same bars the application does. It was 104 for a long
- * time, which was the Stanford, and the Stanford is 26 bars anyway.
- *
- * Bars 2 to 3 rather than a whole phrase, and the reason is what fits. At the frame's
- * width, with the parts panel open, the score shows bars 1 to 3 at the zoom it opens at;
- * a loop that ended past the right edge would put one handle on screen and the other
- * off it, and a band with one end is a band that reads as "from here onward". Two bars
- * keeps both handles in view before anything is pressed, which is the frame most
- * visitors see for longest. Bar 1 is the pickup ("Hap-py"), so the loop starts on the
- * first full bar and the opening is still heard once on the way in.
- *
- * Typed as numbers rather than `as const`: the pod compares a bar against both ends,
- * and two distinct literal types cannot both be equal to one value, which is a compile
- * error rather than the one-bar loop it is guarding for.
+ * How many bars the score has: what the app's own home card prints for it —
+ * `data-bars="9"` in the vendored `index.html` — so the ledger on the stand's ledge
+ * counts the same bars the application does.
  */
-const PASSAGE: { bars: number; from: number; to: number } = { bars: 9, from: 2, to: 3 };
+const SCORE_BARS = 9;
 
 /**
  * Selectors inside the vendored app, and the one piece of its state this reads.
@@ -149,16 +130,6 @@ const HOOKS = {
   transport: "#play-btn",
   parts: "#parts-btn",
   mic: "#mic-btn",
-  /**
-   * The app's loop toggle, which defaults to looping the whole score.
-   *
-   * Only the fallback now. The pod prefers `app.setLoopBars`, which marks a passage and
-   * turns looping on in one move — the same thing a drag along the ruler does — and
-   * reaches for this button only if that entry point has gone. `aria-pressed` is the
-   * app's own published state for it, so this is read the same way `#play-btn`'s label
-   * is.
-   */
-  loop: "#loop-btn",
   /** "Share this passage": copies a link carrying the score, part, loop and tempo. */
   share: "#share-btn",
   /** The tempo readout in the transport — "85 BPM · 100%" — which is a button now. */
@@ -209,14 +180,12 @@ const FIRST_RUN = {
  *
  *   loading   the frame is arriving
  *   score     a score is open and engraved, the mixer showing
- *   passage   the loop band is on the ruler
  *   count-in  play was pressed; the app is counting the bar in
  *   singing   the voices are sounding
  */
 const CHOIR_BEATS = [
   { name: "loading" },
   { name: "score" },
-  { name: "passage" },
   { name: "count-in" },
   { name: "singing" },
 ] as const;
@@ -271,36 +240,29 @@ const PARTS = [
 /**
  * The leader lines, and what each one is hung on.
  *
- * Four labels on a leader line each, in the site's voice, pointing at the application's
- * own controls rather than duplicating them. There was one — the pitch detector's — and
- * the reason there was not a second is recorded at `findSpot`. The three that joined it
- * point at what the application gained: the passage marked on the bar ruler, the bar it
- * counts in before the music (hung on the tempo readout, which is the control that
- * decides how long that bar is), and the Share control that turns the passage into a
- * link.
+ * Three labels on a leader line each, in the site's voice, pointing at the application's
+ * own controls rather than duplicating them: the pitch detector, the bar the app counts
+ * in before the music (hung on the tempo readout, which is the control that decides how
+ * long that bar is), and the Share control.
  *
- * `side` is which way the plate reads out of its dot. The choices are about what is
- * next to each control: the ruler's plate stands *above* the band because either side of
- * it at ruler height is bar numbers; Share's stands above the app bar — outside the
- * frame — because the title is to its left and Export to its right; the tempo's hangs
- * below the transport, where there is only the stand's lip; the microphone's reads left
- * along the transport row, as it always did.
+ * `side` is which way the plate reads out of its dot. Share's stands above the app bar —
+ * outside the frame — because the title is to its left and Export to its right; the
+ * tempo's hangs below the transport, where there is only the stand's lip; the
+ * microphone's reads left along the transport row.
  *
- * Which ones show when: the passage label from the moment the band is drawn, the other
- * three only once the piece has been played. Before that the frame's one instruction is
- * "Play the score", and four cues competing with it is how none of them gets read.
+ * They show only once the piece has been played. Before that the frame's one
+ * instruction is "Play the score", and cues competing with it is how none gets read.
  *
- * Below 760px they stop pointing. The same four are rendered again as a row of chips
+ * Below 760px they stop pointing. The same three are rendered again as a row of chips
  * under the frame — the fallback every other scene's labels already make at that width,
  * see `.speclayer` in `globals.css` — because on a phone the application is in its
  * compact layout, where a plate above the ruler lands on the zoom pill, one under the
  * tempo covers the play button and one beside the microphone covers the transport.
  */
-type CueId = "passage" | "count" | "share" | "mic";
+type CueId = "count" | "share" | "mic";
 type CueSide = "left" | "right" | "above" | "below";
 
 const CUES: readonly { id: CueId; text: string; side: CueSide }[] = [
-  { id: "passage", text: "Marked on the ruler, on repeat", side: "above" },
   { id: "count", text: "One bar counted in first", side: "below" },
   { id: "share", text: "Passage, part and tempo, as a link", side: "above" },
   /* "Test your pitch" was the name of a feature. This is what the feature does to you,
@@ -322,24 +284,10 @@ interface Spot {
  * `window.choirPracticeApp` is assigned at the foot of the vendored `js/app.js`. Every
  * member here is optional and every call is guarded, because the copy is refreshed from
  * its own repository: a rename over there has to degrade to "the pod arranged less"
- * rather than to a thrown error in a page that otherwise works. `setLoopBars(from, to)`
- * is the programmatic form of dragging the bar ruler; `renderer` is the score's
- * engraver, whose `getLoopBandX` and `getRulerBounds` say where the band it draws is.
+ * rather than to a thrown error in a page that otherwise works. The pod only reads the
+ * audio engine, to listen to the mix.
  */
 interface ChoirApp {
-  setLoopBars?: (
-    fromBar: number | null,
-    toBar: number | null,
-    options?: { syncFields?: boolean; announce?: boolean },
-  ) => void;
-  state?: { loopRange?: { fromBar: number; toBar: number } | null };
-  renderer?: {
-    scale?: number;
-    scrollX?: number;
-    config?: { marginLeft?: number; clefWidth?: number };
-    getLoopBandX?: () => { startX: number; endX: number } | null;
-    getRulerBounds?: () => { top: number; bottom: number };
-  } | null;
   audioEngine?: {
     audioContext?: AudioContext;
     live?: { bus?: { master?: AudioNode } };
@@ -393,25 +341,6 @@ function waitFor(
         resolve(null);
         return;
       }
-      window.setTimeout(look, 90);
-    };
-    look();
-  });
-}
-
-/** Resolves true once `test` passes, or false when the time is up. */
-function until(test: () => boolean, timeoutMs: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const deadline = Date.now() + timeoutMs;
-    const look = () => {
-      let passed = false;
-      try {
-        passed = test();
-      } catch {
-        /* treated as not yet */
-      }
-      if (passed) return resolve(true);
-      if (Date.now() > deadline) return resolve(false);
       window.setTimeout(look, 90);
     };
     look();
@@ -564,33 +493,6 @@ function pausePlayback(frame: HTMLIFrameElement | null): boolean {
     if (button.getAttribute("aria-label") === HOOKS.idleLabel) return false;
     button.click();
     return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Marks the passage out on the bar ruler.
- *
- * `setLoopBars` is what a drag along the ruler ends in: it resolves the bars, tints the
- * band on the score, puts a handle at each end, turns looping on and mirrors the range
- * into the frame's own URL hash. The pod calls it rather than simulating the drag, for
- * the reason the rest of this file drives buttons through `click()` — the application's
- * own entry points are the contract, and a synthetic pointer sequence over a canvas is
- * not. `announce: false` because the app would otherwise say "Looping bars 2 to 3" into
- * its live region, which a screen reader on this page would hear as something that just
- * happened to it.
- *
- * Reports whether the range took, read back off the app's own state, so the caller can
- * fall back to the plain loop button if it did not.
- */
-function stagePassage(frame: HTMLIFrameElement | null): boolean {
-  const app = appIn(frame);
-  if (!app || typeof app.setLoopBars !== "function") return false;
-  try {
-    app.setLoopBars(PASSAGE.from, PASSAGE.to, { announce: false });
-    const range = app.state?.loopRange;
-    return Boolean(range && range.fromBar === PASSAGE.from && range.toBar === PASSAGE.to);
   } catch {
     return false;
   }
@@ -981,78 +883,15 @@ function findSpot(
   }
 }
 
-/**
- * Where the loop band is on the ruler, in the pod's own coordinates, or null when it has
- * scrolled out of view.
- *
- * Not a DOM node: the band is painted on the score canvas by the app's engraver, in a
- * layout space that the engraver scrolls (`scrollX`) and scales (`scale`) on the way to
- * the screen. `getLoopBandX` gives the band's edges in that space and `getRulerBounds`
- * the ruler's top, so the conversion is the one `hitTest` in the renderer does, run
- * backwards. The engraver also draws the part-name gutter over the score as it scrolls,
- * so the visible band is clipped to the right of it.
- *
- * The dot sits at the middle of whatever part of the band is on screen rather than on a
- * handle, because while the piece plays the score moves under the cursor like a
- * teleprompter and either handle spends part of every pass behind the gutter. The
- * middle of the visible band is always on the band, which is the only thing the label
- * has to be true about.
- *
- * "On screen" also means out from under the zoom pill, which the app floats over the
- * top-right corner of the score at ruler height. On a phone-width frame the pill covers
- * the end of the band, and a dot under a button is a dot on the wrong thing.
- */
-function passageSpot(frame: HTMLIFrameElement | null, stand: HTMLElement | null): Spot | null {
-  const doc = frame?.contentDocument;
-  const renderer = appIn(frame)?.renderer;
-  if (!doc || !stand || !renderer) return null;
-  try {
-    const band = renderer.getLoopBandX?.();
-    const ruler = renderer.getRulerBounds?.();
-    const canvas = doc.querySelector<HTMLElement>(HOOKS.canvas);
-    if (!band || !ruler || !canvas) return null;
-
-    const canvasBox = canvas.getBoundingClientRect();
-    if (canvasBox.width === 0) return null;
-    const scale = renderer.scale || 1;
-    const scrollX = renderer.scrollX || 0;
-    const gutter = ((renderer.config?.marginLeft ?? 0) + (renderer.config?.clefWidth ?? 0)) * scale;
-    const rulerTop = ruler.top * scale;
-
-    const left = Math.max((band.startX - scrollX) * scale, gutter + 6);
-    let right = Math.min((band.endX - scrollX) * scale, canvasBox.width - 6);
-    const pill = doc.querySelector<HTMLElement>(HOOKS.zoom)?.parentElement?.getBoundingClientRect();
-    if (pill && pill.width > 0) {
-      const pillTop = pill.top - canvasBox.top;
-      const pillBottom = pill.bottom - canvasBox.top;
-      if (pillBottom > rulerTop - 6 && pillTop < rulerTop + 30) {
-        right = Math.min(right, pill.left - canvasBox.left - 10);
-      }
-    }
-    if (right - left < 24) return null;
-
-    const frameBox = frame.getBoundingClientRect();
-    const standBox = stand.getBoundingClientRect();
-    return {
-      x: Math.round(frameBox.left + canvasBox.left + (left + right) / 2 - standBox.left),
-      y: Math.round(frameBox.top + canvasBox.top + rulerTop - standBox.top),
-    };
-  } catch {
-    return null;
-  }
-}
-
 /** Every cue's point, measured now. Absent where the control could not be found. */
 function spotsFor(
   frame: HTMLIFrameElement | null,
   stand: HTMLElement | null,
 ): Partial<Record<CueId, Spot>> {
   const spots: Partial<Record<CueId, Spot>> = {};
-  const passage = passageSpot(frame, stand);
   const count = findSpot(frame, stand, HOOKS.tempo, "bottom");
   const share = findSpot(frame, stand, HOOKS.share, "top");
   const mic = findSpot(frame, stand, HOOKS.mic, "left");
-  if (passage) spots.passage = passage;
   if (count) spots.count = count;
   if (share) spots.share = share;
   if (mic) spots.mic = mic;
@@ -1072,8 +911,6 @@ export function ChoirPracticeDemo() {
   const focused = useSectionFocused(rootRef);
   const [mounted, setMounted] = useState(false);
   const [opened, setOpened] = useState(false);
-  /** Whether the passage is marked on the ruler and looping. */
-  const [looped, setLooped] = useState(false);
   /** Whether the visitor has asked for the app, which is when it gets the wheel. */
   const [engaged, setEngaged] = useState(false);
   /** Whether the app's transport is running, read off its own play button. */
@@ -1085,24 +922,20 @@ export function ChoirPracticeDemo() {
   /** Where each leader line is hung, measured against the stand. */
   const [spots, setSpots] = useState<Partial<Record<CueId, Spot>>>({});
   const standRef = useRef<HTMLDivElement | null>(null);
-  /** The passage cue's own element, which is moved without a render while the score scrolls. */
-  const passageRef = useRef<HTMLSpanElement | null>(null);
 
   const beat: ChoirBeat = playing
     ? counting
       ? "count-in"
       : "singing"
-    : looped
-      ? "passage"
-      : opened
-        ? "score"
-        : "loading";
+    : opened
+      ? "score"
+      : "loading";
 
-  /** Whether a cue has something to say yet. See the note on `CUES`. */
-  const showing = (cue: { id: CueId }) => (cue.id === "passage" ? looped : played);
+  /** Whether a cue has something to say yet: only once the piece has been played. */
+  const showing = () => played;
 
-  /* The surrounding room waits for the real app to finish engraving, brightens when the
-     passage is marked, ticks through the count-in, and reacts once it starts singing. */
+  /* The surrounding room waits for the real app to finish engraving, ticks through the
+     count-in, and reacts once it starts singing. */
   useSectionBeat(rootRef, beat, CHOIR_BEATS);
 
   /* `--beat-t` is what the storyboarded scenes write every frame — how far through the
@@ -1147,7 +980,6 @@ export function ChoirPracticeDemo() {
     const timer = window.setTimeout(() => {
       setMounted(false);
       setOpened(false);
-      setLooped(false);
       setEngaged(false);
       setPlaying(false);
       setCounting(false);
@@ -1236,33 +1068,12 @@ export function ChoirPracticeDemo() {
   /**
    * The bar ruler echoed on the stand's ledge.
    *
-   * The lip under the frame carries the score's nine bars, and two things are written
-   * onto them from here: which bars are the looped passage, once the band is on the
-   * ruler, and which bar the transport is in, as it moves. Both are attributes rather
-   * than React state, for the reason `tapVoices` gives about the voice levels — the bar
-   * changes every second or so while the piece plays, and a render pass to change one
-   * attribute on one cell is a poor trade for a thing the stylesheet can key on directly.
+   * The lip under the frame carries the score's nine bars, and the bar the transport is
+   * in is lit as it moves. An attribute rather than React state, for the reason
+   * `tapVoices` gives about the voice levels — the bar changes every second or so while
+   * the piece plays, and a render pass per change is a poor trade for a thing the
+   * stylesheet can key on directly.
    */
-  useEffect(() => {
-    const cells = Array.from(rootRef.current?.querySelectorAll<HTMLElement>(".choir-ledger i") ?? []);
-    cells.forEach((cell, index) => {
-      const bar = index + 1;
-      if (!looped || bar < PASSAGE.from || bar > PASSAGE.to) {
-        cell.removeAttribute("data-looped");
-        return;
-      }
-      const edge =
-        bar === PASSAGE.from && bar === PASSAGE.to
-          ? "both"
-          : bar === PASSAGE.from
-            ? "start"
-            : bar === PASSAGE.to
-              ? "end"
-              : "";
-      cell.setAttribute("data-looped", edge);
-    });
-  }, [looped]);
-
   useEffect(() => {
     if (!opened) return;
     const cells = Array.from(rootRef.current?.querySelectorAll<HTMLElement>(".choir-ledger i") ?? []);
@@ -1299,7 +1110,7 @@ export function ChoirPracticeDemo() {
    * followed separately below.
    */
   useEffect(() => {
-    if (!looped && !played) return;
+    if (!played) return;
 
     const measure = () => setSpots(spotsFor(frameRef.current, standRef.current));
     measure();
@@ -1319,53 +1130,16 @@ export function ChoirPracticeDemo() {
       window.clearTimeout(settle);
       observer.disconnect();
     };
-  }, [looped, played, playing]);
+  }, [played, playing]);
 
   /**
-   * Follows the band while the score scrolls under the cursor.
+   * Opens a score and reveals the mixer. Gives up quietly at any step.
    *
-   * The one cue whose subject moves: while the piece plays, the engraver keeps the
-   * playhead pinned a third of the way across and scrolls the music past it, so the band
-   * on the ruler travels left every pass and snaps back at the loop. Written straight
-   * onto the element from a frame loop — the same rule as `tapVoices`: nothing here may
-   * cost a React render per frame. A React render in between puts the last measured
-   * point back for one frame, which the next tick corrects.
-   */
-  useEffect(() => {
-    if (!looped || !playing) return;
-    const node = passageRef.current;
-    if (!node) return;
-
-    let raf = 0;
-    let last = "";
-    const tick = () => {
-      const spot = passageSpot(frameRef.current, standRef.current);
-      const key = spot ? `${spot.x},${spot.y}` : "away";
-      if (key !== last) {
-        last = key;
-        node.dataset.away = spot ? "false" : "true";
-        if (spot) {
-          node.style.setProperty("--cue-x", `${spot.x}px`);
-          node.style.setProperty("--cue-y", `${spot.y}px`);
-        }
-      }
-      raf = window.requestAnimationFrame(tick);
-    };
-    raf = window.requestAnimationFrame(tick);
-    return () => {
-      window.cancelAnimationFrame(raf);
-      node.dataset.away = "false";
-    };
-  }, [looped, playing]);
-
-  /**
-   * Opens a score, reveals the mixer and marks the passage. Gives up quietly at any
-   * step.
-   *
-   * The passage is marked last and only once the app has finished loading — `#loading`
-   * goes back to hidden after the engine and the engraver exist — because
-   * `setLoopBars` needs both to draw anything. The transport appears before either, so
-   * "the transport is up" is the wrong moment for it, and was measured to be.
+   * Nothing else is arranged. The pod used to mark bars 2 to 3 on the ruler and loop
+   * them, which put a tinted band across the score on arrival and played the same two
+   * bars over and over once started — a state no singer opening the app is ever in. The
+   * score now opens and plays the way the application does by default: once, start to
+   * finish, no loop.
    */
   const drive = useCallback(async () => {
     const frame = frameRef.current;
@@ -1384,21 +1158,6 @@ export function ChoirPracticeDemo() {
 
       const parts = doc.querySelector<HTMLElement>(HOOKS.parts);
       if (parts && parts.getAttribute("aria-expanded") !== "true") parts.click();
-
-      const ready = await until(() => {
-        const loading = doc.querySelector<HTMLElement>(HOOKS.loading);
-        return Boolean(loading?.hidden && appIn(frame)?.renderer);
-      }, 8000);
-
-      /* Marked before playback starts rather than after, so the first pass round is
-         already looping and there is no gap to notice. If the entry point has gone, the
-         plain loop toggle still keeps the nine bars going round. */
-      if (ready && stagePassage(frame)) {
-        setLooped(true);
-      } else {
-        const loop = doc.querySelector<HTMLElement>(HOOKS.loop);
-        if (loop && loop.getAttribute("aria-pressed") !== "true") loop.click();
-      }
     } catch {
       /* A cross-origin surprise or a renamed control. The app still works; this
          page simply does not get to have arranged it. */
@@ -1583,28 +1342,16 @@ export function ChoirPracticeDemo() {
               where the feature lives; a button hides it. */}
           {CUES.map((cue) => {
             const spot = spots[cue.id];
-            if (!showing(cue)) return null;
-            /* Three of these exist only once their control has been measured. The
-               passage's is different, because its subject moves: the band can be out of
-               reach at the moment it is first measured — wholly under the zoom pill at a
-               narrow frame, or behind the part-name gutter mid-pass — and the frame loop
-               that would find it once it comes back only runs on an element that exists.
-               So it is rendered from the moment the band is drawn, hidden by `data-away`
-               until there is somewhere to point. */
-            if (!spot && cue.id !== "passage") return null;
+            // Each exists only once its control has been measured.
+            if (!showing() || !spot) return null;
             return (
               <span
                 key={cue.id}
-                ref={cue.id === "passage" ? passageRef : undefined}
                 className="choir-cue"
                 data-cue={cue.id}
                 data-side={cue.side}
-                data-away={spot ? "false" : "true"}
-                style={
-                  spot
-                    ? ({ "--cue-x": `${spot.x}px`, "--cue-y": `${spot.y}px` } as React.CSSProperties)
-                    : undefined
-                }
+                data-away="false"
+                style={{ "--cue-x": `${spot.x}px`, "--cue-y": `${spot.y}px` } as React.CSSProperties}
                 aria-hidden="true"
               >
                 <b>{cue.text}</b>
@@ -1614,18 +1361,14 @@ export function ChoirPracticeDemo() {
           })}
 
           {/* The stand's ledge, and on it the application's bar ruler, echoed.
-              The app draws a ruler of bar numbers along the top of its score, with the
-              passage being rehearsed as a tinted band on it and a handle at each end.
-              This is the same ruler — all nine bars of the score — on the ledge under
-              the score: the looped bars take the app's own loop ink once the pod has
-              marked them, and the bar the transport is in is lit as the music moves, so
-              the loop going round can be read outside the frame as well as in it. The
-              attributes are written by the two effects above. It stood in the section's
-              margin once, and the right-hand manuscript leaf covered it. */}
+              The app draws a ruler of bar numbers along the top of its score. This is
+              the same ruler — all nine bars of the score — on the ledge under the
+              score, with the bar the transport is in lit as the music moves. The
+              attribute is written by the effect above. */}
           <span className="choir-stand-lip" aria-hidden="true">
             <span className="choir-ledger">
               <small>bar</small>
-              {Array.from({ length: PASSAGE.bars }, (_, index) => (
+              {Array.from({ length: SCORE_BARS }, (_, index) => (
                 <i key={index}>{index + 1}</i>
               ))}
             </span>
@@ -1637,9 +1380,9 @@ export function ChoirPracticeDemo() {
       {/* The same cues as chips, for the widths where a leader line has nowhere to go.
           Shown by the stylesheet below 760px and hidden above it; the leader lines do
           the reverse. See the note on `CUES`. */}
-      {CUES.some(showing) && (
+      {showing() && (
         <div className="choir-cue-row" aria-hidden="true">
-          {CUES.filter(showing).map((cue) => (
+          {CUES.map((cue) => (
             <span key={cue.id} className="choir-chip" data-cue={cue.id}>
               <i />
               {cue.text}

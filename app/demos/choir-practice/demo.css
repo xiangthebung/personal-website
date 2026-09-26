@@ -20,7 +20,7 @@
  * The frame, the four voices on their staves, and the leader lines onto the app's own
  * controls. The application itself is vendored under public/demos/choir and styles
  * itself; what is staged here is the room around it, keyed off the beats the pod
- * publishes onto its section — `score`, `passage`, `count-in`, `singing` — which are
+ * publishes onto its section — `score`, `count-in`, `singing` — which are
  * read off the application rather than off a clock.
  */
 
@@ -53,8 +53,14 @@
      re-measured since the panel learned to close and scroll, so it may now be more height
      than the app needs. It is left alone deliberately rather than trimmed by guess — the
      thing to measure, if this is revisited, is how much of the score survives at a shorter
-     height with the panel open, which is the state the pod puts it in. */
-  height: 860px;
+     height with the panel open, which is the state the pod puts it in.
+
+     Re-measured: the panel scrolls, so a shorter frame loses nothing but panel rows,
+     and 860px on a 768px or 1080px window was a frame taller than, or as tall as, the
+     screen it was on. It now takes the same share of the window the staged scenes are
+     fitted to (`FIT_SHARE` in demo-mount.tsx), between a floor where the four staves
+     still show and a ceiling past which there is only more empty score. */
+  height: clamp(520px, 74svh, 760px);
   border: 0;
   border-radius: 12px;
   background: #000;
@@ -75,8 +81,7 @@
 .choir-holding {
   display: grid;
   width: 100%;
-  aspect-ratio: 16 / 10;
-  min-height: 520px;
+  height: clamp(520px, 74svh, 760px);
   place-items: center;
   border-radius: 12px;
   background: radial-gradient(120% 120% at 18% 0%, #16222a, #0a0e11 72%);
@@ -166,8 +171,8 @@
 }
 
 /* --- pointing at the application's controls --------------------------------
-   Labels on leader lines, hung off the application's own controls: the loop band on
-   the bar ruler, the tempo readout, the Share button and the microphone button.
+   Labels on leader lines, hung off the application's own controls: the tempo
+   readout, the Share button and the microphone button.
 
    The first of them replaced a second microphone button that the pod carried itself,
    reading "Sing into it / your browser will ask for the microphone". Both halves were
@@ -179,8 +184,7 @@
    follow the same rule for the same reason.
 
    `--cue-x` and `--cue-y` are a point on the control, measured inside the frame by
-   `findSpot` (or, for the band, computed out of the engraver by `passageSpot`) and
-   given in the stand's coordinates. The dot lands exactly on that point; `data-side`
+   `findSpot` and given in the stand's coordinates. The dot lands exactly on that point; `data-side`
    says which way the plate reads out of it, and the transform below is what puts the
    dot on the point for each side. `--cue-gap` is the standoff between the dot and the
    plate's lead.
@@ -220,14 +224,6 @@
 .choir-cue[data-side="below"] {
   flex-direction: column-reverse;
   transform: translate(-50%, var(--cue-gap));
-}
-
-/* The passage's label follows the band while the score scrolls, and the band can
-   scroll clean out of view behind the part-name gutter for a moment at the end of a
-   pass. A label pointing at nothing is the one thing this component must never do, so
-   it goes with it. */
-.choir-cue[data-away="true"] {
-  opacity: 0;
 }
 
 /* The leader. Ends in a dot on the control rather than an arrowhead — an arrow at this
@@ -359,13 +355,8 @@
 }
 
 /* --- the bar ruler, echoed on the ledge --------------------------------------
-   Nine cells for the nine bars of the score, in the application's own loop ink — its
-   dark-theme `--score-loop-fill` and `--score-loop-handle`, since the ledge is dark —
-   copied rather than referenced because the app's stylesheet lives inside the frame.
-   `data-looped` marks the passage the pod put on the app's ruler, with the handle at
-   whichever end that cell is; `data-now` is the bar the transport is in, rewritten as
-   the music moves. Both are written by the pod. Nothing here shows before the score is
-   open: the cells are all one dim grey until the pod has something to say on them. */
+   Nine cells for the nine bars of the score. `data-now` is the bar the transport is
+   in, rewritten by the pod as the music moves. */
 .choir-ledger {
   display: inline-flex;
   align-items: center;
@@ -399,35 +390,10 @@
     box-shadow 320ms ease;
 }
 
-/* The looped passage, and its two handles. */
-.choir-ledger i[data-looped] {
-  background: rgba(10, 132, 255, 0.26);
-  color: #8ec5ff;
-}
-
-.choir-ledger i[data-looped="start"] {
-  box-shadow: inset 2px 0 0 #0a84ff;
-}
-
-.choir-ledger i[data-looped="end"] {
-  box-shadow: inset -2px 0 0 #0a84ff;
-}
-
-.choir-ledger i[data-looped="both"] {
-  box-shadow:
-    inset 2px 0 0 #0a84ff,
-    inset -2px 0 0 #0a84ff;
-}
-
 /* The bar the transport is in. */
 .choir-ledger i[data-now] {
   background: rgba(232, 250, 240, 0.92);
   color: #0d1a16;
-}
-
-.choir-ledger i[data-now][data-looped] {
-  background: #0a84ff;
-  color: #fff;
 }
 
 .choir-stand-base {

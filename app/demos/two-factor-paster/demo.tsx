@@ -25,15 +25,15 @@
  * WHAT IS REAL HERE
  *
  * Every string the popup, the page card and the badge print is the product's:
- * the decision rows come from `renderOutcome` (`Filled “Verification code”`,
- * `Pressed Verify`, `Skipped “Security code” — card field`, `Copied to your
- * clipboard`, `Not submitted — check the sender first`), the pills from
+ * the decision rows come from `renderOutcome` (`Filled 6 boxes`, `Pressed Verify`,
+ * `Skipped “Security code” — card field`, `Copied to your clipboard`, `Not
+ * submitted — check the sender first`), the pills from
  * `renderOrigin`, the page card's title/detail/note from `fill()` in `content.js`
  * (`Code filled in, Verify pressed`, `Held — check the sender`, `Filled but not
  * submitted: several codes arrived and none name ledgerline.example.`), the
  * picker heading `Other recent codes` and its `Use NNNNNN instead` rows from
- * `showCard`, the badge glyphs and colours from `flashBadge` (`…` violet, `✓`
- * #1b8a3a, `?` amber while held). The popup is 380px because Chrome gives it
+ * `showCard`, the badge glyphs and colours from `flashBadge` (`✓` #1b8a3a, `?`
+ * #8a5300 while held). The popup is 380px because Chrome gives it
  * 380px; its palette is `popup.css` verbatim; the page card is `CARD_STYLE`
  * verbatim. The two relay senders and the held code are the ones the product's
  * own screenshots were taken with.
@@ -46,14 +46,17 @@
  * mail and into the boxes, which nothing does; that is the project's own first
  * sentence, drawn. And two liberties so the last frame can be a diagram: the
  * violet outline `content.js` lifts after 1200ms stays up, and the popup shows
- * its whole card rather than the 600px Chrome would scroll it inside.
+ * its whole card rather than the 600px Chrome would scroll it inside. The popup
+ * stops at "Recent codes": the real one continues with its two switches ("Fill it
+ * in automatically", "Submit it too"), which are not drawn here.
  *
  * The site is invented. Ledgerline, its checkout, its card on file and its copy
  * are the scene's; nothing here is a brand.
  */
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useId, useRef, type CSSProperties } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { cssZoom } from "../scene/css-zoom";
 import { usePressGate } from "../scene/press-gate";
 import { useSectionBeat } from "../scene/section-beat";
 import { SpecTags, type SpecTag } from "../scene/spec";
@@ -168,7 +171,11 @@ type RowTone = "ok" | "skip" | "hold";
  * `content.js` draws the page card for the same fill.
  *
  * The rows are in `renderOutcome`'s order: what was filled, what happened to the
- * submit, what was refused, and whether the code was copied. `Skipped “Security
+ * submit, what was refused, and whether the code was copied. The code box here is
+ * six one-character boxes, which `content.js` reports as `kind: 'segmented'`, so the
+ * first row is `Filled 6 boxes` — a single field would be quoted by its label
+ * instead. "Pressed Verify" and "Copied" rest on the defaults `autoSubmit` and
+ * `autoCopy`, both on in `settings.js`. `Skipped “Security
  * code” — card field` is on both, because the page has a card field on it both
  * times and the extension declines it both times.
  */
@@ -178,7 +185,7 @@ const CLEAN = {
   address: LEDGERLINE.address,
   pill: { tone: "match", title: `Sent by ${SITE} — the site you are on`, note: "" },
   rows: [
-    ["ok", "Filled “Verification code”"],
+    ["ok", "Filled 6 boxes"],
     ["ok", "Pressed Verify"],
     ["skip", "Skipped “Security code” — card field"],
     ["ok", "Copied to your clipboard"],
@@ -201,7 +208,7 @@ const HELD = {
     note: `Several codes just arrived and none name ${SITE}.`,
   },
   rows: [
-    ["ok", "Filled “Verification code”"],
+    ["ok", "Filled 6 boxes"],
     ["hold", "Not submitted — check the sender first"],
     ["skip", "Skipped “Security code” — card field"],
     ["ok", "Copied to your clipboard"],
@@ -218,10 +225,14 @@ const HELD = {
  * The other codes, newest first, as both the popup's held card and the page card's
  * picker list them: `pickerRows` and `renderHeld` both read the same history with
  * the current code left out.
+ *
+ * The two surfaces age them differently, so each row carries both. The page card's
+ * `ageOf` counts seconds under a minute; the popup's `renderHeld` uses `coarseAge`,
+ * which is to the minute and calls anything under one "just now".
  */
 const ALTERNATIVES = [
-  { code: NORTHWIND.code, address: NORTHWIND.address, age: "12s ago" },
-  { code: LEDGERLINE.code, address: LEDGERLINE.address, age: "2 min ago" },
+  { code: NORTHWIND.code, address: NORTHWIND.address, age: "12s ago", coarseAge: "just now" },
+  { code: LEDGERLINE.code, address: LEDGERLINE.address, age: "2 min ago", coarseAge: "2 min ago" },
 ] as const;
 
 /**
@@ -322,6 +333,33 @@ function Mark() {
   );
 }
 
+/**
+ * The toolbar icon: `icons/icon.svg`, which `manifest.json` gives the action. Not the
+ * popup's brand mark above — Chrome draws the manifest icon on the toolbar. The ids
+ * are per instance so the gradient and the mask cannot collide with anything else.
+ */
+function ToolbarIcon() {
+  const id = useId().replace(/:/g, "");
+  return (
+    <svg viewBox="0 0 128 128" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id={`${id}-backdrop`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#8b7bff" />
+          <stop offset="1" stopColor="#3a1fc4" />
+        </linearGradient>
+        <mask id={`${id}-digits`}>
+          <rect x="16" y="38" width="96" height="52" rx="16" fill="#fff" />
+          <circle cx="40" cy="64" r="8" fill="#000" />
+          <circle cx="64" cy="64" r="8" fill="#000" />
+          <circle cx="88" cy="64" r="8" fill="#000" />
+        </mask>
+      </defs>
+      <rect width="128" height="128" rx="28" fill={`url(#${id}-backdrop)`} />
+      <rect x="16" y="38" width="96" height="52" rx="16" fill="#fff" mask={`url(#${id}-digits)`} />
+    </svg>
+  );
+}
+
 function Envelope() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -376,12 +414,12 @@ export function TwoFactorPasterDemo() {
   const decision = held ? HELD : CLEAN;
   const digits = [...(second ? HELD.code : CLEAN.code)];
 
-  /* `…` while it looks, `✓` once a code is in the page, `?` while one is held —
-     `flashBadge` in `background.js`, with its colours. Nothing in between: the badge
-     is the only status there is when the popup is closed, and it says nothing when
-     there is nothing to say. */
-  const looking = beat === "pick" || beat === "chord";
-  const badge = held ? "?" : filled ? "✓" : looking ? "…" : "";
+  /* `✓` once a code is in the page, `?` while one is held — `deliver()`'s
+     `flashBadge` calls in `background.js`, with their colours. Nothing while the
+     shortcut reads Gmail: the violet `…` is set only by `startWatch`, the automatic
+     path, and this scene uses the shortcut. The badge is the only status there is
+     when the popup is closed, and it says nothing when there is nothing to say. */
+  const badge = held ? "?" : filled ? "✓" : "";
 
   /**
    * Where the six digits fly from.
@@ -419,11 +457,13 @@ export function TwoFactorPasterDemo() {
       const first = boxes[0].getBoundingClientRect();
       const next = boxes[1].getBoundingClientRect();
       if (source.width === 0 || first.width === 0) return;
-      const x = source.left + source.width / 2 - (first.left + first.width / 2);
-      const y = source.top + source.height / 2 - (first.top + first.height / 2);
+      // Rects are on-screen pixels; the stage lays out in its own, unzoomed ones.
+      const z = cssZoom(stage);
+      const x = (source.left + source.width / 2 - (first.left + first.width / 2)) / z;
+      const y = (source.top + source.height / 2 - (first.top + first.height / 2)) / z;
       stage.style.setProperty("--tfa-fly-x", `${x.toFixed(1)}px`);
       stage.style.setProperty("--tfa-fly-y", `${y.toFixed(1)}px`);
-      stage.style.setProperty("--tfa-step", `${(next.left - first.left).toFixed(1)}px`);
+      stage.style.setProperty("--tfa-step", `${((next.left - first.left) / z).toFixed(1)}px`);
     };
 
     const request = () => {
@@ -474,7 +514,7 @@ export function TwoFactorPasterDemo() {
         "stays empty, Verify is pressed, and a card in the page reads Code filled in, " +
         "Verify pressed. The extension's popup is opened and shows the code at reading " +
         "size, the sender's address, that it was sent by ledgerline.example, the site " +
-        "you are on, and that it filled Verification code, pressed Verify and skipped " +
+        "you are on, and that it filled the 6 boxes, pressed Verify and skipped " +
         "Security code as a card field. Later the boxes are empty again and two more " +
         "codes arrive at once, from noreply@accountprotection.net and " +
         "bounce@sendgrid.net, neither naming the site. The shortcut is pressed again: " +
@@ -507,7 +547,7 @@ export function TwoFactorPasterDemo() {
                 clicked in the whole scene. */}
             <span className="tfa-action" data-target="toolbar" data-open={open}>
               <span className="tfa-action-mark">
-                <Mark />
+                <ToolbarIcon />
               </span>
               {/* Keyed by its own text, so a change of glyph remounts the element and
                   replays the tick without the scene having to track when it changed. */}
@@ -549,8 +589,9 @@ export function TwoFactorPasterDemo() {
 
               <div className="tfa-rule" aria-hidden="true" />
 
-              {/* The field it fills. "Verification code" is the label `targetLabel`
-                  reads off the page and the popup then quotes back. */}
+              {/* The field it fills: six one-character boxes, which `content.js`
+                  finds as one `segmented` target — hence `Filled 6 boxes` in the
+                  popup rather than a quoted label. */}
               <div className="tfa-field">
                 <span className="tfa-field-label">Verification code</span>
                 <span className="tfa-field-hint">We emailed a 6-digit code to {MAILBOX}</span>
@@ -754,9 +795,11 @@ export function TwoFactorPasterDemo() {
                     <span className="tfa-held-submit">Submit anyway</span>
                     {ALTERNATIVES.map((other) => (
                       <span className="tfa-alt" key={other.code}>
-                        <strong>Use {other.code} instead</strong>
+                        <strong>
+                          Use <b>{other.code}</b> instead
+                        </strong>
                         <small>
-                          {other.address} · {other.age}
+                          {other.address} · {other.coarseAge}
                         </small>
                       </span>
                     ))}

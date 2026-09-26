@@ -13,6 +13,7 @@
  *   node scripts/dev-shot.mjs decaf 1440 press hold    only those beats
  *   BASE=http://localhost:5173 node scripts/dev-shot.mjs decaf
  *   OUT=some/dir node scripts/dev-shot.mjs decaf       where to write
+ *   HEIGHT=768 node scripts/dev-shot.mjs decaf 1366    a short window, where scenes are zoomed to fit
  *
  * Writes `<out>/<width>-<id>-<beat>.png` (default `outputs/dev/`) and a contact sheet
  * `<out>/<width>-<id>-sheet.png` tiling every frame in storyboard order, so a scene can be
@@ -54,7 +55,7 @@ const beats = named.length ? named : storyboard;
 await mkdir(outDir, { recursive: true });
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width, height: width < 760 ? 844 : 1200 } });
+const page = await browser.newPage({ viewport: { width, height: Number(process.env.HEIGHT) || (width < 760 ? 844 : 1200) } });
 const problems = [];
 page.on("pageerror", (error) => problems.push(`uncaught: ${error.message}`));
 page.on("console", (message) => {

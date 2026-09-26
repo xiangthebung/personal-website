@@ -43,7 +43,7 @@
  * client render agree on "resets in 3 days".
  */
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { PhantomCursor } from "../scene/cursor";
 import { usePressGate } from "../scene/press-gate";
 import { useSectionBeat } from "../scene/section-beat";
@@ -438,17 +438,25 @@ const SPECS: readonly SpecTag<BeatName>[] = [
   },
 ];
 
-/** The extension's mark: three bars, rising. */
+/**
+ * The extension's mark: `public/icon.svg`, path for path — three bars rising on a teal
+ * tile. The toolbar button and the notification's `icon.png` are both this drawing. The
+ * gradient's id is per instance, because the mark is on screen twice at once.
+ */
 function Mark() {
+  const tile = `bb-tile-${useId().replace(/:/g, "")}`;
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M5 19v-6M12 19V5m7 14v-9"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-      />
+    <svg viewBox="0 0 128 128" aria-hidden="true">
+      <defs>
+        <linearGradient id={tile} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#127c72" />
+          <stop offset="1" stopColor="#0a514b" />
+        </linearGradient>
+      </defs>
+      <rect width="128" height="128" rx="28" fill={`url(#${tile})`} />
+      <rect x="26" y="70" width="20" height="34" rx="4" fill="#d3eee9" />
+      <rect x="54" y="48" width="20" height="56" rx="4" fill="#e9f7f4" />
+      <rect x="82" y="26" width="20" height="78" rx="4" fill="#62d6c4" />
     </svg>
   );
 }

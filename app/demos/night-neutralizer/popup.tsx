@@ -11,9 +11,10 @@
  * in the extension; the ones that are numbers come from the vendored core rather than
  * being typed in.
  *
- * Cropped after the Picture card. The real popup carries an "Only at night" card and a
- * "More options" disclosure below it; nothing in the film touches either, and the footer
- * line closes the column so it reads as a whole rather than as a fragment.
+ * The whole front of the popup, in the extension's order: header, live row, presets,
+ * Sound, Picture, the "Only at night" card, the "More options" disclosure (closed, as it
+ * opens) and the footer. Nothing in the film touches the last two, but a popup drawn
+ * without them is not the popup the extension shows.
  *
  * Nothing here is a control. The stage is `role="img"`; the pill is pressed by the
  * phantom cursor and the state is written by the storyboard.
@@ -22,7 +23,7 @@
 import type { CSSProperties } from "react";
 import { describeStrength } from "./core/strength";
 import { DEFAULT_SETTINGS } from "./core/types";
-import { PRESET_ORDER, activePreset, presetById } from "./core/presets";
+import { CUSTOM_PRESET_LINE, PRESET_ORDER, activePreset, presetById } from "./core/presets";
 
 /** A switch, in the on position. `.track` and `.thumb` in the extension's `popup.css`. */
 function Switch() {
@@ -60,7 +61,10 @@ function Card({
       <p className="nn-pop-desc" data-spec-anchor={anchor}>
         {desc}
       </p>
-      <span className="nn-pop-range" style={{ "--fill": strength } as CSSProperties}>
+      {/* `--nn-fill`, not the extension's `--fill`: another scene registers `--fill`
+          document-wide with `@property … inherits: false`, which reset this track's
+          `::before` and thumb to 0 and drew the slider at the far left. */}
+      <span className="nn-pop-range" style={{ "--nn-fill": strength } as CSSProperties}>
         <i />
       </span>
     </div>
@@ -129,7 +133,7 @@ export function NightPopup({
           ))}
         </span>
         <p className="nn-pop-line">
-          {ACTIVE_PRESET ? presetById(ACTIVE_PRESET).sets : ""}
+          {ACTIVE_PRESET ? presetById(ACTIVE_PRESET).sets : CUSTOM_PRESET_LINE}
         </p>
       </div>
 
@@ -144,6 +148,31 @@ export function NightPopup({
             : "Shadows lifted, glare pulled back"
         }
       />
+
+      {/* "When to run": the "Only at night" toggle, on by default (`nightOnly` in
+          `DEFAULT_SETTINGS`), and the clock window under it, which the popup shows only
+          while the toggle is on. The line is `renderNightDesc`'s for the ordinary case,
+          a browser with no ambient light sensor. The times are the default window as
+          Chrome's en-US time field draws it. */}
+      <div className="nn-pop-card">
+        <p className="nn-pop-toggle">
+          <span className="nn-pop-toggle-copy">
+            <b>Only at night</b>
+            <span>No light sensor here, so the clock decides</span>
+          </span>
+          <Switch />
+        </p>
+        <p className="nn-pop-window">
+          From <span className="nn-pop-time">09:00 PM</span> to{" "}
+          <span className="nn-pop-time">07:00 AM</span>
+        </p>
+      </div>
+
+      {/* `<details class="more">`, closed, which is how the popup opens. */}
+      <p className="nn-pop-more">
+        <i className="nn-pop-chev" />
+        More options
+      </p>
 
       <p className="nn-pop-foot">Nothing leaves your browser.</p>
     </div>

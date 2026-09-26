@@ -157,7 +157,7 @@
    the demo, and `usePressGate`.
 
    520ms of ring inside what is left of an 800ms beat after the wait, so it still finishes
-   before `drain` takes over. */
+   before `aim-enable` sets the pointer off down the popup. */
 .dc-toolbar::after {
   position: absolute;
   inset: -4px;
@@ -193,11 +193,32 @@
   background: var(--accent);
   transform: scale(0.92);
 }
-/* Switched on, and it stays on for the rest of the scene: solid rather than tinted, so
-   the toolbar reads as "this is doing something" at a glance from across the frame. */
-.dc[data-on="true"] .dc-toolbar {
-  color: #fff;
-  background: var(--accent);
+/* The icon itself, in the extension's two palettes: `icon-off.svg` until Decaf is on,
+   `icon.svg` after. That swap is the whole of the toolbar's "on" state in Chrome, so the
+   button keeps no fill of its own once the press is over. `data-switched` rather than
+   `data-on`: the worker swaps the icon when the settings change, which is the press on
+   the popup's "Turn on here", not the later click that shows the page's changes. */
+.dc-mark {
+  display: grid;
+}
+.dc-mark-tile {
+  fill: #ece8e1;
+}
+.dc-mark-ink {
+  fill: #a8a099;
+}
+.dc-mark-handle {
+  fill: none;
+  stroke: #a8a099;
+}
+.dc[data-switched="true"] .dc-mark-tile {
+  fill: #6f4e37;
+}
+.dc[data-switched="true"] .dc-mark-ink {
+  fill: #fbf7f1;
+}
+.dc[data-switched="true"] .dc-mark-handle {
+  stroke: #fbf7f1;
 }
 
 /* --- and a larger pointer, in this scene only -----------------------------
@@ -248,9 +269,9 @@
    that beat early and leave the payoff looking like nothing happened. The feed keeps
    every bit of its colour, it just goes dim.
 
-   It ends on `press`. From `drain` onward the real effect is running and the scene
-   wants the app fully visible again, so the scrim is only ever up for the two beats
-   where a pointer is travelling. */
+   It stays up while the popup is doing the switching-on — `aim-enable` and `enable` —
+   and lifts on `aim-page`, as the pointer heads back to the page, so the page is fully
+   visible again by the time its changes are shown on `drain`. */
 .dc-app::after {
   position: absolute;
   z-index: 5;
@@ -263,7 +284,9 @@
 }
 .dc[data-beat="notice"] .dc-app::after,
 .dc[data-beat="reach"] .dc-app::after,
-.dc[data-beat="press"] .dc-app::after {
+.dc[data-beat="press"] .dc-app::after,
+.dc[data-beat="aim-enable"] .dc-app::after,
+.dc[data-beat="enable"] .dc-app::after {
   opacity: 1;
 }
 
@@ -279,7 +302,9 @@
 }
 .dc[data-beat="notice"] .dc-tabs,
 .dc[data-beat="reach"] .dc-tabs,
-.dc[data-beat="press"] .dc-tabs {
+.dc[data-beat="press"] .dc-tabs,
+.dc[data-beat="aim-enable"] .dc-tabs,
+.dc[data-beat="enable"] .dc-tabs {
   background: #fdfdff;
   box-shadow: 0 10px 26px -6px rgba(9, 10, 16, 0.5);
 }
@@ -650,15 +675,15 @@
   filter: blur(0) grayscale(1);
 }
 
-/* Out of the way of the click. See `data-quiet` in the demo: for the three beats where
-   a pointer is reaching for the toolbar and pressing it, the flood drops back so the
-   press is the only thing moving.
+/* Out of the way of the clicks. See `data-quiet` in the demo: for the beats where a
+   pointer is reaching for the toolbar, working the popup and heading back to the page,
+   the flood drops back so the pointer is the only thing moving.
 
    Blurred rather than nearly erased. 0.07 did make the button the only legible thing
    and it also threw away the payoff: the hearts have to still be visibly *there*,
    hanging, for their falling to read as something that happened to them. A blur is the
    cinema answer to the same problem — it moves them behind the plane of attention
-   instead of removing them — and it costs one filter on one layer for two seconds. The
+   instead of removing them — and it costs one filter on one layer for those beats. The
    bob stops too, so nothing in the frame is moving except the pointer. */
 .dc-deluge[data-quiet="true"] {
   opacity: 0.3;
@@ -1182,6 +1207,7 @@
   --pop-accent-text: #fdfbf8;
   --pop-hover: #f1ebe1;
   --pop-track-off: #ded5c6;
+  --pop-edge: #8a8279;
   --pop-shadow: 0 1px 2px rgba(32, 25, 18, 0.14);
   zoom: var(--dc-popup-zoom, 1);
   display: flex;
@@ -1208,7 +1234,7 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* head: the wordmark and the master switch, on */
+/* head: the wordmark and the master switch, off until "Turn on here" is pressed */
 .dc-popup-head {
   display: flex;
   align-items: center;
@@ -1231,17 +1257,22 @@
   color: var(--pop-muted);
   font-size: 13px;
 }
-/* `.switch-track`, checked: 38×22, the knob 16 and centred with a translate rather
-   than a `top`, landing 3px from the far edge. */
+/* `.switch-track`: 38×22, the knob 16 and centred with a translate rather than a `top`.
+   Unchecked it is the pale track inside the `--edge` border with the knob at the near
+   end; checked it fills with the accent and the knob travels 16px, landing 3px from
+   the far edge — on `popup.css`'s own 160ms. */
 .dc-popup-switch i {
   position: relative;
   box-sizing: border-box;
   width: 38px;
   height: 22px;
   flex-shrink: 0;
-  border: 1px solid var(--pop-accent);
+  border: 1px solid var(--pop-edge);
   border-radius: 999px;
-  background: var(--pop-accent);
+  background: var(--pop-track-off);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
 }
 .dc-popup-switch i::after {
   position: absolute;
@@ -1253,6 +1284,14 @@
   background: #fffdfa;
   box-shadow: var(--pop-shadow);
   content: "";
+  transform: translate(0, -50%);
+  transition: transform 160ms ease;
+}
+.dc-popup-switch[data-on="true"] i {
+  border-color: var(--pop-accent);
+  background: var(--pop-accent);
+}
+.dc-popup-switch[data-on="true"] i::after {
   transform: translate(16px, -50%);
 }
 
@@ -1279,15 +1318,20 @@
   letter-spacing: -0.01em;
   line-height: 1.3;
 }
+/* `.badge`, muted and outlined for "Off"; `.badge.on`, filled, for "On". */
 .dc-popup-badge {
   padding: 3px 9px;
-  border: 1px solid transparent;
+  border: 1px solid var(--pop-line);
   border-radius: 999px;
-  background: var(--pop-accent);
-  color: var(--pop-accent-text);
+  color: var(--pop-muted);
   font-size: 12px;
   font-weight: 560;
   white-space: nowrap;
+}
+.dc-popup-badge[data-on="true"] {
+  border-color: transparent;
+  background: var(--pop-accent);
+  color: var(--pop-accent-text);
 }
 .dc-popup-detail {
   margin: 0;
@@ -1412,6 +1456,36 @@
 }
 .dc-popup-button--wide {
   width: 100%;
+}
+/* "Turn on here" under the pointer: `.button.primary:hover`'s darker coffee while the
+   pointer rests on it, which is the whole of the press the button itself shows. */
+.dc-popup-enable {
+  transition: background 120ms ease;
+}
+.dc[data-beat="enable"] .dc-popup-enable {
+  background: #5d4130;
+}
+
+/* `.message`: a line kept open under the Lock card, and once it has something to say
+   it rides the window's bottom edge on the popup's own background, because the popup
+   is taller than the 600px Chrome gives it and a note written below the cut would
+   never be read. Sticky inside `.dc-popup-window`, which is the clip here — and at
+   minus that window's 12px padding, because Chrome measures a sticky offset from inside
+   the scroller's padding, and the extension's scroller is the page, which has none. */
+.dc-popup-message {
+  flex: none;
+  min-height: 20px;
+  margin: 0;
+  color: var(--pop-accent);
+  font-size: 13px;
+}
+.dc-popup-message:not(:empty) {
+  position: sticky;
+  z-index: 1;
+  bottom: -12px;
+  margin: -4px -12px -8px;
+  padding: 4px 12px 8px;
+  background: var(--pop-bg);
 }
 
 /* the meter: seven days, passes in the coffee and minutes beside them in the

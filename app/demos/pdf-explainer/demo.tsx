@@ -9,20 +9,24 @@
  * panel beside the slide, and three things the application did not do when the old
  * scene was staged are now the reason to show it at all:
  *
- *   it explains *ahead* of you. After the first batch, the next is requested when the
- *   reader is two slides from the first unexplained one, and the filmstrip's 3px rail
- *   fills in as each batch lands — so by the time a slide is reached its notes are there;
+ *   it explains *ahead* of you. Notes arrive in batches of three to twelve slides, and
+ *   after the first batch the next is requested when the reader is two slides from the
+ *   first unexplained one (`READ_AHEAD_DISTANCE`). The filmstrip's 3px rail pulses over
+ *   the slides a running batch may cover and fills in when it lands — so by the time a
+ *   slide is reached its notes are there;
  *
  *   you ask by highlighting. The slide has a real text layer now, a selection raises an
  *   "Ask about this" chip, and the Ask panel quotes the phrase back before answering,
  *   with the two neighbouring slides as context;
  *
  *   and it runs on your own key, in your own browser — sessions in IndexedDB, the key in
- *   local storage — which no frame can show and one label has to say.
+ *   session storage unless you opt in to keeping it — which no frame can show and one
+ *   label has to say.
  *
  * So the film is those things, in the order a reader meets them. A deck opens on slide 1
- * with its notes beside it and the rail already filling; the reader presses on to slide 3
- * and the notes are waiting; Review builds a question out of that slide and the card
+ * with the first batch (slides 1–3) explained; stepping to slide 2 brings the reader
+ * within two slides of the gap, read-ahead starts on slides 4–5, and the batch lands
+ * while they read slide 3; Review's set has a question from that slide and the card
  * leaves the panel for the section; then the pointer drags across a phrase on the slide,
  * the chip appears, and the panel answers with the phrase quoted. Review comes before
  * Ask, which is the one place this departs from the reading order the product suggests,
@@ -30,17 +34,18 @@
  * to be resting under the window when the film stops for all four claims to be on screen.
  *
  * What is real. Every string the chrome prints is one the application prints —
- * "Explaining ahead…", "Explaining ahead from slide 4…", "Ask about this", "Explain
- * this.", "Ask about slide 3…", "Re-explain", "0/2 practice", "Enter to send · Shift +
- * Enter for a new line", the Notes / Ask / Review control, the Quiz / Match / Blanks
- * filters — and the dimensions are the workspace's: a 56px top bar, a 176px filmstrip
- * with a 3px rail, a `#f2f2f5` stage under a floating pill toolbar, a 460px panel, all
- * scaled to the pod. The rail's colours are the product's: violet explained, violet at
- * 45% pulsing for the batch in flight, hairline otherwise. The slide is a made-up lecture
- * on gradient descent and the notes are the shape the app writes — chips, a heading, a
- * paragraph, an INTUITION callout, a CHECK YOURSELF card — with the first slide's copy
- * taken from the application's own test deck. The reply is staged: it comes out of a
- * model in the real app.
+ * "Continue from 4", "Explaining ahead…", "Explaining ahead from slide 4…", "Ask about
+ * this", "Explain this.", "Ask about slide 3…", "Re-explain", "0/2 practice", "Check
+ * yourself", "Enter to send · Shift + Enter for a new line", the Notes / Ask / Review
+ * control, the All / To do / Quiz / Match / Blanks filters — and the dimensions are the
+ * workspace's: a 56px top bar, a 176px filmstrip with a 3px rail, a `#f2f2f5` stage under
+ * a floating pill toolbar, a 460px panel, all scaled to the pod. The rail's colours are
+ * the product's: violet explained, violet at 45% pulsing for the batch in flight,
+ * hairline otherwise; the top bar's ring turns green once every slide is explained. The
+ * slide is a made-up lecture on gradient descent and the notes are the shape the app
+ * writes — chips, a summary heading in the "Topic, slide N" form of the app's smoke-test
+ * notes, a paragraph, an INTUITION callout, a CHECK YOURSELF section. The reply is
+ * staged: it comes out of a model in the real app.
  */
 
 import {
@@ -51,6 +56,7 @@ import {
   type RefObject,
 } from "react";
 import { PhantomCursor } from "../scene/cursor";
+import { cssZoom } from "../scene/css-zoom";
 import { usePressGate } from "../scene/press-gate";
 import { useSectionBeat } from "../scene/section-beat";
 import { SpecTags, type SpecTag } from "../scene/spec";
@@ -127,9 +133,10 @@ const PRACTICE_PER_SLIDE = 2;
 const SELECTION = { slide: 3, bullet: 1, phrase: "noisy but cheap" } as const;
 
 /**
- * The question Review builds from slide 3. It is also the CHECK YOURSELF card in that
- * slide's notes, which is what the application does: each slide's notes end in its own
- * practice items, and Review is those items collected across the deck.
+ * The first question in Review's set, from slide 3. The same question is also that
+ * slide's CHECK YOURSELF card. In the application these are two sources — each note
+ * carries its own practice items, and Review is a separately built, deck-wide set whose
+ * items carry a slide number — so a question can sit in both.
  */
 const QUIZ = {
   kicker: "Q1",
@@ -137,6 +144,13 @@ const QUIZ = {
   question: "Which variant takes one step per training example?",
   options: ["Batch gradient descent", "Stochastic gradient descent", "Mini-batch, 256 examples"],
 } as const;
+
+/**
+ * Review's set, already built: counts for the header and the filter chips. The filters
+ * hide any kind with no items, and "To do" counts what is unanswered — all of it here.
+ */
+const REVIEW = { quiz: 4, match: 2, cloze: 2 } as const;
+const REVIEW_TOTAL = REVIEW.quiz + REVIEW.match + REVIEW.cloze;
 
 /** The second card in the review set, from `src/practice/ClozeCard.tsx`. */
 const CLOZE = {
@@ -157,9 +171,13 @@ const ASK = {
     "One example per step makes each gradient a rough guess, so the path zig-zags. But a step costs one example rather than a pass over the whole set — which is why slide 4 pairs it with a smaller η.",
 } as const;
 
+type Question = { question: string; options: readonly string[] };
+
 /**
- * The notes for the three slides the reader visits. The first is the application's own
- * copy for this slide, from its test deck; the other two are written to the same shape.
+ * The notes for the three slides the reader visits, written to the shape the app
+ * writes. Every note with practice items ends in a CHECK YOURSELF section with them in
+ * it — `NotesPanel.tsx` always renders it when the "0/2 practice" chip is up — so each
+ * slide has its first question; the panel clips the rest, as a scrolled panel would.
  */
 const NOTES: Record<
   1 | 2 | 3,
@@ -169,7 +187,7 @@ const NOTES: Record<
     equation?: ReactNode;
     body?: string;
     callout?: string;
-    quiz?: boolean;
+    check: Question;
   }
 > = {
   1: {
@@ -183,16 +201,24 @@ const NOTES: Record<
     body: "The learning rate η decides how far each step goes. Too large and the iterates overshoot the minimum; too small and convergence crawls.",
     callout:
       "Picture a ball rolling downhill in fog: it can only feel the slope under its feet, so it takes a step, feels again, and repeats.",
+    check: {
+      question: "What does the learning rate η control?",
+      options: ["The direction of each step", "The size of each step", "The number of passes"],
+    },
   },
   2: {
     head: "The update rule, slide 2",
     lead: "Each step subtracts the gradient, scaled by η. The gradient points uphill, so subtracting it walks the parameters toward lower loss.",
     callout: "The slope says which way. η says how far.",
+    check: {
+      question: "Why is the gradient subtracted rather than added?",
+      options: ["It points uphill", "It is always negative", "It keeps η small"],
+    },
   },
   3: {
     head: "Stochastic vs batch, slide 3",
     lead: "Batch descent reads the whole dataset before every step, so each step is exact and expensive. Stochastic descent steps after every example: cheap, and noisy enough to shake out of shallow minima.",
-    quiz: true,
+    check: QUIZ,
   },
 };
 
@@ -218,10 +244,12 @@ type BeatName =
  * Sixteen seconds, four presses and one drag.
  *
  * `open` is long because it is the only beat that shows the whole workspace at rest —
- * the deck, the notes, the rail already two slides in — and everything after it is a
- * change to that picture. `ahead` is the mechanism on its own: nothing is pressed and a
- * rail fills. The two `next` presses are short because a press is short, and `read` is
- * where the payoff sits still long enough to be seen: slide 3 has arrived and its notes
+ * the deck, the notes, the first batch's three slides on the rail, read-ahead armed —
+ * and everything after it is a change to that picture. `ahead` is still at rest: the
+ * reader on slide 1 is three slides from the gap, one more than read-ahead waits for,
+ * so nothing is fetched until the first press. That press brings slide 2 and starts the
+ * batch for 4–5; the second is short because a press is short, and `read` is where the
+ * payoff sits still long enough to be seen: the batch has landed, and slide 3's notes
  * were there first.
  *
  * `lift` is sized to the card's 900ms flight and `landed` exists so that the label about
@@ -288,7 +316,7 @@ const CLICK_EFFECTS: ReadonlySet<BeatName> = PRESSES;
  * Four claims, each on the thing making it.
  *
  * "Explained before you get there" hangs off the fifth thumbnail — the last slide, which
- * the reader never reaches and whose rail is filling anyway — and reads into the empty
+ * the reader never reaches and whose rail has filled anyway — and reads into the empty
  * band of the stage under the slide. Fourteen pixels below the thumbnail's middle, still
  * on its edge: at 2560 the stage is wider, the slide taller, and its bottom edge came
  * down to exactly the thumbnail's centre line, so a plate read out at that height lay
@@ -372,6 +400,12 @@ const ICON = {
   chat: "M5 5h14v10H10l-4 4v-4H5z",
   target: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
   pause: "M8 5v14M16 5v14",
+  fastForward: "M4 6l8 6-8 6zM12 6l8 6-8 6z",
+  sparkles: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z",
+  eye: "M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z",
+  enter: "M20 5v7a3 3 0 0 1-3 3H5m4-4-4 4 4 4",
+  jump: "M8 16 16 8M9 8h7v7",
+  reset: "M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5",
   refresh: "M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5",
   chevronDown: "M6 9l6 6 6-6",
   chevronLeft: "M15 5l-7 7 7 7",
@@ -508,17 +542,26 @@ function Selectable({
 
 /* ------------------------------------- the cards ----------------------------------- */
 
-/** `QuizCard`: a kicker, the question, three options. Unanswered here, on purpose. */
-function QuizCard() {
+/**
+ * `QuizCard`: one header row — the label chip, the question, and, in Review only, the
+ * "Slide 3 ↗" jump — then three lettered options. Unanswered here, on purpose. The notes
+ * panel's copy has no jump: `NotesPanel.tsx` does not pass one.
+ */
+function QuizCard({ q = QUIZ, jump }: { q?: Question; jump?: number }) {
   return (
     <section className="pdfx-card pdfx-card--violet">
-      <p className="pdfx-card-kicker">
+      <header className="pdfx-card-kicker pdfx-quiz-head">
         <span className="pdfx-chip pdfx-chip--violet">{QUIZ.kicker}</span>
-        Slide {QUIZ.slide}
-      </p>
-      <p className="pdfx-question">{QUIZ.question}</p>
+        <span className="pdfx-question">{q.question}</span>
+        {jump !== undefined && (
+          <span className="pdfx-jump">
+            Slide {jump}
+            <Icon d={ICON.jump} />
+          </span>
+        )}
+      </header>
       <div className="pdfx-options">
-        {QUIZ.options.map((option, order) => (
+        {q.options.map((option, order) => (
           <span className="pdfx-option" key={option}>
             <span className="pdfx-option-letter">{"ABC"[order]}</span>
             {option}
@@ -529,23 +572,33 @@ function QuizCard() {
   );
 }
 
-/** `ClozeCard`: the dashed blank, the field, the Check button. */
+/** `ClozeCard`: the chip and jump, the dashed blank, the field, Check and Show answer. */
 function ClozeCard() {
   return (
     <section className="pdfx-card pdfx-card--amber">
-      <p className="pdfx-card-kicker">
+      <header className="pdfx-card-kicker">
         <span className="pdfx-chip pdfx-chip--amber">
           <Icon d={ICON.edit} />
           Fill in the blank
         </span>
-        Slide {CLOZE.slide}
-      </p>
+        <span className="pdfx-jump">
+          Slide {CLOZE.slide}
+          <Icon d={ICON.jump} />
+        </span>
+      </header>
       <p className="pdfx-cloze">
         {CLOZE.before} <span className="pdfx-cloze-blank">?????</span> {CLOZE.after}
       </p>
       <div className="pdfx-cloze-row">
-        <span className="pdfx-field">Type the missing term</span>
+        <span className="pdfx-field">
+          Type the missing term
+          <Icon d={ICON.enter} />
+        </span>
         <span className="pdfx-check">Check</span>
+        <span className="pdfx-check pdfx-check--ghost">
+          <Icon d={ICON.eye} />
+          Show answer
+        </span>
       </div>
     </section>
   );
@@ -574,12 +627,14 @@ export function PdfExplainerDemo() {
   const { did, reached, onPress } = usePressGate(BEATS, state, CLICK_EFFECTS);
 
   /**
-   * How far the read-ahead has got, in slides. Two are explained when the deck opens —
-   * the first batch — the third lands on `ahead` while the reader is still on slide 1,
-   * and the fourth while they press through to slide 2. The fifth is in flight for the
-   * rest of the film, which is the header's "Explaining ahead…" and the pulsing rail.
+   * How far the notes have got, in slides. The first batch covered 1–3 when the deck
+   * opens. Read-ahead waits until the reader is within two slides of the gap at 4, which
+   * is the press to slide 2; that batch covers 4–5 (the rest of the deck) and lands, all
+   * at once as batches do, on `read`. After that the deck is covered and read-ahead has
+   * nothing left to show.
    */
-  const explained = reached >= at("next") ? 4 : reached >= at("ahead") ? 3 : 2;
+  const aheadRunning = reached >= at("next") && reached < at("read");
+  const explained = reached >= at("read") ? 5 : 3;
   const current: 1 | 2 | 3 = reached >= at("next-2") ? 3 : reached >= at("next") ? 2 : 1;
   const tab = reached >= at("ask") ? "ask" : reached >= at("review") ? "review" : "notes";
 
@@ -595,8 +650,11 @@ export function PdfExplainerDemo() {
 
   const practice = explained * PRACTICE_PER_SLIDE;
 
-  /** The rail beside each thumbnail: `Filmstrip.tsx`'s three states. */
-  const rail = (n: number) => (n <= explained ? "done" : n === explained + 1 ? "flight" : "todo");
+  /**
+   * The rail beside each thumbnail: `Filmstrip.tsx`'s three states. "In flight" is every
+   * unexplained slide the running batch may reach — from its start, up to twelve on.
+   */
+  const rail = (n: number) => (n <= explained ? "done" : aheadRunning ? "flight" : "todo");
 
   const selRef = useRef<HTMLSpanElement | null>(null);
   const quoteRef = useRef<HTMLElement | null>(null);
@@ -623,10 +681,12 @@ export function PdfExplainerDemo() {
     const box = root.getBoundingClientRect();
     const a = from.getBoundingClientRect();
     const b = to.getBoundingClientRect();
-    flyer.style.setProperty("--from-x", `${a.left - box.left}px`);
-    flyer.style.setProperty("--from-y", `${a.top - box.top}px`);
-    flyer.style.setProperty("--to-x", `${b.left - box.left}px`);
-    flyer.style.setProperty("--to-y", `${b.top - box.top}px`);
+    // Rects are on-screen pixels; the pod lays out in its own, unzoomed ones.
+    const z = cssZoom(root);
+    flyer.style.setProperty("--from-x", `${(a.left - box.left) / z}px`);
+    flyer.style.setProperty("--from-y", `${(a.top - box.top) / z}px`);
+    flyer.style.setProperty("--to-x", `${(b.left - box.left) / z}px`);
+    flyer.style.setProperty("--to-y", `${(b.top - box.top) / z}px`);
   }, [asked, run]);
 
   /**
@@ -652,9 +712,10 @@ export function PdfExplainerDemo() {
     }
     const box = root.getBoundingClientRect();
     const a = from.getBoundingClientRect();
-    flyer.style.setProperty("--from-x", `${a.left - box.left}px`);
-    flyer.style.setProperty("--from-y", `${a.top - box.top}px`);
-    flyer.style.setProperty("--from-w", `${a.width}px`);
+    const z = cssZoom(root);
+    flyer.style.setProperty("--from-x", `${(a.left - box.left) / z}px`);
+    flyer.style.setProperty("--from-y", `${(a.top - box.top) / z}px`);
+    flyer.style.setProperty("--from-w", `${a.width / z}px`);
     const frame = requestAnimationFrame(() => {
       flyer.dataset.flown = "true";
     });
@@ -676,9 +737,10 @@ export function PdfExplainerDemo() {
       aria-label={
         "A lecture-study workspace: a filmstrip of five slides on the left, the current " +
         "slide in the middle, and a notes panel on the right. Notes for slide 1 are open " +
-        "while the filmstrip's rail fills in beside the slides ahead and the panel header " +
-        "reads Explaining ahead. The reader presses on to slide 3 and its notes are already " +
-        "there. Review builds a multiple-choice question from that slide, and the card " +
+        "with the first three slides explained. As the reader steps to slide 2 the panel " +
+        "header reads Explaining ahead and the filmstrip's rail pulses beside the last two " +
+        "slides, which fill in before the reader reaches slide 3. Review's set has a " +
+        "multiple-choice question from that slide, and the card " +
         "lifts out of the panel to rest under the window. The pointer then drags across a " +
         "phrase on the slide, an Ask about this chip appears above it, and the Ask panel " +
         "answers with the phrase quoted."
@@ -697,10 +759,12 @@ export function PdfExplainerDemo() {
             </small>
           </div>
           <div className="pdfx-top-tools">
-            {/* The ring that counts explained slides, violet until the deck is done. */}
+            {/* The ring that counts explained slides, violet until the deck is done and
+                green after. */}
             <span
               className="pdfx-ring"
-              style={{ "--fill": explained / TOTAL } as CSSProperties}
+              data-full={explained === TOTAL}
+              style={{ "--pdfx-fill": explained / TOTAL } as CSSProperties}
               aria-hidden="true"
             >
               <i />
@@ -815,16 +879,33 @@ export function PdfExplainerDemo() {
                   Review
                 </span>
               </div>
-              {/* Read-ahead's status, right of the control: a spinner, the line, and the
-                  pause button. It stays up for the whole film because the fifth slide's
-                  batch never lands inside it. */}
-              <div className="pdfx-status">
-                <i className="pdfx-spinner" />
-                Explaining ahead…
-                <span className="pdfx-pause">
-                  <Icon d={ICON.pause} />
-                </span>
-              </div>
+              {/* The notes header's right side, from `StudyPanel.tsx`, on the Notes tab
+                  only. Idle with a gap ahead: read-ahead's switch, on, and the primary
+                  "Continue from 4". While the batch runs: a spinner, the line, and the
+                  pause button. Once the deck is covered: nothing. */}
+              {tab === "notes" && explained < TOTAL && (
+                <div className="pdfx-status">
+                  {aheadRunning ? (
+                    <>
+                      <i className="pdfx-spinner" />
+                      Explaining ahead…
+                      <span className="pdfx-pause">
+                        <Icon d={ICON.pause} />
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="pdfx-readahead-on">
+                        <Icon d={ICON.fastForward} />
+                      </span>
+                      <span className="pdfx-continue">
+                        <Icon d={ICON.sparkles} />
+                        Continue from {explained + 1}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="pdfx-panel-body">
@@ -833,7 +914,8 @@ export function PdfExplainerDemo() {
                   <div className="pdfx-note-head">
                     <span className="pdfx-chip pdfx-chip--violet">Slide {current}</span>
                     <span className="pdfx-chip pdfx-chip--amber">0/{PRACTICE_PER_SLIDE} practice</span>
-                    <span className="pdfx-reexplain">
+                    {/* Disabled while any explain job runs, as `NotesPanel.tsx` has it. */}
+                    <span className="pdfx-reexplain" data-dim={aheadRunning}>
                       <Icon d={ICON.refresh} />
                       Re-explain
                       <Icon d={ICON.chevronDown} />
@@ -852,39 +934,49 @@ export function PdfExplainerDemo() {
                       <p>{note.callout}</p>
                     </div>
                   )}
-                  {note.quiz && (
-                    <>
-                      <p className="pdfx-section-head">Check yourself</p>
-                      <QuizCard />
-                    </>
+                  <p className="pdfx-section-head">Check yourself</p>
+                  <QuizCard q={note.check} />
+                  {/* Only while a batch runs, and after everything else in the panel. */}
+                  {aheadRunning && (
+                    <p className="pdfx-note-foot">
+                      <i className="pdfx-spinner" />
+                      Explaining ahead from slide {explained + 1}…
+                    </p>
                   )}
-                  <p className="pdfx-note-foot">
-                    <i className="pdfx-spinner" />
-                    Explaining ahead from slide {explained + 1}…
-                  </p>
                 </div>
               )}
 
               {tab === "review" && (
                 <div className="pdfx-review" key={`review-${run}`}>
                   <div className="pdfx-review-head">
-                    <p className="pdfx-review-score">0 of {practice} done</p>
-                    <span className="pdfx-progress" aria-hidden="true">
-                      <i />
-                    </span>
-                    {/* `FILTERS`, counting the kinds in the set. */}
+                    <div className="pdfx-review-top">
+                      <div>
+                        <p className="pdfx-review-score">0 of {REVIEW_TOTAL} done</p>
+                        <span className="pdfx-progress" aria-hidden="true">
+                          <i />
+                        </span>
+                      </div>
+                      <span className="pdfx-review-reset">
+                        <Icon d={ICON.reset} />
+                        Reset
+                      </span>
+                    </div>
+                    {/* `FILTERS`, in order, counting the kinds in the set. */}
                     <div className="pdfx-filters">
                       <span data-on="true">
-                        All<b>{practice}</b>
+                        All<b>{REVIEW_TOTAL}</b>
+                      </span>
+                      <span className="pdfx-chip--indigo">
+                        To do<b>{REVIEW_TOTAL}</b>
                       </span>
                       <span className="pdfx-chip--violet">
-                        Quiz<b>{explained}</b>
+                        Quiz<b>{REVIEW.quiz}</b>
                       </span>
                       <span className="pdfx-chip--teal">
-                        Match<b>{Math.ceil(explained / 2)}</b>
+                        Match<b>{REVIEW.match}</b>
                       </span>
                       <span className="pdfx-chip--amber">
-                        Blanks<b>{Math.floor(explained / 2)}</b>
+                        Blanks<b>{REVIEW.cloze}</b>
                       </span>
                     </div>
                   </div>
@@ -892,7 +984,7 @@ export function PdfExplainerDemo() {
                       keeps the box the flight is measured from, and collapsed a moment
                       later so the blanks card below moves up into its place. */}
                   <div className="pdfx-card-slot" ref={cardRef} data-lifted={lifted}>
-                    <QuizCard />
+                    <QuizCard jump={QUIZ.slide} />
                   </div>
                   <ClozeCard />
                 </div>
@@ -949,7 +1041,7 @@ export function PdfExplainerDemo() {
           window clips its contents and these have to leave it. */}
       {lifted && (
         <div className="pdfx-lift" ref={liftRef} key={`lift-${run}`} data-spec-anchor="card">
-          <QuizCard />
+          <QuizCard jump={QUIZ.slide} />
         </div>
       )}
       {asked && !answered && (

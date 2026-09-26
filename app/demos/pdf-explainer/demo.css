@@ -23,7 +23,7 @@
  * and the rail, cyan for Ask, amber for Review, teal for matching.
  */
 
-@property --fill {
+@property --pdfx-fill {
   syntax: "<number>";
   inherits: false;
   initial-value: 0;
@@ -157,15 +157,20 @@
   color: var(--ink-2);
 }
 
-/* Explained slides, as an arc. `--fill` is registered above so the arc grows rather
+/* Explained slides, as an arc. `--pdfx-fill` is registered above so the arc grows rather
    than jumping when the count changes. */
 .pdfx-ring {
   position: relative;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: conic-gradient(var(--violet) calc(var(--fill) * 360deg), rgba(0, 0, 0, 0.09) 0);
-  transition: --fill 520ms ease;
+  background: conic-gradient(var(--violet) calc(var(--pdfx-fill) * 360deg), rgba(0, 0, 0, 0.09) 0);
+  transition: --pdfx-fill 520ms ease;
+}
+
+/* `tint={percent >= 100 ? 'good' : 'violet'}` in `TopBar.tsx`. */
+.pdfx-ring[data-full="true"] {
+  background: conic-gradient(var(--good) calc(var(--pdfx-fill) * 360deg), rgba(0, 0, 0, 0.09) 0);
 }
 
 .pdfx-ring i {
@@ -746,6 +751,41 @@
   height: 100%;
 }
 
+/* Read-ahead's switch when it is on and idle: an active icon button, accent-soft. */
+.pdfx-readahead-on {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 6px;
+  background: rgba(11, 111, 214, 0.1);
+  color: var(--accent);
+}
+
+.pdfx-readahead-on svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* The header's primary action: "Continue from N", accent with a sparkles icon. */
+.pdfx-continue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.pdfx-continue svg {
+  width: 9px;
+  height: 9px;
+}
+
 .pdfx-panel-body {
   position: relative;
   min-height: 0;
@@ -820,6 +860,15 @@
 .pdfx-reexplain svg {
   width: 10px;
   height: 10px;
+}
+
+.pdfx-reexplain[data-dim="true"] {
+  opacity: 0.4;
+}
+
+.pdfx-chip--indigo {
+  background: rgba(63, 75, 214, 0.09);
+  color: #3f4bd6;
 }
 
 .pdfx-notes h5 {
@@ -928,9 +977,43 @@
 
 .pdfx-question {
   margin: 0;
+  color: var(--ink);
   font-size: 11px;
   font-weight: 600;
   line-height: 1.4;
+}
+
+/* `QuizCard`'s header: chip, question, jump, on one row. */
+.pdfx-quiz-head {
+  align-items: flex-start;
+}
+
+.pdfx-quiz-head .pdfx-question {
+  min-width: 0;
+  flex: 1;
+}
+
+.pdfx-quiz-head .pdfx-chip {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* "Slide N ↗", the card's link back to its slide in Review. */
+.pdfx-jump {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 1px;
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: 8.5px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.pdfx-jump svg {
+  width: 8px;
+  height: 8px;
 }
 
 .pdfx-options {
@@ -1001,13 +1084,46 @@
   font-size: 10px;
 }
 
+.pdfx-field {
+  min-width: 0;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.pdfx-field svg {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-left: auto;
+}
+
 .pdfx-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   padding: 4px 9px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f2f2f5;
+  background: #fff;
   font-size: 10px;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Check is disabled until something is typed. */
+.pdfx-check:not(.pdfx-check--ghost) {
+  opacity: 0.4;
+}
+
+.pdfx-check--ghost {
+  border-color: transparent;
+  background: #f2f2f5;
+}
+
+.pdfx-check svg {
+  width: 9px;
+  height: 9px;
 }
 
 /* --- review ----------------------------------------------------------------- */
@@ -1022,6 +1138,27 @@
   margin: 0 0 4px;
   font-size: 11px;
   font-weight: 600;
+}
+
+.pdfx-review-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pdfx-review-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink-2);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.pdfx-review-reset svg {
+  width: 10px;
+  height: 10px;
 }
 
 .pdfx-progress {
@@ -1063,9 +1200,20 @@
   opacity: 0.7;
 }
 
+/* Unselected filters are their tint's chip at 80%; the selected one, All, is filled
+   with its accent tint. */
+.pdfx-filters span:not([data-on="true"]) {
+  opacity: 0.8;
+}
+
 .pdfx-filters span[data-on="true"] {
-  background: var(--ink);
+  background: var(--accent);
   color: #fff;
+}
+
+.pdfx-filters .pdfx-chip--indigo {
+  background: rgba(63, 75, 214, 0.09);
+  color: #3f4bd6;
 }
 
 .pdfx-filters .pdfx-chip--violet {
